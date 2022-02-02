@@ -24,3 +24,11 @@ export const INIT = () => {
   }
   init();
 };
+
+export const ENTER = (func: Function) => {
+  return (e: any) => {
+    if (e?.key == 'Enter' || e?.keyCode == 13 || e?.which == 13) {
+      func();
+    }
+  };
+};

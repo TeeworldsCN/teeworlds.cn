@@ -37,7 +37,7 @@ export interface ServerState {
   num_clients: number;
   num_players: number;
   num_spectators: number;
-  clients: [{name:string}];
+  clients: [{ name: string }];
 }
 
 const filterOptions: {
@@ -66,7 +66,7 @@ export default class implements m.ClassComponent<Attr> {
         const list = await m.request<{ servers: ServerState[] }>({
           method: 'GET',
           url: 'https://api.teeworlds.cn/servers',
-          params: { detail: true, },
+          params: { detail: true },
           //url: 'https://api.teeworlds.cn/servers/list',
         });
         this.servers = list.servers;
@@ -151,13 +151,14 @@ export default class implements m.ClassComponent<Attr> {
         .split(' ')
         .filter(s => s)
         .map(s => `(?=.*${s})`)
-        .join('')}.*$`, 'i'
+        .join('')}.*$`,
+      'i'
     );
 
     const countryData = orderBy(
       filter(this.servers, s => {
         const identifier = `${s.locale} `;
-        return ((filterOptions.country && !identifier.match(countryRegex))) ? false : true;
+        return filterOptions.country && !identifier.match(countryRegex) ? false : true;
       }),
       keys,
       order
@@ -165,7 +166,11 @@ export default class implements m.ClassComponent<Attr> {
 
     const data = orderBy(
       filter(countryData, s => {
-        const identifier = `${s.name} ${s.ip} ${s.game_type} ${s.map} ${s.clients.map((obj,index)=>{return obj.name != null ? obj.name : ""}).join(' ')}`;
+        const identifier = `${s.name} ${s.ip} ${s.game_type} ${s.map} ${s.clients
+          .map((obj, index) => {
+            return obj.name != null ? obj.name : '';
+          })
+          .join(' ')}`;
         if (filterOptions.exclude && identifier.match(excludeRegex)) {
           return false;
         }
@@ -280,14 +285,16 @@ export default class implements m.ClassComponent<Attr> {
                 </div>
               </div>
               <div class="column is-narrow">
-                <div class="control has-icons-left" >
+                <div class="control has-icons-left">
                   <div class="select">
-                    <select value={filterOptions.country} onchange={(v: any) => {
-                      filterOptions.country = v.target.value;
-                      this.filterServerList();
-                    }
-                    }>
-                      <option value="" >全球</option>
+                    <select
+                      value={filterOptions.country}
+                      onchange={(v: any) => {
+                        filterOptions.country = v.target.value;
+                        this.filterServerList();
+                      }}
+                    >
+                      <option value="">全球</option>
                       <option value="as">(AS) 亚洲</option>
                       <option value="as:cn">(CN) 中国</option>
                       <option value="eu">(EU) 欧洲</option>

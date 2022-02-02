@@ -1,21 +1,21 @@
 .content h1 {
-	margin-bottom: 1em;
+  margin-bottom: 1em;
 }
 
 .content h2:not(:first-child) {
-    margin-top: 0.5em;
+  margin-top: 0.5em;
 }
 
 .button:hover {
-	border-top-color: #00000000;
-	border-left-color: #00000000;
-	border-right-color: #00000000;
+  border-top-color: #00000000;
+  border-left-color: #00000000;
+  border-right-color: #00000000;
 }
 
-.wiki {
-	padding: 30px 0;
+.linkButton {
+  padding: 30px 0;
 }
 
 .link a {
-	margin-right: 20px;
+  margin-right: 20px;
 }

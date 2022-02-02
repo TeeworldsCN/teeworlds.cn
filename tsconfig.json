@@ -9,9 +9,10 @@
     "sourceMap": true,
     "outDir": "dist",
     "baseUrl": ".",
+    "sourceRoot": "src",
     "jsx": "react",
     "jsxFactory": "m",
-    "jsxFragmentFactory": "m.fragment",
+    "jsxFragmentFactory": "m.Fragment",
     "removeComments": false,
     "allowJs": true,
     "paths": {

@@ -1,6 +1,8 @@
 import m from 'mithril';
 import { PAGE, INIT } from './utils';
 
+(m as any).Fragment = '[';
+
 INIT();
 
 //-----------------
@@ -19,5 +21,7 @@ m.route(document.body, '/', {
   '/p/:map': PAGE('preview_redirect', 'raw'),
   '/browser/:server': PAGE('browser_server', 'raw'),
   '/browser': PAGE('browser', 'raw'),
+  '/points': PAGE('points', 'raw'),
+  '/points/:player': PAGE('points', 'raw'),
   '/': PAGE('home', 'raw'),
 });
