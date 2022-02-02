@@ -40,8 +40,11 @@ export default class implements m.ClassComponent {
           <section class="section is-small">
             <div class="link">
               <h1 class="title">中文社区</h1>
-              <a class="button" href="https://www.kaiheila.cn/app/invite/pNXyP8">
-                开黑啦
+              <a
+                class="button"
+                href="https://qun.qq.com/qqweb/qunpro/share?_wv=3&_wwv=128&inviteCode=AI8a2&from=246610&biz=ka"
+              >
+                QQ
               </a>
               <a class="button" href="https://discord.gg/dqwuHEq">
                 Discord
