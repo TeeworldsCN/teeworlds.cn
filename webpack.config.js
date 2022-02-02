@@ -1,9 +1,9 @@
-const path = require('path');
-
 const HtmlPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
+const path = require('path');
 
 module.exports = (env, argv) => {
   const devMode = argv.mode !== 'production';
@@ -26,6 +26,7 @@ module.exports = (env, argv) => {
         {
           test: /\.(jpg|jpeg|png|woff|woff2|eot|ttf|svg)$/,
           use: ['file-loader'],
+          exclude: /static/,
         },
       ],
     },
@@ -60,6 +61,14 @@ module.exports = (env, argv) => {
       }),
       new webpack.DefinePlugin({
         __DEV: JSON.stringify(devMode),
+      }),
+      new CopyWebpackPlugin({
+        patterns: [
+          {
+            from: 'static',
+            to: 'static',
+          },
+        ],
       }),
     ],
   };
