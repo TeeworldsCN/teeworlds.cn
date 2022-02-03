@@ -9,6 +9,8 @@ import KogPlayerCard from './kog_player_card';
 import { find, findIndex } from 'lodash';
 import { ENTER } from '../../utils';
 
+import 'styles/points.scss';
+
 interface Attr {
   player: string;
 }
@@ -16,7 +18,7 @@ type CVnode = m.CVnode<Attr>;
 
 export interface DDNetRank {
   points?: number;
-  rank: number | 'unranked' | '未计入排名';
+  rank: number | 'unranked' | '无排名';
 }
 
 export interface DDNetPlayer {
@@ -27,6 +29,8 @@ export interface DDNetPlayer {
   chn_points?: DDNetRank;
   chn_team_rank?: DDNetRank;
   chn_rank?: DDNetRank;
+  points_last_month: DDNetRank;
+  points_last_week: DDNetRank;
 }
 
 export interface KogPlayer {
@@ -50,7 +54,7 @@ export interface SearchHandle {
 
 const transformRank = (rank: DDNetRank) => {
   if (rank?.rank == 'unranked') {
-    rank.rank = '未计入排名';
+    rank.rank = '无排名';
   }
 };
 
@@ -81,11 +85,11 @@ export default class implements m.ClassComponent<Attr> {
         data.chn_team_rank = find(rank.teamRank, { name: data.player });
         data.chn_rank = find(rank.rank, { name: data.player });
         if (data?.chn_points) transformRank(data?.chn_points);
-        else data.chn_points = { rank: '未计入排名' };
+        else data.chn_points = { rank: '无排名' };
         if (data?.chn_team_rank) transformRank(data?.chn_team_rank);
-        else data.chn_team_rank = { rank: '未计入排名' };
+        else data.chn_team_rank = { rank: '无排名' };
         if (data?.chn_rank) transformRank(data?.chn_rank);
-        else data.chn_rank = { rank: '未计入排名' };
+        else data.chn_rank = { rank: '无排名' };
       } catch (e) {
         console.log(e);
       }
@@ -93,6 +97,8 @@ export default class implements m.ClassComponent<Attr> {
       transformRank(data?.points);
       transformRank(data?.rank);
       transformRank(data?.team_rank);
+      transformRank(data?.points_last_month);
+      transformRank(data?.points_last_week);
 
       handle.ddnet = data;
     } catch (e) {

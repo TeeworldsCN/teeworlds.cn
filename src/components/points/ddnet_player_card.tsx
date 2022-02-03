@@ -51,166 +51,226 @@ export default class implements m.ClassComponent<Attr> {
         <div class="card-content">
           <div class="content">
             <div class="columns is-multiline">
-              <div class="column is-one-third">
-                <div class="box">
-                  <div class="subtitle">
-                    <span class="icon is-small">
-                      <i class="fas fa-globe"></i>
-                    </span>
-                    <span class="ml-4">全球过关点数</span>
-                  </div>
-                  <div class="level is-mobile">
-                    <div class="level-item has-text-centered">
-                      <div>
-                        <p class="heading">点数</p>
-                        <p class="title">{player.points.points}</p>
-                      </div>
+              <div class="column is-half columns is-mobile my-0 py-0">
+                <div class="column">
+                  <div class="box p-3 twcn-is-global">
+                    <div class="subtitle mb-2">
+                      <span class="icon is-small">
+                        <i class="fas fa-globe"></i>
+                      </span>
+                      <span class="ml-4">全球点数</span>
                     </div>
-                    <div class="level-item has-text-centered">
-                      <div>
-                        <p class="heading">排名</p>
-                        <p class="title">{player.points.rank}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="column is-one-third">
-                <div class="box">
-                  <div class="subtitle">
-                    <span class="icon is-small">
-                      <i class="fas fa-globe"></i>
-                    </span>
-                    <span class="ml-4">全球排名点数</span>
-                  </div>
-                  <div class="level is-mobile">
-                    {player.rank.points && (
+                    <div class="level is-mobile">
                       <div class="level-item has-text-centered">
                         <div>
                           <p class="heading">点数</p>
-                          <p class="title">{player.rank.points}</p>
+                          <p class="title">{player.points.points}</p>
                         </div>
                       </div>
-                    )}
-                    <div class="level-item has-text-centered">
-                      <div>
-                        <p class="heading">排名</p>
-                        <p class="title">{player.rank.rank}</p>
+                      <div class="level-item has-text-centered">
+                        <div>
+                          <p class="heading">排名</p>
+                          <p class="title">{player.points.rank}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {player.chn_points && (
+                  <div class="column">
+                    <div class="box p-3 twcn-is-chn">
+                      <div class="subtitle mb-2">
+                        <span class="icon is-small">
+                          <i class="chn-icon"></i>
+                        </span>
+                        <span class="ml-4">国服点数</span>
+                      </div>
+                      <div class="level is-mobile">
+                        {player.chn_points.points && (
+                          <div class="level-item has-text-centered">
+                            <div>
+                              <p class="heading">点数</p>
+                              <p class="title">{player.chn_points.points}</p>
+                            </div>
+                          </div>
+                        )}
+                        <div class="level-item has-text-centered">
+                          <div>
+                            <p class="heading">排名</p>
+                            <p class="title">{player.chn_points.rank}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div class="column is-half columns is-mobile my-0 py-0">
+                <div class="column">
+                  <div class="box p-3 twcn-is-global">
+                    <div class="subtitle mb-2">
+                      <span class="icon is-small">
+                        <i class="fas fa-globe"></i>
+                      </span>
+                      <span class="ml-4">排名点数</span>
+                    </div>
+                    <div class="level is-mobile">
+                      {player.rank.points && (
+                        <div class="level-item has-text-centered">
+                          <div>
+                            <p class="heading">点数</p>
+                            <p class="title">{player.rank.points}</p>
+                          </div>
+                        </div>
+                      )}
+                      <div class="level-item has-text-centered">
+                        <div>
+                          <p class="heading">排名</p>
+                          <p class="title">{player.rank.rank}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {player.chn_rank && (
+                  <div class="column">
+                    <div class="box p-3 twcn-is-chn">
+                      <div class="subtitle mb-2">
+                        <span class="icon is-small">
+                          <i class="chn-icon"></i>
+                        </span>
+                        <span class="ml-4">排名点数</span>
+                      </div>
+                      <div class="level is-mobile">
+                        {player.chn_rank.points && (
+                          <div class="level-item has-text-centered">
+                            <div>
+                              <p class="heading">点数</p>
+                              <p class="title">{player.chn_rank.points}</p>
+                            </div>
+                          </div>
+                        )}
+                        <div class="level-item has-text-centered">
+                          <div>
+                            <p class="heading">排名</p>
+                            <p class="title">{player.chn_rank.rank}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div class="column is-half columns is-mobile my-0 py-0">
+                <div class="column">
+                  <div class="box p-3 twcn-is-global">
+                    <div class="subtitle mb-2">
+                      <span class="icon is-small">
+                        <i class="fas fa-globe"></i>
+                      </span>
+                      <span class="ml-4">组队排名</span>
+                    </div>
+                    <div class="level is-mobile">
+                      {player.team_rank.points && (
+                        <div class="level-item has-text-centered">
+                          <div>
+                            <p class="heading">点数</p>
+                            <p class="title">{player.team_rank.points}</p>
+                          </div>
+                        </div>
+                      )}
+                      <div class="level-item has-text-centered">
+                        <div>
+                          <p class="heading">排名</p>
+                          <p class="title">{player.team_rank.rank}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {player.chn_team_rank && (
+                  <div class="column">
+                    <div class="box p-3 twcn-is-chn">
+                      <div class="subtitle mb-2">
+                        <span class="icon is-small">
+                          <i class="chn-icon"></i>
+                        </span>
+                        <span class="ml-4">组队排名</span>
+                      </div>
+                      <div class="level is-mobile">
+                        {player.chn_team_rank.points && (
+                          <div class="level-item has-text-centered">
+                            <div>
+                              <p class="heading">点数</p>
+                              <p class="title">{player.chn_team_rank.points}</p>
+                            </div>
+                          </div>
+                        )}
+                        <div class="level-item has-text-centered">
+                          <div>
+                            <p class="heading">排名</p>
+                            <p class="title">{player.chn_team_rank.rank}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div class="column is-half columns is-mobile my-0 py-0">
+                <div class="column">
+                  <div class="box p-3">
+                    <div class="subtitle mb-2">
+                      <span class="icon is-small">
+                        <i class="fas fa-calendar"></i>
+                      </span>
+                      <span class="ml-4">周增长</span>
+                    </div>
+                    <div class="level is-mobile">
+                      {player.points_last_week.points && (
+                        <div class="level-item has-text-centered">
+                          <div>
+                            <p class="heading">点数</p>
+                            <p class="title">{player.points_last_week.points}</p>
+                          </div>
+                        </div>
+                      )}
+                      <div class="level-item has-text-centered">
+                        <div>
+                          <p class="heading">排名</p>
+                          <p class="title">{player.points_last_week.rank}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="column">
+                  <div class="box p-3">
+                    <div class="subtitle mb-2">
+                      <span class="icon is-small">
+                        <i class="fas fa-calendar"></i>
+                      </span>
+                      <span class="ml-4">月增长</span>
+                    </div>
+                    <div class="level is-mobile">
+                      {player.points_last_month.points && (
+                        <div class="level-item has-text-centered">
+                          <div>
+                            <p class="heading">点数</p>
+                            <p class="title">{player.points_last_month.points}</p>
+                          </div>
+                        </div>
+                      )}
+                      <div class="level-item has-text-centered">
+                        <div>
+                          <p class="heading">排名</p>
+                          <p class="title">{player.points_last_month.rank}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div class="column is-one-third">
-                <div class="box">
-                  <div class="subtitle">
-                    <span class="icon is-small">
-                      <i class="fas fa-globe"></i>
-                    </span>
-                    <span class="ml-4">队伍排名点数</span>
-                  </div>
-                  <div class="level is-mobile">
-                    {player.team_rank.points && (
-                      <div class="level-item has-text-centered">
-                        <div>
-                          <p class="heading">点数</p>
-                          <p class="title">{player.team_rank.points}</p>
-                        </div>
-                      </div>
-                    )}
-                    <div class="level-item has-text-centered">
-                      <div>
-                        <p class="heading">排名</p>
-                        <p class="title">{player.team_rank.rank}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {player.chn_points && (
-                <div class="column is-one-third">
-                  <div class="box">
-                    <div class="subtitle">
-                      <span class="icon is-small">
-                        <i class="chn-icon"></i>
-                      </span>
-                      <span class="ml-4">国服过关点数</span>
-                    </div>
-                    <div class="level is-mobile">
-                      {player.chn_points.points && (
-                        <div class="level-item has-text-centered">
-                          <div>
-                            <p class="heading">点数</p>
-                            <p class="title">{player.chn_points.points}</p>
-                          </div>
-                        </div>
-                      )}
-                      <div class="level-item has-text-centered">
-                        <div>
-                          <p class="heading">排名</p>
-                          <p class="title">{player.chn_points.rank}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {player.chn_points && (
-                <div class="column is-one-third">
-                  <div class="box">
-                    <div class="subtitle">
-                      <span class="icon is-small">
-                        <i class="chn-icon"></i>
-                      </span>
-                      <span class="ml-4">国服排名点数</span>
-                    </div>
-                    <div class="level is-mobile">
-                      {player.chn_rank.points && (
-                        <div class="level-item has-text-centered">
-                          <div>
-                            <p class="heading">点数</p>
-                            <p class="title">{player.chn_rank.points}</p>
-                          </div>
-                        </div>
-                      )}
-                      <div class="level-item has-text-centered">
-                        <div>
-                          <p class="heading">排名</p>
-                          <p class="title">{player.chn_rank.rank}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {player.chn_points && (
-                <div class="column is-one-third">
-                  <div class="box">
-                    <div class="subtitle">
-                      <span class="icon is-small">
-                        <i class="chn-icon"></i>
-                      </span>
-                      <span class="ml-4">国服组队排名</span>
-                    </div>
-                    <div class="level is-mobile">
-                      {player.chn_team_rank.points && (
-                        <div class="level-item has-text-centered">
-                          <div>
-                            <p class="heading">点数</p>
-                            <p class="title">{player.chn_team_rank.points}</p>
-                          </div>
-                        </div>
-                      )}
-                      <div class="level-item has-text-centered">
-                        <div>
-                          <p class="heading">排名</p>
-                          <p class="title">{player.chn_team_rank.rank}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
