@@ -19,13 +19,14 @@ jobs:
           node-version: 14
       - run: npm ci
       - run: npm run build
-      
+
       - name: Publish
-        uses: nogsantos/scp-deploy@master
+        uses: appleboy/scp-action@master
         with:
-          src: ./dist/*
+          source: ./dist/*
           host: ${{ secrets.SSH_HOST }}
-          remote: ${{ secrets.SSH_DIR }}
+          target: ${{ secrets.SSH_DIR }}
           port: ${{ secrets.SSH_PORT }}
-          user: ${{ secrets.SSH_USER }}
+          username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          overwrite: true
