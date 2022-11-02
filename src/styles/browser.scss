@@ -46,3 +46,14 @@
     }
   }
 }
+
+.detail-float {
+  position: fixed;
+  width: 50%;
+  height: 50%;
+
+  &.expanded {
+    width: 100vw;
+    height: 100vh;
+  }
+}

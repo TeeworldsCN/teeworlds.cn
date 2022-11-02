@@ -9,10 +9,11 @@ import render from 'mithril-node-render';
 import ServerCard from './server_card';
 import appstate from '../../appstate';
 import Clusterize from 'clusterize.js';
-import { filter, orderBy, findIndex, matches } from 'lodash';
-import * as bulmaToast from 'bulma-toast';
+import _, { filter, orderBy, findIndex, matches } from 'lodash';
 
 import 'styles/browser.scss';
+import { BrowserServer, ServerState } from '../../servers/browser_server';
+import ServerDetail from './server_detail';
 
 interface Attr {
   include?: string;
@@ -21,24 +22,6 @@ interface Attr {
   order?: 'asc' | 'desc';
 }
 type CVnode = m.CVnode<Attr>;
-
-export interface ServerState {
-  ip: string;
-  port: number;
-  protocols: string[];
-  max_clients: number;
-  max_players: number;
-  passworded: false;
-  game_type: string;
-  name: string;
-  version: string;
-  map: string;
-  locale: string;
-  num_clients: number;
-  num_players: number;
-  num_spectators: number;
-  clients: [{ name: string }];
-}
 
 const filterOptions: {
   sortKeys: { key: string; order: 'asc' | 'desc' }[];
@@ -52,34 +35,33 @@ const filterOptions: {
   country: '',
 };
 
+export type ServerStateProcessed = ServerState & {
+  info: {
+    num_players: number;
+  };
+  index: number;
+};
+
 export default class implements m.ClassComponent<Attr> {
   clusterize: Clusterize;
-  servers: ServerState[] = [];
+  servers: ServerStateProcessed[] = [];
   browserHeight = 100;
+
+  selected: ServerStateProcessed = null;
+  expanded: boolean = false;
 
   timer: NodeJS.Timeout = null;
 
   updateServerList = async () => {
     this.timer = null;
     if (appstate.focused) {
-      try {
-        const list = await m.request<{ servers: ServerState[] }>({
-          method: 'GET',
-          url: 'https://api.teeworlds.cn/servers',
-          params: { detail: true },
-          //url: 'https://api.teeworlds.cn/servers/list',
-        });
-        this.servers = list.servers;
-        this.filterServerList();
-      } catch (e) {
-        console.error(e);
-        bulmaToast.toast({
-          message: '未知错误，信息获取失败',
-          type: 'is-danger',
-          dismissible: true,
-        });
-      }
-      this.timer = setTimeout(this.updateServerList, 10000);
+      this.servers = (await BrowserServer.fetch()).map((s, i) => {
+        (s as ServerStateProcessed).info.num_players = s.info.clients.length;
+        (s as ServerStateProcessed).index = i;
+        return s as ServerStateProcessed;
+      });
+      this.timer = setTimeout(this.updateServerList, 2000);
+      this.filterServerList();
     }
   };
 
@@ -157,7 +139,7 @@ export default class implements m.ClassComponent<Attr> {
 
     const countryData = orderBy(
       filter(this.servers, s => {
-        const identifier = `${s.locale} `;
+        const identifier = `${s.location} `;
         return filterOptions.country && !identifier.match(countryRegex) ? false : true;
       }),
       keys,
@@ -166,7 +148,9 @@ export default class implements m.ClassComponent<Attr> {
 
     const data = orderBy(
       filter(countryData, s => {
-        const identifier = `${s.name} ${s.ip} ${s.game_type} ${s.map} ${s.clients
+        const identifier = `${s.info.name} ${s.addresses.join(' ')} ${s.info.game_type} ${
+          s.info.map
+        } ${s.info.clients
           .map((obj, index) => {
             return obj.name != null ? obj.name : '';
           })
@@ -186,6 +170,7 @@ export default class implements m.ClassComponent<Attr> {
       keys,
       order
     );
+
     this.clusterize.update(data.map(e => render.sync(<ServerCard server={e} />)));
   };
 
@@ -230,15 +215,48 @@ export default class implements m.ClassComponent<Attr> {
       no_data_text: '列表空空如也。。。',
     });
 
-    document.getElementById('browserTableBody').onclick = function (e) {
+    const tableContent = document.getElementById('browserTableBody');
+    const browserTableContainer = document.getElementById('browserTableContainer');
+
+    const mouseEvent = (e: MouseEvent) => {
+      let ev = e || event;
+      let target: any = ev.target || ev.srcElement;
+
+      if (target.parentNode?.nodeName == 'TR') target = target.parentNode;
+      if (target.nodeName != 'TR') {
+        this.selected = null;
+        m.redraw();
+        return;
+      }
+
+      const value = target.attributes?.server?.value;
+      if (isNaN(value) || value == null) {
+        this.selected = null;
+        m.redraw();
+        return;
+      }
+
+      const server = parseInt(value);
+      this.selected = this.servers[server];
+      m.redraw();
+    };
+
+    tableContent.onmouseover = mouseEvent;
+    tableContent.onmouseout = mouseEvent;
+    browserTableContainer.onmouseout = () => {
+      this.selected = null;
+      m.redraw();
+    };
+
+    tableContent.onclick = e => {
       let ev = e || event;
       let target: any = ev.target || ev.srcElement;
 
       if (target.parentNode?.nodeName == 'TR') target = target.parentNode;
       if (target.nodeName != 'TR') return;
 
-      const server = target.attributes.server.value;
-      m.route.set('/browser/:server', { server });
+      this.expanded = true;
+      m.redraw();
     };
   }
 
@@ -318,28 +336,28 @@ export default class implements m.ClassComponent<Attr> {
               <thead>
                 <tr>
                   <th>
-                    <a style="display: block" onclick={this.sortBy('name')}>
-                      名字 {this.arrowOfKey('name')}
+                    <a style="display: block" onclick={this.sortBy('info.name')}>
+                      名字 {this.arrowOfKey('info.name')}
                     </a>
                   </th>
                   <th class="is-hidden-mobile">
-                    <a style="display: block" onclick={this.sortBy('game_type')}>
-                      模式 {this.arrowOfKey('game_type')}
+                    <a style="display: block" onclick={this.sortBy('info.game_type')}>
+                      模式 {this.arrowOfKey('info.game_type')}
                     </a>
                   </th>
                   <th class="is-hidden-mobile">
-                    <a style="display: block" onclick={this.sortBy('map')}>
-                      地图 {this.arrowOfKey('map')}
+                    <a style="display: block" onclick={this.sortBy('info.map.name')}>
+                      地图 {this.arrowOfKey('info.map')}
                     </a>
                   </th>
                   <th class="has-text-right">
-                    <a style="display: block" onclick={this.sortBy('num_clients')}>
-                      玩家数 {this.arrowOfKey('num_clients')}
+                    <a style="display: block" onclick={this.sortBy('info.num_players')}>
+                      玩家数 {this.arrowOfKey('info.num_players')}
                     </a>
                   </th>
                   <th class="has-text-centered">
-                    <a style="display: block" onclick={this.sortBy('locale')}>
-                      地区 {this.arrowOfKey('locale')}
+                    <a style="display: block" onclick={this.sortBy('location')}>
+                      地区 {this.arrowOfKey('location')}
                     </a>
                   </th>
                 </tr>
@@ -363,6 +381,9 @@ export default class implements m.ClassComponent<Attr> {
             </table>
           </div>
         </div>
+        {this.selected && (
+          <ServerDetail server={this.selected} expanded={this.expanded}></ServerDetail>
+        )}
       </section>
     );
   }
