@@ -54,6 +54,10 @@ export default class implements m.ClassComponent {
               </a>
             </div>
           </section>
+
+          <section class="section is-small">
+            <p style="color:#476787">备案号：冀ICP备2021002466号</p>
+          </section>
         </div>
       </div>
     );
