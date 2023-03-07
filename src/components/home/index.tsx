@@ -56,7 +56,7 @@ export default class implements m.ClassComponent {
           </section>
 
           <section class="section is-small">
-            <p style="color:#476787">备案号：冀ICP备2021002466号</p>
+            <p style="color:#476787">备案号：<a href="https://beian.miit.gov.cn/">冀ICP备2021002466号</a></p>
           </section>
         </div>
       </div>
