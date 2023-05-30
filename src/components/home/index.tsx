@@ -31,7 +31,7 @@ export default class implements m.ClassComponent {
               <h2 class="subtitle">查询玩家名在DDNet或KOG获得的分数</h2>
             </div>
             <div class="linkButton">
-              <a class="button" href="https://wiki.teeworlds.cn/">
+              <a class="button" href="https://wiki.ddnet.org/wiki/Main_Page/zh">
                 <h1 class="title">中文维基百科</h1>
               </a>
               <h2 class="subtitle">原生模式/mod介绍，服务器开设指南，闯关指南...</h2>
