@@ -46,12 +46,6 @@ export default class implements m.ClassComponent {
               >
                 QQ
               </a>
-              <a class="button" href="https://discord.gg/dqwuHEq">
-                Discord
-              </a>
-              <a class="button" href="https://t.me/teeworldscn">
-                Telegram
-              </a>
             </div>
           </section>
 
