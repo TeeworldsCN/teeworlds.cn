@@ -31,7 +31,7 @@ export default class implements m.ClassComponent {
               <h2 class="subtitle">查询玩家名在DDNet或KOG获得的分数</h2>
             </div>
             <div class="linkButton">
-              <a class="button" href="https://wiki.teeworlds.cn/">
+              <a class="button" href="https://wiki.ddnet.org/wiki/Main_Page/zh">
                 <h1 class="title">中文维基百科</h1>
               </a>
               <h2 class="subtitle">原生模式/mod介绍，服务器开设指南，闯关指南...</h2>
@@ -50,7 +50,7 @@ export default class implements m.ClassComponent {
           </section>
 
           <section class="section is-small">
-            <p style="color:#476787">备案号：冀ICP备2021002466号</p>
+            <p style="color:#476787">备案号：<a href="https://beian.miit.gov.cn/">冀ICP备2021002466号</a></p>
           </section>
         </div>
       </div>
