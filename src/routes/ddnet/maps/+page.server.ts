@@ -1,12 +1,11 @@
 import { error } from '@sveltejs/kit';
-import type { PageServerData } from './$types';
+import type { PageServerLoad } from './$types';
 import { convert } from '$lib/server/imgproxy';
 
-export const load: PageServerData = async ({ setHeaders }) => {
-	setHeaders({
-		'cache-control': 'public, max-age=600'
-	});
+// turn off SSR for this route, this can make sure the huge json data is cached on first load
+export const ssr = false;
 
+export const load: PageServerLoad = async ({ setHeaders }) => {
 	const data = await (await fetch('https://ddnet.org/releases/maps.json')).json();
 	if (!data[0]) {
 		return error(404);
@@ -25,6 +24,10 @@ export const load: PageServerData = async ({ setHeaders }) => {
 	}
 
 	await Promise.allSettled(converts);
+
+	setHeaders({
+		'cache-control': 'public, max-age=600'
+	});
 
 	return {
 		maps: data as {

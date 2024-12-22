@@ -2,7 +2,8 @@ import { error } from '@sveltejs/kit';
 import { convert } from '$lib/server/imgproxy';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, setHeaders }) => {
+
 	const data = await (await fetch(`https://ddnet.org/maps/?json=${params.name}`)).json();
 	if (!data.name) {
 		return error(404);
@@ -11,6 +12,10 @@ export const load: PageServerLoad = async ({ params }) => {
 	if (data.thumbnail) {
 		data.thumbnail = (await convert(data.thumbnail)).toString();
 	}
+
+	setHeaders({
+		'cache-control': 'public, max-age=120'
+	});
 
 	return data as {
 		name: string;

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, preloadData } from '$app/navigation';
 
 	const maps = page.data.maps;
 
@@ -23,17 +23,40 @@
 	onMount(() => {
 		currentPage = +(page.url.hash.slice(1) || 1);
 	});
+
+	let preloadTimer: Timer | null = null;
+	let preparePreload = (target: string) => {
+        console.log("preparePreload", target);
+		return setTimeout(() => {
+            console.log("preload", target);
+			preloadData(`/ddnet/maps/${target}`);
+			preloadTimer = null;
+		}, 60);
+	};
 </script>
 
 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
 	{#each paginatedMaps as map (map.name)}
-		<button class="rounded border p-4 shadow" onclick={() => goto(`/ddnet/maps/${encodeURIComponent(map.name)}`)}>
+		<button
+			class="rounded border border-slate-700 bg-slate-700 p-4 shadow hover:border-blue-500 active:border-blue-300"
+			onmouseenter={() => {
+				if (preloadTimer) clearTimeout(preloadTimer);
+				preloadTimer = preparePreload(map.name);
+			}}
+			onmousemove={() => {
+				if (preloadTimer) clearTimeout(preloadTimer);
+				preloadTimer = preparePreload(map.name);
+			}}
+			onclick={() => {
+				if (preloadTimer) clearTimeout(preloadTimer);
+				goto(`/ddnet/maps/${encodeURIComponent(map.name)}`);
+			}}
+		>
 			<h3 class="text-lg font-bold">{map.name}</h3>
 			<img class="mt-2 aspect-map h-auto w-full" src={map.thumbnail} alt={map.name} />
 			<p class="mt-2"><span class="font-semibold">作者：</span> {map.mapper}</p>
 			<p class="mt-1"><span class="font-semibold">类型：</span> {map.type}</p>
-			<!-- Add other map details as needed -->
-        </button>
+		</button>
 	{/each}
 </div>
 
