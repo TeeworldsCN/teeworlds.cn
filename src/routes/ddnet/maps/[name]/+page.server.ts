@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
 import { convert } from '$lib/server/imgproxy';
+import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const data = await (await fetch(`https://ddnet.org/maps/?json=${params.name}`)).json();
@@ -8,7 +8,9 @@ export const load: PageServerLoad = async ({ params }) => {
 		return error(404);
 	}
 
-    data.thumbnail = (await convert(data.thumbnail)).toString();
+	if (data.thumbnail) {
+		data.thumbnail = (await convert(data.thumbnail)).toString();
+	}
 
 	return data as {
 		name: string;
