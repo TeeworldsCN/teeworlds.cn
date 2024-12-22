@@ -11,19 +11,35 @@
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="mb-3 text-xl font-bold">地图信息</h2>
-		<img width="360" height="225" class="mb-4 rounded" src={page.data.thumbnail} alt="{page.data.name} thumbnail" />
+		<img
+			width="360"
+			height="225"
+			class="mb-4 rounded"
+			src={page.data.thumbnail}
+			alt="{page.data.name} thumbnail"
+		/>
 		<p>类型：{page.data.type}</p>
 		<p>分数：{page.data.points}</p>
 		<p>难度：{numberToStars(page.data.difficulty)}</p>
 	</div>
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="mb-3 text-xl font-bold">地图数据</h2>
-		<p>发布日期：{page.data.release ? new Date(page.data.release * 1000).toLocaleString('zh-CN') : "远古"}</p>
-		<p title={`${page.data.median_time.toFixed(2.0)}秒`}>
-			平均时间：{secondsToTime(page.data.median_time)}
+		<p>
+			发布日期：{page.data.release
+				? new Date(page.data.release * 1000).toLocaleString('zh-CN')
+				: '远古'}
 		</p>
-		<p>完成总次数：{page.data.finishes}</p>
-		<p>完成玩家数：{page.data.finishers}</p>
+		{#if page.data.median_time}
+			<p title={`${page.data.median_time.toFixed(2.0)}秒`}>
+				平均时间：{secondsToTime(page.data.median_time)}
+			</p>
+		{/if}
+		{#if page.data.median_time}
+			<p>完成总次数：{page.data.finishes}</p>
+		{/if}
+		{#if page.data.median_time}
+			<p>完成玩家数：{page.data.finishers}</p>
+		{/if}
 		{#if page.data.biggest_team}
 			<p>最大团队：{page.data.biggest_team} 人</p>
 		{/if}
