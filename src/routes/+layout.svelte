@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { navigating } from '$app/state';
+	import Link from '$lib/components/Link.svelte';
 	import '../app.css';
 	let { children } = $props();
 </script>
@@ -22,10 +23,7 @@
 
 	<footer class="bg-slate-900 p-4 text-slate-300">
 		<div class="container mx-auto text-center">
-			<a href="https://beian.miit.gov.cn/" class="hover:text-white hover:underline">
-				冀ICP备2021002466号
-			</a>
-			<span> </span>
+			<Link href="https://beian.miit.gov.cn/" type="info" className="font-bold">冀ICP备2021002466号</Link>
 		</div>
 	</footer>
 </div>

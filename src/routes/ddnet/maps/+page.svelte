@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { goto, preloadData } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 
 	const maps = page.data.maps;
 
@@ -11,6 +12,11 @@
 	let searchName = $state('');
 	let searchMapper = $state('');
 	let currentPage = $state(1);
+
+	function resetFilters() {
+		searchName = '';
+		searchMapper = '';
+	}
 
 	const createHashQuery = () => {
 		const params = new URLSearchParams();
@@ -98,7 +104,9 @@
 			currentPage = 1;
 		}
 		paginatedMaps = filteredMaps.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-		goto(createHashQuery(), { keepFocus: true, noScroll: true, replaceState: true });
+
+		const hashQuery = createHashQuery();
+		goto(hashQuery, { keepFocus: true, noScroll: true, replaceState: true });
 	});
 
 	const loadPage = (page: number) => {
@@ -111,6 +119,12 @@
 	});
 </script>
 
+<svelte:window
+	on:hashchange={() => {
+		processHashQuery(page.url.hash);
+	}}
+/>
+
 <Breadcrumbs
 	breadcrumbs={[{ href: '/', text: '首页' }, { href: '/ddnet', text: 'DDNet' }, { text: '地图' }]}
 />
@@ -119,15 +133,22 @@
 	<input
 		type="text"
 		placeholder="按地图名搜索"
-		class="mb-2 w-full rounded border border-slate-600 bg-slate-700 p-2 text-slate-300 md:mb-0 md:flex-1"
+		class="w-full rounded border border-slate-600 bg-slate-700 p-2 text-slate-300 md:mb-0 md:flex-1"
 		bind:value={searchName}
 	/>
 	<input
 		type="text"
 		placeholder="按作者名搜索"
-		class="mb-2 w-full rounded border border-slate-600 bg-slate-700 p-2 text-slate-300 md:mb-0 md:flex-1"
+		class="w-full rounded border border-slate-600 bg-slate-700 p-2 text-slate-300 md:mb-0 md:flex-1"
 		bind:value={searchMapper}
 	/>
+	<button
+		class="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:bg-blue-500 disabled:opacity-50"
+		onclick={resetFilters}
+		disabled={!searchName && !searchMapper}
+	>
+		重置搜索
+	</button>
 </div>
 
 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -147,8 +168,13 @@
 			>
 			</button>
 			<p class="scrollbar-hide mt-2 overflow-x-auto whitespace-nowrap">
-				<span class="font-semibold">作者：</span>
-				{map.mapper}
+				<span class="font-semibold">作者：</span><Mappers
+					authors={map.mapper}
+					click={(author) => {
+						resetFilters();
+						searchMapper = author;
+					}}
+				/>
 			</p>
 			<p class="mt-1"><span class="font-semibold">类型：</span> {map.type}</p>
 		</div>

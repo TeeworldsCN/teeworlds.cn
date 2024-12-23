@@ -1,6 +1,7 @@
 <script>
 	import { page } from '$app/state';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import { numberToStars, secondsToChineseTime, secondsToTime } from '$lib/ddnet/helpers';
 </script>
@@ -16,7 +17,7 @@
 
 <div class="mb-4">
 	<div class="text-2xl font-bold">{page.data.name}</div>
-	<div class="text-md font-bold">作者：{page.data.mapper}</div>
+	<div class="text-md font-bold"><span>作者：</span><Mappers authors={page.data.mapper} /></div>
 </div>
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
