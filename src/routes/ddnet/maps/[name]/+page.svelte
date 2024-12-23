@@ -81,7 +81,7 @@
 							class="inline-block w-20 text-right">{secondsToTime(rank.time)}</span
 						>
 						<FlagSpan flag={rank.country} />
-						<span>{rank.players.join(' ')}</span>
+						<span>{rank.players.join(', ')}</span>
 					</li>
 				{/each}
 			</ul>
@@ -119,7 +119,7 @@
 						)}，最后完成：{new Date(finishes.max_timestamp * 1000).toLocaleString(
 							'zh-CN'
 						)}，最快用时：{secondsToChineseTime(finishes.time)}"
-						class="inline-block w-12 text-right">{finishes.num} 次</span
+						class="inline-block w-20 text-right">{finishes.num} 次</span
 					>
 					<span class="ml-3">{finishes.player}</span>
 				</li>
