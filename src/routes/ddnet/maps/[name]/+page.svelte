@@ -4,20 +4,28 @@
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import { numberToStars, secondsToChineseTime, secondsToTime } from '$lib/ddnet/helpers';
+
+	const map = page.data.map;
 </script>
+
+<svelte:head>
+	<meta itemprop="name" content={map.name} />
+	<meta itemprop="image" content={map.thumbnail} />
+	<meta name="description" itemprop="description" content="作者：{map.mapper}" />
+</svelte:head>
 
 <Breadcrumbs
 	breadcrumbs={[
 		{ href: '/', text: '首页' },
 		{ href: '/ddnet', text: 'DDNet' },
 		{ href: '/ddnet/maps', text: '地图' },
-		{ text: page.data.name }
+		{ text: map.name }
 	]}
 />
 
 <div class="mb-4">
-	<div class="text-2xl font-bold">{page.data.name}</div>
-	<div class="text-md font-bold"><span>作者：</span><Mappers authors={page.data.mapper} /></div>
+	<div class="text-2xl font-bold">{map.name}</div>
+	<div class="text-md font-bold"><span>作者：</span><Mappers authors={map.mapper} /></div>
 </div>
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
@@ -26,53 +34,47 @@
 			width="360"
 			height="225"
 			class="mb-4 rounded"
-			src={page.data.thumbnail}
-			alt="{page.data.name} thumbnail"
+			src={map.thumbnail}
+			alt="{map.name} thumbnail"
 		/>
-		<p>类型：{page.data.type}</p>
-		<p>分数：{page.data.points}</p>
-		<p>难度：{numberToStars(page.data.difficulty)}</p>
+		<p>类型：{map.type}</p>
+		<p>分数：{map.points}</p>
+		<p>难度：{numberToStars(map.difficulty)}</p>
 		<button
 			class="mt-2 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
 			onclick={() =>
-				(window.location.href = `https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(page.data.name)}.map`)}
+				(window.location.href = `https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(map.name)}.map`)}
 			>查看地图</button
 		>
 	</div>
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="mb-3 text-xl font-bold">地图数据</h2>
 		<p>
-			发布日期：{page.data.release
-				? new Date(page.data.release * 1000).toLocaleString('zh-CN')
-				: '远古'}
+			发布日期：{map.release ? new Date(map.release * 1000).toLocaleString('zh-CN') : '远古'}
 		</p>
-		{#if page.data.median_time}
-			<p title={`${page.data.median_time.toFixed(2.0)}秒`}>
-				平均时间：{secondsToTime(page.data.median_time)}
+		{#if map.median_time}
+			<p title={`${map.median_time.toFixed(2.0)}秒`}>
+				平均时间：{secondsToTime(map.median_time)}
 			</p>
 		{/if}
-		{#if page.data.median_time}
-			<p>完成总次数：{page.data.finishes}</p>
+		{#if map.median_time}
+			<p>完成总次数：{map.finishes}</p>
 		{/if}
-		{#if page.data.median_time}
-			<p>完成玩家数：{page.data.finishers}</p>
+		{#if map.median_time}
+			<p>完成玩家数：{map.finishers}</p>
 		{/if}
-		{#if page.data.biggest_team}
-			<p>最大团队：{page.data.biggest_team} 人</p>
+		{#if map.biggest_team}
+			<p>最大团队：{map.biggest_team} 人</p>
 		{/if}
 	</div>
 </div>
 
-<div
-	class="grid grid-cols-1 gap-4 md:grid-cols-2 {page.data.team_ranks.length
-		? 'xl:grid-cols-3'
-		: ''}"
->
-	{#if page.data.team_ranks.length}
+<div class="grid grid-cols-1 gap-4 md:grid-cols-2 {map.team_ranks.length ? 'xl:grid-cols-3' : ''}">
+	{#if map.team_ranks.length}
 		<div class="mt-4 rounded-lg bg-slate-700 p-4 shadow-md">
 			<h2 class="text-xl font-bold">团队排名</h2>
 			<ul class="mt-2">
-				{#each page.data.team_ranks as rank}
+				{#each map.team_ranks as rank}
 					<li>
 						<span class="inline-block w-4 text-right">{rank.rank}.</span>
 						<span
@@ -92,7 +94,7 @@
 	<div class="mt-4 rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="text-xl font-bold">个人排名</h2>
 		<ul class="mt-2">
-			{#each page.data.ranks as rank}
+			{#each map.ranks as rank}
 				<li>
 					<span class="inline-block w-4 text-right">{rank.rank}.</span>
 					<span
@@ -111,7 +113,7 @@
 	<div class="mt-4 rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="text-xl font-bold">完成次数</h2>
 		<ul class="mt-2">
-			{#each page.data.max_finishes as finishes}
+			{#each map.max_finishes as finishes}
 				<li>
 					<span class="inline-block w-4 text-right">{finishes.rank}.</span>
 					<span

@@ -6,7 +6,7 @@ import { convert } from '$lib/server/imgproxy';
 // caching is 10 minutes which should be a reasonable enough time for a user to browse maps uninterrupted
 export const ssr = false;
 
-export const load: PageServerLoad = async ({ setHeaders }) => {
+export const load: PageServerLoad = async ({ setHeaders, parent }) => {
 	const data = await (await fetch('https://ddnet.org/releases/maps.json')).json();
 	if (!data[0]) {
 		return error(404);
@@ -44,6 +44,7 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 			width: number;
 			height: number;
 			tiles: string[];
-		}[]
+		}[],
+		...(await parent())
 	};
 };
