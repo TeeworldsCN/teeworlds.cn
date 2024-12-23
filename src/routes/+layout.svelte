@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { navigating } from '$app/state';
 	import '../app.css';
-
 	let { children } = $props();
 </script>
 
-<div class="flex min-h-svh flex-col bg-slate-800 {navigating.to ? 'opacity-90' : 'opacity-100'}" style={navigating.to ? "transition: opacity 0.1s ease-in-out 0.1s;" : ""}>
+<div
+	class="flex min-h-svh flex-col bg-slate-800 {navigating.to ? 'opacity-60' : 'opacity-100'}"
+	style={navigating.to ? 'transition: opacity 0.1s ease-in-out 0.1s;' : ''}
+>
 	<header class="bg-slate-900 p-4 text-slate-300">
 		<div class="container mx-auto">
-			<h1 class="text-lg font-bold">TeeworldsCN</h1>
+			<a href="/" class="text-lg font-bold"> TeeworldsCN </a>
 		</div>
 	</header>
 

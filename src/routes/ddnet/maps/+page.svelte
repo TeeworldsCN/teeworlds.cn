@@ -2,45 +2,156 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { goto, preloadData } from '$app/navigation';
+	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 
 	const maps = page.data.maps;
 
 	const pageSize = 12;
-	let currentPage = $state(parseInt(page.url.hash.slice(1) || '1'));
-	let paginatedMaps = $state<typeof maps>([]);
 
-	const totalPages = Math.ceil(maps.length / pageSize);
+	let searchName = $state('');
+	let searchMapper = $state('');
+	let currentPage = $state(1);
+
+	const createHashQuery = () => {
+		const params = new URLSearchParams();
+		if (searchName) params.set('name', searchName);
+		if (searchMapper) params.set('mapper', searchMapper);
+		if (currentPage > 1) params.set('page', currentPage.toString());
+		const result = `#${params.toString()}`;
+		if (result.length == 1) return '';
+		return result;
+	};
+
+	const processHashQuery = (hash: string) => {
+		if (hash.startsWith('#')) {
+			hash = `${hash.slice(1)}`;
+		}
+		const params = new URLSearchParams(hash);
+		searchName = params.get('name') || '';
+		searchMapper = params.get('mapper') || '';
+		currentPage = parseInt(params.get('page') || '1');
+	};
+
+	processHashQuery(page.url.hash);
+
+	let paginatedMaps = $state<typeof maps>([]);
+	let totalPages = $state(Math.ceil(maps.length / pageSize));
+
+	const checkMapName = (map: any, search: string) => {
+		if (!search) {
+			return true;
+		}
+
+		let mapInitial = '';
+		let mapNameNoSeparator = '';
+		let prevIsUpper = false;
+		let prevIsSeparator = true;
+		for (let i = 0; i < map.name.length; i++) {
+			const char = map.name[i];
+			const isUpper = char.match(/[A-Z]/);
+			const isLetter = isUpper || char.match(/[a-z]/);
+			const isSeparator = char == '-' || char == '_' || char == ' ';
+			const isNumber = char.match(/[0-9]/);
+			if (isUpper) {
+				if (!prevIsUpper || prevIsSeparator) {
+					mapInitial += char;
+				}
+			} else if (isLetter) {
+				if (prevIsSeparator) {
+					mapInitial += char;
+				}
+			} else if (isNumber) {
+				mapInitial += char;
+			}
+			prevIsUpper = isUpper;
+			prevIsSeparator = isSeparator;
+			if (!isSeparator) {
+				mapNameNoSeparator += char;
+			}
+		}
+
+		const mapName = map.name.toLowerCase();
+		const searchTextLower = search.toLowerCase();
+		return (
+			mapInitial.toLowerCase() == searchTextLower ||
+			mapNameNoSeparator.toLowerCase().includes(searchTextLower) ||
+			mapName.includes(searchTextLower)
+		);
+	};
+
+	const checkMapper = (map: any, search: string) => {
+		if (!search) {
+			return true;
+		}
+		return map.mapper.toLowerCase().includes(search.toLowerCase());
+	};
 
 	$effect(() => {
-		paginatedMaps = maps.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+		const filteredMaps = maps.filter((map: any) => {
+			return checkMapName(map, searchName) && checkMapper(map, searchMapper);
+		});
+		totalPages = Math.ceil(filteredMaps.length / pageSize);
+		if (currentPage > totalPages) {
+			currentPage = 1;
+		}
+		if (currentPage < 1) {
+			currentPage = 1;
+		}
+		paginatedMaps = filteredMaps.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+		goto(createHashQuery(), { keepFocus: true, noScroll: true, replaceState: true });
 	});
 
-	function loadPage(page: number) {
+	const loadPage = (page: number) => {
 		currentPage = page;
-		goto(`#${page}`);
-	}
+		goto(createHashQuery());
+	};
 
 	onMount(() => {
-		currentPage = +(page.url.hash.slice(1) || 1);
+		processHashQuery(page.url.hash);
 	});
 </script>
 
+<Breadcrumbs
+	breadcrumbs={[{ href: '/', text: '首页' }, { href: '/ddnet', text: 'DDNet' }, { text: '地图' }]}
+/>
+
+<div class="mb-4 md:flex md:space-x-5">
+	<input
+		type="text"
+		placeholder="按地图名搜索"
+		class="mb-2 w-full rounded border border-slate-600 bg-slate-700 p-2 text-slate-300 md:mb-0 md:flex-1"
+		bind:value={searchName}
+	/>
+	<input
+		type="text"
+		placeholder="按作者名搜索"
+		class="mb-2 w-full rounded border border-slate-600 bg-slate-700 p-2 text-slate-300 md:mb-0 md:flex-1"
+		bind:value={searchMapper}
+	/>
+</div>
+
 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
 	{#each paginatedMaps as map (map.name)}
-		<button
-			class="rounded border border-slate-700 bg-slate-700 p-4 shadow hover:border-blue-500 active:border-blue-300"
-			onmousedown={() => {
-				preloadData(`/ddnet/maps/${encodeURIComponent(map.name)}`);
-			}}
-			onclick={() => {
-				goto(`/ddnet/maps/${encodeURIComponent(map.name)}`);
-			}}
-		>
+		<div class="rounded border border-slate-700 bg-slate-700 p-4 shadow">
 			<h3 class="text-lg font-bold">{map.name}</h3>
-			<img class="mt-2 aspect-map h-auto w-full" src={map.thumbnail} alt={map.name} />
-			<p class="mt-2"><span class="font-semibold">作者：</span> {map.mapper}</p>
+			<button
+				class="mt-2 aspect-map h-auto w-full rounded-md border border-slate-600 hover:border-blue-500 active:border-blue-300"
+				style="background-image: url({map.thumbnail}); background-size: cover; background-repeat: no-repeat; background-position: center;"
+				onmousedown={() => {
+					preloadData(`/ddnet/maps/${encodeURIComponent(map.name)}`);
+				}}
+				onclick={() => {
+					goto(`/ddnet/maps/${encodeURIComponent(map.name)}`);
+				}}
+				aria-label={map.name}
+			>
+			</button>
+			<p class="scrollbar-hide mt-2 overflow-x-auto whitespace-nowrap">
+				<span class="font-semibold">作者：</span>
+				{map.mapper}
+			</p>
 			<p class="mt-1"><span class="font-semibold">类型：</span> {map.type}</p>
-		</button>
+		</div>
 	{/each}
 </div>
 

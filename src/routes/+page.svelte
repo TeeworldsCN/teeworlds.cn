@@ -5,7 +5,7 @@
 <h1 class="text-md">TeeworldsCN 是由个人开发的 Teeworlds 信息查询工具箱</h1>
 
 <div class="mt-8">
-	<ToolboxButton href="ddnet">DDNet 工具箱</ToolboxButton>
+	<ToolboxButton href="/ddnet">DDNet 工具箱</ToolboxButton>
 	<div class="text-semibold text-2xl">查询 DDraceNetwork 相关信息</div>
 </div>
 

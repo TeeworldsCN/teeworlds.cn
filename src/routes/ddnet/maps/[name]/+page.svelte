@@ -1,8 +1,18 @@
 <script>
 	import { page } from '$app/state';
+	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import { numberToStars, secondsToChineseTime, secondsToTime } from '$lib/ddnet/helpers';
 </script>
+
+<Breadcrumbs
+	breadcrumbs={[
+		{ href: '/', text: '首页' },
+		{ href: '/ddnet', text: 'DDNet' },
+		{ href: '/ddnet/maps', text: '地图' },
+		{ text: page.data.name }
+	]}
+/>
 
 <div class="mb-4">
 	<div class="text-2xl font-bold">{page.data.name}</div>
@@ -21,6 +31,12 @@
 		<p>类型：{page.data.type}</p>
 		<p>分数：{page.data.points}</p>
 		<p>难度：{numberToStars(page.data.difficulty)}</p>
+		<button
+			class="mt-2 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+			onclick={() =>
+				(window.location.href = `https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(page.data.name)}.map`)}
+			>查看地图</button
+		>
 	</div>
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="mb-3 text-xl font-bold">地图数据</h2>

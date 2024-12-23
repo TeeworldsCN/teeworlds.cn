@@ -1,9 +1,4 @@
-import type { PageLoad } from './$types';
+import { writable } from "svelte/store";
 
-export const load: PageLoad = async ({ setHeaders, data, url }) => {
-	// setHeaders({
-	// 	'cache-control': 'public, max-age=600'
-	// });
-
-	return data;
-};
+let searchName = writable('');
+let searchMapper = writable('');

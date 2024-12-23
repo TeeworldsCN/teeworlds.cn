@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import { convert } from '$lib/server/imgproxy';
 
 // turn off SSR for this route, this can make sure the huge json data is cached on first load
+// caching is 10 minutes which should be a reasonable enough time for a user to browse maps uninterrupted
 export const ssr = false;
 
 export const load: PageServerLoad = async ({ setHeaders }) => {
