@@ -30,6 +30,7 @@
 		"svelte-adapter-bun": "^0.5.2",
 		"svelte-check": "^4.1.1",
 		"tailwindcss": "^3.4.17",
+		"tailwindcss-motion": "^1.0.0",
 		"typescript": "^5.7.2",
 		"vite": "^5.4.11"
 	},

@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { flagAsset } from '$lib/ddnet/helpers';
-	const { flag }: { flag: string } = $props();
+	const { flag, title }: { flag: string; title?: string } = $props();
 </script>
 
-<span title={flag}
+<span
+	title={title ? title : flag}
 	style="background-image: url({flagAsset(
 		flag
-	)}); background-size: contain; background-repeat: no-repeat; background-position: center; display: inline-block; width: 2rem; height: 1rem; vertical-align: middle;"
+	)}); background-size: contain; background-repeat: no-repeat; background-position: center; display: inline-block; width: 2em; height: 1em; vertical-align: middle;"
 ></span>

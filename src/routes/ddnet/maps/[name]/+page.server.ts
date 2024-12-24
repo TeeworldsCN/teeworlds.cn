@@ -60,6 +60,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 			min_timestamp: number;
 			max_timestamp: number;
 		}[];
+		icon: string;
 	};
 	return { map, ...(await parent()) };
 };

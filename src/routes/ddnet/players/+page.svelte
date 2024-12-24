@@ -21,9 +21,9 @@
 
 	const LADDER_NAMES = {
 		total: '🌎 总通过分',
-		yearly: '📅 获得通过分（365 天内）',
-		monthly: '📅 获得通过分（30 天内）',
-		weekly: '📅 获得通过分（7 天内）',
+		yearly: '📅 获得通过分 (近365天)',
+		monthly: '📅 获得通过分 (近30天)',
+		weekly: '📅 获得通过分 (近7天)',
 		team: '👥 团队排位分',
 		rank: '👤 个人排位分'
 	};

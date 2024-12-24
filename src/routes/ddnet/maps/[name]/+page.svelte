@@ -1,13 +1,16 @@
-<script>
+<script lang="ts">
 	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
+	import { secondsToDate } from '$lib/date';
 	import { mapType, numberToStars, secondsToChineseTime, secondsToTime } from '$lib/ddnet/helpers';
 	import { share } from '$lib/share';
 
-	const map = page.data.map;
+	import type { PageData } from './$types';
+
+	const map = (page.data as PageData).map;
 
 	afterNavigate(() => {
 		share({
@@ -55,7 +58,7 @@
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="mb-3 text-xl font-bold">地图数据</h2>
 		<p>
-			发布日期：{map.release ? new Date(map.release * 1000).toLocaleString('zh-CN') : '远古'}
+			发布日期：{map.release ? secondsToDate(map.release) : '远古'}
 		</p>
 		{#if map.median_time}
 			<p title={`${map.median_time.toFixed(2.0)}秒`}>
@@ -83,9 +86,7 @@
 					<li>
 						<span class="inline-block w-8 text-right">{rank.rank}.</span>
 						<span
-							title="于 {new Date(rank.timestamp * 1000).toLocaleString(
-								'zh-CN'
-							)} 用时 {secondsToChineseTime(rank.time)} 完成"
+							title="于 {secondsToDate(rank.timestamp)} 用时 {secondsToChineseTime(rank.time)} 完成"
 							class="inline-block w-20 text-right">{secondsToTime(rank.time)}</span
 						>
 						<FlagSpan flag={rank.country} />
@@ -103,9 +104,7 @@
 				<li>
 					<span class="inline-block w-8 text-right">{rank.rank}.</span>
 					<span
-						title="于 {new Date(rank.timestamp * 1000).toLocaleString(
-							'zh-CN'
-						)} 用时 {secondsToChineseTime(rank.time)} 完成"
+						title="于 {secondsToDate(rank.timestamp)} 用时 {secondsToChineseTime(rank.time)} 完成"
 						class="inline-block w-20 text-right">{secondsToTime(rank.time)}</span
 					>
 					<FlagSpan flag={rank.country} />
@@ -122,10 +121,8 @@
 				<li>
 					<span class="inline-block w-8 text-right">{finishes.rank}.</span>
 					<span
-						title="首次完成：{new Date(finishes.min_timestamp * 1000).toLocaleString(
-							'zh-CN'
-						)}，最后完成：{new Date(finishes.max_timestamp * 1000).toLocaleString(
-							'zh-CN'
+						title="首次完成：{secondsToDate(finishes.min_timestamp)}，最后完成：{secondsToDate(
+							finishes.max_timestamp
 						)}，最快用时：{secondsToChineseTime(finishes.time)}"
 						class="inline-block w-20 text-right">{finishes.num} 次</span
 					>
