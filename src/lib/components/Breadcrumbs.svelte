@@ -8,6 +8,7 @@
 		document.title = breadcrumbs
 			.filter((breadcrumb) => breadcrumb.title)
 			.map((breadcrumb) => breadcrumb.title)
+			.reverse()
 			.join(' - ');
 	});
 
