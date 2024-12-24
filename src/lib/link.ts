@@ -7,5 +7,13 @@ export const fetchDDNetAsync = async (url: string) => {
 };
 
 export const encodeURIComponentAscii = (str: string) => {
-	return encodeURIComponent(str).replace(/%20/g, '+');
+	// swap + and %20 to make it look better
+	return encodeURIComponent(normalizeURIAscii(str)).replace(/%2B/g, '+');
+};
+
+export const normalizeURIAscii = (str: string) => {
+	return str
+		.replace(/ /g, '<plus>')
+		.replace(/\+/g, ' ')
+		.replace(/<plus>/g, '+');
 };
