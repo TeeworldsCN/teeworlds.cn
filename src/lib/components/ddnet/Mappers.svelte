@@ -12,14 +12,14 @@
 {#each authorList as author, i}
 	{#if click}
 		<Link
-			href="/ddnet/maps/#mapper={author}"
+			href="/ddnet/maps/#mapper=%22{encodeURIComponent(author)}%22"
 			className="font-semibold"
 			onclick={() => {
 				click(author);
 			}}
 		>
 			{author}
-		</Link>{:else}<Link href="/ddnet/maps/#mapper={author}" className="font-semibold">{author}</Link
+		</Link>{:else}<Link href="/ddnet/maps/#mapper=%22{encodeURIComponent(author)}%22" className="font-semibold">{author}</Link
 		>{/if}{#if i == authorList.length - 2}{' '}<span class=" text-slate-400">&</span>{' '}
 	{:else if i < authorList.length - 2}<span class=" text-slate-400">,</span>{' '}
 	{/if}

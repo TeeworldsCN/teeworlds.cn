@@ -26,6 +26,15 @@ export const numberToStars = (num: number) => {
 	return `${'★'.repeat(stars)}${'☆'.repeat(Math.max(0, 5 - stars))}`;
 };
 
+export const unescapeHTML = (str: string) => {
+	return str
+		.replace(/&amp;/g, '&')
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&quot;/g, '"')
+		.replace(/&#x27;/g, "'");
+};
+
 const MAP_TYPES: { [key: string]: string } = {
 	solo: '单人',
 	dummy: '分身',

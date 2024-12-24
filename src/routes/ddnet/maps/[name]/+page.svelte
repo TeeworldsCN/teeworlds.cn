@@ -81,7 +81,7 @@
 			<ul class="mt-2">
 				{#each map.team_ranks as rank}
 					<li>
-						<span class="inline-block w-4 text-right">{rank.rank}.</span>
+						<span class="inline-block w-8 text-right">{rank.rank}.</span>
 						<span
 							title="于 {new Date(rank.timestamp * 1000).toLocaleString(
 								'zh-CN'
@@ -101,7 +101,7 @@
 		<ul class="mt-2">
 			{#each map.ranks as rank}
 				<li>
-					<span class="inline-block w-4 text-right">{rank.rank}.</span>
+					<span class="inline-block w-8 text-right">{rank.rank}.</span>
 					<span
 						title="于 {new Date(rank.timestamp * 1000).toLocaleString(
 							'zh-CN'
@@ -120,7 +120,7 @@
 		<ul class="mt-2">
 			{#each map.max_finishes as finishes}
 				<li>
-					<span class="inline-block w-4 text-right">{finishes.rank}.</span>
+					<span class="inline-block w-8 text-right">{finishes.rank}.</span>
 					<span
 						title="首次完成：{new Date(finishes.min_timestamp * 1000).toLocaleString(
 							'zh-CN'

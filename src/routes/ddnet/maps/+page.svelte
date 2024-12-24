@@ -106,6 +106,18 @@
 		if (!search) {
 			return true;
 		}
+
+		if (search.startsWith('"') && search.endsWith('"')) {
+			// exact match
+			const mappers = (map.mapper as string)
+				.split(',')
+				.flatMap((mapper) => mapper.split('&'))
+				.map((mapper) => mapper.trim());
+
+			search = search.slice(1, -1).toLowerCase();
+			return mappers.some((mapper) => mapper.toLowerCase() == search);
+		}
+
 		return map.mapper.toLowerCase().includes(search.toLowerCase());
 	};
 
@@ -202,7 +214,7 @@
 						authors={map.mapper}
 						click={(author) => {
 							resetFilters();
-							searchMapper = author;
+							searchMapper = `"${author}"`;
 						}}
 					/>
 				</p>

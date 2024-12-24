@@ -9,7 +9,7 @@
 	afterNavigate(() => {
 		share(
 			{
-				icon: `${window.location.origin}/favicon.png`,
+				icon: `${window.location.origin}/shareicon.png`,
 				link: window.location.href,
 				title: 'TeeworldsCN',
 				desc: 'Teeworlds 中文社区工具箱'

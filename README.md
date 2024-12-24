@@ -9,11 +9,11 @@
 ## 开发
 
 ```bash
-bun dev
+bun --bun dev
 ```
 
 ## 构建
 
 ```bash
-bun run vite build
+bun --bun run vite build
 ```
