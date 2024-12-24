@@ -1,66 +1,23 @@
 <script lang="ts">
-	import { page } from '$app/state';
+	import { afterNavigate } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import MapLink from '$lib/components/ddnet/MapLink.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import { secondsToDate } from '$lib/date';
 	import { mapType, secondsToTime } from '$lib/ddnet/helpers';
-	import type { PageData } from './$types';
+	import { share } from '$lib/share';
 
-	const player = (page.data as PageData).player;
-	const last_finish = player.last_finishes[0] || {
-		timestamp: 0,
-		map: '',
-		time: 0,
-		country: '',
-		type: ''
-	};
+	let { data } = $props();
 
-	const types = Object.keys(player.types);
-	types.unshift('total');
-
-	const total = {
-		type: 'total',
-		rank: player.points.rank,
-		points: 0,
-		total_points: 0,
-		finishes: 0,
-		total_map: 0
-	};
-
-	const stats = types.map((type) => {
-		if (type == 'total') return total;
-		const data = player.types[type];
-		const result = {
-			type,
-			rank: data.points.rank,
-			points: data.points.points || 0,
-			total_points: data.points.total,
-			finishes: Object.entries(data.maps).filter(([_, map]) => map.finishes).length,
-			total_map: Object.keys(data.maps).length
-		};
-
-		total.points += result.points;
-		total.total_points += result.total_points;
-		total.finishes += result.finishes;
-		total.total_map += result.total_map;
-		return result;
+	afterNavigate(() => {
+		share({
+			icon: `${window.location.origin}/shareicon.png`,
+			link: window.location.href,
+			title: data.player.player,
+			desc: `玩家信息：${data.player.points.points}pts`
+		});
 	});
-
-	const statsCols = [
-		stats.slice(0, Math.ceil(stats.length / 2)),
-		stats.slice(Math.ceil(stats.length / 2))
-	];
-
-	const ranks = [
-		{ name: '🌎 总通过分', rank: player.points },
-		{ name: '👥 团队排位分', rank: player.team_rank },
-		{ name: '👤 个人排位分', rank: player.rank },
-		{ name: '📅 获得通过分 (近365天)', rank: player.points_last_year },
-		{ name: '📅 获得通过分 (近30天)', rank: player.points_last_month },
-		{ name: '📅 获得通过分 (近7天)', rank: player.points_last_week }
-	];
 </script>
 
 <Breadcrumbs
@@ -68,27 +25,27 @@
 		{ href: '/', text: '首页' },
 		{ href: '/ddnet', text: 'DDNet' },
 		{ href: '/ddnet/players', text: '排名' },
-		{ text: player.player }
+		{ text: data.player.player }
 	]}
 />
 
 <div class="mb-4">
-	<div class="text-2xl font-bold">{player.player}</div>
+	<div class="text-2xl font-bold">{data.player.player}</div>
 	<div class="text-md font-bold">
-		<span>最近活跃：{secondsToDate(last_finish.timestamp)}</span>
+		<span>最近活跃：{secondsToDate(data.last_finish.timestamp)}</span>
 	</div>
 </div>
 <div class="grid grid-cols-1 gap-4 md:grid-cols-1">
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="mb-3 text-xl font-bold">
 			玩家信息 <FlagSpan
-				flag={player.favorite_server.server}
-				title="常玩地区：{player.favorite_server.server}"
+				flag={data.player.favorite_server.server}
+				title="常玩地区：{data.player.favorite_server.server}"
 			/>
 		</h2>
 
 		<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-			{#each ranks as rank}
+			{#each data.ranks as rank}
 				<div
 					class="rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3 {rank.rank.rank
 						? ''
@@ -109,7 +66,7 @@
 		<div class="grid grid-cols-1 gap-2 md:grid-cols-2">
 			<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
 				<h3 class="mb-1 text-base font-bold">🏁 最近完成</h3>
-				{#each player.last_finishes as finish}
+				{#each data.player.last_finishes as finish}
 					<p class="text-md">
 						<span class="text-sm">{secondsToDate(finish.timestamp)}</span>
 						<FlagSpan flag={finish.country} />
@@ -122,7 +79,7 @@
 
 			<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
 				<h3 class="mb-1 text-base font-bold">👍 常玩队友</h3>
-				{#each player.favorite_partners as partner}
+				{#each data.player.favorite_partners as partner}
 					<p class="text-md">
 						<PlayerLink player={partner.name} className="font-semibold">{partner.name}</PlayerLink> -
 						组队 {partner.finishes} 次
@@ -134,7 +91,7 @@
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="mb-3 text-xl font-bold">玩家数据</h2>
 		<div class="grid grid-cols-1 md:grid-cols-2 md:gap-2">
-			{#each statsCols as col, i}
+			{#each data.statsCols as col, i}
 				<div>
 					<div
 						class="{i != 0 ? 'hidden md:grid' : ''} grid grid-cols-2 gap-2 text-center font-bold"

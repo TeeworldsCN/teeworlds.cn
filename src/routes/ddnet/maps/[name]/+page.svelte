@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
-	import { page } from '$app/state';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
@@ -9,16 +8,14 @@
 	import { mapType, numberToStars, secondsToChineseTime, secondsToTime } from '$lib/ddnet/helpers';
 	import { share } from '$lib/share';
 
-	import type { PageData } from './$types';
-
-	const map = (page.data as PageData).map;
+	const { data } = $props();
 
 	afterNavigate(() => {
 		share({
-			icon: new URL(map.icon, window.location.href).href,
+			icon: new URL(data.map.icon, window.location.href).href,
 			link: window.location.href,
-			title: `${map.name}`,
-			desc: `${mapType(map.type)} ${numberToStars(map.difficulty)} (${map.points}pt) 作者：${map.mapper} 均时：${secondsToTime(map.median_time)}`
+			title: `${data.map.name}`,
+			desc: `${mapType(data.map.type)} ${numberToStars(data.map.difficulty)} (${data.map.points}pt) 作者：${data.map.mapper} 均时：${secondsToTime(data.map.median_time)}`
 		});
 	});
 </script>
@@ -28,13 +25,13 @@
 		{ href: '/', text: '首页' },
 		{ href: '/ddnet', text: 'DDNet' },
 		{ href: '/ddnet/maps', text: '地图' },
-		{ text: map.name }
+		{ text: data.map.name }
 	]}
 />
 
 <div class="mb-4">
-	<div class="text-2xl font-bold">{map.name}</div>
-	<div class="text-md font-bold"><span>作者：</span><Mappers authors={map.mapper} /></div>
+	<div class="text-2xl font-bold">{data.map.name}</div>
+	<div class="text-md font-bold"><span>作者：</span><Mappers authors={data.map.mapper} /></div>
 </div>
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
@@ -43,47 +40,49 @@
 			width="360"
 			height="225"
 			class="mb-4 rounded"
-			src={map.thumbnail}
-			alt="{map.name} thumbnail"
+			src={data.map.thumbnail}
+			alt="{data.map.name} thumbnail"
 		/>
-		<p title={map.type}>类型：{mapType(map.type)}</p>
-		<p>分数：{map.points}</p>
-		<p>难度：{numberToStars(map.difficulty)}</p>
+		<p title={data.map.type}>类型：{mapType(data.map.type)}</p>
+		<p>分数：{data.map.points}</p>
+		<p>难度：{numberToStars(data.map.difficulty)}</p>
 		<button
 			class="mt-2 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
 			onclick={() =>
-				(window.location.href = `https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(map.name)}.map`)}
+				(window.location.href = `https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(data.map.name)}.map`)}
 			>查看地图</button
 		>
 	</div>
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="mb-3 text-xl font-bold">地图数据</h2>
 		<p>
-			发布日期：{map.release ? secondsToDate(map.release) : '远古'}
+			发布日期：{data.map.release ? secondsToDate(data.map.release) : '远古'}
 		</p>
-		{#if map.median_time}
-			<p title={`${map.median_time.toFixed(2.0)}秒`}>
-				平均时间：{secondsToTime(map.median_time)}
+		{#if data.map.median_time}
+			<p title={`${data.map.median_time.toFixed(2.0)}秒`}>
+				平均时间：{secondsToTime(data.map.median_time)}
 			</p>
 		{/if}
-		{#if map.median_time}
-			<p>完成总次数：{map.finishes}</p>
+		{#if data.map.median_time}
+			<p>完成总次数：{data.map.finishes}</p>
 		{/if}
-		{#if map.median_time}
-			<p>完成玩家数：{map.finishers}</p>
+		{#if data.map.median_time}
+			<p>完成玩家数：{data.map.finishers}</p>
 		{/if}
-		{#if map.biggest_team}
-			<p>最大团队：{map.biggest_team} 人</p>
+		{#if data.map.biggest_team}
+			<p>最大团队：{data.map.biggest_team} 人</p>
 		{/if}
 	</div>
 </div>
 
-<div class="grid grid-cols-1 gap-4 md:grid-cols-2 {map.team_ranks.length ? 'xl:grid-cols-3' : ''}">
-	{#if map.team_ranks.length}
+<div
+	class="grid grid-cols-1 gap-4 md:grid-cols-2 {data.map.team_ranks.length ? 'xl:grid-cols-3' : ''}"
+>
+	{#if data.map.team_ranks.length}
 		<div class="mt-4 rounded-lg bg-slate-700 p-4 shadow-md">
 			<h2 class="text-xl font-bold">团队排名</h2>
 			<ul class="mt-2">
-				{#each map.team_ranks as rank}
+				{#each data.map.team_ranks as rank}
 					<li>
 						<span class="inline-block w-8 text-right">{rank.rank}.</span>
 						<span
@@ -106,7 +105,7 @@
 	<div class="mt-4 rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="text-xl font-bold">个人排名</h2>
 		<ul class="mt-2">
-			{#each map.ranks as rank}
+			{#each data.map.ranks as rank}
 				<li>
 					<span class="inline-block w-8 text-right">{rank.rank}.</span>
 					<span
@@ -126,7 +125,7 @@
 	<div class="mt-4 rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="text-xl font-bold">完成次数</h2>
 		<ul class="mt-2">
-			{#each map.max_finishes as finishes}
+			{#each data.map.max_finishes as finishes}
 				<li>
 					<span class="inline-block w-8 text-right">{finishes.rank}.</span>
 					<span
