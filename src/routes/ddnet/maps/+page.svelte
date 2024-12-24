@@ -166,7 +166,11 @@
 />
 
 <Breadcrumbs
-	breadcrumbs={[{ href: '/', text: '首页' }, { href: '/ddnet', text: 'DDNet' }, { text: '地图' }]}
+	breadcrumbs={[
+		{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },
+		{ href: '/ddnet', text: 'DDNet' },
+		{ text: '地图', title: 'DDNet 地图' }
+	]}
 />
 
 <div class="mb-4 md:flex md:space-x-5">

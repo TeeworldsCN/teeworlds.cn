@@ -1,5 +1,19 @@
 <script lang="ts">
-	const { breadcrumbs }: { breadcrumbs: { href?: string; text: string }[] } = $props();
+	import { onDestroy } from 'svelte';
+
+	const { breadcrumbs }: { breadcrumbs: { href?: string; text: string; title?: string }[] } =
+		$props();
+
+	$effect(() => {
+		document.title = breadcrumbs
+			.filter((breadcrumb) => breadcrumb.title)
+			.map((breadcrumb) => breadcrumb.title)
+			.join(' - ');
+	});
+
+	onDestroy(() => {
+		document.title = 'Teeworlds 中文社区';
+	});
 </script>
 
 {#if breadcrumbs.length}

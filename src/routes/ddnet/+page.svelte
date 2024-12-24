@@ -3,7 +3,12 @@
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
 </script>
 
-<Breadcrumbs breadcrumbs={[{ href: '/', text: '首页' }, { text: 'DDNet' }]} />
+<Breadcrumbs
+	breadcrumbs={[
+		{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },
+		{ text: 'DDNet', title: 'DDNet 工具箱' }
+	]}
+/>
 
 <div class="mt-8">
 	<ToolboxButton href="/ddnet/players/">查看排名</ToolboxButton>
