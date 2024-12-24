@@ -1,19 +1,24 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { onDestroy } from 'svelte';
 
 	const { breadcrumbs }: { breadcrumbs: { href?: string; text: string; title?: string }[] } =
 		$props();
 
 	$effect(() => {
-		document.title = breadcrumbs
-			.filter((breadcrumb) => breadcrumb.title)
-			.map((breadcrumb) => breadcrumb.title)
-			.reverse()
-			.join(' - ');
+		if (browser) {
+			document.title = breadcrumbs
+				.filter((breadcrumb) => breadcrumb.title)
+				.map((breadcrumb) => breadcrumb.title)
+				.reverse()
+				.join(' - ');
+		}
 	});
 
 	onDestroy(() => {
-		document.title = 'Teeworlds 中文社区';
+		if (browser) {
+			document.title = 'Teeworlds 中文社区';
+		}
 	});
 </script>
 
