@@ -1,15 +1,23 @@
 import { error } from '@sveltejs/kit';
 import { convert } from '$lib/server/imgproxy';
 import type { PageServerLoad } from './$types';
+import { basename } from 'path';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
-	const data = await (await fetch(`https://ddnet.org/maps/?json=${params.name}`)).json();
+	// convert + to space
+	const name = params.name.replace(/\+/g, ' ');
+
+	const data = await (
+		await fetch(`https://ddnet.org/maps/?json=${encodeURIComponent(name)}`)
+	).json();
 	if (!data.name) {
 		return error(404);
 	}
 
 	if (data.thumbnail) {
+		const filename = basename(data.thumbnail);
 		data.thumbnail = (await convert(data.thumbnail)).toString();
+		data.icon = `../icons/${filename}`;
 	}
 
 	const map = data as {

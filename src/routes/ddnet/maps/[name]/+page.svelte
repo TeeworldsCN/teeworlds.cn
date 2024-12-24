@@ -1,18 +1,23 @@
 <script>
+	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
-	import { numberToStars, secondsToChineseTime, secondsToTime } from '$lib/ddnet/helpers';
+	import { mapType, numberToStars, secondsToChineseTime, secondsToTime } from '$lib/ddnet/helpers';
+	import { share } from '$lib/share';
 
 	const map = page.data.map;
-</script>
 
-<svelte:head>
-	<meta itemprop="name" content={map.name} />
-	<meta itemprop="image" content={map.thumbnail} />
-	<meta name="description" itemprop="description" content="作者：{map.mapper}" />
-</svelte:head>
+	afterNavigate(() => {
+		share({
+			icon: new URL(map.icon, window.location.href).href,
+			link: window.location.href,
+			title: `${map.name}`,
+			desc: `${mapType(map.type)} ${numberToStars(map.difficulty)} (${map.points}pt) 作者：${map.mapper} 均时：${secondsToTime(map.median_time)}`
+		});
+	});
+</script>
 
 <Breadcrumbs
 	breadcrumbs={[
@@ -37,7 +42,7 @@
 			src={map.thumbnail}
 			alt="{map.name} thumbnail"
 		/>
-		<p>类型：{map.type}</p>
+		<p title={map.type}>类型：{mapType(map.type)}</p>
 		<p>分数：{map.points}</p>
 		<p>难度：{numberToStars(map.difficulty)}</p>
 		<button

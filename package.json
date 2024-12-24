@@ -20,6 +20,7 @@
 		"@sveltejs/vite-plugin-svelte": "^4.0.4",
 		"@types/bun": "^1.1.14",
 		"autoprefixer": "^10.4.20",
+		"nativeshare": "^2.1.5",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.2",
 		"prettier-plugin-tailwindcss": "^0.6.9",

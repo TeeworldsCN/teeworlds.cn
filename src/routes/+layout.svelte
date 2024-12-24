@@ -1,8 +1,26 @@
 <script lang="ts">
 	import { navigating } from '$app/state';
 	import Link from '$lib/components/Link.svelte';
+	import { resetShare, share } from '$lib/share';
 	import '../app.css';
+	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	let { children } = $props();
+
+	afterNavigate(() => {
+		share(
+			{
+				icon: `${window.location.origin}/favicon.png`,
+				link: window.location.href,
+				title: 'TeeworldsCN',
+				desc: 'Teeworlds 中文社区工具箱'
+			},
+			'layout'
+		);
+	});
+
+	beforeNavigate(() => {
+		resetShare();
+	});
 </script>
 
 <div
@@ -23,7 +41,9 @@
 
 	<footer class="bg-slate-900 p-4 text-slate-300">
 		<div class="container mx-auto text-center">
-			<Link href="https://beian.miit.gov.cn/" type="info" className="font-bold">冀ICP备2021002466号</Link>
+			<Link href="https://beian.miit.gov.cn/" type="info" className="font-bold"
+				>冀ICP备2021002466号</Link
+			>
 		</div>
 	</footer>
 </div>

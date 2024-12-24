@@ -26,6 +26,22 @@ export const numberToStars = (num: number) => {
 	return `${'★'.repeat(stars)}${'☆'.repeat(Math.max(0, 5 - stars))}`;
 };
 
+const MAP_TYPES: { [key: string]: string } = {
+	solo: '单人',
+	dummy: '分身',
+	novice: '新手',
+	moderate: '中阶',
+	brutal: '高阶',
+	insane: '疯狂',
+	oldschool: '传统',
+	race: '竞速',
+	fun: '娱乐'
+};
+
+export const mapType = (type: string) => {
+	return MAP_TYPES[type.toLowerCase()] || type;
+};
+
 const FLAG_MAP: { [key: string]: typeof FLAG_DEFAULT } = {
 	EUR: FLAG_EUR,
 	GER: FLAG_GER,
@@ -46,7 +62,7 @@ const FLAG_MAP: { [key: string]: typeof FLAG_DEFAULT } = {
 	FIN: FLAG_FIN,
 	UKR: FLAG_UKR,
 	TUR: FLAG_TUR,
-    ARG: FLAG_ARG,
+	ARG: FLAG_ARG
 };
 
 export const flagAsset = (flag: string) => {

@@ -5,3 +5,7 @@ export const fetchDDNetAsync = async (url: string) => {
 	}
 	return response.json();
 };
+
+export const encodeURIComponentAscii = (str: string) => {
+	return encodeURIComponent(str).replace(/%20/g, '+');
+};
