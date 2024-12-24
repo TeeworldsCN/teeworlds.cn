@@ -8,7 +8,7 @@
 		className,
 		children,
 		...rest
-	}: { map: string; className?: string; children: Snippet; rest: any[] } = $props();
+	}: { map: string; className?: string; children: Snippet; [key: string]: any } = $props();
 </script>
 
 <Link href={`/ddnet/maps/${encodeURIComponentAscii(map)}`} {...rest} {className}

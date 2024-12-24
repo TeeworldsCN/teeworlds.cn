@@ -12,7 +12,7 @@
 		className?: string;
 		type?: 'main' | 'info';
 		children: Snippet;
-		onclick?: () => void;
+		[key: string]: any;
 	} = $props();
 </script>
 

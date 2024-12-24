@@ -7,7 +7,7 @@
 		className,
 		children,
 		...rest
-	}: { player: string; className?: string; children: Snippet; rest: any[] } = $props();
+	}: { player: string; className?: string; children: Snippet; [key: string]: any } = $props();
 </script>
 
 <Link href={`/ddnet/players/${encodeURIComponent(player)}`} {...rest} {className}
