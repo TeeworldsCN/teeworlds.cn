@@ -107,9 +107,11 @@
 			return true;
 		}
 
+		const mapperString = map.mapper || '不详';
+
 		if (search.startsWith('"') && search.endsWith('"')) {
 			// exact match
-			const mappers = (map.mapper as string)
+			const mappers = (mapperString as string)
 				.split(',')
 				.flatMap((mapper) => mapper.split('&'))
 				.map((mapper) => mapper.trim());
@@ -118,7 +120,7 @@
 			return mappers.some((mapper) => mapper.toLowerCase() == search);
 		}
 
-		return map.mapper.toLowerCase().includes(search.toLowerCase());
+		return mapperString.toLowerCase().includes(search.toLowerCase());
 	};
 
 	$effect(() => {
@@ -200,7 +202,7 @@
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
 		{#each paginatedMaps as map (map.name)}
 			<div class="rounded border border-slate-700 bg-slate-700 p-4 shadow">
-				<h3 class="text-lg font-bold">{map.name}</h3>
+				<h3 class="text-lg font-bold text-nowrap overflow-x-auto scrollbar-hide">{map.name}</h3>
 				<button
 					class="mt-2 aspect-map h-auto w-full rounded-md border border-slate-600 hover:border-blue-500 active:border-blue-300"
 					style="background-image: url({map.thumbnail}); background-size: cover; background-repeat: no-repeat; background-position: center;"
@@ -215,7 +217,7 @@
 				</button>
 				<p class="scrollbar-hide mt-2 overflow-x-auto whitespace-nowrap">
 					<span class="font-semibold">作者：</span><Mappers
-						authors={map.mapper}
+						authors={map.mapper || '不详'}
 						click={(author) => {
 							resetFilters();
 							searchMapper = `"${author}"`;

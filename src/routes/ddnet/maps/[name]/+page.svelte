@@ -10,12 +10,16 @@
 
 	const { data } = $props();
 
+	const mapperTransformed = $derived(() =>
+		data.map.mapper == 'Unknown Mapper' || !data.map.mapper ? '不详' : data.map.mapper
+	);
+
 	afterNavigate(() => {
 		share({
 			icon: new URL(data.map.icon, window.location.href).href,
 			link: window.location.href,
 			title: `${data.map.name}`,
-			desc: `${mapType(data.map.type)} ${numberToStars(data.map.difficulty)} (${data.map.points}pt) 作者：${data.map.mapper} 均时：${secondsToTime(data.map.median_time)}`
+			desc: `${mapType(data.map.type)} ${numberToStars(data.map.difficulty)} (${data.map.points}pt) 作者：${mapperTransformed()} 均时：${secondsToTime(data.map.median_time)}`
 		});
 	});
 </script>
@@ -31,7 +35,7 @@
 
 <div class="mb-4">
 	<div class="text-2xl font-bold">{data.map.name}</div>
-	<div class="text-md font-bold"><span>作者：</span><Mappers authors={data.map.mapper} /></div>
+	<div class="text-md font-bold"><span>作者：</span><Mappers authors={mapperTransformed()} /></div>
 </div>
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
