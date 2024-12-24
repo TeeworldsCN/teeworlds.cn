@@ -16,6 +16,13 @@
 </div>
 
 <div class="mt-8">
-	<ToolboxButton href="/link/?ref={encodeURIComponent("https://wiki.ddnet.org/wiki/Main_Page/zh")}">中文 Wiki</ToolboxButton>
+	<ToolboxButton href="https://wiki.ddnet.org/wiki/Main_Page/zh">中文 Wiki</ToolboxButton>
 	<div class="text-semibold text-2xl">详细教程与操作指南</div>
+</div>
+
+<div class="mt-8">
+	<ToolboxButton href="/link/?ref={encodeURIComponent('https://ddnet.org/')}"
+		>DDNet 官网</ToolboxButton
+	>
+	<div class="text-semibold text-2xl">前往 DDraceNetwork 官方网站</div>
 </div>
