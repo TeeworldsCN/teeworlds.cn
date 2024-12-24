@@ -3,15 +3,14 @@
 	import Link from '../Link.svelte';
 	import { encodeURIComponentAscii } from '$lib/link';
 
-	const props = $props();
 	const {
 		map,
 		className,
 		children,
 		...rest
-	}: { map: string; className?: string; children: Snippet; rest: any[] } = props;
-
-	const href = `/ddnet/maps/${encodeURIComponentAscii(map)}`;
+	}: { map: string; className?: string; children: Snippet; rest: any[] } = $props();
 </script>
 
-<Link {href} {...rest} {className}>{@render children()}</Link>
+<Link href={`/ddnet/maps/${encodeURIComponentAscii(map)}`} {...rest} {className}
+	>{@render children()}</Link
+>
