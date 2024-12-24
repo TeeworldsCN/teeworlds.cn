@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
+	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import { secondsToDate } from '$lib/date';
 	import { mapType, numberToStars, secondsToChineseTime, secondsToTime } from '$lib/ddnet/helpers';
@@ -90,7 +91,12 @@
 							class="inline-block w-20 text-right">{secondsToTime(rank.time)}</span
 						>
 						<FlagSpan flag={rank.country} />
-						<span>{rank.players.join(', ')}</span>
+						<span>
+							{#each rank.players as player, i}
+								<PlayerLink {player} className="font-semibold">{player}</PlayerLink
+								>{#if i == rank.players.length - 2}{' & '}{:else if i < rank.players.length - 2}{', '}{/if}
+							{/each}
+						</span>
 					</li>
 				{/each}
 			</ul>
@@ -108,7 +114,10 @@
 						class="inline-block w-20 text-right">{secondsToTime(rank.time)}</span
 					>
 					<FlagSpan flag={rank.country} />
-					<span>{rank.player}</span>
+					<span
+						><PlayerLink player={rank.player} className="font-semibold">{rank.player}</PlayerLink
+						></span
+					>
 				</li>
 			{/each}
 		</ul>
@@ -126,7 +135,11 @@
 						)}，最快用时：{secondsToChineseTime(finishes.time)}"
 						class="inline-block w-20 text-right">{finishes.num} 次</span
 					>
-					<span class="ml-3">{finishes.player}</span>
+					<span class="ml-3"
+						><PlayerLink player={finishes.player} className="font-semibold"
+							>{finishes.player}</PlayerLink
+						></span
+					>
 				</li>
 			{/each}
 		</ul>

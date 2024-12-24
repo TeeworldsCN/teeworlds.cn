@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import type { RankInfo } from './+page.server';
 
@@ -54,7 +55,7 @@
 						<span class="inline-block w-8 text-right">{rank.rank}.</span>
 						<span class="inline-block w-20 text-right">{rank.points}pts</span>
 						<FlagSpan flag={rank.region} />
-						<span>{rank.name}</span>
+						<PlayerLink player={rank.name} className="font-semibold">{rank.name}</PlayerLink>
 					</li>
 				{/each}
 			</ul>

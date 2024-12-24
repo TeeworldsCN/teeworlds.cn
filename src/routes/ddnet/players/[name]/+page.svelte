@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import MapLink from '$lib/components/ddnet/MapLink.svelte';
+	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import { secondsToDate } from '$lib/date';
 	import { mapType, secondsToTime } from '$lib/ddnet/helpers';
@@ -105,16 +106,29 @@
 			{/each}
 		</div>
 
-		<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
-			<h3 class="mb-1 text-base font-bold">最近记录</h3>
-			{#each player.last_finishes as finish}
-				<p class="text-md">
-					<span class="text-sm">{secondsToDate(finish.timestamp)}</span>
-					<MapLink map={finish.map} className="font-bold"
-						>[{mapType(finish.type)}] {finish.map}</MapLink
-					> - {secondsToTime(finish.time)}
-				</p>
-			{/each}
+		<div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+			<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
+				<h3 class="mb-1 text-base font-bold">🏁 最近完成</h3>
+				{#each player.last_finishes as finish}
+					<p class="text-md">
+						<span class="text-sm">{secondsToDate(finish.timestamp)}</span>
+						<FlagSpan flag={finish.country} />
+						<MapLink map={finish.map} className="font-semibold"
+							>[{mapType(finish.type)}] {finish.map}</MapLink
+						> - {secondsToTime(finish.time)}
+					</p>
+				{/each}
+			</div>
+
+			<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
+				<h3 class="mb-1 text-base font-bold">👍 常玩队友</h3>
+				{#each player.favorite_partners as partner}
+					<p class="text-md">
+						<PlayerLink player={partner.name} className="font-semibold">{partner.name}</PlayerLink> -
+						组队 {partner.finishes} 次
+					</p>
+				{/each}
+			</div>
 		</div>
 	</div>
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
