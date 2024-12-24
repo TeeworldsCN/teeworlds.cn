@@ -201,7 +201,7 @@ class UpdateTimeHandler implements HTMLRewriterTypes.HTMLRewriterElementContentH
 export const load = (async ({ parent }) => {
 	const res = await fetch(`https://ddnet.org/ranks/`);
 
-	const cached = await keyv.get('ddnet:ranks');
+	const cached = await keyv.get('ddnet:ranks') as RankInfo;
 	if (cached) {
 		return { ...cached, ...(await parent()) };
 	}
@@ -213,7 +213,7 @@ export const load = (async ({ parent }) => {
 			rank: [],
 			yearly: [],
 			monthly: [],
-			weekly: [],
+			weekly: []
 		},
 		last_finishes: [],
 		total_points: 0,
