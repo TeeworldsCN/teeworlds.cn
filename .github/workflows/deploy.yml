@@ -18,6 +18,9 @@ jobs:
         with:
           bun-version: 'latest'
 
+      - name: Install Dependencies
+        run: bun install
+
       - name: Build with Vite
         run: bun run vite build
 
