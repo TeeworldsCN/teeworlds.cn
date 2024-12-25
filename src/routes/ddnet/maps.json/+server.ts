@@ -13,7 +13,6 @@ export const GET: RequestHandler = async () => {
 	let tag: string | null = null;
 	if (head.ok) {
 		tag = head.headers.get('last-modified') || head.headers.get('etag');
-		console.log(tag);
 		if (tag) {
 			const cachedTag = await keyv.get('ddnet:maps:tag');
 			outdated = cachedTag != tag;
