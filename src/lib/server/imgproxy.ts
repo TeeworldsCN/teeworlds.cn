@@ -13,7 +13,7 @@ const hmacKey = env.IMGPROXY_KEY
 const saltStr = env.IMGPROXY_SALT ? Buffer.from(env.IMGPROXY_SALT, 'hex').toString('ascii') : undefined;
 
 export const convert = async (url: string, type: 'icon' | 'image' = 'image') => {
-	if (!Ienv.MGPROXY_URL || !env.IMGPROXY_KEY || !env.IMGPROXY_SALT || !hmacKey || !saltStr) {
+	if (!env.MGPROXY_URL || !env.IMGPROXY_KEY || !env.IMGPROXY_SALT || !hmacKey || !saltStr) {
 		return new URL(url);
 	}
 
@@ -27,5 +27,5 @@ export const convert = async (url: string, type: 'icon' | 'image' = 'image') => 
 	const signature = Buffer.from(await crypto.subtle.sign('HMAC', hmacKey, salted)).toString(
 		'base64url'
 	);
-	return new URL(`${signature}/${encoded}`, IMGPROXY_URL);
+	return new URL(`${signature}/${encoded}`, env.IMGPROXY_URL);
 };
