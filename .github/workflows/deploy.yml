@@ -1,0 +1,53 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 'latest'
+
+      - name: Build with Vite
+        run: bun run vite build
+
+      - name: Archive Build Folder
+        run: tar -czvf build.tar.gz -C build .
+
+      - name: Copy Files to Remote Server
+        env:
+          TARGET_HOST: ${{ secrets.TARGET_HOST }}
+          TARGET_DIRECTORY: ${{ secrets.TARGET_DIRECTORY }}
+          REMOTE_USER: ${{ secrets.REMOTE_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${SSH_PRIVATE_KEY}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          scp -o StrictHostKeyChecking=no build.tar.gz $REMOTE_USER@$TARGET_HOST:$TARGET_DIRECTORY
+
+      - name: Deploy on Remote Server
+        env:
+          TARGET_HOST: ${{ secrets.TARGET_HOST }}
+          TARGET_DIRECTORY: ${{ secrets.TARGET_DIRECTORY }}
+          REMOTE_USER: ${{ secrets.REMOTE_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          PRE_DEPLOY_SCRIPT: ${{ secrets.PRE_DEPLOY_SCRIPT }}
+          POST_DEPLOY_SCRIPT: ${{ secrets.POST_DEPLOY_SCRIPT }}
+        run: |
+          ssh -o StrictHostKeyChecking=no $REMOTE_USER@$TARGET_HOST "
+            $PRE_DEPLOY_SCRIPT
+            tar -xzvf $TARGET_DIRECTORY/build.tar.gz -C $TARGET_DIRECTORY
+            $POST_DEPLOY_SCRIPT
+          "
