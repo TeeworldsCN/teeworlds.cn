@@ -154,7 +154,7 @@
 	onMount(async () => {
 		processHashQuery(page.url.hash);
 		try {
-			maps = await (await fetch('/ddnet/maps/info')).json();
+			maps = await (await fetch('/ddnet/maps.json')).json();
 		} catch (e: any) {
 			error = e.message;
 		}
