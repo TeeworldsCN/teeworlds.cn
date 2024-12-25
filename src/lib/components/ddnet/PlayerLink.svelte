@@ -10,6 +10,9 @@
 	}: { player: string; className?: string; children: Snippet; [key: string]: any } = $props();
 </script>
 
-<Link href={`/ddnet/players/${encodeURIComponent(player)}`} {...rest} {className}
-	>{@render children()}</Link
+<Link
+	data-sveltekit-preload-data="tap"
+	href={`/ddnet/players/${encodeURIComponent(player)}`}
+	{...rest}
+	{className}>{@render children()}</Link
 >
