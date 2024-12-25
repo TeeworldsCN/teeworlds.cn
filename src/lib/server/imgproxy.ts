@@ -1,19 +1,19 @@
-import { IMGPROXY_KEY, IMGPROXY_SALT, IMGPROXY_URL } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
-const hmacKey = IMGPROXY_KEY
+const hmacKey = env.IMGPROXY_KEY
 	? await crypto.subtle.importKey(
 			'raw',
-			Buffer.from(IMGPROXY_KEY, 'hex'),
+			Buffer.from(env.IMGPROXY_KEY, 'hex'),
 			{ name: 'HMAC', hash: 'SHA-256' },
 			false,
 			['sign']
 		)
 	: undefined;
 
-const saltStr = IMGPROXY_SALT ? Buffer.from(IMGPROXY_SALT, 'hex').toString('ascii') : undefined;
+const saltStr = env.IMGPROXY_SALT ? Buffer.from(env.IMGPROXY_SALT, 'hex').toString('ascii') : undefined;
 
 export const convert = async (url: string, type: 'icon' | 'image' = 'image') => {
-	if (!IMGPROXY_URL || !IMGPROXY_KEY || !IMGPROXY_SALT || !hmacKey || !saltStr) {
+	if (!Ienv.MGPROXY_URL || !env.IMGPROXY_KEY || !env.IMGPROXY_SALT || !hmacKey || !saltStr) {
 		return new URL(url);
 	}
 

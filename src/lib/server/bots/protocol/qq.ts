@@ -1,4 +1,4 @@
-import { QQ_SECRET, QQ_APPID } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 // QQ OpenAPI
 const END_POINT = 'https://api.sgroup.qq.com';
@@ -88,8 +88,8 @@ class QQBot {
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
-				QQ_APPID,
-				clientSecret: QQ_SECRET
+				appId: env.QQ_APPID,
+				clientSecret: env.QQ_SECRET
 			})
 		});
 
@@ -219,11 +219,11 @@ class QQBot {
 
 // Create Bot
 export let BOT: QQBot | null = null;
-if (!QQ_SECRET || !QQ_APPID) {
+if (!env.QQ_SECRET || !env.QQ_APPID) {
 	BOT = null;
 } else {
 	console.log(`QQBot is activated`);
-	BOT = new QQBot(QQ_SECRET);
+	BOT = new QQBot(env.QQ_SECRET);
 }
 
 // Webhook

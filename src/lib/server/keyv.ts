@@ -1,10 +1,12 @@
 import Keyv from 'keyv';
 import Valkey from '@keyv/valkey';
-import { VALKEY } from '$env/static/private';
+
+import { env } from '$env/dynamic/private';
 
 let store: Valkey | undefined = undefined;
-if (VALKEY) {
-	store = new Valkey(VALKEY);
+if (env.VALKEY) {
+	console.log('Using Valkey');
+	store = new Valkey(env.VALKEY);
 }
 
 export const keyv = new Keyv(store);
