@@ -3,7 +3,12 @@ import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { keyv } from '$lib/server/keyv';
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ url }) => {
+	const json = url.searchParams.get('json');
+	if (!json) {
+		return new Response('Not Found', { status: 404 });
+	}
+
 	const head = await fetch('https://ddnet.org/releases/maps.json', { method: 'HEAD' });
 
 	// check if the file is updated
@@ -12,7 +17,7 @@ export const GET: RequestHandler = async () => {
 	// if somehow not ok or there is no etag, just pretend it's not updated
 	let tag: string | null = null;
 	if (head.ok) {
-		tag = head.headers.get('last-modified') || head.headers.get('etag');
+		tag = head.headers.get('etag') || head.headers.get('last-modified');
 		if (tag) {
 			const cachedTag = await keyv.get('ddnet:maps:tag');
 			outdated = cachedTag != tag;
@@ -25,26 +30,17 @@ export const GET: RequestHandler = async () => {
 		const result = await (await fetch('https://ddnet.org/releases/maps.json')).json();
 		if (result[0]) {
 			const converts: Promise<void>[] = [];
-			for (let i = 0; i < result.length; i++) {
-				const map = result[i];
+			for (const map of result) {
 				converts.push(
 					(async () => {
 						if (map.thumbnail) {
 							map.thumbnail = (await convert(map.thumbnail)).toString();
 						}
+						delete map.website;
+                        delete map.web_preview;
 					})()
 				);
 			}
-			// for (const map of result) {
-			// 	const convertingMap = map;
-			// 	converts.push(
-			// 		(async () => {
-			// 			if (convertingMap.thumbnail) {
-			// 				convertingMap.thumbnail = (await convert(convertingMap.thumbnail)).toString();
-			// 			}
-			// 		})()
-			// 	);
-			// }
 
 			await Promise.allSettled(converts);
 
