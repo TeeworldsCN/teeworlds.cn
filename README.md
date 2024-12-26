@@ -8,6 +8,15 @@
 
 ## 开发
 
+为了能更快速地处理玩家数据，本项目会自动同步全部玩家数据。因为玩家数据量过大，该项目需要一些 rust 应用来预处理相关数据。
+
+网站的部分功能需要已有处理过的数据才可使用。
+
+使用 Rust 处理数据
+```bash
+cargo run --release --manifest-path ./rust/Cargo.toml -- --force-gen
+```
+
 ```bash
 bun --bun dev
 ```

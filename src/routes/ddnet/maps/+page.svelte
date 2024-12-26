@@ -202,7 +202,7 @@
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
 		{#each paginatedMaps as map (map.name)}
 			<div class="rounded border border-slate-700 bg-slate-700 p-4 shadow">
-				<h3 class="text-lg font-bold text-nowrap overflow-x-auto scrollbar-hide">{map.name}</h3>
+				<h3 class="scrollbar-hide overflow-x-auto text-nowrap text-lg font-bold">{map.name}</h3>
 				<button
 					class="mt-2 aspect-map h-auto w-full rounded-md border border-slate-600 hover:border-blue-500 active:border-blue-300"
 					style="background-image: url({map.thumbnail}); background-size: cover; background-repeat: no-repeat; background-position: center;"

@@ -24,8 +24,9 @@ export const GET: RequestHandler = async () => {
 	if (outdated) {
 		const result = await (await fetch('https://ddnet.org/releases/maps.json')).json();
 		if (result[0]) {
-			const converts = [];
-			for (const map of result) {
+			const converts: Promise<void>[] = [];
+			for (let i = 0; i < result.length; i++) {
+				const map = result[i];
 				converts.push(
 					(async () => {
 						if (map.thumbnail) {
@@ -34,6 +35,16 @@ export const GET: RequestHandler = async () => {
 					})()
 				);
 			}
+			// for (const map of result) {
+			// 	const convertingMap = map;
+			// 	converts.push(
+			// 		(async () => {
+			// 			if (convertingMap.thumbnail) {
+			// 				convertingMap.thumbnail = (await convert(convertingMap.thumbnail)).toString();
+			// 			}
+			// 		})()
+			// 	);
+			// }
 
 			await Promise.allSettled(converts);
 

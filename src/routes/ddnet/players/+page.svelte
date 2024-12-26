@@ -42,8 +42,37 @@
 
 	let searchName = $state('');
 
-	function search() {
-		goto(`/ddnet/players/${encodeURIComponent(searchName)}`);
+	const MIN_QUERY_INTERVAL = 200;
+	let queryListName: string | null = null;
+	let queryList = $state<{ name: string; points: number }[]>([]);
+	let querying = false;
+	let lastQueryTime = 0;
+
+	function gotoName(name: string) {
+		goto(`/ddnet/players/${encodeURIComponent(name)}`);
+	}
+
+	async function query() {
+		if (querying) return;
+
+		querying = true;
+		const remaining = MIN_QUERY_INTERVAL - (Date.now() - lastQueryTime);
+		lastQueryTime = Date.now();
+		if (remaining > 0) {
+			await new Promise((resolve) => setTimeout(resolve, remaining));
+		}
+		queryListName = searchName;
+		if (!searchName) {
+			queryList = [];
+		} else {
+			queryList = await (
+				await fetch(`?query=${encodeURIComponent(queryListName)}`)
+			).json();
+		}
+		querying = false;
+		if (searchName != queryListName) {
+			query();
+		}
 	}
 
 	$effect(() => {
@@ -52,6 +81,11 @@
 		} else {
 			ranks = sliceRanks();
 		}
+	});
+
+	$effect(() => {
+		searchName;
+		query();
 	});
 
 	const LADDER_NAMES = {
@@ -78,14 +112,38 @@
 		placeholder="查找玩家名"
 		class="w-full rounded border border-slate-600 bg-slate-700 p-2 text-slate-300 md:mb-0 md:flex-1"
 		bind:value={searchName}
+		onkeydown={(ev) => {
+			if (ev.key == 'Enter') {
+				gotoName(searchName);
+			}
+		}}
 	/>
 	<button
 		class="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:bg-blue-500 disabled:opacity-50"
-		onclick={search}
+		onclick={() => gotoName(searchName)}
 		disabled={!searchName}
 	>
 		查询玩家
 	</button>
+</div>
+
+<!-- horizontally scrollable list of cards -->
+<div class="scrollbar-hide overflow-x-auto text-nowrap">
+	{#each queryList as player}
+		<button
+			class="mx-2 inline-block rounded border {player.name == searchName
+				? 'border-slate-300'
+				: 'border-slate-600'} bg-slate-700 px-2 py-0 hover:border-blue-500 active:border-blue-300"
+			onclick={() => {
+				gotoName(player.name);
+			}}
+		>
+			<span class="text-base font-bold">{player.name}</span>
+			<span class="text-sm">
+				{player.points}pts
+			</span>
+		</button>
+	{/each}
 </div>
 
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

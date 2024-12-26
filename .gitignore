@@ -24,3 +24,9 @@ vite.config.ts.timestamp-*
 
 # IDEs
 .vscode
+
+# Cache
+cache
+
+# Rust
+rust/target
