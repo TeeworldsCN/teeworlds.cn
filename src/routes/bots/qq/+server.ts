@@ -1,5 +1,5 @@
-import { handleChat } from '$lib/server/bots/handler';
-import { BOT, type QQPayload } from '$lib/server/bots/protocol/qq';
+import { handleChat } from '$lib/server/bots/bot';
+import { BOT, type QQMessage, type QQPayload } from '$lib/server/bots/protocol/qq';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -43,92 +43,43 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		);
 	} else {
-		if (payload.t == 'C2C_MESSAGE_CREATE') {
-			const message = payload.d.content;
-			await handleChat(
-				{
-					text: (msg: string) =>
-						bot.replyToC2CMessage(payload.d.author.user_openid, payload.d.id, msg),
+		let replyMethod = null;
+		let mode: 'GROUP' | 'DIRECT' = 'GROUP';
+		let message: string | null = null;
+		let uid = payload.d.author.id;
 
-					link: (title: string, desc: string, url: string) =>
-						bot.replyToC2CMessage(
-							payload.d.author.user_openid,
-							payload.d.id,
-							`${title} - ${desc}:\n${url}`
-						),
-					thumbnails: (title: string, desc: string, url: string, image: string) =>
-						bot.replyToC2CMessage(
-							payload.d.author.user_openid,
-							payload.d.id,
-							`${title} - ${desc}:\n${url}`
-						)
-				},
-				payload.d.author.id,
-				message,
-				'DIRECT'
-			);
+		if (payload.t == 'C2C_MESSAGE_CREATE') {
+			message = payload.d.content;
+			mode = 'DIRECT';
+			replyMethod = (msg: QQMessage) =>
+				bot.replyToC2CMessage(payload.d.author.user_openid, payload.d.id, msg);
 		} else if (payload.t == 'DIRECT_MESSAGE_CREATE') {
-			const message = payload.d.content;
-			await handleChat(
-				{
-					text: (msg: string) => {
-						bot.replyToDirectMessage(payload.d.guild_id, payload.d.id, msg);
-					},
-					link: (title: string, desc: string, url: string) => {
-						bot.replyToDirectMessage(
-							payload.d.guild_id,
-							payload.d.id,
-							`${title} - ${desc}:\n${url}`
-						);
-					},
-					thumbnails: (title: string, desc: string, url: string, image: string) => {
-						bot.replyToDirectMessage(
-							payload.d.guild_id,
-							payload.d.id,
-							`${title} - ${desc}:\n${url}`
-						);
-					}
-				},
-				payload.d.author.id,
-				message,
-				'DIRECT'
-			);
+			message = payload.d.content;
+			mode = 'DIRECT';
+			replyMethod = (msg: QQMessage) =>
+				bot.replyToDirectMessage(payload.d.guild_id, payload.d.id, msg);
 		} else if (payload.t == 'GROUP_AT_MESSAGE_CREATE') {
-			const message = payload.d.content;
-			await handleChat(
-				{
-					text: (msg: string) =>
-						bot.replyToGroupAtMessage(payload.d.group_openid, payload.d.id, msg),
-					link: (title: string, desc: string, url: string) =>
-						bot.replyToGroupAtMessage(
-							payload.d.group_openid,
-							payload.d.id,
-							`${title} - ${desc}:\n${url}`
-						),
-					thumbnails: (title: string, desc: string, url: string, image: string) =>
-						bot.replyToGroupAtMessage(
-							payload.d.group_openid,
-							payload.d.id,
-							`${title} - ${desc}:\n${url}`
-						)
-				},
-				payload.d.author.id,
-				message,
-				'GROUP'
-			);
+			message = payload.d.content;
+			mode = 'GROUP';
+			replyMethod = (msg: QQMessage) =>
+				bot.replyToGroupAtMessage(payload.d.group_openid, payload.d.id, msg);
 		} else if (payload.t == 'AT_MESSAGE_CREATE') {
-			const message = payload.d.content;
+			message = payload.d.content;
+			mode = 'GROUP';
+			replyMethod = (msg: QQMessage) =>
+				bot.replyToAtMessage(payload.d.channel_id, payload.d.id, msg);
+		}
+
+		if (replyMethod && message) {
 			await handleChat(
+				'qq',
 				{
-					text: (msg: string) => bot.replyToAtMessage(payload.d.channel_id, payload.d.id, msg),
-					link: (title: string, desc: string, url: string) =>
-						bot.replyToAtMessage(payload.d.channel_id, payload.d.id, `${title} - ${desc}:\n${url}`),
-					thumbnails: (title: string, desc: string, url: string, image: string) =>
-						bot.replyToAtMessage(payload.d.channel_id, payload.d.id, `${title} - ${desc}:\n${url}`)
+					text: (msg: string) => replyMethod(bot.makeText(msg)),
+					custom: (body: QQMessage) => replyMethod(bot.makeCustom(body))
 				},
-				payload.d.author.id,
+				uid,
 				message,
-				'GROUP'
+				mode
 			);
 		}
 

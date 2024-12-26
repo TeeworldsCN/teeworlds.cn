@@ -13,6 +13,7 @@
 网站的部分功能需要已有处理过的数据才可使用。
 
 使用 Rust 处理数据
+
 ```bash
 cargo run --release --manifest-path ./rust/Cargo.toml -- --force-gen
 ```
@@ -26,3 +27,7 @@ bun --bun dev
 ```bash
 bun --bun run vite build
 ```
+
+## Development Notice
+
+Due to the limitation of chinese bot platform. Bots can only send links and images from certified sites. If you need to send image from other sites, use imgproxy. If you need to send link from other sites, you can send a redirect link with `/link/?ref={target_link}`. Note that when opening a redirect pages in chinese apps, user will need to manually copy the link and paste it into a browser instead.
