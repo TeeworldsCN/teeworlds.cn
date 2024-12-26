@@ -14,6 +14,18 @@ let numItems = -1;
 let loadCallback: (() => void)[] | null = null;
 let lastCheck = 0;
 
+export const readUInt32VarInt = (buf: Buffer, offset: number) => {
+	let value = 0;
+	let shift = 0;
+	let b;
+	do {
+		b = buf.readUInt8(offset++);
+		value |= (b & 0x7f) << shift;
+		shift += 7;
+	} while (b & 0x80);
+	return { value, offset };
+};
+
 export const updateData = async () => {
 	try {
 		// do now reload if it's less than 60s since last check
@@ -40,6 +52,7 @@ export const updateData = async () => {
 		}
 
 		let newBuf: Buffer = await readFile(file);
+		await file.close();
 		if (newBuf.length < 16) {
 			return;
 		}
@@ -58,21 +71,18 @@ export const updateData = async () => {
 		const numCacheItems = buf.readUInt32LE(cachePointer);
 		let position = cachePointer + 4;
 		for (let i = 0; i < numCacheItems; i++) {
-			const prefixLen = buf.readUInt32LE(position);
-			position += 4;
+			const prefixLen = buf.readUInt8(position++);
 			const prefix = buf.toString('utf8', position, position + prefixLen);
 			position += prefixLen;
-			const count = buf.readUInt32LE(position);
-			position += 4;
+			const count = buf.readUInt8(position++);
 			const top10: { name: string; points: number }[] = [];
 			for (let j = 0; j < count; j++) {
-				const nameLen = buf.readUInt32LE(position);
-				position += 4;
+				const nameLen = buf.readUInt8(position++);
 				const name = buf.toString('utf8', position, position + nameLen);
 				position += nameLen;
-				const points = buf.readInt32LE(position);
-				position += 4;
-				top10.push({ name, points });
+				const { value, offset } = readUInt32VarInt(buf, position);
+				position = offset;
+				top10.push({ name, points: value });
 			}
 			prefixCache[prefix] = top10;
 		}
@@ -87,8 +97,8 @@ const getNameBuffer = (index: number) => {
 	if (!buf) throw new Error('Can not get name buffer, data is not loaded');
 
 	const pointer = buf.readUInt32LE(16 + index * 4);
-	const nameLen = buf.readUInt8(pointer + 4);
-	const nameStart = pointer + 5;
+	const nameLen = buf.readUInt8(pointer);
+	const nameStart = pointer + 1;
 	const name = buf.toString('utf8', nameStart, nameStart + nameLen);
 	const lowerCaseName = name.toLowerCase();
 	const buffer = Buffer.from(lowerCaseName, 'utf-8');
@@ -99,12 +109,112 @@ const readItem = (index: number) => {
 	if (!buf) throw new Error('Can not get name buffer, data is not loaded');
 
 	const pointer = buf.readUInt32LE(16 + index * 4);
-	const points = buf.readInt32LE(pointer);
-	const nameLen = buf.readUInt8(pointer + 4);
-	const nameStart = pointer + 5;
+	const nameLen = buf.readUInt8(pointer);
+	const nameStart = pointer + 1;
 	const pointsStart = nameStart + nameLen;
 	const name = buf.toString('utf8', nameStart, pointsStart);
-	return { name, points };
+	const result = {
+		name,
+		points: {
+			rank: 0,
+			points: 0
+		},
+		rank: {
+			rank: 0,
+			points: 0
+		},
+		team: {
+			rank: 0,
+			points: 0
+		},
+		weekly: {
+			rank: 0,
+			points: 0
+		},
+		monthly: {
+			rank: 0,
+			points: 0
+		},
+		yearly: {
+			rank: 0,
+			points: 0
+		}
+	};
+
+	let position = pointsStart;
+	{
+		const { value, offset } = readUInt32VarInt(buf, position);
+		result.points.points = value;
+		position = offset;
+	}
+	{
+		const { value, offset } = readUInt32VarInt(buf, position);
+		result.points.rank = value;
+		position = offset;
+	}
+	{
+		const { value, offset } = readUInt32VarInt(buf, position);
+		result.rank.points = value;
+		position = offset;
+	}
+	{
+		const { value, offset } = readUInt32VarInt(buf, position);
+		result.rank.rank = value;
+		position = offset;
+	}
+	{
+		const { value, offset } = readUInt32VarInt(buf, position);
+		result.team.points = value;
+		position = offset;
+	}
+	{
+		const { value, offset } = readUInt32VarInt(buf, position);
+		result.team.rank = value;
+		position = offset;
+	}
+	{
+		const { value, offset } = readUInt32VarInt(buf, position);
+		result.weekly.points = value;
+		position = offset;
+	}
+	{
+		const { value, offset } = readUInt32VarInt(buf, position);
+		result.weekly.rank = value;
+		position = offset;
+	}
+	{
+		const { value, offset } = readUInt32VarInt(buf, position);
+		result.monthly.points = value;
+		position = offset;
+	}
+	{
+		const { value, offset } = readUInt32VarInt(buf, position);
+		result.monthly.rank = value;
+		position = offset;
+	}
+	{
+		const { value, offset } = readUInt32VarInt(buf, position);
+		result.yearly.points = value;
+		position = offset;
+	}
+	{
+		const { value, offset } = readUInt32VarInt(buf, position);
+		result.yearly.rank = value;
+		position = offset;
+	}
+	return result;
+};
+
+const readItemPointsOnly = (index: number) => {
+	if (!buf) throw new Error('Can not get name buffer, data is not loaded');
+
+	const pointer = buf.readUInt32LE(16 + index * 4);
+	const nameLen = buf.readUInt8(pointer);
+	const nameStart = pointer + 1;
+	const nameEnd = nameStart + nameLen;
+	const name = buf.toString('utf8', nameStart, nameEnd);
+	const { value } = readUInt32VarInt(buf, nameEnd);
+	return { name, points: value };
 };
 
 const binarySearchRange = (target: Uint8Array) => {
@@ -176,7 +286,7 @@ const binarySearchExact = (target: Uint8Array) => {
 /**
  * Search for a player by name
  * @param name player name
- * @returns null if data is not loaded, {name: null, points: 0} if not found
+ * @returns null if data is not loaded, {name: null} if not found
  */
 export const getPlayer = async (name: string) => {
 	await updateData();
@@ -184,7 +294,7 @@ export const getPlayer = async (name: string) => {
 	const index = binarySearchExact(
 		Uint8Array.prototype.slice.call(Buffer.from(name.toLowerCase(), 'utf-8'))
 	);
-	if (index < 0) return { name: null, points: 0 };
+	if (index < 0) return { name: null };
 	return readItem(index);
 };
 
@@ -209,7 +319,7 @@ export const queryPlayerPrefix = async (prefix: string) => {
 	} else {
 		const range = binarySearchRange(searchBuf);
 		for (let i = range.start; i < range.end; i++) {
-			const item = readItem(i);
+			const item = readItemPointsOnly(i);
 			if (item.name == prefix) {
 				exactMatch = i;
 			}
@@ -225,14 +335,16 @@ export const queryPlayerPrefix = async (prefix: string) => {
 		}
 	}
 
+	let player = null;
+
 	// if there is exact match, insert it at the top
 	if (exactMatch >= 0) {
-		const exactMatchItem = readItem(exactMatch);
-		top10.unshift(exactMatchItem);
+		player = readItem(exactMatch);
+		top10.unshift({ name: player.name, points: player.points.points });
 
 		for (let i = 1; i < top10.length; i++) {
 			// remove existing exact match
-			if (top10[i].name == exactMatchItem.name) {
+			if (top10[i].name == player.name) {
 				top10.splice(i, 1);
 				break;
 			}
@@ -243,5 +355,5 @@ export const queryPlayerPrefix = async (prefix: string) => {
 		}
 	}
 
-	return top10;
+	return { player, top10 };
 };

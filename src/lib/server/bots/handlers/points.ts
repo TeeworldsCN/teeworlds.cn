@@ -13,7 +13,7 @@ export const handlePoints: Handler = async (uid, reply, command, args, mode) => 
 		return;
 	}
 
-	const player = points[0];
+	const player = points.top10[0];
 
 	if (!player) {
 		reply.text('未找到相关的玩家信息');

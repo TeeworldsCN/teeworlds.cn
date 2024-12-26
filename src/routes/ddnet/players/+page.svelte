@@ -9,7 +9,7 @@
 
 	const sliceRanks = () => {
 		const result: RankInfo['ranks'] = {
-			total: [],
+			points: [],
 			team: [],
 			rank: [],
 			yearly: [],
@@ -22,17 +22,24 @@
 		return result;
 	};
 
-	const filterRanks = () => {
+	const queryRanks = () => {
 		const result: RankInfo['ranks'] = {
-			total: [],
+			points: [],
 			team: [],
 			rank: [],
 			yearly: [],
 			monthly: [],
 			weekly: []
 		};
-		for (const ladder of Object.keys(data.ranks) as (keyof RankInfo['ranks'])[]) {
-			result[ladder] = data.ranks[ladder].filter((rank) => rank.name == searchName);
+		const player = queryList.player;
+		if (player) {
+			const name = player.name;
+			if (player.points.rank) result.points.push({ name, ...player.points });
+			if (player.team.rank) result.team.push({ name, ...player.team });
+			if (player.rank.rank) result.rank.push({ name, ...player.rank });
+			if (player.yearly.rank) result.yearly.push({ name, ...player.yearly });
+			if (player.monthly.rank) result.monthly.push({ name, ...player.monthly });
+			if (player.weekly.rank) result.weekly.push({ name, ...player.weekly });
 		}
 		return result;
 	};
@@ -43,8 +50,13 @@
 	let searchName = $state('');
 
 	const MIN_QUERY_INTERVAL = 200;
-	let queryListName: string | null = null;
-	let queryList = $state<{ name: string; points: number }[]>([]);
+	let queryingName: string | null = null;
+	let queryListName: string | null = $state(null);
+	let queryList = $state<{ player: any; top10: { name: string; points: number }[] }>({
+		player: null,
+		top10: []
+	});
+
 	let querying = false;
 	let lastQueryTime = 0;
 
@@ -61,23 +73,23 @@
 		if (remaining > 0) {
 			await new Promise((resolve) => setTimeout(resolve, remaining));
 		}
-		queryListName = searchName;
+		queryingName = searchName;
 		if (!searchName) {
-			queryList = [];
+			queryList = { player: null, top10: [] };
+			queryListName = null;
 		} else {
-			queryList = await (
-				await fetch(`?query=${encodeURIComponent(queryListName)}`)
-			).json();
+			queryList = await (await fetch(`?query=${encodeURIComponent(queryingName)}`)).json();
+			queryListName = queryingName;
 		}
 		querying = false;
-		if (searchName != queryListName) {
+		if (searchName != queryingName) {
 			query();
 		}
 	}
 
 	$effect(() => {
-		if (searchName) {
-			ranks = filterRanks();
+		if (queryListName) {
+			ranks = queryRanks();
 		} else {
 			ranks = sliceRanks();
 		}
@@ -89,7 +101,7 @@
 	});
 
 	const LADDER_NAMES = {
-		total: '🌎 总通过分',
+		points: '🌎 总通过分',
 		yearly: '📅 获得通过分 (近365天)',
 		monthly: '📅 获得通过分 (近30天)',
 		weekly: '📅 获得通过分 (近7天)',
@@ -129,13 +141,13 @@
 
 <!-- horizontally scrollable list of cards -->
 <div class="scrollbar-hide overflow-x-auto text-nowrap">
-	{#each queryList as player}
+	{#each queryList.top10 as player}
 		<button
 			class="mx-2 inline-block rounded border {player.name == searchName
 				? 'border-slate-300'
 				: 'border-slate-600'} bg-slate-700 px-2 py-0 hover:border-blue-500 active:border-blue-300"
 			onclick={() => {
-				gotoName(player.name);
+				searchName = player.name;
 			}}
 		>
 			<span class="text-base font-bold">{player.name}</span>
@@ -155,7 +167,7 @@
 				? 'opacity-50'
 				: ''}"
 		>
-			{#if ladder == 'total'}
+			{#if ladder == 'points'}
 				<h2 class="text-xl font-bold">{LADDER_NAMES[ladder]}（共 {data.total_points}pts）</h2>
 			{:else}
 				<h2 class="text-xl font-bold">{LADDER_NAMES[ladder as any as keyof RankInfo['ranks']]}</h2>
@@ -163,14 +175,14 @@
 			<ul class="mt-2">
 				{#if ranks[ladder as any as keyof RankInfo['ranks']].length == 0}
 					<li>
-						<span class="text-center">该名字未进入前 500 名</span>
+						<span class="text-center">未获得记录</span>
 					</li>
 				{:else}
 					{#each ranks[ladder as any as keyof RankInfo['ranks']] as rank}
 						<li>
 							<span class="inline-block w-8 text-right">{rank.rank}.</span>
 							<span class="inline-block w-20 text-right">{rank.points}pts</span>
-							<FlagSpan flag={rank.region} />
+							{#if rank.region}<FlagSpan flag={rank.region} />{/if}
 							<PlayerLink player={rank.name} className="font-semibold">{rank.name}</PlayerLink>
 						</li>
 					{/each}

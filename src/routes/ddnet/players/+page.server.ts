@@ -5,7 +5,7 @@ import type { PageServerLoad } from './$types';
 interface PointInfo {
 	rank: number;
 	points: number;
-	region: string;
+	region?: string;
 	name: string;
 }
 
@@ -20,7 +20,7 @@ interface FinishInfo {
 
 export interface RankInfo {
 	ranks: {
-		total: PointInfo[];
+		points: PointInfo[];
 		team: PointInfo[];
 		rank: PointInfo[];
 		yearly: PointInfo[];
@@ -73,7 +73,7 @@ class LadderHandler implements HTMLRewriterTypes.HTMLRewriterElementContentHandl
 		if (this.context.type === 'ladder') {
 			const ladderName = text.text.trim();
 			if (ladderName.match(/Points \([0-9]+ total\)/)) {
-				this.context.ladder = 'total';
+				this.context.ladder = 'points';
 				this.data.total_points = parseInt(ladderName.slice(8, -1));
 			} else if (ladderName === 'Points (past 365 days)') {
 				this.context.ladder = 'yearly';
@@ -208,7 +208,7 @@ export const load = (async ({ parent }) => {
 
 	const ranks: RankInfo = {
 		ranks: {
-			total: [],
+			points: [],
 			team: [],
 			rank: [],
 			yearly: [],

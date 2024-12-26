@@ -12,10 +12,10 @@ export const load: PageLoad = async ({ data, parent }) => {
 	};
 
 	let types = Object.keys(player.types);
-	types.unshift('total');
+	types.unshift('points');
 
-	let total = {
-		type: 'total',
+	let points = {
+		type: 'points',
 		rank: player.points.rank,
 		points: 0,
 		total_points: 0,
@@ -24,7 +24,7 @@ export const load: PageLoad = async ({ data, parent }) => {
 	};
 
 	let stats = types.map((type) => {
-		if (type == 'total') return total;
+		if (type == 'points') return points;
 		const data = player.types[type];
 		const result = {
 			type,
@@ -35,10 +35,10 @@ export const load: PageLoad = async ({ data, parent }) => {
 			total_map: Object.keys(data.maps).length
 		};
 
-		total.points += result.points;
-		total.total_points += result.total_points;
-		total.finishes += result.finishes;
-		total.total_map += result.total_map;
+		points.points += result.points;
+		points.total_points += result.total_points;
+		points.finishes += result.finishes;
+		points.total_map += result.total_map;
 		return result;
 	});
 
