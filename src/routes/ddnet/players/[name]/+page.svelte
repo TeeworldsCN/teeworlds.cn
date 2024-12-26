@@ -116,7 +116,7 @@
 								>
 									{#if stat.total_points}
 										<p class="z-10 float-right mr-2 text-xs text-emerald-200 md:text-base">
-											{Math.round((stat.points / stat.total_points) * 100)}%
+											{Math.floor((stat.points / stat.total_points) * 100)}%
 										</p>
 										<p
 											class="z-10 float-left ml-2 mt-0 text-right text-xs text-emerald-200 md:mt-1"
@@ -146,7 +146,7 @@
 									class="h-full border-collapse rounded-r border-l-2 border-teal-800 bg-teal-900"
 								>
 									<p class="z-10 float-left ml-2 text-right text-xs text-teal-200 md:text-base">
-										{Math.round((stat.finishes / stat.total_map) * 100)}%
+										{Math.floor((stat.finishes / stat.total_map) * 100)}%
 									</p>
 									<p class="z-10 float-right mr-2 mt-0 text-left text-xs text-teal-200 md:mt-1">
 										{stat.finishes}/{stat.total_map}
