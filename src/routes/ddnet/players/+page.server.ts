@@ -199,54 +199,75 @@ class UpdateTimeHandler implements HTMLRewriterTypes.HTMLRewriterElementContentH
 }
 
 export const load = (async ({ parent }) => {
-	const res = await fetch(`https://ddnet.org/ranks/`);
+	const head = await fetch('https://ddnet.org/releases/maps.json', { method: 'HEAD' });
 
-	const cached = await keyv.get('ddnet:ranks') as RankInfo;
-	if (cached) {
-		return { ...cached, ...(await parent()) };
+	// check if the file is updated
+	let outdated = false;
+
+	// if somehow not ok or there is no etag, just pretend it's not updated
+	let tag: string | null = null;
+	if (head.ok) {
+		tag = head.headers.get('etag') || head.headers.get('last-modified');
+		if (tag) {
+			const cachedTag = await keyv.get('ddnet:ranks:tag');
+			outdated = cachedTag != tag;
+		}
 	}
 
-	const ranks: RankInfo = {
-		ranks: {
-			points: [],
-			team: [],
-			rank: [],
-			yearly: [],
-			monthly: [],
-			weekly: []
-		},
-		last_finishes: [],
-		total_points: 0,
-		update_time: 0
-	};
+	let result: RankInfo | {} = {};
 
-	const ladderHandler = new LadderHandler(ranks);
-	const lastFinishesHandler = new LastFinishesHandler(ranks);
-	new HTMLRewriter()
-		.on(
-			[
-				'div[class="block2 ladder"] > h3',
-				'div[class="block2 ladder"] > table > tr',
-				'div[class="block2 ladder"] > table > tr > td',
-				'div[class="block2 ladder"] > table > tr > td > img'
-			].join(','),
-			ladderHandler
-		)
-		.on(
-			[
-				'div[class="block4"] > table > tr',
-				'div[class="block4"] > table > tr > td',
-				'div[class="block4"] > table > tr > td > span[data-type="date"]',
-				'div[class="block4"] > table > tr > td > img',
-				'div[class="block4"] > table > tr > td > a'
-			].join(','),
-			lastFinishesHandler
-		)
-		.on('p[class="toggle"] > span[data-type="date"]', new UpdateTimeHandler(ranks))
-		.transform(await res.text());
+	if (outdated) {
+		const res = await fetch(`https://ddnet.org/ranks/`);
+		const ranks = {
+			ranks: {
+				points: [],
+				team: [],
+				rank: [],
+				yearly: [],
+				monthly: [],
+				weekly: []
+			},
+			last_finishes: [],
+			total_points: 0,
+			update_time: 0
+		} satisfies RankInfo;
 
-	// cache for 10 minutes
-	await keyv.set('ddnet:ranks', ranks, 600_000);
+		const ladderHandler = new LadderHandler(ranks);
+		const lastFinishesHandler = new LastFinishesHandler(ranks);
+		new HTMLRewriter()
+			.on(
+				[
+					'div[class="block2 ladder"] > h3',
+					'div[class="block2 ladder"] > table > tr',
+					'div[class="block2 ladder"] > table > tr > td',
+					'div[class="block2 ladder"] > table > tr > td > img'
+				].join(','),
+				ladderHandler
+			)
+			.on(
+				[
+					'div[class="block4"] > table > tr',
+					'div[class="block4"] > table > tr > td',
+					'div[class="block4"] > table > tr > td > span[data-type="date"]',
+					'div[class="block4"] > table > tr > td > img',
+					'div[class="block4"] > table > tr > td > a'
+				].join(','),
+				lastFinishesHandler
+			)
+			.on('p[class="toggle"] > span[data-type="date"]', new UpdateTimeHandler(ranks))
+			.transform(await res.text());
 
-	return { ...ranks, ...(await parent()) };
+		result = ranks;
+
+		if (tag) {
+			// only cache if the tag is valid
+			await keyv.set('ddnet:ranks', ranks);
+			await keyv.set('ddnet:ranks:tag', tag);
+		}
+	} else {
+		// not outdated, just fetch the cache
+		result = (await keyv.get('ddnet:ranks')) as RankInfo;
+	}
+
+	return { ...result, ...(await parent()) };
 }) satisfies PageServerLoad;
