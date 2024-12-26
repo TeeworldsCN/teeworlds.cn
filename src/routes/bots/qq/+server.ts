@@ -1,4 +1,4 @@
-import { handleBot } from '$lib/server/bots/handler';
+import { handleChat } from '$lib/server/bots/handler';
 import { BOT, type QQPayload } from '$lib/server/bots/protocol/qq';
 import type { RequestHandler } from './$types';
 
@@ -45,7 +45,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	} else {
 		if (payload.t == 'C2C_MESSAGE_CREATE') {
 			const message = payload.d.content;
-			await handleBot(
+			await handleChat(
 				{
 					text: (msg: string) =>
 						bot.replyToC2CMessage(payload.d.author.user_openid, payload.d.id, msg),
@@ -55,14 +55,21 @@ export const POST: RequestHandler = async ({ request }) => {
 							payload.d.author.user_openid,
 							payload.d.id,
 							`${title} - ${desc}:\n${url}`
+						),
+					thumbnails: (title: string, desc: string, url: string, image: string) =>
+						bot.replyToC2CMessage(
+							payload.d.author.user_openid,
+							payload.d.id,
+							`${title} - ${desc}:\n${url}`
 						)
 				},
+				payload.d.author.id,
 				message,
 				'DIRECT'
 			);
 		} else if (payload.t == 'DIRECT_MESSAGE_CREATE') {
 			const message = payload.d.content;
-			await handleBot(
+			await handleChat(
 				{
 					text: (msg: string) => {
 						bot.replyToDirectMessage(payload.d.guild_id, payload.d.id, msg);
@@ -73,14 +80,22 @@ export const POST: RequestHandler = async ({ request }) => {
 							payload.d.id,
 							`${title} - ${desc}:\n${url}`
 						);
+					},
+					thumbnails: (title: string, desc: string, url: string, image: string) => {
+						bot.replyToDirectMessage(
+							payload.d.guild_id,
+							payload.d.id,
+							`${title} - ${desc}:\n${url}`
+						);
 					}
 				},
+				payload.d.author.id,
 				message,
 				'DIRECT'
 			);
 		} else if (payload.t == 'GROUP_AT_MESSAGE_CREATE') {
 			const message = payload.d.content;
-			await handleBot(
+			await handleChat(
 				{
 					text: (msg: string) =>
 						bot.replyToGroupAtMessage(payload.d.group_openid, payload.d.id, msg),
@@ -89,19 +104,29 @@ export const POST: RequestHandler = async ({ request }) => {
 							payload.d.group_openid,
 							payload.d.id,
 							`${title} - ${desc}:\n${url}`
+						),
+					thumbnails: (title: string, desc: string, url: string, image: string) =>
+						bot.replyToGroupAtMessage(
+							payload.d.group_openid,
+							payload.d.id,
+							`${title} - ${desc}:\n${url}`
 						)
 				},
+				payload.d.author.id,
 				message,
 				'GROUP'
 			);
 		} else if (payload.t == 'AT_MESSAGE_CREATE') {
 			const message = payload.d.content;
-			await handleBot(
+			await handleChat(
 				{
 					text: (msg: string) => bot.replyToAtMessage(payload.d.channel_id, payload.d.id, msg),
 					link: (title: string, desc: string, url: string) =>
+						bot.replyToAtMessage(payload.d.channel_id, payload.d.id, `${title} - ${desc}:\n${url}`),
+					thumbnails: (title: string, desc: string, url: string, image: string) =>
 						bot.replyToAtMessage(payload.d.channel_id, payload.d.id, `${title} - ${desc}:\n${url}`)
 				},
+				payload.d.author.id,
 				message,
 				'GROUP'
 			);
