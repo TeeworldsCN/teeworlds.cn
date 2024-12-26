@@ -79,6 +79,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				},
 				uid,
 				message,
+				payload.d,
 				mode
 			);
 		}

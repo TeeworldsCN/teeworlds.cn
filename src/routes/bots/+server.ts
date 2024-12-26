@@ -71,6 +71,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		},
 		'WEBSITE',
 		body.message,
+		body,
 		mode == 'group' ? 'GROUP' : 'DIRECT'
 	);
 

@@ -10,7 +10,8 @@ let listenToUser: string | null = null;
 
 type Transaction = {
 	uid: string;
-	msg: any;
+	msg: string;
+	raw: any;
 	mode: 'GROUP' | 'DIRECT';
 	time: number;
 	result: SendResult | null;
@@ -57,12 +58,14 @@ export const handleChat: (
 	reply: SendReply,
 	user: string,
 	msg: string,
+	raw: any,
 	mode: 'GROUP' | 'DIRECT'
-) => Promise<SendResult> = async (platform, reply, user, msg, mode) => {
+) => Promise<SendResult> = async (platform, reply, user, msg, raw, mode) => {
 	const uid = `${platform}:${user}`;
 	const transaction: Transaction = {
 		uid,
 		msg,
+		raw,
 		mode,
 		time: Date.now(),
 		result: null
