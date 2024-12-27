@@ -17,7 +17,7 @@
 			weekly: []
 		};
 		for (const ladder of Object.keys(data.ranks) as (keyof RankInfo['ranks'])[]) {
-			result[ladder] = data.ranks[ladder].slice(0, top500 ? 500 : 20);
+			result[ladder] = data.ranks[ladder].slice(0, 20);
 		}
 		return result;
 	};
@@ -44,7 +44,6 @@
 		return result;
 	};
 
-	let top500 = $state(false);
 	let ranks: RankInfo['ranks'] = $state(sliceRanks());
 
 	let searchName = $state('');
