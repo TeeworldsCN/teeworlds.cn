@@ -126,7 +126,7 @@ const handle = async (
 	}
 
 	if (command.startsWith('/')) {
-		command = command.slice(1, firstSpace);
+		command = command.slice(1);
 	}
 
 	let result = null;
