@@ -271,9 +271,6 @@ const binarySearchExact = (target: Uint8Array) => {
 		const mid = Math.floor((start + end) / 2);
 		const name = getNameBuffer(mid);
 		const compare = name.compare(target);
-		if (compare == 0) {
-			return mid;
-		}
 		if (compare < 0) {
 			start = mid + 1;
 		} else {
@@ -295,7 +292,16 @@ export const getPlayer = async (name: string) => {
 		Uint8Array.prototype.slice.call(Buffer.from(name.toLowerCase(), 'utf-8'))
 	);
 	if (index < 0) return { name: null };
-	return readItem(index);
+
+	while (index < numItems) {
+		const player = readItem(index);
+		if (player.name === name) {
+			return player;
+		}
+		if (player.name.toLowerCase() != name.toLowerCase()) break;
+		index += 1;
+	}
+	return { name: null };
 };
 
 /**
