@@ -141,7 +141,7 @@ const handle = async (
 	} else if (command === '工具箱') {
 		result = await reply.link({
 			label: '🔗 DDNet 工具箱',
-			prefix: '→ ',
+			prefix: 'DDNet 工具箱 → ',
 			url: 'https://teeworlds.cn/ddnet'
 		});
 	}
