@@ -30,7 +30,7 @@ export const handlePoints: Handler = async ({ reply, args }) => {
 	];
 
 	const lines = [
-		'TsFreddie',
+		player.name,
 		...ranks.map((rank) => {
 			const fallback = rank.fallback;
 			if (rank.rank.rank) {
