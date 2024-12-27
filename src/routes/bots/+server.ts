@@ -10,7 +10,7 @@ import {
 	setListenToUser
 } from '$lib/server/bots/bot';
 
-export const POST: RequestHandler = async ({ request, url }) => {
+export const POST: RequestHandler = async ({ fetch, request, url }) => {
 	const mode = url.searchParams.get('mode');
 
 	if (mode && !env.BOT_ADMIN_TOKEN) {
@@ -54,15 +54,29 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	let response: Response | null = null;
 
 	await handleChat(
+		fetch,
 		'web',
 		{
-			text: (msg: string) => {
+			text: (msg) => {
 				response = new Response(JSON.stringify({ content: msg }), {
 					headers: { 'content-type': 'application/json' }
 				});
 				return { success: true };
 			},
-			custom: (body: any) => {
+			link: (link) => {
+				response = new Response(JSON.stringify({ content: `[${link.label}](${link.url})` }), {
+					headers: { 'content-type': 'application/json' }
+				});
+				return { success: true };
+			},
+			textLink: (msg, link) => {
+				msg += `\n\n[${link.label}](${link.url})`;
+				response = new Response(JSON.stringify({ content: msg }), {
+					headers: { 'content-type': 'application/json' }
+				});
+				return { success: true };
+			},
+			custom: (body) => {
 				response = new Response(JSON.stringify(body), {
 					headers: { 'content-type': 'application/json' }
 				});
@@ -79,7 +93,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		return response;
 	}
 
-	return new Response(JSON.stringify({ error: true, message: 'Unknown error' }), {
+	return new Response(JSON.stringify({ content: '<没有响应的内容>' }), {
 		headers: { 'content-type': 'application/json' }
 	});
 };

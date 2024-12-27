@@ -198,20 +198,30 @@ class UpdateTimeHandler implements HTMLRewriterTypes.HTMLRewriterElementContentH
 	}
 }
 
+let nextQueryTime = 0;
+let minQueryInterval = 60;
+
 export const load = (async ({ parent }) => {
-	const head = await fetch('https://ddnet.org/releases/maps.json', { method: 'HEAD' });
+	const now = Date.now();
 
 	// check if the file is updated
 	let outdated = false;
 
 	// if somehow not ok or there is no etag, just pretend it's not updated
 	let tag: string | null = null;
-	if (head.ok) {
-		tag = head.headers.get('etag') || head.headers.get('last-modified');
-		if (tag) {
-			const cachedTag = await keyv.get('ddnet:ranks:tag');
-			outdated = cachedTag != tag;
+
+	if (nextQueryTime < now) {
+		const head = await fetch('https://ddnet.org/ranks/', { method: 'HEAD' });
+
+		if (head.ok) {
+			tag = head.headers.get('etag') || head.headers.get('last-modified');
+			if (tag) {
+				const cachedTag = await keyv.get('ddnet:ranks:tag');
+				outdated = cachedTag != tag;
+			}
 		}
+
+		nextQueryTime = now + minQueryInterval * 1000;
 	}
 
 	let result: RankInfo | {} = {};

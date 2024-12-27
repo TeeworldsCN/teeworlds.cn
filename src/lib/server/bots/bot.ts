@@ -1,7 +1,10 @@
-// Main handler.
-
 import { handlePoints } from './handlers/points';
 import type { SendReply, SendResult } from './protocol/types';
+import { AsyncQueue } from '$lib/async-queue';
+import { RateLimiter } from './rate-limiter';
+import { env } from '$env/dynamic/private';
+import { handleMaps } from './handlers/maps';
+import { BOT, QQBot } from './protocol/qq';
 
 let customBody: any = null;
 let customToken: string | null = null;
@@ -53,14 +56,36 @@ export const registerCustom = (body: any) => {
 	};
 };
 
-export const handleChat: (
+const queue = new AsyncQueue();
+const limiter = new RateLimiter('bot', {
+	threshold: 5,
+	interval: 30,
+	cooldown: 300
+});
+
+const handle = async (
+	fetch: typeof global.fetch,
 	platform: string,
 	reply: SendReply,
 	user: string,
 	msg: string,
 	raw: any,
 	mode: 'GROUP' | 'DIRECT'
-) => Promise<SendResult> = async (platform, reply, user, msg, raw, mode) => {
+) => {
+	// TODO: don't need to trigger rate limit if the command does not exist
+	// consider move this after we implemented a better command parser
+	// rate limit in group mode
+	if (mode == 'GROUP') {
+		const { limited, triggered } = await limiter.isLimited(user);
+		if (triggered) {
+			return await reply.text('您操作太频繁了！请等5分钟后再试。大量查询请使用 DDNet 工具箱。');
+		}
+
+		if (limited) {
+			return { ignored: true, message: 'rate limited' };
+		}
+	}
+
 	const uid = `${platform}:${user}`;
 	const transaction: Transaction = {
 		uid,
@@ -104,13 +129,21 @@ export const handleChat: (
 	// TODO: Design a better handler for this
 	if (command === '__uid__') {
 		result = await reply.text(`您的 UID 是 ${uid}`);
-	} else if (command === '分数' || command === 'points') {
-		result = await handlePoints(uid, reply, command, args, mode);
-	} else if (command === '地图') {
-		result = await reply.text('抱歉，地图查询功能正在维护中，请关注群公告了解维护状态。');
-	} else if (mode === 'DIRECT') {
-		result = await reply.text(
-			'Hi, 目前豆豆可以提供以下查询功能：\n - 分数 <玩家名> - 查询分数\n - 地图 <地图名> - 查询地图'
+	} else if (command === '分数' || command == 'point' || command === 'points') {
+		result = await handlePoints({ uid, reply, command, args, mode, fetch });
+	} else if (command === '地图' || command === 'map' || command === 'maps') {
+		result = await handleMaps({ uid, reply, command, args, mode, fetch });
+	}
+	// add more commands here ^
+	else if (mode === 'DIRECT' || command === '' || command === '帮助' || command === 'help') {
+		// help message
+		result = await reply.textLink(
+			'目前豆豆可以提供以下查询功能：\n  /分数 <玩家名> - 查询分数\n更多功能请使用工具箱',
+			{
+				label: '🔗 DDNet 工具箱',
+				prefix: '→ ',
+				url: 'https://teeworlds.cn/ddnet'
+			}
 		);
 	}
 
@@ -123,4 +156,16 @@ export const handleChat: (
 		lastTransaction = transaction;
 	}
 	return result;
+};
+
+export const handleChat: (
+	fetch: typeof global.fetch,
+	platform: string,
+	reply: SendReply,
+	user: string,
+	msg: string,
+	raw: any,
+	mode: 'GROUP' | 'DIRECT'
+) => Promise<SendResult> = async (fetch, platform, reply, user, msg, raw, mode) => {
+	return await queue.push(() => handle(fetch, platform, reply, user, msg, raw, mode));
 };

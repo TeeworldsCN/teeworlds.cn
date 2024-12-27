@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import Link from '$lib/components/Link.svelte';
 
 // QQ OpenAPI
 const END_POINT = 'https://api.sgroup.qq.com';
@@ -11,8 +12,8 @@ export interface QQMessage {
 		template_id: number;
 		kv: {
 			key: string;
-			value: string;
-			obj: any;
+			value?: string;
+			obj?: any;
 		}[];
 	};
 	image?: string;
@@ -29,7 +30,7 @@ export interface QQMessage {
 	};
 }
 
-class QQBot {
+export class QQBot {
 	private secret: string;
 
 	private privateKey: CryptoKey | null;
@@ -141,6 +142,41 @@ class QQBot {
 	 */
 	makeText(content: string): QQMessage {
 		return { content, msg_type: 0 };
+	}
+
+	/**
+	 * Make a ark list message. Each line is either a text or a link.
+	 */
+	makeArkList(summary: string, lines: { text: string; link?: string }[]): QQMessage {
+		return {
+			msg_type: 3,
+			ark: {
+				template_id: 23,
+				kv: [
+					{ key: '#DESC#', value: 'DDNet Player Info' },
+					{ key: '#PROMPT#', value: summary },
+					{
+						key: '#LIST#',
+						obj: [
+							lines.map((item) => {
+								if (item.link) {
+									return {
+										obj_kv: [
+											{ key: 'desc', value: item.text },
+											{ key: 'link', value: item.link }
+										]
+									};
+								} else {
+									return {
+										obj_kv: [{ key: 'desc', value: item.text }]
+									};
+								}
+							})
+						]
+					}
+				]
+			}
+		};
 	}
 
 	/**

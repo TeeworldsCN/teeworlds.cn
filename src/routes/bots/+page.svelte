@@ -97,7 +97,7 @@
 					>
 						<div>
 							<span
-								class="prose inline-block whitespace-break-spaces rounded-xl px-4 py-3"
+								class="prose inline-block rounded-xl px-4 py-3 prose-p:my-0 prose-p:py-0 prose-a:py-0 prose-code:m-0 prose-ul:my-0 prose-ul:py-0 prose-li:py-0"
 								class:rounded-bl-none={message.from === 'bot'}
 								class:bg-slate-300={message.from === 'bot'}
 								class:text-gray-800={message.from === 'bot'}
@@ -106,7 +106,9 @@
 								class:text-white={message.from !== 'bot'}
 							>
 								{#if message.from === 'bot'}
-									{@html markdownIt().render(message.text)}
+									{@html markdownIt().render(
+										message.text.replace(/ /g, '&nbsp;').replace(/\n/g, '\n\n')
+									)}
 								{:else}
 									{message.text}
 								{/if}

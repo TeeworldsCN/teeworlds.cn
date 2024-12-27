@@ -1,8 +1,9 @@
 import { handleChat } from '$lib/server/bots/bot';
 import { BOT, type QQMessage, type QQPayload } from '$lib/server/bots/protocol/qq';
+import type { SendTypeLink } from '$lib/server/bots/protocol/types';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ fetch, request }) => {
 	if (!BOT) {
 		return new Response('Not Found', { status: 404, headers: { 'content-type': 'text/plain' } });
 	}
@@ -48,33 +49,77 @@ export const POST: RequestHandler = async ({ request }) => {
 		let message: string | null = null;
 		let uid = payload.d.author.id;
 
+		// channel and group support different message types
+		let isChannel = false;
+
 		if (payload.t == 'C2C_MESSAGE_CREATE') {
 			message = payload.d.content;
 			mode = 'DIRECT';
+			isChannel = false;
 			replyMethod = (msg: QQMessage) =>
 				bot.replyToC2CMessage(payload.d.author.user_openid, payload.d.id, msg);
 		} else if (payload.t == 'DIRECT_MESSAGE_CREATE') {
 			message = payload.d.content;
 			mode = 'DIRECT';
+			isChannel = true;
 			replyMethod = (msg: QQMessage) =>
 				bot.replyToDirectMessage(payload.d.guild_id, payload.d.id, msg);
 		} else if (payload.t == 'GROUP_AT_MESSAGE_CREATE') {
 			message = payload.d.content;
 			mode = 'GROUP';
+			isChannel = false;
 			replyMethod = (msg: QQMessage) =>
 				bot.replyToGroupAtMessage(payload.d.group_openid, payload.d.id, msg);
 		} else if (payload.t == 'AT_MESSAGE_CREATE') {
 			message = payload.d.content;
 			mode = 'GROUP';
+			isChannel = true;
 			replyMethod = (msg: QQMessage) =>
 				bot.replyToAtMessage(payload.d.channel_id, payload.d.id, msg);
 		}
 
 		if (replyMethod && message) {
 			await handleChat(
+				fetch,
 				'qq',
 				{
-					text: (msg: string) => replyMethod(bot.makeText(msg)),
+					text: (msg) => replyMethod(bot.makeText(msg)),
+					link: (link) => {
+						if (isChannel) {
+							const msg = `${link.prefix}${link.url}`;
+							return replyMethod(bot.makeText(msg));
+						} else {
+							const lines: { text: string; link?: string }[] = msg
+								.split('\n')
+								.map((line) => ({ text: line }));
+							lines.push({ text: link.label, link: link.url });
+							return replyMethod(bot.makeArkList(msg, lines));
+						}
+					},
+					textLink: (msg, link) => {
+						if (isChannel) {
+							msg += `\n${link.prefix}${link.url}`;
+							return replyMethod(bot.makeText(msg));
+						} else {
+							const lines: { text: string; link?: string }[] = msg
+								.split('\n')
+								.map((line) => ({ text: line }));
+							lines.push({ text: link.label, link: link.url });
+							return replyMethod(bot.makeArkList(msg, lines));
+						}
+					},
+					image: (image) => replyMethod(bot.makeImage(image)),
+					textImageLink(msg, image, link) {
+						if (isChannel) {
+							msg += `\n${link.prefix}${link.url}`;
+							return replyMethod(bot.makeTextImage(msg, image));
+						} else {
+							const lines = msg.split('\n');
+							const title = lines.shift() || '';
+							const desc = lines.join(' ');
+							return replyMethod(bot.makeArkThumbnail(msg, title, desc, image, link.url));
+						}
+					},
 					custom: (body: QQMessage) => replyMethod(bot.makeCustom(body))
 				},
 				uid,
