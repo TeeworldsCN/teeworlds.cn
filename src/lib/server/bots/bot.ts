@@ -114,6 +114,11 @@ const handle = async (
 	let command = msg;
 	let args = '';
 
+	// handle at message in channel
+	if (command.startsWith('<@!')) {
+		command = command.split(' ').slice(1).join(' ');
+	}
+
 	const firstSpace = msg.indexOf(' ');
 	if (firstSpace >= 0) {
 		if (command.startsWith('/')) {
