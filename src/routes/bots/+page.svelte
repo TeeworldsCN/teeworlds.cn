@@ -64,7 +64,11 @@
 		if (msg.status == 200) {
 			const data = await msg.json();
 			if (data.content) {
-				messages.update((messages) => messages.concat([{ from: 'bot', text: data.content }]));
+				messages.update((messages) =>
+					messages.concat([
+						{ from: 'bot', text: data.content.replace(/ /g, '&nbsp;').replace(/\n/g, '\n\n') }
+					])
+				);
 			} else {
 				messages.update((messages) =>
 					messages.concat([{ from: 'bot', text: `\`\`\`\n${JSON.stringify(data)}\n\`\`\`` }])
@@ -106,9 +110,7 @@
 								class:text-white={message.from !== 'bot'}
 							>
 								{#if message.from === 'bot'}
-									{@html markdownIt().render(
-										message.text.replace(/ /g, '&nbsp;').replace(/\n/g, '\n\n')
-									)}
+									{@html markdownIt().render(message.text)}
 								{:else}
 									{message.text}
 								{/if}

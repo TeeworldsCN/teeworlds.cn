@@ -45,9 +45,16 @@ const checkMapName = (map: any, search: string) => {
 };
 
 export const handleMaps: Handler = async ({ reply, fetch, args }) => {
-	const maps: any[] = await (await fetch('/ddnet/maps?json=true')).json();
-
 	const mapName = args.trim();
+	if (!mapName) {
+		return await reply.textLink('查图请提供 <地图名>。或者使用 DDNet 工具箱', {
+			label: '🔗 排名查询工具',
+			prefix: '→ ',
+			url: 'https://teeworlds.cn/ddnet/maps'
+		});
+	}
+
+	const maps: any[] = await (await fetch('/ddnet/maps?json=true')).json();
 
 	const filteredMaps = maps.filter((map: any) => {
 		return checkMapName(map, mapName);

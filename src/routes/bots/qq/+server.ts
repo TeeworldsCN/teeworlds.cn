@@ -85,40 +85,12 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 				{
 					text: (msg) => replyMethod(bot.makeText(msg)),
 					link: (link) => {
-						if (isChannel) {
-							const msg = `${link.prefix}${link.url}`;
-							return replyMethod(bot.makeText(msg));
-						} else {
-							const lines: { text: string; link?: string }[] = msg
-								.split('\n')
-								.map((line) => ({ text: line }));
-							lines.push({ text: link.label, link: link.url });
-							return replyMethod(bot.makeArkList(msg, lines));
-						}
+						const msg = `${link.prefix}${link.url}`;
+						return replyMethod(bot.makeText(msg));
 					},
 					textLink: (msg, link) => {
-						if (isChannel) {
-							msg += `\n${link.prefix}${link.url}`;
-							return replyMethod(bot.makeText(msg));
-						} else {
-							const lines: { text: string; link?: string }[] = msg
-								.split('\n')
-								.map((line) => ({ text: line }));
-							lines.push({ text: link.label, link: link.url });
-							return replyMethod(bot.makeArkList(msg, lines));
-						}
-					},
-					image: (image) => replyMethod(bot.makeImage(image)),
-					textImageLink(msg, image, link) {
-						if (isChannel) {
-							msg += `\n${link.prefix}${link.url}`;
-							return replyMethod(bot.makeTextImage(msg, image));
-						} else {
-							const lines = msg.split('\n');
-							const title = lines.shift() || '';
-							const desc = lines.join(' ');
-							return replyMethod(bot.makeArkThumbnail(msg, title, desc, image, link.url));
-						}
+						msg += `\n${link.prefix}${link.url}`;
+						return replyMethod(bot.makeText(msg));
 					},
 					custom: (body: QQMessage) => replyMethod(bot.makeCustom(body))
 				},

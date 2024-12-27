@@ -2,7 +2,9 @@ import { getPlayer, queryPlayerPrefix } from '$lib/server/players';
 import type { Handler } from '../protocol/types';
 
 export const handlePoints: Handler = async ({ reply, args }) => {
-	if (!args) {
+	const playerName = args.trim();
+
+	if (!playerName) {
 		return await reply.textLink('查分请提供 <玩家名>。或者使用 DDNet 工具箱', {
 			label: '🔗 排名查询工具',
 			prefix: '→ ',
@@ -10,7 +12,7 @@ export const handlePoints: Handler = async ({ reply, args }) => {
 		});
 	}
 
-	const player = await getPlayer(args);
+	const player = await getPlayer(playerName);
 	if (player == null) {
 		// no valid player data. just pretend this doesn't work
 		return { ignored: true, message: '玩家信息未加载，分数功能未启用' };
