@@ -85,7 +85,7 @@ export const handleMaps: Handler = async ({ reply, fetch, args }) => {
 	}
 
 	const lines = [
-		`${targetMap.name} by ${targetMap.mapper}`,
+		`${targetMap.name} (by ${targetMap.mapper})`,
 		`[${mapType(targetMap.type)} ${numberToStars(targetMap.difficulty)}] ${targetMap.points}pts`
 	];
 

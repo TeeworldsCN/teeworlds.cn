@@ -29,15 +29,12 @@ export const handlePoints: Handler = async ({ reply, args }) => {
 		{ name: '去年获得', rank: player.yearly, fallback: '无记录' }
 	];
 
-	const maxRankLength = Math.max(...ranks.map((rank) => rank.rank.rank.toString().length));
-	const padded = (num: number) => num.toString().padStart(maxRankLength, ' ');
-
 	const lines = [
 		'TsFreddie',
 		...ranks.map((rank) => {
 			const fallback = rank.fallback;
 			if (rank.rank.rank) {
-				return `${rank.name}: ${padded(rank.rank.rank)}. ${rank.rank.points}pts`;
+				return `${rank.name}: ${rank.rank.points}pts [No.${rank.rank.rank}]`;
 			} else {
 				return `${rank.name}: ${fallback}`;
 			}

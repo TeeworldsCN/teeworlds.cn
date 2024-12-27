@@ -58,8 +58,8 @@ export const registerCustom = (body: any) => {
 
 const queue = new AsyncQueue();
 const limiter = new RateLimiter('bot', {
-	threshold: 5,
-	interval: 30,
+	threshold: 3,
+	interval: 60,
 	cooldown: 300
 });
 
