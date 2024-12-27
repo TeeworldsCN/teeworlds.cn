@@ -288,7 +288,7 @@ const binarySearchExact = (target: Uint8Array) => {
 export const getPlayer = async (name: string) => {
 	await updateData();
 	if (!buf) return null;
-	const index = binarySearchExact(
+	let index = binarySearchExact(
 		Uint8Array.prototype.slice.call(Buffer.from(name.toLowerCase(), 'utf-8'))
 	);
 	if (index < 0) return { name: null };
