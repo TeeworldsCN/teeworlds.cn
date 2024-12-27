@@ -277,7 +277,7 @@ const binarySearchExact = (target: Uint8Array) => {
 			end = mid;
 		}
 	}
-	return -1;
+	return start;
 };
 
 /**
