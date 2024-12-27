@@ -133,6 +133,12 @@ const handle = async (
 		result = await handlePoints({ uid, reply, command, args, mode, fetch });
 	} else if (command === '地图' || command === 'map' || command === 'maps') {
 		result = await handleMaps({ uid, reply, command, args, mode, fetch });
+	} else if (command === '工具箱') {
+		result = await reply.link({
+			label: '🔗 DDNet 工具箱',
+			prefix: '→ ',
+			url: 'https://teeworlds.cn/ddnet'
+		});
 	}
 	// add more commands here ^
 	else if (mode === 'DIRECT' || command === '' || command === '帮助' || command === 'help') {
