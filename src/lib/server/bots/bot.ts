@@ -115,16 +115,16 @@ const handle = async (
 	let args = '';
 
 	// handle at message in channel
-	if (command.startsWith('<@!')) {
-		command = command.split(' ').slice(1).join(' ');
+	if (msg.startsWith('<@!')) {
+		msg = msg.split(' ').slice(1).join(' ');
 	}
 
 	const firstSpace = msg.indexOf(' ');
 	if (firstSpace >= 0) {
-		if (command.startsWith('/')) {
-			command = command.slice(1, firstSpace);
+		if (msg.startsWith('/')) {
+			command = msg.slice(1, firstSpace);
 		} else {
-			command = command.slice(0, firstSpace);
+			command = msg.slice(0, firstSpace);
 		}
 		args = msg.slice(firstSpace + 1).trim();
 	}
