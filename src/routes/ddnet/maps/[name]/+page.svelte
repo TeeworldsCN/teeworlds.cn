@@ -38,24 +38,29 @@
 	<div class="text-md font-bold"><span>作者：</span><Mappers authors={mapperTransformed()} /></div>
 </div>
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
-		<h2 class="mb-3 text-xl font-bold">地图信息</h2>
-		<img
-			width="360"
-			height="225"
-			class="mb-4 rounded"
-			src={data.map.thumbnail}
-			alt="{data.map.name} thumbnail"
-		/>
-		<p title={data.map.type}>类型：{mapType(data.map.type)}</p>
-		<p>分数：{data.map.points}</p>
-		<p>难度：{numberToStars(data.map.difficulty)}</p>
+	<div class="rounded-lg bg-slate-700 p-4 shadow-md relative">
+		<div class="flex flex-col md:flex-row flex-wrap">
+			<img
+				width="360"
+				height="225"
+				class="mb-4 rounded mr-4"
+				src={data.map.thumbnail}
+				alt="{data.map.name} thumbnail"
+			/>
+			<div>
+				<h2 class="mb-3 text-xl font-bold">地图信息</h2>
+				<p title={data.map.type}>类型：{mapType(data.map.type)}</p>
+				<p>分数：{data.map.points}</p>
+				<p>难度：{numberToStars(data.map.difficulty)}</p>
+			</div>
+		</div>
 		<button
-			class="mt-2 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+			class="absolute bottom-4 right-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
 			onclick={() =>
-				(window.location.href = `https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(data.map.name)}.map`)}
-			>查看地图</button
+      (window.location.href = `https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(data.map.name)}.map`)}
 		>
+			查看地图
+		</button>
 	</div>
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="mb-3 text-xl font-bold">地图数据</h2>
@@ -97,7 +102,7 @@
 						<span>
 							{#each rank.players as player, i}
 								<PlayerLink {player} className="font-semibold">{player}</PlayerLink
-								>{#if i == rank.players.length - 2}{' & '}{:else if i < rank.players.length - 2}{', '}{/if}
+								>{#if i === rank.players.length - 2}{' & '}{:else if i < rank.players.length - 2}{', '}{/if}
 							{/each}
 						</span>
 					</li>
