@@ -117,6 +117,14 @@
 				{/if}
 			</div>
 		</div>
+		{#if data.player.data_update_time}
+			<div class="mt-2">
+				上次数据更新于 {new Date(data.player.data_update_time).toLocaleString('zh-CN', {
+					dateStyle: 'short',
+					timeStyle: 'short'
+				})}
+			</div>
+		{/if}
 	</div>
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="mb-3 text-xl font-bold">玩家数据</h2>

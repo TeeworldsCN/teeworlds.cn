@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { decodeAsciiURIComponent } from '$lib/link';
 import type { MapList } from '../../maps/+server';
+import { getDataUpdateTime, updateData } from '$lib/server/players';
 
 interface PlayerRank {
 	points?: number;
@@ -80,6 +81,7 @@ export const load: PageServerLoad = async ({ fetch, params, parent }) => {
 		hours_played_past_365_days: number;
 		pending_points?: number;
 		pending_unknown?: boolean;
+		data_update_time?: number;
 	};
 
 	const mapsResponse = await fetch(`/ddnet/maps?json=true`);
@@ -119,10 +121,13 @@ export const load: PageServerLoad = async ({ fetch, params, parent }) => {
 		}
 
 		const lastFinish = player.last_finishes[player.last_finishes.length - 1];
-		if (lastFinish && (Date.now() / 1000) - lastFinish.timestamp < 24 * 60 * 60) {
+		if (lastFinish && Date.now() / 1000 - lastFinish.timestamp < 24 * 60 * 60) {
 			player.pending_unknown = true;
 		}
 	}
+
+	await updateData();
+	player.data_update_time = getDataUpdateTime();
 
 	return { player, ...(await parent()) };
 };

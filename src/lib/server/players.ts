@@ -12,7 +12,7 @@ let lastUpdate = 0;
 let buf: Buffer | null = null;
 let prefixCache: { [key: string]: { name: string; points: number }[] } = {};
 let numItems = -1;
-let loadCallback: (() => void)[] | null = null;
+let loadCallbacks: (() => void)[] | null = null;
 let lastCheck = 0;
 
 export const readUInt32VarInt = (buf: Buffer, offset: number) => {
@@ -35,15 +35,15 @@ export const updateData = async () => {
 		}
 
 		// if it is currently loading, wait for it to finish
-		if (loadCallback) {
-			const lcbs = loadCallback;
+		if (loadCallbacks) {
+			const lcbs = loadCallbacks;
 			return new Promise<void>((resolve) => {
 				lcbs.push(resolve);
 			});
 		}
 
 		// start loading
-		loadCallback = [];
+		loadCallbacks = [];
 		lastCheck = Date.now();
 		const file = await open(FILE_PATH, 'r');
 		const fileModifiedTime = (await file.stat()).mtimeMs;
@@ -87,11 +87,21 @@ export const updateData = async () => {
 			}
 			prefixCache[prefix] = top10;
 		}
-		loadCallback = null;
+
+		for (const cb of loadCallbacks) {
+			cb();
+		}
+
+		lastUpdate = fileModifiedTime;
+		loadCallbacks = null;
 	} catch (_) {
 		buf = null;
 		return;
 	}
+};
+
+export const getDataUpdateTime = () => {
+	return lastUpdate;
 };
 
 const getNameBuffer = (index: number) => {
