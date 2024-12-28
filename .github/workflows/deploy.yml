@@ -23,7 +23,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build with Vite
-        run: bun run vite build
+        run: bun --bun run vite build
 
       - name: Move scripts to build folder
         run: |
