@@ -5,21 +5,7 @@
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 	import { encodeAsciiURIComponent } from '$lib/link';
-
-	type MapList = {
-		name: string;
-		website: string;
-		thumbnail: string;
-		web_preview: string;
-		type: string;
-		points: number;
-		difficulty: number;
-		mapper: string;
-		release: string;
-		width: number;
-		height: number;
-		tiles: string[];
-	}[];
+	import type { MapList } from './+server';
 
 	let maps: MapList = $state([]);
 	let error = $state('');
@@ -154,7 +140,7 @@
 	onMount(async () => {
 		processHashQuery(page.url.hash);
 		try {
-			maps = await (await fetch('/ddnet/maps/?json=true')).json();
+			maps = await (await fetch('/ddnet/maps?json=true')).json();
 		} catch (e: any) {
 			error = e.message;
 		}

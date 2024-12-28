@@ -10,6 +10,8 @@
 
 	let { data } = $props();
 
+	let explaination = $state(false);
+
 	afterNavigate(() => {
 		share({
 			icon: `${window.location.origin}/shareicon.png`,
@@ -42,6 +44,20 @@
 				flag={data.player.favorite_server.server}
 				title="常玩地区：{data.player.favorite_server.server}"
 			/>
+			{#if data.player.pending_points}
+				<button
+					class="cursor-pointer text-sm font-semibold text-blue-300 hover:text-blue-400"
+					onclick={() => {
+						explaination = !explaination;
+					}}>ⓘ 分数不对？</button
+				>
+			{/if}
+			{#if explaination}
+				<span
+					class="block rounded-lg bg-slate-600 px-3 py-1 text-sm font-normal shadow-md md:float-right md:inline-block"
+					>分数统计每日定期结算，若有未结算的分数请明天再查看。</span
+				>
+			{/if}
 		</h2>
 
 		<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
@@ -54,7 +70,11 @@
 					<h3 class="mb-1 text-base font-bold">{rank.name}</h3>
 					{#if rank.rank.rank}
 						<p class="text-md">
-							<span class="text-sm">No.</span>{rank.rank.rank} - {rank.rank.points}pts
+							<span class="text-sm">No.</span>{rank.rank.rank} - {rank.rank
+								.points}pts{#if rank.rank.pending}<span
+									class="cursor-pointer font-semibold text-blue-300 hover:text-blue-400"
+									title="有{rank.rank.pending}分尚未结算">{' '}+{rank.rank.pending}</span
+								>{/if}
 						</p>
 					{:else}
 						<p class="text-md">未获得</p>
@@ -77,7 +97,10 @@
 				{/each}
 			</div>
 
-			<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
+			<div
+				class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3"
+				class:opacity-50={!data.player.favorite_partners.length}
+			>
 				<h3 class="mb-1 text-base font-bold">👍 常玩队友</h3>
 				{#each data.player.favorite_partners as partner}
 					<p class="text-md">
@@ -85,6 +108,9 @@
 						组队 {partner.finishes} 次
 					</p>
 				{/each}
+				{#if !data.player.favorite_partners.length}
+					<p class="text-md">暂无团队记录</p>
+				{/if}
 			</div>
 		</div>
 	</div>
