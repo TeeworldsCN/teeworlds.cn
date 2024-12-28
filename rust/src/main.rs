@@ -83,7 +83,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if up_to_date && !force_gen {
-        println!("Player list is up to date");
         return Ok(());
     }
 
@@ -300,8 +299,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     writer.write_all(&version.to_le_bytes())?; // 0
     writer.write_all(&total_points.unwrap().to_le_bytes())?; // 4
     writer.write_all(&num_ranks.to_le_bytes())?; // 8
-    // 12 - cache_pointer
-    // 16 - data start
+                                                 // 12 - cache_pointer
+                                                 // 16 - data start
 
     writer.seek(std::io::SeekFrom::Start(
         u64::from(num_ranks) * size_of::<u32>() as u64 + 5 * size_of::<u32>() as u64,
