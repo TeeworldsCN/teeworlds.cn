@@ -58,18 +58,9 @@ export const load: PageLoad = async ({ data, parent }) => {
 		{ name: '🌎 总通过分', rank: { ...player.points, pending: player.pending_points } },
 		{ name: '👥 团队排位分', rank: player.team_rank },
 		{ name: '👤 个人排位分', rank: player.rank },
-		{
-			name: '📅 获得通过分 (近365天)',
-			rank: { ...player.points_last_year, pending: player.pending_points }
-		},
-		{
-			name: '📅 获得通过分 (近30天)',
-			rank: { ...player.points_last_month, pending: player.pending_points }
-		},
-		{
-			name: '📅 获得通过分 (近7天)',
-			rank: { ...player.points_last_week, pending: player.pending_points }
-		}
+		{ name: '📅 获得通过分 (近365天)', rank: player.points_last_year },
+		{ name: '📅 获得通过分 (近30天)', rank: player.points_last_month },
+		{ name: '📅 获得通过分 (近7天)', rank: player.points_last_week }
 	];
 
 	return {

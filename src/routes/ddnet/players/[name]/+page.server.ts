@@ -79,6 +79,7 @@ export const load: PageServerLoad = async ({ fetch, params, parent }) => {
 		}[];
 		hours_played_past_365_days: number;
 		pending_points?: number;
+		pending_unknown?: boolean;
 	};
 
 	const mapsResponse = await fetch(`/ddnet/maps?json=true`);
@@ -115,6 +116,11 @@ export const load: PageServerLoad = async ({ fetch, params, parent }) => {
 				player.pending_points = (player.pending_points || 0) + points;
 				type.pending_points = (type.pending_points || 0) + points;
 			}
+		}
+
+		const lastFinish = player.last_finishes[player.last_finishes.length - 1];
+		if (lastFinish && (Date.now() / 1000) - lastFinish.timestamp < 24 * 60 * 60) {
+			player.pending_unknown = true;
 		}
 	}
 

@@ -44,12 +44,14 @@
 				flag={data.player.favorite_server.server}
 				title="常玩地区：{data.player.favorite_server.server}"
 			/>
-			<button
-				class="cursor-pointer text-sm font-semibold text-blue-300 hover:text-blue-400"
-				onclick={() => {
-					explaination = !explaination;
-				}}>ⓘ 数据不对？</button
-			>
+			{#if data.player.pending_unknown || data.player.pending_points}
+				<button
+					class="cursor-pointer text-sm font-semibold text-blue-300 hover:text-blue-400"
+					onclick={() => {
+						explaination = !explaination;
+					}}>ⓘ 数据不对？</button
+				>
+			{/if}
 			{#if explaination}
 				<span
 					class="mt-2 block rounded-lg bg-slate-800 px-3 py-1 text-sm font-normal shadow-md md:float-right md:mt-0 md:inline-block"
@@ -59,7 +61,7 @@
 		</h2>
 
 		<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-			{#each data.ranks as rank}
+			{#each data.ranks as rank, i}
 				<div
 					class="rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3 {rank.rank.rank
 						? ''
@@ -69,10 +71,13 @@
 					{#if rank.rank.rank}
 						<p class="text-md">
 							<span class="text-sm">No.</span>{rank.rank.rank} - {rank.rank
-								.points}pts{#if rank.rank.pending}<span
+								.points}pts{#if i == 0 && (rank.rank.pending || data.player.pending_unknown)}<span
 									class="cursor-pointer font-semibold text-blue-300 hover:text-blue-400"
-									title="根据最近过图记录，有{rank.rank.pending}分尚未结算"
-									>{' '}+{rank.rank.pending}</span
+									title="根据最近过图记录，有{data.player.pending_unknown ? '至少' : ''}{rank.rank
+										.pending || '?'}分尚未结算。{data.player.pending_unknown
+										? '今日过图超过10次，数据可能不准确，请以明日结算结果为准。'
+										: ''}"
+									>{' '}+{rank.rank.pending}{#if data.player.pending_unknown}?{/if}</span
 								>{/if}
 						</p>
 					{:else}
