@@ -56,11 +56,11 @@ export const registerCustom = (body: any) => {
 };
 
 const queue = new AsyncQueue();
-const limiter = new RateLimiter('bot', {
-	threshold: 3,
-	interval: 60,
-	cooldown: 300
-});
+// const limiter = new RateLimiter('bot', {
+// 	threshold: 3,
+// 	interval: 60,
+// 	cooldown: 300
+// });
 
 const handle = async (
 	fetch: typeof global.fetch,
@@ -74,16 +74,18 @@ const handle = async (
 	// TODO: don't need to trigger rate limit if the command does not exist
 	// consider move this after we implemented a better command parser
 	// rate limit in group mode
-	if (mode == 'GROUP') {
-		const { limited, triggered } = await limiter.isLimited(user);
-		if (triggered) {
-			return await reply.text('您操作太频繁了！请等5分钟后再试。大量查询请使用 DDNet 工具箱。');
-		}
+	// if (mode == 'GROUP') {
+	// 	const { limited, triggered } = await limiter.isLimited(user);
+	// 	if (triggered) {
+	// 		return await reply.text(
+	// 			'您操作太频繁了！请5分钟后再试。大量查询请用工具箱：https://teeworlds.cn/ddnet'
+	// 		);
+	// 	}
 
-		if (limited) {
-			return { ignored: true, message: 'rate limited' };
-		}
-	}
+	// 	if (limited) {
+	// 		return { ignored: true, message: 'rate limited' };
+	// 	}
+	// }
 
 	const uid = `${platform}:${user}`;
 	const transaction: Transaction = {
