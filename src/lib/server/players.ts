@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 
 const FILE_PATH = resolve('./cache', 'points_ranks_by_name.bin');
 const EXPECTED_VERSION = 1;
+const HEADER_SIZE = 16;
 
 let lastUpdate = 0;
 let buf: Buffer | null = null;
@@ -68,9 +69,9 @@ export const updateData = async () => {
 		const cachePointer = buf.readUInt32LE(12);
 
 		prefixCache = {};
-		const numCacheItems = buf.readUInt32LE(cachePointer);
+		const top10Length = buf.readUInt32LE(cachePointer);
 		let position = cachePointer + 4;
-		for (let i = 0; i < numCacheItems; i++) {
+		for (let i = 0; i < top10Length; i++) {
 			const prefixLen = buf.readUInt8(position++);
 			const prefix = buf.toString('utf8', position, position + prefixLen);
 			position += prefixLen;
@@ -96,7 +97,7 @@ export const updateData = async () => {
 const getNameBuffer = (index: number) => {
 	if (!buf) throw new Error('Can not get name buffer, data is not loaded');
 
-	const pointer = buf.readUInt32LE(16 + index * 4);
+	const pointer = buf.readUInt32LE(HEADER_SIZE + index * 4);
 	const nameLen = buf.readUInt8(pointer);
 	const nameStart = pointer + 1;
 	const name = buf.toString('utf8', nameStart, nameStart + nameLen);
@@ -108,7 +109,7 @@ const getNameBuffer = (index: number) => {
 const readItem = (index: number) => {
 	if (!buf) throw new Error('Can not get name buffer, data is not loaded');
 
-	const pointer = buf.readUInt32LE(16 + index * 4);
+	const pointer = buf.readUInt32LE(HEADER_SIZE + index * 4);
 	const nameLen = buf.readUInt8(pointer);
 	const nameStart = pointer + 1;
 	const pointsStart = nameStart + nameLen;
@@ -208,7 +209,7 @@ const readItem = (index: number) => {
 const readItemPointsOnly = (index: number) => {
 	if (!buf) throw new Error('Can not get name buffer, data is not loaded');
 
-	const pointer = buf.readUInt32LE(16 + index * 4);
+	const pointer = buf.readUInt32LE(HEADER_SIZE + index * 4);
 	const nameLen = buf.readUInt8(pointer);
 	const nameStart = pointer + 1;
 	const nameEnd = nameStart + nameLen;
@@ -221,7 +222,7 @@ const binarySearchRange = (target: Uint8Array) => {
 	let start = 0;
 	let end = numItems;
 	while (start < end) {
-		const mid = Math.floor((start + end) / 2);
+		const mid = start + Math.floor((end - start) / 2);
 		const name = getNameBuffer(mid);
 		if (name.compare(target) < 0) {
 			start = mid + 1;
@@ -247,7 +248,7 @@ const binarySearchRange = (target: Uint8Array) => {
 	}
 
 	while (start < end) {
-		const mid = Math.floor((start + end) / 2);
+		const mid = start + Math.floor((end - start) / 2);
 		const name = getNameBuffer(mid);
 		if (name.compare(endTarget) >= 0) {
 			end = mid;
@@ -268,7 +269,7 @@ const binarySearchExact = (target: Uint8Array) => {
 	let start = 0;
 	let end = numItems;
 	while (start < end) {
-		const mid = Math.floor((start + end) / 2);
+		const mid = start + Math.floor((end - start) / 2);
 		const name = getNameBuffer(mid);
 		const compare = name.compare(target);
 		if (compare < 0) {

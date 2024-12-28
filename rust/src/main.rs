@@ -283,7 +283,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // lowercase all names
     let mut data: Vec<(String, String, PlayerInfo)> = players
         .into_iter()
-        .map(|(name, info)| (name.to_ascii_lowercase(), name, info))
+        .map(|(name, info)| (name.to_lowercase(), name, info))
         .collect();
 
     // sort by lowercase name
@@ -296,12 +296,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let num_ranks = data.len() as u32;
 
     let version: u32 = 1;
-    writer.write_all(&version.to_le_bytes())?;
-    writer.write_all(&total_points.unwrap().to_le_bytes())?;
-    writer.write_all(&num_ranks.to_le_bytes())?;
+
+    writer.write_all(&version.to_le_bytes())?; // 0
+    writer.write_all(&total_points.unwrap().to_le_bytes())?; // 4
+    writer.write_all(&num_ranks.to_le_bytes())?; // 8
+    // 12 - cache_pointer
+    // 16 - data start
 
     writer.seek(std::io::SeekFrom::Start(
-        u64::from(num_ranks) * size_of::<u32>() as u64 + 4 * size_of::<u32>() as u64,
+        u64::from(num_ranks) * size_of::<u32>() as u64 + 5 * size_of::<u32>() as u64,
     ))?;
 
     // precalculate top10 for prefixes with more than 10000 entries
@@ -486,8 +489,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // write pointers
     writer.seek(std::io::SeekFrom::Start(3 * size_of::<u32>() as u64))?;
-    writer.write_all(&cache_pointer.to_le_bytes())?;
-    writer.write_all(&top10.len().to_le_bytes())?;
+    writer.write_all(&u32::try_from(cache_pointer)?.to_le_bytes())?; // 12
     for pointer in pointers {
         writer.write_all(&pointer.to_le_bytes())?;
     }
