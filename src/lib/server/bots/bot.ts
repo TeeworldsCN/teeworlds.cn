@@ -139,9 +139,10 @@ const handle = async (
 		result = await handlePoints(handlerArgs);
 	} else if (command === '地图' || command === 'map' || command === 'maps') {
 		result = await handleMaps(handlerArgs);
-	} else if (command === '绑定' || command === 'bind') {
-		result = await handleBind(handlerArgs);
 	}
+	// else if (command === '绑定' || command === 'bind') {
+	// 	result = await handleBind(handlerArgs);
+	// }
 	// add more commands here ^
 	else if (command === '工具箱') {
 		result = await reply.link({
@@ -156,7 +157,7 @@ const handle = async (
 				'目前豆豆可以提供以下查询功能：',
 				'  /分数 <玩家名> - 查询分数',
 				'  /地图 <地图名> - 查询地图',
-				'  /绑定 <玩家名> - 绑定玩家名',
+				// '  /绑定 <玩家名> - 绑定玩家名',
 				'更多功能请使用工具箱'
 			].join('\n'),
 			{
