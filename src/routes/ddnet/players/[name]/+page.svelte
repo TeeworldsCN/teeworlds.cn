@@ -52,8 +52,8 @@
 			>
 			{#if explaination}
 				<span
-					class="block rounded-lg bg-slate-600 px-3 py-1 text-sm font-normal shadow-md md:float-right md:inline-block"
-					>分数统计有一天的延迟，部分数据可能需要48小时后才会出现</span
+					class="mt-2 block rounded-lg bg-slate-800 px-3 py-1 text-sm font-normal shadow-md md:float-right md:mt-0 md:inline-block"
+					>分数统计结算有一天的延迟，部分数据可能需要48小时后才会出现</span
 				>
 			{/if}
 		</h2>
@@ -71,7 +71,8 @@
 							<span class="text-sm">No.</span>{rank.rank.rank} - {rank.rank
 								.points}pts{#if rank.rank.pending}<span
 									class="cursor-pointer font-semibold text-blue-300 hover:text-blue-400"
-									title="有{rank.rank.pending}分尚未结算">{' '}+{rank.rank.pending}</span
+									title="根据最近过图记录，有{rank.rank.pending}分尚未结算"
+									>{' '}+{rank.rank.pending}</span
 								>{/if}
 						</p>
 					{:else}
