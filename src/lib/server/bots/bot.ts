@@ -78,7 +78,7 @@ const handle = async (
 	// 	const { limited, triggered } = await limiter.isLimited(user);
 	// 	if (triggered) {
 	// 		return await reply.text(
-	// 			'您操作太频繁了！请5分钟后再试。大量查询请用工具箱：https://teeworlds.cn/ddnet'
+	// 			'您操作太频繁了！请5分钟后再试。需要大量查询请私聊豆豆。\n或直接用工具箱查询：https://teeworlds.cn/ddnet'
 	// 		);
 	// 	}
 
