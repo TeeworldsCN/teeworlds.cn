@@ -8,7 +8,6 @@ export type DbClose = () => void;
 
 export type KeyvSqliteOptions = {
 	dialect?: 'sqlite';
-	uri?: string;
 	table?: string;
 	keySize?: number;
 	db?: string;

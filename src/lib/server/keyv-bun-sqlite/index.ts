@@ -19,11 +19,11 @@ export class KeyvSqlite extends EventEmitter implements KeyvStoreAdapter {
 		this.ttlSupport = false;
 		let options: KeyvSqliteOptions = {
 			dialect: 'sqlite',
-			uri: 'sqlite://:memory:'
+			db: ':memory:'
 		};
 
 		if (typeof keyvOptions === 'string') {
-			options.uri = keyvOptions;
+			options.db = keyvOptions;
 		} else {
 			options = {
 				...options,
@@ -31,10 +31,9 @@ export class KeyvSqlite extends EventEmitter implements KeyvStoreAdapter {
 			};
 		}
 
-		options.db = options.uri!.replace(/^sqlite:\/\//, '');
-
 		options.connect = () => {
 			const database = new sqlite3.Database(options.db!);
+			database.exec('PRAGMA journal_mode = WAL;');
 			return {
 				query: (sqlString, ...parameter) => database.query(sqlString).all(...parameter),
 				close: database.close

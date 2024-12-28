@@ -15,13 +15,15 @@ if (env.VALKEY) {
 
 export const volatile = new Keyv(volatileStore);
 
-// let sqliteStore: KeyvSqlite | undefined = undefined;
+let sqliteStore: KeyvSqlite | undefined = undefined;
 
-// if (!building) {
-// 	const sqlitePath = env.SQLITE_PATH || 'sqlite://./cache/sqlite.db';
-// 	console.log(`keyv: persistent using sqlite ${sqlitePath}`);
-// } else {
-// 	console.log(`keyv: persistent using memory, should only happen in build time`);
-// }
+if (!building) {
+	const sqlitePath = env.SQLITE_PATH || './cache/sqlite.db';
 
-// export const persistent = new Keyv(sqliteStore);
+	sqliteStore = new KeyvSqlite(sqlitePath);
+	console.log(`keyv: persistent using sqlite ${sqlitePath}`);
+} else {
+	console.log(`keyv: persistent using memory, should only happen in build time`);
+}
+
+export const persistent = new Keyv(sqliteStore);

@@ -139,10 +139,9 @@ const handle = async (
 		result = await handlePoints(handlerArgs);
 	} else if (command === '地图' || command === 'map' || command === 'maps') {
 		result = await handleMaps(handlerArgs);
+	} else if (command === '绑定' || command === 'bind') {
+		result = await handleBind(handlerArgs);
 	}
-	// else if (command === '绑定' || command === 'bind') {
-	// 	result = await handleBind(handlerArgs);
-	// }
 	// add more commands here ^
 	else if (command === '工具箱') {
 		result = await reply.link({
