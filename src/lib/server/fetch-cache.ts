@@ -1,8 +1,5 @@
 import { volatile } from './keyv';
 
-const defaultJSONTransformer = (response: Response) => response.json();
-const defaultTextTransformer = (response: Response) => response.text();
-
 interface FetchCacheOptions {
 	/** how often can the cache be checked for updates. default to 60 seconds */
 	minQueryInterval?: number;
@@ -17,16 +14,18 @@ type CachedData = {
 	data: any;
 };
 
-export class FetchCache {
+export class FetchCache<T> {
 	private url: string;
 	private nextQueryTime = 0;
 	private minQueryInterval = 60;
 	private skipHead = false;
 	private alwaysFetch = false;
-	private transformer: (response: Response) => Promise<any> | any;
+	private transformer: (response: Response) => Promise<T> | T;
+	private callbacks: ((result: string) => void)[] | null = null;
 
 	/**
 	 * Cache a GET request, and automatically update if etag or last-modified is outdated.
+	 * The transformer should only return a plain object. Can not be a string.
 	 *
 	 * @param url the url to fetch
 	 * @param transformer post process the response, can be a function or one of 'json', 'text', 'arrayBuffer'
@@ -34,7 +33,7 @@ export class FetchCache {
 	 */
 	constructor(
 		url: string,
-		transformer: ((response: Response) => Promise<any> | any) | 'json' | 'text',
+		transformer: (response: Response) => Promise<T> | T,
 		options?: FetchCacheOptions
 	) {
 		if (options) {
@@ -48,26 +47,21 @@ export class FetchCache {
 		}
 
 		this.url = url;
-
-		if (typeof transformer === 'function') {
-			this.transformer = transformer;
-		} else {
-			switch (transformer) {
-				case 'json':
-					this.transformer = defaultJSONTransformer;
-					break;
-				case 'text':
-					this.transformer = defaultTextTransformer;
-					break;
-				default:
-					throw new Error('Invalid transformer');
-			}
-		}
+		this.transformer = transformer;
 	}
 
-	async fetch(thisFetch: typeof global.fetch = fetch) {
+	async fetchAsString(): Promise<string>;
+	async fetchAsString(
+		thisFetch: typeof global.fetch,
+		keepObject: true
+	): Promise<string | { data: T }>;
+	async fetchAsString(thisFetch: typeof global.fetch): Promise<string>;
+	async fetchAsString(
+		thisFetch: typeof global.fetch = fetch,
+		keepObject: boolean = false
+	): Promise<string | { data: T }> {
 		const now = Date.now();
-		const key = `ddnet:cache:${this.url}`;
+		const key = `dd:cache:${this.url}`;
 		const cache = await volatile.get<CachedData>(key);
 
 		// if the cache is not found, it is always outdated
@@ -106,6 +100,21 @@ export class FetchCache {
 
 		// if the cache is outdated, fetch the file again
 		if (outdated) {
+			if (this.callbacks) {
+				const lcbs = this.callbacks;
+				return new Promise<string>((resolve) =>
+					lcbs.push((result) => {
+						if (keepObject) {
+							resolve(JSON.parse(result));
+						} else {
+							resolve(result);
+						}
+					})
+				);
+			}
+
+			this.callbacks = [];
+
 			const abort = new AbortController();
 			const result = await thisFetch(this.url, { signal: abort.signal });
 
@@ -116,14 +125,25 @@ export class FetchCache {
 					abort.abort();
 					return cache.data;
 				}
+
 				data = await this.transformer(result);
+				let stringData;
 
 				if (tag) {
 					// only cache if the tag is valid
-					await volatile.set<CachedData>(key, { tag, data });
+					stringData = JSON.stringify(data);
+					await volatile.set<CachedData>(key, { tag, data: stringData });
 					this.nextQueryTime = now + this.minQueryInterval * 1000;
 				}
-				return data;
+
+				for (const cb of this.callbacks) {
+					cb(stringData ?? JSON.stringify(data));
+				}
+
+				if (keepObject) {
+					return { data };
+				}
+				return stringData ?? JSON.stringify(data);
 			}
 		}
 
@@ -138,5 +158,14 @@ export class FetchCache {
 		} else {
 			throw new Error('Failed to fetch data: Unknown error');
 		}
+	}
+
+	async fetch(thisFetch: typeof global.fetch = fetch): Promise<T> {
+		const result = await this.fetchAsString(thisFetch, true);
+		if (typeof result === 'string') {
+			return JSON.parse(result);
+		}
+		const { data } = result;
+		return data;
 	}
 }

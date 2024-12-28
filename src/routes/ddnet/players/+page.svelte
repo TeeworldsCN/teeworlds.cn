@@ -191,3 +191,12 @@
 		</div>
 	{/each}
 </div>
+
+<div class="mt-2">
+	{#if data.update_time}
+		上次数据更新于 {new Date(data.update_time * 1000).toLocaleString('zh-CN', {
+			dateStyle: 'short',
+			timeStyle: 'short'
+		})}
+	{/if}
+</div>

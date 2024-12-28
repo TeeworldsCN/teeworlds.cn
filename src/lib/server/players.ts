@@ -91,17 +91,13 @@ export const updateData = async () => {
 		for (const cb of loadCallbacks) {
 			cb();
 		}
-
 		lastUpdate = fileModifiedTime;
 		loadCallbacks = null;
 	} catch (_) {
 		buf = null;
+		loadCallbacks = null;
 		return;
 	}
-};
-
-export const getDataUpdateTime = () => {
-	return lastUpdate;
 };
 
 const getNameBuffer = (index: number) => {

@@ -119,7 +119,7 @@
 		</div>
 		{#if data.player.data_update_time}
 			<div class="mt-2">
-				上次数据更新于 {new Date(data.player.data_update_time).toLocaleString('zh-CN', {
+				上次数据更新于 {new Date(data.player.data_update_time * 1000).toLocaleString('zh-CN', {
 					dateStyle: 'short',
 					timeStyle: 'short'
 				})}

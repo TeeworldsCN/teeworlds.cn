@@ -1,8 +1,8 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { decodeAsciiURIComponent } from '$lib/link';
-import type { MapList } from '../../maps/+server';
-import { getDataUpdateTime, updateData } from '$lib/server/players';
+import { ranks } from '$lib/server/fetches/ranks';
+import type { MapList } from '$lib/server/fetches/maps';
 
 interface PlayerRank {
 	points?: number;
@@ -126,8 +126,7 @@ export const load: PageServerLoad = async ({ fetch, params, parent }) => {
 		}
 	}
 
-	await updateData();
-	player.data_update_time = getDataUpdateTime();
-
+	// always check the rank page for update time
+	player.data_update_time = (await ranks.fetch()).update_time;
 	return { player, ...(await parent()) };
 };
