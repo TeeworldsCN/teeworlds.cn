@@ -49,27 +49,36 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 		let message: string | null = null;
 		let uid = payload.d.author.id;
 
+		// group message always at the caller. so adding a newline looks nicer
+		let onNewline = false;
+
 		if (payload.t == 'C2C_MESSAGE_CREATE') {
+			onNewline = false;
 			message = payload.d.content;
 			mode = 'DIRECT';
 			replyMethod = (msg: QQMessage) =>
 				bot.replyToC2CMessage(payload.d.author.user_openid, payload.d.id, msg);
 		} else if (payload.t == 'DIRECT_MESSAGE_CREATE') {
+			onNewline = false;
 			message = payload.d.content;
 			mode = 'DIRECT';
 			replyMethod = (msg: QQMessage) =>
 				bot.replyToDirectMessage(payload.d.guild_id, payload.d.id, msg);
 		} else if (payload.t == 'GROUP_AT_MESSAGE_CREATE') {
+			onNewline = true;
 			message = payload.d.content;
 			mode = 'GROUP';
 			replyMethod = (msg: QQMessage) =>
 				bot.replyToGroupAtMessage(payload.d.group_openid, payload.d.id, msg);
 		} else if (payload.t == 'AT_MESSAGE_CREATE') {
+			onNewline = false;
 			message = payload.d.content;
 			mode = 'GROUP';
 			replyMethod = (msg: QQMessage) =>
 				bot.replyToAtMessage(payload.d.channel_id, payload.d.id, msg);
 		}
+
+		const wrapNewline = (msg: string) => (onNewline ? '\n' + msg : msg);
 
 		if (replyMethod && message) {
 			// don't await. give a success response asap
@@ -77,14 +86,14 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 				fetch,
 				'qq',
 				{
-					text: (msg) => replyMethod(bot.makeText(msg)),
+					text: (msg) => replyMethod(bot.makeText(wrapNewline(msg))),
 					link: (link) => {
 						const msg = `${link.prefix}${link.url}`;
-						return replyMethod(bot.makeText(msg));
+						return replyMethod(bot.makeText(wrapNewline(msg)));
 					},
 					textLink: (msg, link) => {
 						msg += `\n${link.prefix}${link.url}`;
-						return replyMethod(bot.makeText(msg));
+						return replyMethod(bot.makeText(wrapNewline(msg)));
 					},
 					custom: (body: QQMessage) => replyMethod(bot.makeCustom(body))
 				},
