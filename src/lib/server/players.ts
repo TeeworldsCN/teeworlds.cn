@@ -28,76 +28,85 @@ export const readUInt32VarInt = (buf: Buffer, offset: number) => {
 };
 
 export const updateData = async () => {
-	try {
-		// do now reload if it's less than 60s since last check
-		if (buf && Date.now() - lastCheck < 60000) {
-			return;
-		}
+	// if it is currently loading, wait for it to finish
+	if (loadCallbacks) {
+		const lcbs = loadCallbacks;
+		return new Promise<void>((resolve) => {
+			lcbs.push(resolve);
+		});
+	}
 
-		// if it is currently loading, wait for it to finish
-		if (loadCallbacks) {
-			const lcbs = loadCallbacks;
-			return new Promise<void>((resolve) => {
-				lcbs.push(resolve);
-			});
-		}
-
-		// start loading
-		loadCallbacks = [];
-		lastCheck = Date.now();
-		const file = await open(FILE_PATH, 'r');
-		const fileModifiedTime = (await file.stat()).mtimeMs;
-		if (buf && fileModifiedTime == lastUpdate) {
-			// no need to update
-			return;
-		}
-
-		let newBuf: Buffer = await readFile(file);
-		await file.close();
-		if (newBuf.length < 16) {
-			return;
-		}
-
-		const version = newBuf.readUInt32LE(0);
-		if (version != EXPECTED_VERSION) {
-			return;
-		}
-
-		buf = newBuf;
-		const _unused_totalPoints = buf.readInt32LE(4);
-		numItems = buf.readUInt32LE(8);
-		const cachePointer = buf.readUInt32LE(12);
-
-		prefixCache = {};
-		const top10Length = buf.readUInt32LE(cachePointer);
-		let position = cachePointer + 4;
-		for (let i = 0; i < top10Length; i++) {
-			const prefixLen = buf.readUInt8(position++);
-			const prefix = buf.toString('utf8', position, position + prefixLen);
-			position += prefixLen;
-			const count = buf.readUInt8(position++);
-			const top10: { name: string; points: number }[] = [];
-			for (let j = 0; j < count; j++) {
-				const nameLen = buf.readUInt8(position++);
-				const name = buf.toString('utf8', position, position + nameLen);
-				position += nameLen;
-				const { value, offset } = readUInt32VarInt(buf, position);
-				position = offset;
-				top10.push({ name, points: value });
-			}
-			prefixCache[prefix] = top10;
-		}
-
-		for (const cb of loadCallbacks) {
-			cb();
-		}
-		lastUpdate = fileModifiedTime;
-		loadCallbacks = null;
-	} catch (_) {
-		buf = null;
-		loadCallbacks = null;
+	// do now reload if it's less than 60s since last check
+	if (buf && Date.now() - lastCheck < 60000) {
 		return;
 	}
+
+	// start loading
+	loadCallbacks = [];
+
+	await (async () => {
+		try {
+			lastCheck = Date.now();
+			const file = await open(FILE_PATH, 'r');
+
+			const fileModifiedTime = (await file.stat()).mtimeMs;
+
+			if (buf && fileModifiedTime == lastUpdate) {
+				await file.close();
+				return;
+			}
+
+			let newBuf: Buffer = await readFile(file);
+			await file.close();
+
+			if (newBuf.length < 16) {
+				return;
+			}
+
+			const version = newBuf.readUInt32LE(0);
+			if (version != EXPECTED_VERSION) {
+				return;
+			}
+
+			const _unused_totalPoints = newBuf.readInt32LE(4);
+			const newNumItems = newBuf.readUInt32LE(8);
+			const cachePointer = newBuf.readUInt32LE(12);
+
+			const newPrefixCache: typeof prefixCache = {};
+			const top10Length = newBuf.readUInt32LE(cachePointer);
+			let position = cachePointer + 4;
+			for (let i = 0; i < top10Length; i++) {
+				const prefixLen = newBuf.readUInt8(position++);
+				const prefix = newBuf.toString('utf8', position, position + prefixLen);
+				position += prefixLen;
+				const count = newBuf.readUInt8(position++);
+				const top10: { name: string; points: number }[] = [];
+				for (let j = 0; j < count; j++) {
+					const nameLen = newBuf.readUInt8(position++);
+					const name = newBuf.toString('utf8', position, position + nameLen);
+					position += nameLen;
+					const { value, offset } = readUInt32VarInt(newBuf, position);
+					position = offset;
+					top10.push({ name, points: value });
+				}
+				newPrefixCache[prefix] = top10;
+			}
+
+			prefixCache = newPrefixCache;
+			numItems = newNumItems;
+			buf = newBuf;
+			lastUpdate = fileModifiedTime;
+		} catch (e) {
+			console.error('Failed to load player cache');
+			console.error(e);
+			return;
+		}
+	})();
+
+	for (const cb of loadCallbacks) {
+		cb();
+	}
+	loadCallbacks = null;
 };
 
 const getNameBuffer = (index: number) => {
