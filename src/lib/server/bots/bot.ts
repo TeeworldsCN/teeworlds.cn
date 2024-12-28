@@ -121,12 +121,12 @@ const handle = async (
 
 	const firstSpace = msg.indexOf(' ');
 	if (firstSpace >= 0) {
-		if (msg.startsWith('/')) {
-			command = msg.slice(1, firstSpace);
-		} else {
-			command = msg.slice(0, firstSpace);
-		}
+		command = msg.slice(0, firstSpace);
 		args = msg.slice(firstSpace + 1).trim();
+	}
+
+	if (command.startsWith('/')) {
+		command = command.slice(1);
 	}
 
 	let result = null;
