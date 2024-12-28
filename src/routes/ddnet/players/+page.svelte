@@ -4,7 +4,7 @@
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import { encodeAsciiURIComponent } from '$lib/link';
-	import type { RankInfo } from './+page.server';
+	import type { RankInfo } from '$lib/server/fetches/ranks.js';
 
 	let { data } = $props();
 
