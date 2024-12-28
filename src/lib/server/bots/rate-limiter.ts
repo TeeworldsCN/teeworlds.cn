@@ -1,4 +1,4 @@
-import { keyv } from '../keyv';
+import { volatile } from '../keyv';
 
 type RateLimitInfo = {
 	/** Cooldown time in milliseconds */
@@ -32,7 +32,7 @@ export class RateLimiter {
 	isLimited = async (user: string) => {
 		const now = Date.now();
 		const key = `${RateLimiter.RATE_LIMITER_PREFIX}:${this.prefix}:${user}`;
-		const rateLimiter = await keyv.get<RateLimitInfo>(key);
+		const rateLimiter = await volatile.get<RateLimitInfo>(key);
 
 		if (rateLimiter && rateLimiter.cd && now - rateLimiter.cd < this.cooldown * 1000) {
 			// cooldown is still active
@@ -40,7 +40,7 @@ export class RateLimiter {
 		}
 
 		if (!rateLimiter) {
-			await keyv.set<RateLimitInfo>(key, { ts: [now] }, this.interval * 1000);
+			await volatile.set<RateLimitInfo>(key, { ts: [now] }, this.interval * 1000);
 			return { triggered: false, limited: false };
 		}
 
@@ -48,13 +48,13 @@ export class RateLimiter {
 
 		const withInInterval = ts.filter((ts) => now - ts < this.interval * 1000);
 		if (withInInterval.length >= this.threshold) {
-			await keyv.set<RateLimitInfo>(key, { cd: now + this.cooldown * 1000 }, this.cooldown * 1000);
+			await volatile.set<RateLimitInfo>(key, { cd: now + this.cooldown * 1000 }, this.cooldown * 1000);
 			return { triggered: true, limited: true };
 		}
 
 		// add current timestamp to the list
 		withInInterval.push(now);
-		await keyv.set<RateLimitInfo>(key, { ts: withInInterval }, this.interval * 1000);
+		await volatile.set<RateLimitInfo>(key, { ts: withInInterval }, this.interval * 1000);
 		return { triggered: false, limited: false };
 	};
 }

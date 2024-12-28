@@ -2,9 +2,8 @@ import { handlePoints } from './handlers/points';
 import type { SendReply, SendResult } from './protocol/types';
 import { AsyncQueue } from '$lib/async-queue';
 import { RateLimiter } from './rate-limiter';
-import { env } from '$env/dynamic/private';
 import { handleMaps } from './handlers/maps';
-import { BOT, QQBot } from './protocol/qq';
+import { handleBind } from './handlers/bind';
 
 let customBody: any = null;
 let customToken: string | null = null;
@@ -131,25 +130,35 @@ const handle = async (
 
 	let result = null;
 
+	const handlerArgs = { uid, reply, command, args, mode, fetch };
+
 	// TODO: Design a better handler for this
 	if (command === '__uid__') {
 		result = await reply.text(`您的 UID 是 ${uid}`);
 	} else if (command === '分数' || command == 'point' || command === 'points') {
-		result = await handlePoints({ uid, reply, command, args, mode, fetch });
+		result = await handlePoints(handlerArgs);
 	} else if (command === '地图' || command === 'map' || command === 'maps') {
-		result = await handleMaps({ uid, reply, command, args, mode, fetch });
-	} else if (command === '工具箱') {
+		result = await handleMaps(handlerArgs);
+	} else if (command === '绑定' || command === 'bind') {
+		result = await handleBind(handlerArgs);
+	}
+	// add more commands here ^
+	else if (command === '工具箱') {
 		result = await reply.link({
 			label: '🔗 DDNet 工具箱',
 			prefix: 'DDNet 工具箱 → ',
 			url: 'https://teeworlds.cn/ddnet'
 		});
-	}
-	// add more commands here ^
-	else if (mode === 'DIRECT' || command === '' || command === '帮助' || command === 'help') {
+	} else if (mode === 'DIRECT' || command === '' || command === '帮助' || command === 'help') {
 		// help message
 		result = await reply.textLink(
-			'目前豆豆可以提供以下查询功能：\n  /分数 <玩家名> - 查询分数\n  /地图 <地图名> - 查询地图\n更多功能请使用工具箱',
+			[
+				'目前豆豆可以提供以下查询功能：',
+				'  /分数 <玩家名> - 查询分数',
+				'  /地图 <地图名> - 查询地图',
+				'  /绑定 <玩家名> - 绑定玩家名',
+				'更多功能请使用工具箱'
+			].join('\n'),
 			{
 				label: '🔗 DDNet 工具箱',
 				prefix: '→ ',

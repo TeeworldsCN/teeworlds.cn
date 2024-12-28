@@ -1,4 +1,4 @@
-import { keyv } from './keyv';
+import { volatile } from './keyv';
 
 const defaultJSONTransformer = (response: Response) => response.json();
 const defaultTextTransformer = (response: Response) => response.text();
@@ -68,7 +68,7 @@ export class FetchCache {
 	async fetch(thisFetch: typeof global.fetch = fetch) {
 		const now = Date.now();
 		const key = `ddnet:cache:${this.url}`;
-		const cache = await keyv.get<CachedData>(key);
+		const cache = await volatile.get<CachedData>(key);
 
 		// if the cache is not found, it is always outdated
 		let outdated = !cache;
@@ -120,7 +120,7 @@ export class FetchCache {
 
 				if (tag) {
 					// only cache if the tag is valid
-					await keyv.set<CachedData>(key, { tag, data });
+					await volatile.set<CachedData>(key, { tag, data });
 					this.nextQueryTime = now + this.minQueryInterval * 1000;
 				}
 				return data;

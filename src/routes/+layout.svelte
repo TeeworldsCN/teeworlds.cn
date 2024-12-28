@@ -33,7 +33,7 @@
 		</div>
 	</header>
 
-	<main class="flex-grow bg-slate-800 p-2 text-slate-300 md:p-4 basis-1">
+	<main class="flex-grow basis-1 bg-slate-800 p-2 text-slate-300 md:p-4">
 		<div class="container mx-auto h-full">
 			{@render children()}
 		</div>
