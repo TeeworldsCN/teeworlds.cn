@@ -3,6 +3,7 @@ import Valkey from '@keyv/valkey';
 
 import { env } from '$env/dynamic/private';
 import KeyvSqlite from './keyv-bun-sqlite';
+import { building } from '$app/environment';
 
 let volatileStore: Valkey | undefined = undefined;
 if (env.VALKEY) {
@@ -14,8 +15,13 @@ if (env.VALKEY) {
 
 export const volatile = new Keyv(volatileStore);
 
-const sqlitePath = env.SQLITE_PATH || 'sqlite://./cache/sqlite.db';
-console.log(`keyv: persistent using sqlite ${sqlitePath}`);
+let sqliteStore: KeyvSqlite | undefined = undefined;
 
-const sqlite = new KeyvSqlite({ uri: sqlitePath });
-export const persistent = new Keyv(sqlite);
+if (!building) {
+	const sqlitePath = env.SQLITE_PATH || 'sqlite://./cache/sqlite.db';
+	console.log(`keyv: persistent using sqlite ${sqlitePath}`);
+} else {
+	console.log(`keyv: persistent using memory, should only happen in build time`);
+}
+
+export const persistent = new Keyv(sqliteStore);
