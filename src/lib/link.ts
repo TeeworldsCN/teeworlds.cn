@@ -8,9 +8,8 @@ export const fetchDDNetAsync = async (url: string) => {
 	return response.json();
 };
 
-// we reserve ~ as the unicode delimiter
 const URL_ALLOWED_CHARS = new Set(
-	`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~*!()`
+	`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~*()`
 );
 const isURLAllowed = (char: string) => URL_ALLOWED_CHARS.has(char);
 
@@ -20,7 +19,7 @@ export const encodeAsciiURIComponent = (str: string) => {
 
 	const commit = () => {
 		if (segment) {
-			result += `'${encode(segment)}'`;
+			result += `!${encode(segment)}!`;
 			segment = '';
 		}
 	};
@@ -45,7 +44,7 @@ export const decodeAsciiURIComponent = (str: string) => {
 	let segment = '';
 
 	for (const char of str) {
-		if (char == "'") {
+		if (char == "!") {
 			if (segment) {
 				result += decode(segment.slice(1));
 				segment = '';
