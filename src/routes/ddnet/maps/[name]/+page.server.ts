@@ -2,10 +2,10 @@ import { error } from '@sveltejs/kit';
 import { convert } from '$lib/server/imgproxy';
 import type { PageServerLoad } from './$types';
 import { basename } from 'path';
-import { normalizeURIAscii } from '$lib/link';
+import { decodeAsciiURIComponent } from '$lib/link';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
-	const name = normalizeURIAscii(params.name);
+	const name = decodeAsciiURIComponent(params.name);
 	const data = await (
 		await fetch(`https://ddnet.org/maps/?json=${encodeURIComponent(name)}`)
 	).json();

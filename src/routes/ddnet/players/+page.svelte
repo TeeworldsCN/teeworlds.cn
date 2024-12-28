@@ -3,6 +3,7 @@
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
+	import { encodeAsciiURIComponent } from '$lib/link';
 	import type { RankInfo } from './+page.server';
 
 	let { data } = $props();
@@ -60,7 +61,7 @@
 	let lastQueryTime = 0;
 
 	function gotoName(name: string) {
-		goto(`/ddnet/players/${encodeURIComponent(name)}`);
+		goto(`/ddnet/players/${encodeAsciiURIComponent(name)}`);
 	}
 
 	async function query() {

@@ -4,7 +4,7 @@
 	import { goto, preloadData } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
-	import { encodeURIComponentAscii } from '$lib/link';
+	import { encodeAsciiURIComponent } from '$lib/link';
 
 	type MapList = {
 		name: string;
@@ -207,10 +207,10 @@
 					class="mt-2 aspect-map h-auto w-full rounded-md border border-slate-600 hover:border-blue-500 active:border-blue-300"
 					style="background-image: url({map.thumbnail}); background-size: cover; background-repeat: no-repeat; background-position: center;"
 					onmousedown={() => {
-						preloadData(`/ddnet/maps/${encodeURIComponentAscii(map.name)}`);
+						preloadData(`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`);
 					}}
 					onclick={() => {
-						goto(`/ddnet/maps/${encodeURIComponentAscii(map.name)}`);
+						goto(`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`);
 					}}
 					aria-label={map.name}
 				>

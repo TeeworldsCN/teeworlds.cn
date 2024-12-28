@@ -1,5 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { decodeAsciiURIComponent } from '$lib/link';
 
 interface PlayerRank {
 	points?: number;
@@ -26,7 +27,7 @@ interface MapData {
 }
 
 export const load: PageServerLoad = async ({ params, parent }) => {
-	const name = params.name;
+	const name = decodeAsciiURIComponent(params.name);
 	const data = await (
 		await fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`)
 	).json();

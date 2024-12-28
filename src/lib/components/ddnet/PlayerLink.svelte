@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import Link from '../Link.svelte';
+	import { encodeAsciiURIComponent } from '$lib/link';
 
 	const {
 		player,
@@ -12,7 +13,7 @@
 
 <Link
 	data-sveltekit-preload-data="tap"
-	href={`/ddnet/players/${encodeURIComponent(player)}`}
+	href={`/ddnet/players/${encodeAsciiURIComponent(player)}`}
 	{...rest}
 	{className}>{@render children()}</Link
 >
