@@ -9,7 +9,7 @@ export const handlePoints: Handler = async ({ reply, args }) => {
 		return await reply.textLink('查分请提供 <玩家名>。或者使用 DDNet 工具箱', {
 			label: '🔗 排名查询工具',
 			prefix: '→ ',
-			url: 'https://teeworlds.cn/s/dp'
+			url: 'https://teeworlds.cn/ddnet/players'
 		});
 	}
 
@@ -45,6 +45,6 @@ export const handlePoints: Handler = async ({ reply, args }) => {
 	return await reply.textLink(lines.join('\n'), {
 		label: `🔗 玩家详情`,
 		prefix: '详情点击：',
-		url: `https://teeworlds.cn/s/dp/${encodeAsciiURIComponent(player.name)}`
+		url: `https://teeworlds.cn/ddnet/players/${encodeAsciiURIComponent(player.name)}`
 	});
 };
