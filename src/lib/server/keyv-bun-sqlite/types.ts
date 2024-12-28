@@ -7,7 +7,7 @@ export type DbQuery = (
 export type DbClose = () => void;
 
 export type KeyvSqliteOptions = {
-	dialect: 'sqlite';
+	dialect?: 'sqlite';
 	uri?: string;
 	table?: string;
 	keySize?: number;
