@@ -84,7 +84,7 @@ export const load: PageServerLoad = async ({ fetch, params, parent }) => {
 		data_update_time?: number;
 	};
 
-	const mapsResponse = await fetch(`/ddnet/maps?json=true`);
+	const mapsResponse = await fetch(`/ddnet/maps`);
 
 	if (mapsResponse.ok) {
 		const maps = (await mapsResponse.json()) as MapList;

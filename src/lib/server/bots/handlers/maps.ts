@@ -54,7 +54,7 @@ export const handleMaps: Handler = async ({ reply, fetch, args }) => {
 		});
 	}
 
-	const maps: any[] = await (await fetch('/ddnet/maps?json=true')).json();
+	const maps: any[] = await (await fetch('/ddnet/maps')).json();
 
 	const filteredMaps = maps.filter((map: any) => {
 		return checkMapName(map, mapName);

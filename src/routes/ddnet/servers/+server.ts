@@ -4,7 +4,11 @@ import { servers } from '$lib/server/fetches/servers';
 
 export const GET: RequestHandler = async () => {
 	try {
-		return new Response(await servers.fetch(), {
+		const data = servers.fetch();
+		const fetchAsString = await servers.fetchAsString();
+		const result = JSON.parse(fetchAsString);
+
+		return new Response(result, {
 			headers: {
 				'content-type': 'application/json',
 				'cache-control': 'public, max-age=10'

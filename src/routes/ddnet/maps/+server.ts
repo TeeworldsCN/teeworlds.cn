@@ -3,11 +3,6 @@ import type { RequestHandler } from './$types';
 import { maps } from '$lib/server/fetches/maps';
 
 export const GET: RequestHandler = async ({ url }) => {
-	const json = url.searchParams.get('json');
-	if (!json) {
-		return new Response('Not Found', { status: 404 });
-	}
-
 	try {
 		const data = await maps.fetchAsString();
 		return new Response(data, {

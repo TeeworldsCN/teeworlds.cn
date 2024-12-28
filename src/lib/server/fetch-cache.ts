@@ -21,7 +21,16 @@ export class FetchCache<T> {
 	private skipHead = false;
 	private alwaysFetch = false;
 	private transformer: (response: Response) => Promise<T> | T;
-	private callbacks: ((result: string) => void)[] | null = null;
+	private callbacks:
+		| (
+				| { cb: (result: string) => void; keepObject: false; error: (error: any) => void }
+				| {
+						cb: (result: string | { data: T }) => void;
+						keepObject: true;
+						error: (error: any) => void;
+				  }
+		  )[]
+		| null = null;
 
 	/**
 	 * Cache a GET request, and automatically update if etag or last-modified is outdated.
@@ -60,103 +69,122 @@ export class FetchCache<T> {
 		thisFetch: typeof global.fetch = fetch,
 		keepObject: boolean = false
 	): Promise<string | { data: T }> {
-		const now = Date.now();
-		const key = `dd:cache:${this.url}`;
-		const cache = await volatile.get<CachedData>(key);
-
-		// if the cache is not found, it is always outdated
-		let outdated = !cache;
-
-		// if somehow not ok or there is no etag, just pretend it's not updated
-		let tag: string | null = null;
-
-		let response: Response | null = null;
-
-		if (cache && this.nextQueryTime >= now) {
-			// if the cache is still fresh, don't do anything
-			return cache.data;
+		if (this.callbacks) {
+			const lcbs = this.callbacks;
+			return new Promise<string>((resolve, reject) =>
+				lcbs.push({
+					cb: (result: any) => resolve(result),
+					error: (error: any) => reject(error),
+					keepObject
+				})
+			);
 		}
 
-		if (!this.skipHead) {
-			if (cache) {
-				// check against the cache tag if a cache is available
-				response = await thisFetch(this.url, { method: 'HEAD' });
-				if (response.ok) {
-					tag = response.headers.get('etag') || response.headers.get('last-modified');
-					if (tag) {
-						outdated = cache.tag != tag;
-					}
-				} else {
-					// if the upstream errored. just pretend it is up to date
-					outdated = false;
-				}
-			}
-		} else {
-			// if head is skipped, always do GET fetch
-			outdated = true;
-		}
+		this.callbacks = [];
+		try {
+			const result: string | { data: T } = await (async () => {
+				const now = Date.now();
+				const key = `dd:cache:${this.url}`;
+				const cache = await volatile.get<CachedData>(key);
 
-		let data: any = null;
+				// if the cache is not found, it is always outdated
+				let outdated = !cache;
 
-		// if the cache is outdated, fetch the file again
-		if (outdated) {
-			if (this.callbacks) {
-				const lcbs = this.callbacks;
-				return new Promise<string>((resolve) =>
-					lcbs.push((result) => {
-						if (keepObject) {
-							resolve(JSON.parse(result));
-						} else {
-							resolve(result);
-						}
-					})
-				);
-			}
+				// if somehow not ok or there is no etag, just pretend it's not updated
+				let tag: string | null = null;
 
-			this.callbacks = [];
+				let response: Response | null = null;
 
-			const abort = new AbortController();
-			const result = await thisFetch(this.url, { signal: abort.signal });
-
-			if (result.ok) {
-				tag = result.headers.get('etag') || result.headers.get('last-modified');
-				if (!this.alwaysFetch && cache && tag == cache.tag) {
-					// tag is the same, drop the connection immediately and just use the cache
-					abort.abort();
+				if (cache && this.nextQueryTime >= now) {
+					// if the cache is still fresh, don't do anything
 					return cache.data;
 				}
 
-				data = await this.transformer(result);
-				let stringData;
-
-				if (tag) {
-					// only cache if the tag is valid
-					stringData = JSON.stringify(data);
-					await volatile.set<CachedData>(key, { tag, data: stringData });
-					this.nextQueryTime = now + this.minQueryInterval * 1000;
+				if (!this.skipHead) {
+					if (cache) {
+						// check against the cache tag if a cache is available
+						response = await thisFetch(this.url, { method: 'HEAD' });
+						if (response.ok) {
+							tag = response.headers.get('etag') || response.headers.get('last-modified');
+							if (tag) {
+								outdated = cache.tag != tag;
+							}
+						} else {
+							// if the upstream errored. just pretend it is up to date
+							outdated = false;
+						}
+					}
+				} else {
+					// if head is skipped, always do GET fetch
+					outdated = true;
 				}
 
-				for (const cb of this.callbacks) {
-					cb(stringData ?? JSON.stringify(data));
+				let data: any = null;
+
+				// if the cache is outdated, fetch the file again
+				if (outdated) {
+					const abort = new AbortController();
+					const result = await thisFetch(this.url, { signal: abort.signal });
+
+					if (result.ok) {
+						tag = result.headers.get('etag') || result.headers.get('last-modified');
+						if (!this.alwaysFetch && cache && tag == cache.tag) {
+							// tag is the same, drop the connection immediately and just use the cache
+							abort.abort();
+							return cache.data;
+						}
+						data = await this.transformer(result);
+						let stringData;
+						if (tag) {
+							// only cache if the tag is valid
+							stringData = JSON.stringify(data);
+							await volatile.set<CachedData>(key, { tag, data: stringData });
+							this.nextQueryTime = now + this.minQueryInterval * 1000;
+						}
+						return { data };
+					}
 				}
 
-				if (keepObject) {
-					return { data };
+				// not outdated, use the cache directly if it exists
+				if (cache) {
+					return cache.data;
 				}
-				return stringData ?? JSON.stringify(data);
+
+				// not outdated but no cache, means the head response is possibly not ok
+				if (response) {
+					throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+				} else {
+					throw new Error('Failed to fetch data: Unknown error');
+				}
+			})();
+
+			let stringData = null;
+			for (const callback of this.callbacks) {
+				if (callback.keepObject) {
+					callback.cb(result);
+					continue;
+				}
+				if (stringData) {
+					callback.cb(stringData);
+					continue;
+				}
+				stringData = typeof result === 'string' ? result : JSON.stringify(result.data);
+				callback.cb(stringData);
 			}
-		}
 
-		// not outdated, use the cache directly if it exists
-		if (cache) {
-			return cache.data;
-		}
-
-		// not outdated but no cache, means the head response is possibly not ok
-		if (response) {
-			throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
-		} else {
-			throw new Error('Failed to fetch data: Unknown error');
+			this.callbacks = null;
+			if (keepObject) {
+				return result;
+			}
+			stringData ??= typeof result === 'string' ? result : JSON.stringify(result.data);
+			return stringData;
+		} catch (e) {
+			console.error(e);
+			for (const callback of this.callbacks!) {
+				callback.error(e);
+			}
+			this.callbacks = null;
+			throw e;
 		}
 	}
 
