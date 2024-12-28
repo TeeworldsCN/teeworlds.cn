@@ -44,18 +44,16 @@
 				flag={data.player.favorite_server.server}
 				title="常玩地区：{data.player.favorite_server.server}"
 			/>
-			{#if data.player.pending_points}
-				<button
-					class="cursor-pointer text-sm font-semibold text-blue-300 hover:text-blue-400"
-					onclick={() => {
-						explaination = !explaination;
-					}}>ⓘ 分数不对？</button
-				>
-			{/if}
+			<button
+				class="cursor-pointer text-sm font-semibold text-blue-300 hover:text-blue-400"
+				onclick={() => {
+					explaination = !explaination;
+				}}>ⓘ 数据不对？</button
+			>
 			{#if explaination}
 				<span
 					class="block rounded-lg bg-slate-600 px-3 py-1 text-sm font-normal shadow-md md:float-right md:inline-block"
-					>分数统计每日定期结算，若有未结算的分数请明天再查看。</span
+					>分数统计有一天的延迟，部分数据可能需要48小时后才会出现</span
 				>
 			{/if}
 		</h2>
