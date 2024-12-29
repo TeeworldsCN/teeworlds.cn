@@ -25,10 +25,15 @@ export const init: ServerInit = async () => {
 export const handle = async ({ event, resolve }) => {
 	let ip = 'unknown';
 	const headers = event.request.headers;
-	const host = new URL(`http://${headers.get('x-forwarded-host') || headers.get('host') || ''}`);
-	let isLocalhost = false;
-	isLocalhost =
-		host.hostname == 'localhost' || host.hostname == '127.0.0.1' || host.hostname == '[::1]';
+	const hostname = headers.get('x-forwarded-host') || headers.get('host') || '';
+
+	let isLocalhost = !hostname;
+	if (hostname) {
+		const host = new URL(`http://${hostname}`);
+		isLocalhost =
+			host.hostname == 'localhost' || host.hostname == '127.0.0.1' || host.hostname == '[::1]';
+	}
+
 	if (isLocalhost) {
 		ip = event.getClientAddress();
 	}

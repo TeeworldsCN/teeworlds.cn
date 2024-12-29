@@ -1,5 +1,6 @@
 import { mapType, numberToStars } from '$lib/ddnet/helpers';
 import { encodeAsciiURIComponent } from '$lib/link';
+import { maps } from '$lib/server/fetches/maps';
 import type { Handler } from '../protocol/types';
 
 const checkMapName = (map: any, search: string) => {
@@ -54,9 +55,9 @@ export const handleMaps: Handler = async ({ reply, fetch, args }) => {
 		});
 	}
 
-	const maps: any[] = await (await fetch('/ddnet/maps')).json();
+	const mapData: any[] = await maps.fetch();
 
-	const filteredMaps = maps.filter((map: any) => {
+	const filteredMaps = mapData.filter((map: any) => {
 		return checkMapName(map, mapName);
 	});
 
