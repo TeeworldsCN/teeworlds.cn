@@ -8,7 +8,6 @@ let rest = '';
 
 for (let i = 0; i < args.length; i++) {
 	if (args[i].startsWith('--')) {
-		console.log(args[i]);
 		const equalsIndex = args[i].indexOf('=');
 		const key = args[i].slice(2, equalsIndex);
 		const value = args[i].slice(equalsIndex + 1);
@@ -38,7 +37,10 @@ for (let i = 0; i < args.length; i++) {
 	const result = await fetch(`http://localhost:${options.port}/bots/local`, {
 		method: 'POST',
 		headers: {
-			'Content-Type': 'application/json'
+			'Content-Type': 'application/json',
+			'x-forwarded-for': '127.0.0.1',
+			'x-forwarded-host': 'localhost',
+			'x-forwarded-proto': 'http'
 		},
 		body: JSON.stringify({
 			message: rest

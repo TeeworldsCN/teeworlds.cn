@@ -27,29 +27,11 @@ export const handle = async ({ event, resolve }) => {
 	// check ip
 	{
 		let ip = 'unknown';
-		const headers = event.request.headers;
-		const hostname = headers.get('x-forwarded-host') || headers.get('host') || '';
-		let hostIsLocal = !hostname;
-		if (hostname) {
-			const host = new URL(`http://${hostname}`);
-			hostIsLocal =
-				host.hostname == 'localhost' || host.hostname == '127.0.0.1' || host.hostname == '[::1]';
+		try {
+			ip = event.getClientAddress();
+		} catch {
+			ip = 'unknown';
 		}
-
-		if (hostIsLocal) {
-			try {
-				ip = event.getClientAddress();
-			} catch {
-				ip = 'unknown';
-			}
-		}
-
-		const forwarded =
-			headers.get('x-forwarded-for') || headers.get('x-real-ip') || headers.get('cf-connecting-ip');
-		if (forwarded) {
-			ip = forwarded;
-		}
-
 		event.locals.ip = ip;
 	}
 
