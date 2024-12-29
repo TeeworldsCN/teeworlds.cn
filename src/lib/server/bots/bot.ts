@@ -1,7 +1,7 @@
-import type { Permissions, SendReply, SendResult } from './protocol/types';
+import type { SendReply, SendResult } from './protocol/types';
 import { AsyncQueue } from '$lib/async-queue';
 import { commands } from '.';
-import { getUser } from '../users';
+import { getUserByUsername, type UserPermissions } from '../db/users';
 
 let customBody: any = null;
 let customToken: string | null = null;
@@ -111,15 +111,15 @@ const handle = async (
 		return customError;
 	}
 
-	const permissions: Permissions = [];
-	const userData = await getUser(uid);
+	const permissions: UserPermissions = [];
+	const databaseUser = getUserByUsername(uid);
 
 	if (platform == 'cli') {
 		// local cli always has full permissions
 		permissions.push('SUPER');
 	} else {
-		if (userData && userData.permissions) {
-			permissions.push(...userData.permissions);
+		if (databaseUser?.data?.permissions) {
+			permissions.push(...databaseUser.data.permissions);
 		}
 	}
 
@@ -127,7 +127,7 @@ const handle = async (
 
 	const handlerArgs = {
 		uid,
-		user: userData,
+		user: databaseUser,
 		reply,
 		command: cmd.cmd,
 		args: cmd.args,

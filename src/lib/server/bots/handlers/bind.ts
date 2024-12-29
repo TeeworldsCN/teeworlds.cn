@@ -1,16 +1,15 @@
-import { persistent } from '$lib/server/keyv';
-import { getUser, setUser } from '$lib/server/users';
+import { createUser, getUserByUsername, updateUserData } from '$lib/server/db/users';
 import type { Handler } from '../protocol/types';
 
-export const handleBind: Handler = async ({ uid, reply, args }) => {
+export const handleBind: Handler = async ({ uid, user, reply, args }) => {
 	const playerName = args.trim();
-	let user = await getUser(uid);
 
 	if (!playerName) {
-		if (user?.name) {
-			const name = user.name;
-			delete user.name;
-			await setUser(uid, user);
+		if (user?.data?.name) {
+			const data = user.data;
+			const name = data.name;
+			delete data.name;
+			updateUserData(user.uuid, data);
 			return await reply.text(`已解绑 ${name}`);
 		}
 
@@ -22,10 +21,15 @@ export const handleBind: Handler = async ({ uid, reply, args }) => {
 	}
 
 	if (!user) {
-		user = { uid, name: playerName };
+		const result = createUser(uid, { name: playerName });
+		if (!result.success) {
+			return await reply.text(
+				`豆豆好像出了点问题。。。豆豆也不知道该怎么办了。。。要不等下重试一下？`
+			);
+		}
 	} else {
-		user.name = playerName;
+		user.data.name = playerName;
+		updateUserData(user.uuid, user.data);
 	}
-	await setUser(uid, user);
 	return await reply.text(`已记住了你的游戏名 ${playerName}，之后的查询会默认使用这个名字。`);
 };

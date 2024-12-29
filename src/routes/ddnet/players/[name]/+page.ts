@@ -1,6 +1,6 @@
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = async ({ data, parent }) => {
+export const load = (async ({ data, parent }) => {
 	const player = data.player;
 
 	let last_finish = player.last_finishes[0] || {
@@ -70,4 +70,4 @@ export const load: PageLoad = async ({ data, parent }) => {
 		ranks,
 		...(await parent())
 	};
-};
+}) satisfies PageLoad;

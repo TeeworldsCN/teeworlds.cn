@@ -1,4 +1,4 @@
-import type { User } from '$lib/server/users';
+import type { UserPermissions, User } from '$lib/server/db/users';
 
 // result of sending message
 export type SendResult = object;
@@ -23,7 +23,7 @@ export type Handler = (data: {
 	uid: string;
 	user: User | null;
 	group: string;
-	permissions: Permissions;
+	permissions: UserPermissions;
 	reply: SendReply;
 	command: string;
 	args: string;

@@ -1,4 +1,10 @@
-import { getUser, PERMISSION_LIST, setUser, type User } from '$lib/server/users';
+import {
+	createUser,
+	getUserByUsername,
+	PERMISSION_LIST,
+	updateUserData,
+	type User
+} from '$lib/server/db/users';
 import { type Handler } from '../protocol/types';
 import { ArgParser } from '../utils/arg-parser';
 
@@ -14,20 +20,16 @@ export const adminPermissionAdd: Handler = async ({ reply, args }) => {
 		return await reply.text(`Unknown permission "${permission}"`);
 	}
 
-	const user = await getUser(uid);
+	const user = getUserByUsername(uid);
 	if (!user) {
-		const newUser: User = {
-			uid,
-			permissions: [permission]
-		};
-		await setUser(uid, newUser);
+		createUser(uid, { permissions: [permission] });
 	} else {
-		if (user.permissions) {
-			user.permissions.push(permission);
+		if (user.data.permissions) {
+			user.data.permissions.push(permission);
 		} else {
-			user.permissions = [permission];
+			user.data.permissions = [permission];
 		}
-		await setUser(uid, user);
+		updateUserData(user.uuid, user.data);
 	}
 
 	return await reply.text(`Permission "${permission}" has been given to "${uid}"`);
@@ -41,16 +43,16 @@ export const adminPermissionRemove: Handler = async ({ reply, args }) => {
 		return await reply.text('/perm-rm <uid> <permission | all>');
 	}
 
-	if (permission == 'all') {
-		const user = await getUser(uid);
-		if (!user) {
-			return await reply.text(`User "${uid}" does not exist`);
-		}
+	const user = getUserByUsername(uid);
+	if (!user) {
+		return await reply.text(`User "${uid}" does not exist`);
+	}
 
-		if (user.permissions) {
-			delete user.permissions;
+	if (permission == 'all') {
+		if (user.data.permissions) {
+			delete user.data.permissions;
 		}
-		await setUser(uid, user);
+		updateUserData(user.uuid, user.data);
 		return await reply.text(`All permissions have been removed from "${uid}"`);
 	}
 
@@ -58,18 +60,13 @@ export const adminPermissionRemove: Handler = async ({ reply, args }) => {
 		return await reply.text(`Unknown permission "${permission}"`);
 	}
 
-	const user = await getUser(uid);
-	if (!user) {
-		return await reply.text(`User "${uid}" does not exist`);
-	}
-
-	if (user.permissions) {
-		user.permissions = user.permissions.filter((perm) => perm !== permission);
-		if (user.permissions.length == 0) {
-			delete user.permissions;
+	if (user.data.permissions) {
+		user.data.permissions = user.data.permissions.filter((perm) => perm !== permission);
+		if (user.data.permissions.length == 0) {
+			delete user.data.permissions;
 		}
 	}
-	await setUser(uid, user);
+	updateUserData(user.uuid, user.data);
 	return await reply.text(`Permission "${permission}" has been removed from "${uid}"`);
 };
 
@@ -77,14 +74,16 @@ export const adminCheckPermission: Handler = async ({ uid, reply, args }) => {
 	const parser = new ArgParser(args);
 	const targetUid = parser.getRest(0) || uid;
 
-	const user = await getUser(targetUid);
+	const user = getUserByUsername(targetUid);
 	if (!user) {
 		return await reply.text(`User "${targetUid}" does not exist`);
 	}
 
-	if (!user.permissions || user.permissions.length == 0) {
+	if (!user.data.permissions || user.data.permissions.length == 0) {
 		return await reply.text(`User "${targetUid}" has no permission.`);
 	}
 
-	return await reply.text(`User "${targetUid}" has permission ${user.permissions?.join(', ')}`);
+	return await reply.text(
+		`User "${targetUid}" has permission ${user.data.permissions?.join(', ')}`
+	);
 };

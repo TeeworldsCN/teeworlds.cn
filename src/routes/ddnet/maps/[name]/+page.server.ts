@@ -4,7 +4,7 @@ import type { PageServerLoad } from './$types';
 import { basename } from 'path';
 import { decodeAsciiURIComponent } from '$lib/link';
 
-export const load: PageServerLoad = async ({ params, parent }) => {
+export const load = (async ({ params, parent }) => {
 	const name = decodeAsciiURIComponent(params.name);
 	const data = await (
 		await fetch(`https://ddnet.org/maps/?json=${encodeURIComponent(name)}`)
@@ -63,4 +63,4 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		icon: string;
 	};
 	return { map, ...(await parent()) };
-};
+}) satisfies PageServerLoad;

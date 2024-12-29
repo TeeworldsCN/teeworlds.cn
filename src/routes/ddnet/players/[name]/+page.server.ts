@@ -32,7 +32,7 @@ interface MapData {
 	pending_points?: number;
 }
 
-export const load: PageServerLoad = async ({ fetch, params, parent }) => {
+export const load = (async ({ fetch, params, parent }) => {
 	const name = decodeAsciiURIComponent(params.name);
 	const data = await (
 		await fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`)
@@ -129,4 +129,4 @@ export const load: PageServerLoad = async ({ fetch, params, parent }) => {
 	// always check the rank page for update time
 	player.data_update_time = (await ranks.fetch()).update_time;
 	return { player, ...(await parent()) };
-};
+}) satisfies PageServerLoad;

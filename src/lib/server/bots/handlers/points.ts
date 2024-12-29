@@ -2,12 +2,12 @@ import { encodeAsciiURIComponent } from '$lib/link';
 import { getPlayer } from '$lib/server/players';
 import type { Handler } from '../protocol/types';
 
-export const handlePoints: Handler = async ({ uid, user, reply, args }) => {
+export const handlePoints: Handler = async ({ user, reply, args }) => {
 	let playerName = args.trim();
 
 	// check binds
 	if (!playerName) {
-		playerName = user?.name || '';
+		playerName = user?.data?.name || '';
 	}
 
 	if (!playerName) {

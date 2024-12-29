@@ -1,4 +1,4 @@
-import type { Permissions } from '$lib/server/users';
+import type { UserPermissions } from '$lib/server/db/users';
 import type { Handler } from '../protocol/types';
 
 export interface Command {
@@ -8,7 +8,7 @@ export interface Command {
 }
 
 export class CommandRouter {
-	private commands: Map<string, { handler: Handler; permissions?: Permissions }> = new Map();
+	private commands: Map<string, { handler: Handler; permissions?: UserPermissions }> = new Map();
 	private fallbackHandler: Handler | null = null;
 
 	/**
@@ -17,7 +17,7 @@ export class CommandRouter {
 	 * @param handler the handler function
 	 * @param permissions the permissions required to run the command, allows to run if user have any of the permissions
 	 */
-	public add(command: string, handler: Handler, permissions?: Permissions) {
+	public add(command: string, handler: Handler, permissions?: UserPermissions) {
 		this.commands.set(command, { handler, permissions });
 		return this;
 	}
@@ -27,7 +27,7 @@ export class CommandRouter {
 		return this;
 	}
 
-	public parse(msg: string, permissions: Permissions): Command {
+	public parse(msg: string, permissions: UserPermissions): Command {
 		let command = msg;
 		let args = '';
 

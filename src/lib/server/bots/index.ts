@@ -1,11 +1,11 @@
 import { CommandRouter } from './utils/command-router';
-import { adminCheckPermission, adminPermissionAdd, adminPermissionRemove } from './handlers/admin';
-import { handleBind } from './handlers/bind';
 import { handleFallback } from './handlers/fallback';
 import { handleHelp } from './handlers/help';
 import { handleShowUid, handleToolbox } from './handlers/info';
 import { handleMaps } from './handlers/maps';
 import { handlePoints } from './handlers/points';
+import { adminCheckPermission, adminPermissionAdd, adminPermissionRemove } from './handlers/admin';
+import { handleBind } from './handlers/bind';
 import { handleRegister } from './handlers/register';
 
 export const commands = new CommandRouter();

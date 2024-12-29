@@ -38,7 +38,7 @@
 				{#if data.user}
 					<form class="flex" method="POST" action="/login?/logout" use:enhance>
 						<div class="scrollbar-hide mr-5 max-w-40 justify-center overflow-x-auto text-nowrap">
-							{data.user.name || data.user.uid}
+							{data.user.username}
 						</div>
 						<button type="submit" class="justify-center text-nowrap rounded bg-sky-700 px-2"
 							>登出</button
