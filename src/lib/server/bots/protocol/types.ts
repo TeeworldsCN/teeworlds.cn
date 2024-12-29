@@ -19,11 +19,6 @@ export type SendReply = {
 	custom: (body: any) => Promise<SendResult> | SendResult;
 };
 
-export type Permissions = Permission[];
-const _PERMISSION_LIST = ['SUPER'] as const;
-export const PERMISSION_LIST = _PERMISSION_LIST as any as string[];
-type Permission = (typeof PERMISSION_LIST)[number];
-
 export type Handler = (data: {
 	uid: string;
 	user: User | null;

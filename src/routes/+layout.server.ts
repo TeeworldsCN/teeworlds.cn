@@ -1,6 +1,9 @@
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = ({ request }) => {
+export const load: LayoutServerLoad = ({ locals, request, cookies }) => {
 	const userAgent = request.headers.get('user-agent');
-	return { ua: userAgent };
+	let user = locals.user
+		? { uid: locals.user.uid, name: locals.user.name, permissions: locals.user.permissions }
+		: null;
+	return { ua: userAgent, user };
 };

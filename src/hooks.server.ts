@@ -1,5 +1,6 @@
 import { persistent, volatile } from '$lib/server/keyv';
 import { mapReleases } from '$lib/server/tasks/map-releases';
+import { tokenToUser } from '$lib/server/users';
 import type { ServerInit } from '@sveltejs/kit';
 import type { Cron } from 'croner';
 
@@ -23,26 +24,51 @@ export const init: ServerInit = async () => {
 };
 
 export const handle = async ({ event, resolve }) => {
-	let ip = 'unknown';
-	const headers = event.request.headers;
-	const hostname = headers.get('x-forwarded-host') || headers.get('host') || '';
+	// check ip
+	{
+		let ip = 'unknown';
+		const headers = event.request.headers;
+		const hostname = headers.get('x-forwarded-host') || headers.get('host') || '';
+		let hostIsLocal = !hostname;
+		if (hostname) {
+			const host = new URL(`http://${hostname}`);
+			hostIsLocal =
+				host.hostname == 'localhost' || host.hostname == '127.0.0.1' || host.hostname == '[::1]';
+		}
 
-	let isLocalhost = !hostname;
-	if (hostname) {
-		const host = new URL(`http://${hostname}`);
-		isLocalhost =
-			host.hostname == 'localhost' || host.hostname == '127.0.0.1' || host.hostname == '[::1]';
+		if (hostIsLocal) {
+			try {
+				ip = event.getClientAddress();
+			} catch {
+				ip = 'unknown';
+			}
+		}
+
+		const forwarded =
+			headers.get('x-forwarded-for') || headers.get('x-real-ip') || headers.get('cf-connecting-ip');
+		if (forwarded) {
+			ip = forwarded;
+		}
+
+		event.locals.ip = ip;
 	}
 
-	if (isLocalhost) {
-		ip = event.getClientAddress();
+	// check login
+	{
+		const token = event.cookies.get('token');
+		if (token) {
+			const userToken = await tokenToUser(token);
+			if (userToken) {
+				event.locals.user = userToken.user;
+
+				if (userToken.token != token) {
+					// refresh token
+					event.cookies.set('token', userToken.token, { path: '/' });
+				}
+			}
+		}
 	}
-	const forwarded =
-		headers.get('x-forwarded-for') || headers.get('x-real-ip') || headers.get('cf-connecting-ip');
-	if (forwarded) {
-		ip = forwarded;
-	}
-	event.locals.ip = ip;
+
 	return resolve(event);
 };
 

@@ -6,10 +6,11 @@ import { handleHelp } from './handlers/help';
 import { handleShowUid, handleToolbox } from './handlers/info';
 import { handleMaps } from './handlers/maps';
 import { handlePoints } from './handlers/points';
+import { handleRegister } from './handlers/register';
 
 export const commands = new CommandRouter();
 commands
-	// add commands here 
+	// add commands here
 	.add('__uid__', handleShowUid)
 
 	.add('', handleHelp)
@@ -35,6 +36,9 @@ commands
 	.add('perm-add', adminPermissionAdd, [])
 	.add('perm-rm', adminPermissionRemove, [])
 	.add('perm', adminCheckPermission, [])
+
+	// register
+	.add('register', handleRegister, ['REGISTER'])
 
 	// catch all unknown command
 	.fallback(handleFallback);

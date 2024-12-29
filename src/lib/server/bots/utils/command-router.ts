@@ -1,4 +1,5 @@
-import type { Handler, Permissions } from '../protocol/types';
+import type { Permissions } from '$lib/server/users';
+import type { Handler } from '../protocol/types';
 
 export interface Command {
 	fallback: boolean;

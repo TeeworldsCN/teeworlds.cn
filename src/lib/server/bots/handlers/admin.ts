@@ -1,5 +1,5 @@
-import { getUser, setUser, type User } from '$lib/server/users';
-import { PERMISSION_LIST, type Handler } from '../protocol/types';
+import { getUser, PERMISSION_LIST, setUser, type User } from '$lib/server/users';
+import { type Handler } from '../protocol/types';
 import { ArgParser } from '../utils/arg-parser';
 
 export const adminPermissionAdd: Handler = async ({ reply, args }) => {
