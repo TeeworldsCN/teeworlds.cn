@@ -5,7 +5,7 @@
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 	import { encodeAsciiURIComponent } from '$lib/link';
-	import type { MapList } from './+server';
+	import type { MapList } from '$lib/server/fetches/maps';
 
 	let maps: MapList = $state([]);
 	let error = $state('');

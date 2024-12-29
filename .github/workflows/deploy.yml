@@ -28,6 +28,7 @@ jobs:
       - name: Move scripts to build folder
         run: |
           mv rust build
+          mv scripts build
 
       - name: Archive Build Folder
         run: tar -czvf build.tar.gz -C build .

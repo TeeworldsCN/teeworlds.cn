@@ -1,4 +1,4 @@
-import { volatile } from '../keyv';
+import { volatile } from '../../keyv';
 
 type RateLimitInfo = {
 	/** Cooldown time in milliseconds */

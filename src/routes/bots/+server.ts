@@ -84,6 +84,7 @@ export const POST: RequestHandler = async ({ fetch, request, url }) => {
 			}
 		},
 		'WEBSITE',
+		'WEBSITE',
 		body.message,
 		body,
 		mode == 'group' ? 'GROUP' : 'DIRECT'
@@ -93,7 +94,7 @@ export const POST: RequestHandler = async ({ fetch, request, url }) => {
 		return response;
 	}
 
-	return new Response(JSON.stringify({ content: '<没有响应的内容>' }), {
+	return new Response(JSON.stringify({ content: '<No Response>' }), {
 		headers: { 'content-type': 'application/json' }
 	});
 };

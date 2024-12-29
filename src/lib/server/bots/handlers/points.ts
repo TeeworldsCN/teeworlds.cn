@@ -1,14 +1,13 @@
 import { encodeAsciiURIComponent } from '$lib/link';
-import { persistent } from '$lib/server/keyv';
 import { getPlayer } from '$lib/server/players';
 import type { Handler } from '../protocol/types';
 
-export const handlePoints: Handler = async ({ uid, reply, args }) => {
+export const handlePoints: Handler = async ({ uid, user, reply, args }) => {
 	let playerName = args.trim();
 
 	// check binds
 	if (!playerName) {
-		playerName = (await persistent.get<string>(`bind:${uid}`)) || '';
+		playerName = user?.name || '';
 	}
 
 	if (!playerName) {

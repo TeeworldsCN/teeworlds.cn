@@ -1,6 +1,5 @@
 import { handleChat } from '$lib/server/bots/bot';
 import { BOT, type QQMessage, type QQPayload } from '$lib/server/bots/protocol/qq';
-import type { SendTypeLink } from '$lib/server/bots/protocol/types';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ fetch, request }) => {
@@ -46,33 +45,37 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 	} else {
 		let replyMethod = null;
 		let mode: 'GROUP' | 'DIRECT' = 'GROUP';
-		let message: string | null = null;
+		let message: string = payload.d.content;
 		let uid = payload.d.author.id;
+		let group = 'DIRECT';
 
 		// group message always at the caller. so adding a newline looks nicer
 		let onNewline = false;
 
 		if (payload.t == 'C2C_MESSAGE_CREATE') {
 			onNewline = false;
-			message = payload.d.content;
 			mode = 'DIRECT';
 			replyMethod = (msg: QQMessage) =>
 				bot.replyToC2CMessage(payload.d.author.user_openid, payload.d.id, msg);
 		} else if (payload.t == 'DIRECT_MESSAGE_CREATE') {
 			onNewline = false;
-			message = payload.d.content;
 			mode = 'DIRECT';
 			replyMethod = (msg: QQMessage) =>
 				bot.replyToDirectMessage(payload.d.guild_id, payload.d.id, msg);
 		} else if (payload.t == 'GROUP_AT_MESSAGE_CREATE') {
 			onNewline = true;
-			message = payload.d.content;
+			group = payload.d.group_id;
 			mode = 'GROUP';
 			replyMethod = (msg: QQMessage) =>
 				bot.replyToGroupAtMessage(payload.d.group_openid, payload.d.id, msg);
 		} else if (payload.t == 'AT_MESSAGE_CREATE') {
+			// handle at message in channel
+			if (message.startsWith('<@!')) {
+				const closingIndex = message.indexOf('>');
+				message = message.slice(closingIndex + 1).trim();
+			}
 			onNewline = false;
-			message = payload.d.content;
+			group = `${payload.d.guild_id}:${payload.d.channel_id}`;
 			mode = 'GROUP';
 			replyMethod = (msg: QQMessage) =>
 				bot.replyToAtMessage(payload.d.channel_id, payload.d.id, msg);
@@ -98,6 +101,7 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 					custom: (body: QQMessage) => replyMethod(bot.makeCustom(body))
 				},
 				uid,
+				group,
 				message,
 				payload.d,
 				mode

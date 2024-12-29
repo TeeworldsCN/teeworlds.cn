@@ -1,9 +1,7 @@
-import { handlePoints } from './handlers/points';
-import type { SendReply, SendResult } from './protocol/types';
+import type { Permissions, SendReply, SendResult } from './protocol/types';
 import { AsyncQueue } from '$lib/async-queue';
-import { RateLimiter } from './rate-limiter';
-import { handleMaps } from './handlers/maps';
-import { handleBind } from './handlers/bind';
+import { commands } from '.';
+import { getUser } from '../users';
 
 let customBody: any = null;
 let customToken: string | null = null;
@@ -67,6 +65,7 @@ const handle = async (
 	platform: string,
 	reply: SendReply,
 	user: string,
+	group: string,
 	msg: string,
 	raw: any,
 	mode: 'GROUP' | 'DIRECT'
@@ -112,67 +111,33 @@ const handle = async (
 		return customError;
 	}
 
-	let command = msg;
-	let args = '';
+	const permissions: Permissions = [];
+	const userData = await getUser(uid);
 
-	// handle at message in channel
-	if (msg.startsWith('<@!')) {
-		msg = msg.split(' ').slice(1).join(' ');
+	if (platform == 'cli') {
+		// local cli always has full permissions
+		permissions.push('SUPER');
+	} else {
+		if (userData && userData.permissions) {
+			permissions.push(...userData.permissions);
+		}
 	}
 
-	const firstSpace = msg.indexOf(' ');
-	if (firstSpace >= 0) {
-		command = msg.slice(0, firstSpace);
-		args = msg.slice(firstSpace + 1).trim();
-	}
+	const cmd = commands.parse(msg, permissions);
 
-	if (command.startsWith('/')) {
-		command = command.slice(1);
-	}
+	const handlerArgs = {
+		uid,
+		user: userData,
+		reply,
+		command: cmd.cmd,
+		args: cmd.args,
+		mode,
+		fetch,
+		group,
+		permissions
+	};
 
-	let result = null;
-
-	const handlerArgs = { uid, reply, command, args, mode, fetch };
-
-	// TODO: Design a better handler for this
-	if (command === '__uid__') {
-		result = await reply.text(`您的 UID 是 ${uid}`);
-	} else if (command === '分数' || command == 'point' || command === 'points') {
-		result = await handlePoints(handlerArgs);
-	} else if (command === '地图' || command === 'map' || command === 'maps') {
-		result = await handleMaps(handlerArgs);
-	} else if (command === '绑定' || command === 'bind') {
-		result = await handleBind(handlerArgs);
-	}
-	// add more commands here ^
-	else if (command === '工具箱') {
-		result = await reply.link({
-			label: '🔗 DDNet 工具箱',
-			prefix: 'DDNet 工具箱 → ',
-			url: 'https://teeworlds.cn/ddnet'
-		});
-	} else if (mode === 'DIRECT' || command === '' || command === '帮助' || command === 'help') {
-		// help message
-		result = await reply.textLink(
-			[
-				'目前豆豆可以提供以下查询功能：',
-				'  /分数 <玩家名> - 查询分数',
-				'  /地图 <地图名> - 查询地图',
-				'  /绑定 <玩家名> - 绑定玩家名',
-				'更多功能请使用工具箱'
-			].join('\n'),
-			{
-				label: '🔗 DDNet 工具箱',
-				prefix: '→ ',
-				url: 'https://teeworlds.cn/ddnet'
-			}
-		);
-	}
-
-	if (!result) {
-		result = { ignored: true, message: '未知指令' };
-	}
-
+	const result = await commands.run(cmd, handlerArgs);
 	transaction.result = result;
 	if (!listenToUser || listenToUser == uid) {
 		lastTransaction = transaction;
@@ -185,9 +150,10 @@ export const handleChat: (
 	platform: string,
 	reply: SendReply,
 	user: string,
+	group: string,
 	msg: string,
 	raw: any,
 	mode: 'GROUP' | 'DIRECT'
-) => Promise<SendResult> = async (fetch, platform, reply, user, msg, raw, mode) => {
-	return await queue.push(() => handle(fetch, platform, reply, user, msg, raw, mode));
+) => Promise<SendResult> = async (...args) => {
+	return await queue.push(() => handle(...args));
 };
