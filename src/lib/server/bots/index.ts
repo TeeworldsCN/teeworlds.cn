@@ -9,8 +9,10 @@ import { handlePoints } from './handlers/points';
 
 export const commands = new CommandRouter();
 commands
-	// add commands here
+	// add commands here 
 	.add('__uid__', handleShowUid)
+
+	.add('', handleHelp)
 	.add('帮助', handleHelp)
 	.add('help', handleHelp)
 	.add('?', handleHelp)
