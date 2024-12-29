@@ -59,6 +59,7 @@ export class FetchCache<T> {
 		this.transformer = transformer;
 	}
 
+	/** This might be useful for directly sending the response to the client without parsing the cached data */
 	async fetchAsString(): Promise<string>;
 	async fetchAsString(
 		thisFetch: typeof global.fetch,
