@@ -141,7 +141,7 @@
 						<div class="mt-1 rounded-lg bg-slate-600 px-1 py-0 md:mt-2 md:px-2 md:py-1">
 							<div class="grid grid-cols-2 gap-2 px-2 text-sm md:text-base">
 								<div class="overflow-hidden text-left">
-									{stat.type == 'total' ? '总计' : mapType(stat.type)}
+									{stat.type == 'points' ? '总计' : mapType(stat.type)}
 								</div>
 								<div class="overflow-hidden text-right">
 									{#if stat.rank}<span class="text-xs">NO.</span>{stat.rank}{/if}
