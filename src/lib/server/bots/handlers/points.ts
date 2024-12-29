@@ -29,22 +29,23 @@ export const handlePoints: Handler = async ({ user, reply, args }) => {
 	}
 
 	const ranks = [
-		{ name: '总通过分', rank: player.points, fallback: '无记录' },
-		{ name: '团队排位', rank: player.team, fallback: '未上榜' },
-		{ name: '个人排位', rank: player.rank, fallback: '未上榜' },
-		{ name: '去年获得', rank: player.yearly, fallback: '无记录' }
+		{ name: '🌎 总通过分', rank: player.points, always: true },
+		{ name: '📅 去年获得', rank: player.yearly, always: true },
+		{ name: '👤 个人排位', rank: player.rank, always: false },
+		{ name: '👥 团队排位', rank: player.team, always: false }
 	];
 
 	const lines = [
 		player.name,
-		...ranks.map((rank) => {
-			const fallback = rank.fallback;
-			if (rank.rank.rank) {
-				return `${rank.name}: ${rank.rank.points}pts [No.${rank.rank.rank}]`;
-			} else {
-				return `${rank.name}: ${fallback}`;
-			}
-		})
+		...ranks
+			.filter((rank) => rank.always || rank.rank.rank)
+			.map((rank) => {
+				if (rank.rank.rank) {
+					return `${rank.name}: ${rank.rank.points}pts [No.${rank.rank.rank}]`;
+				} else {
+					return `${rank.name}: 无记录`;
+				}
+			})
 	];
 
 	return await reply.textLink(lines.join('\n'), {
