@@ -1,7 +1,7 @@
 import { persistent, volatile } from '$lib/server/keyv';
 import { mapReleases } from '$lib/server/tasks/map-releases';
 import { tokenToUser } from '$lib/server/users';
-import type { ServerInit } from '@sveltejs/kit';
+import { type ServerInit } from '@sveltejs/kit';
 import type { Cron } from 'croner';
 
 const initTasks = (...tasks: Cron[]) => {
@@ -24,15 +24,10 @@ export const init: ServerInit = async () => {
 };
 
 export const handle = async ({ event, resolve }) => {
-	// check ip
-	{
-		let ip = 'unknown';
-		try {
-			ip = event.getClientAddress();
-		} catch {
-			ip = 'unknown';
-		}
-		event.locals.ip = ip;
+	try {
+		event.locals.ip = event.getClientAddress();
+	} catch {
+		event.locals.ip = 'unknown';
 	}
 
 	// check login
@@ -50,8 +45,16 @@ export const handle = async ({ event, resolve }) => {
 			}
 		}
 	}
-
 	return resolve(event);
 };
 
-export default handle;
+export function handleError({ event, error }) {
+	if (error instanceof Error) {
+		if (error.constructor.name === 'SvelteKitError' && (error as any).status == 404) {
+			return;
+		}
+	}
+
+	// log other errors
+	console.error(error);
+}
