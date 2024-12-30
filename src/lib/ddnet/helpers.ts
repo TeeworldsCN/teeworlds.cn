@@ -1,26 +1,3 @@
-import FLAG_GER from '$lib/ddnet/assets/DE.png';
-import FLAG_CHN from '$lib/ddnet/assets/CN.png';
-import FLAG_JPN from '$lib/ddnet/assets/JP.png';
-import FLAG_KOR from '$lib/ddnet/assets/KR.png';
-import FLAG_RUS from '$lib/ddnet/assets/RU.png';
-import FLAG_SGP from '$lib/ddnet/assets/SG.png';
-import FLAG_IND from '$lib/ddnet/assets/IN.png';
-import FLAG_AUS from '$lib/ddnet/assets/AU.png';
-import FLAG_ZAF from '$lib/ddnet/assets/ZA.png';
-import FLAG_USA from '$lib/ddnet/assets/US.png';
-import FLAG_BRA from '$lib/ddnet/assets/BR.png';
-import FLAG_CHL from '$lib/ddnet/assets/CL.png';
-import FLAG_POL from '$lib/ddnet/assets/PL.png';
-import FLAG_IRN from '$lib/ddnet/assets/IR.png';
-import FLAG_BHR from '$lib/ddnet/assets/BH.png';
-import FLAG_FIN from '$lib/ddnet/assets/FI.png';
-import FLAG_UKR from '$lib/ddnet/assets/UA.png';
-import FLAG_TUR from '$lib/ddnet/assets/TR.png';
-import FLAG_ARG from '$lib/ddnet/assets/AR.png';
-
-import FLAG_EUR from '$lib/ddnet/assets/EU.png';
-import FLAG_DEFAULT from '$lib/ddnet/assets/default.png';
-
 export const numberToStars = (num: number) => {
 	const stars = Math.round(num);
 	return `${'★'.repeat(stars)}${'☆'.repeat(Math.max(0, 5 - stars))}`;
@@ -51,27 +28,28 @@ export const mapType = (type: string) => {
 	return MAP_TYPES[type.toLowerCase()] || type;
 };
 
+const FLAG_DEFAULT: string = '/assets/flags/default.png'
 const FLAG_MAP: { [key: string]: typeof FLAG_DEFAULT } = {
-	EUR: FLAG_EUR,
-	GER: FLAG_GER,
-	CHN: FLAG_CHN,
-	JPN: FLAG_JPN,
-	KOR: FLAG_KOR,
-	RUS: FLAG_RUS,
-	SGP: FLAG_SGP,
-	IND: FLAG_IND,
-	AUS: FLAG_AUS,
-	ZAF: FLAG_ZAF,
-	USA: FLAG_USA,
-	BRA: FLAG_BRA,
-	CHL: FLAG_CHL,
-	POL: FLAG_POL,
-	IRN: FLAG_IRN,
-	BHR: FLAG_BHR,
-	FIN: FLAG_FIN,
-	UKR: FLAG_UKR,
-	TUR: FLAG_TUR,
-	ARG: FLAG_ARG
+	GER: '/assets/flags/DE.png',
+	CHN: '/assets/flags/CN.png',
+	JPN: '/assets/flags/JP.png',
+	KOR: '/assets/flags/KR.png',
+	RUS: '/assets/flags/RU.png',
+	SGP: '/assets/flags/SG.png',
+	IND: '/assets/flags/IN.png',
+	AUS: '/assets/flags/AU.png',
+	ZAF: '/assets/flags/ZA.png',
+	USA: '/assets/flags/US.png',
+	BRA: '/assets/flags/BR.png',
+	CHL: '/assets/flags/CL.png',
+	POL: '/assets/flags/PL.png',
+	IRN: '/assets/flags/IR.png',
+	BHR: '/assets/flags/BH.png',
+	FIN: '/assets/flags/FI.png',
+	UKR: '/assets/flags/UA.png',
+	TUR: '/assets/flags/TR.png',
+	ARG: '/assets/flags/AR.png',
+	EUR: '/assets/flags/EU.png'
 };
 
 export const flagAsset = (flag: string) => {
