@@ -19,7 +19,7 @@
 			icon: new URL(data.map.icon, window.location.href).href,
 			link: window.location.href,
 			title: `${data.map.name}`,
-			desc: `${mapType(data.map.type)} ${numberToStars(data.map.difficulty)} (${data.map.points}pt) 作者：${mapperTransformed()} 均时：${secondsToTime(data.map.median_time)}`
+			desc: `${mapType(data.map.type)} ${numberToStars(data.map.difficulty)} (${data.map.points}pt) 作者：${mapperTransformed()}${data.map.median_time ? ` 均时：${secondsToTime(data.map.median_time)}` : ''}`
 		});
 	});
 </script>

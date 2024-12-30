@@ -20,10 +20,18 @@ jobs:
           bun-version: 'latest'
 
       - name: Install Dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
+
+      - name: Create cache directory
+        run: mkdir -p cache
 
       - name: Build with Vite
-        run: bun run vite build
+        run: bun --bun run vite build
+
+      - name: Move scripts to build folder
+        run: |
+          mv rust build
+          mv scripts build
 
       - name: Archive Build Folder
         run: tar -czvf build.tar.gz -C build .

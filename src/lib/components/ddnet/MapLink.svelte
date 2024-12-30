@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import Link from '../Link.svelte';
-	import { encodeURIComponentAscii } from '$lib/link';
+	import { encodeAsciiURIComponent } from '$lib/link';
 
 	const {
 		map,
@@ -13,7 +13,7 @@
 
 <Link
 	data-sveltekit-preload-data="tap"
-	href={`/ddnet/maps/${encodeURIComponentAscii(map)}`}
+	href={`/ddnet/m?n=${encodeAsciiURIComponent(map)}`}
 	{...rest}
 	{className}>{@render children()}</Link
 >

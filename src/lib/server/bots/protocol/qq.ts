@@ -3,7 +3,33 @@ import { env } from '$env/dynamic/private';
 // QQ OpenAPI
 const END_POINT = 'https://api.sgroup.qq.com';
 
-class QQBot {
+export interface QQMessage {
+	msg_type: number;
+	content?: string;
+	embed?: any;
+	ark?: {
+		template_id: number;
+		kv: {
+			key: string;
+			value?: string;
+			obj?: any;
+		}[];
+	};
+	image?: string;
+	markdown?: {
+		template_id: number;
+		params?: {
+			key: string;
+			values: string[];
+		}[];
+	};
+	message_reference?: {
+		message_id: string;
+		ignore_get_message_error: boolean;
+	};
+}
+
+export class QQBot {
 	private secret: string;
 
 	private privateKey: CryptoKey | null;
@@ -110,7 +136,21 @@ class QQBot {
 		return this.accessToken;
 	}
 
-	async replyToC2CMessage(openid: string, msgId: string, content: string) {
+	/**
+	 * Make a text message
+	 */
+	makeText(content: string): QQMessage {
+		return { msg_type: 0, content };
+	}
+
+	/**
+	 * Make custom message
+	 */
+	makeCustom(body: any): QQMessage {
+		return body;
+	}
+
+	async replyToC2CMessage(openid: string, msgId: string, message: QQMessage) {
 		const url = new URL(`/v2/users/${openid}/messages`, END_POINT);
 		const token = await this.getAccessToken();
 		if (!token) {
@@ -125,19 +165,24 @@ class QQBot {
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
-				content,
-				msg_type: 0,
-				msg_id: msgId
+				msg_id: msgId,
+				...message
 			})
 		});
 
 		if (res.status != 200) {
-			console.error(res.status, res.statusText);
+			return {
+				code: res.status,
+				message: 'Failed to send message',
+				body: await res.text(),
+				error: true,
+				isInternal: true
+			};
 		}
-		return res;
+		return res.json();
 	}
 
-	async replyToGroupAtMessage(groupId: string, msgId: string, content: string) {
+	async replyToGroupAtMessage(groupId: string, msgId: string, message: QQMessage) {
 		const url = new URL(`/v2/groups/${groupId}/messages`, END_POINT);
 		const token = await this.getAccessToken();
 		if (!token) {
@@ -152,19 +197,24 @@ class QQBot {
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
-				content,
-				msg_type: 0,
-				msg_id: msgId
+				msg_id: msgId,
+				...message
 			})
 		});
 
 		if (res.status != 200) {
-			console.error(res.status, res.statusText);
+			return {
+				code: res.status,
+				message: 'Failed to send message',
+				body: await res.text(),
+				error: true,
+				isInternal: true
+			};
 		}
-		return res;
+		return res.json();
 	}
 
-	async replyToDirectMessage(guildId: string, msgId: string, content: string) {
+	async replyToDirectMessage(guildId: string, msgId: string, message: QQMessage) {
 		const url = new URL(`/dms/${guildId}/messages`, END_POINT);
 		const token = await this.getAccessToken();
 		if (!token) {
@@ -179,17 +229,23 @@ class QQBot {
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
-				content,
-				msg_id: msgId
+				msg_id: msgId,
+				...message
 			})
 		});
 		if (res.status != 200) {
-			console.error(res.status, res.statusText);
+			return {
+				code: res.status,
+				message: 'Failed to send message',
+				body: await res.text(),
+				error: true,
+				isInternal: true
+			};
 		}
-		return res;
+		return res.json();
 	}
 
-	async replyToAtMessage(channelId: string, msgId: string, content: string) {
+	async replyToAtMessage(channelId: string, msgId: string, message: QQMessage) {
 		const url = new URL(`/channels/${channelId}/messages`, END_POINT);
 		const token = await this.getAccessToken();
 		if (!token) {
@@ -204,16 +260,21 @@ class QQBot {
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
-				content,
-				msg_type: 0,
-				msg_id: msgId
+				msg_id: msgId,
+				...message
 			})
 		});
 
 		if (res.status != 200) {
-			console.error(res.status, res.statusText);
+			return {
+				code: res.status,
+				message: 'Failed to send message',
+				body: await res.text(),
+				error: true,
+				isInternal: true
+			};
 		}
-		return res;
+		return res.json();
 	}
 }
 

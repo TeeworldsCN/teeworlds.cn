@@ -10,6 +10,8 @@
 
 	let { data } = $props();
 
+	let explaination = $state(false);
+
 	afterNavigate(() => {
 		share({
 			icon: `${window.location.origin}/shareicon.png`,
@@ -42,10 +44,24 @@
 				flag={data.player.favorite_server.server}
 				title="常玩地区：{data.player.favorite_server.server}"
 			/>
+			{#if data.player.pending_unknown || data.player.pending_points}
+				<button
+					class="cursor-pointer text-sm font-semibold text-blue-300 hover:text-blue-400"
+					onclick={() => {
+						explaination = !explaination;
+					}}>ⓘ 数据不对？</button
+				>
+			{/if}
+			{#if explaination}
+				<span
+					class="mt-2 block rounded-lg bg-slate-800 px-3 py-1 text-sm font-normal shadow-md md:float-right md:mt-0 md:inline-block"
+					>分数统计结算有一天的延迟，部分数据可能需要48小时后才会出现</span
+				>
+			{/if}
 		</h2>
 
 		<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-			{#each data.ranks as rank}
+			{#each data.ranks as rank, i}
 				<div
 					class="rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3 {rank.rank.rank
 						? ''
@@ -54,7 +70,15 @@
 					<h3 class="mb-1 text-base font-bold">{rank.name}</h3>
 					{#if rank.rank.rank}
 						<p class="text-md">
-							<span class="text-sm">No.</span>{rank.rank.rank} - {rank.rank.points}pts
+							<span class="text-sm">No.</span>{rank.rank.rank} - {rank.rank
+								.points}pts{#if i == 0 && (rank.rank.pending || data.player.pending_unknown)}<span
+									class="cursor-pointer font-semibold text-blue-300 hover:text-blue-400"
+									title="根据最近过图记录，有{data.player.pending_unknown ? '至少' : ''}{rank.rank
+										.pending || '?'}分尚未结算。{data.player.pending_unknown
+										? '今日过图超过10次，数据可能不准确，请以明日结算结果为准。'
+										: ''}"
+									>{' '}+{rank.rank.pending}{#if data.player.pending_unknown}?{/if}</span
+								>{/if}
 						</p>
 					{:else}
 						<p class="text-md">未获得</p>
@@ -77,7 +101,10 @@
 				{/each}
 			</div>
 
-			<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
+			<div
+				class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3"
+				class:opacity-50={!data.player.favorite_partners.length}
+			>
 				<h3 class="mb-1 text-base font-bold">👍 常玩队友</h3>
 				{#each data.player.favorite_partners as partner}
 					<p class="text-md">
@@ -85,8 +112,19 @@
 						组队 {partner.finishes} 次
 					</p>
 				{/each}
+				{#if !data.player.favorite_partners.length}
+					<p class="text-md">暂无团队记录</p>
+				{/if}
 			</div>
 		</div>
+		{#if data.player.data_update_time}
+			<div class="mt-2">
+				上次数据更新于 {new Date(data.player.data_update_time * 1000).toLocaleString('zh-CN', {
+					dateStyle: 'short',
+					timeStyle: 'short'
+				})}
+			</div>
+		{/if}
 	</div>
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
 		<h2 class="mb-3 text-xl font-bold">玩家数据</h2>
@@ -103,7 +141,7 @@
 						<div class="mt-1 rounded-lg bg-slate-600 px-1 py-0 md:mt-2 md:px-2 md:py-1">
 							<div class="grid grid-cols-2 gap-2 px-2 text-sm md:text-base">
 								<div class="overflow-hidden text-left">
-									{stat.type == 'total' ? '总计' : mapType(stat.type)}
+									{stat.type == 'points' ? '总计' : mapType(stat.type)}
 								</div>
 								<div class="overflow-hidden text-right">
 									{#if stat.rank}<span class="text-xs">NO.</span>{stat.rank}{/if}

@@ -10,10 +10,12 @@ const hmacKey = env.IMGPROXY_KEY
 		)
 	: undefined;
 
-const saltStr = env.IMGPROXY_SALT ? Buffer.from(env.IMGPROXY_SALT, 'hex').toString('ascii') : undefined;
+const saltStr = env.IMGPROXY_SALT
+	? Buffer.from(env.IMGPROXY_SALT, 'hex').toString('ascii')
+	: undefined;
 
 export const convert = async (url: string, type: 'icon' | 'image' = 'image') => {
-	if (!env.MGPROXY_URL || !env.IMGPROXY_KEY || !env.IMGPROXY_SALT || !hmacKey || !saltStr) {
+	if (!env.IMGPROXY_URL || !env.IMGPROXY_KEY || !env.IMGPROXY_SALT || !hmacKey || !saltStr) {
 		return new URL(url);
 	}
 

@@ -4,22 +4,8 @@
 	import { goto, preloadData } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
-	import { encodeURIComponentAscii } from '$lib/link';
-
-	type MapList = {
-		name: string;
-		website: string;
-		thumbnail: string;
-		web_preview: string;
-		type: string;
-		points: number;
-		difficulty: number;
-		mapper: string;
-		release: string;
-		width: number;
-		height: number;
-		tiles: string[];
-	}[];
+	import { encodeAsciiURIComponent } from '$lib/link';
+	import type { MapList } from '$lib/server/fetches/maps';
 
 	let maps: MapList = $state([]);
 	let error = $state('');
@@ -154,7 +140,7 @@
 	onMount(async () => {
 		processHashQuery(page.url.hash);
 		try {
-			maps = await (await fetch('/ddnet/maps.json')).json();
+			maps = await (await fetch('/ddnet/maps')).json();
 		} catch (e: any) {
 			error = e.message;
 		}
@@ -202,15 +188,15 @@
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
 		{#each paginatedMaps as map (map.name)}
 			<div class="rounded border border-slate-700 bg-slate-700 p-4 shadow">
-				<h3 class="text-lg font-bold text-nowrap overflow-x-auto scrollbar-hide">{map.name}</h3>
+				<h3 class="scrollbar-hide overflow-x-auto text-nowrap text-lg font-bold">{map.name}</h3>
 				<button
 					class="mt-2 aspect-map h-auto w-full rounded-md border border-slate-600 hover:border-blue-500 active:border-blue-300"
 					style="background-image: url({map.thumbnail}); background-size: cover; background-repeat: no-repeat; background-position: center;"
 					onmousedown={() => {
-						preloadData(`/ddnet/maps/${encodeURIComponentAscii(map.name)}`);
+						preloadData(`/ddnet/m?n=${encodeAsciiURIComponent(map.name)}`);
 					}}
 					onclick={() => {
-						goto(`/ddnet/maps/${encodeURIComponentAscii(map.name)}`);
+						goto(`/ddnet/m?n=${encodeAsciiURIComponent(map.name)}`);
 					}}
 					aria-label={map.name}
 				>

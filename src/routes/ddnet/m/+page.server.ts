@@ -1,11 +1,16 @@
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { convert } from '$lib/server/imgproxy';
 import type { PageServerLoad } from './$types';
 import { basename } from 'path';
-import { normalizeURIAscii } from '$lib/link';
+import { decodeAsciiURIComponent } from '$lib/link';
 
-export const load: PageServerLoad = async ({ params, parent }) => {
-	const name = normalizeURIAscii(params.name);
+export const load = (async ({ url, parent }) => {
+	const query = url.searchParams.get('n');
+	if (!query) {
+		return redirect(302, '/ddnet/maps');
+	}
+
+	const name = decodeAsciiURIComponent(query);
 	const data = await (
 		await fetch(`https://ddnet.org/maps/?json=${encodeURIComponent(name)}`)
 	).json();
@@ -63,4 +68,4 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		icon: string;
 	};
 	return { map, ...(await parent()) };
-};
+}) satisfies PageServerLoad;
