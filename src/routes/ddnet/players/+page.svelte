@@ -61,7 +61,7 @@
 	let lastQueryTime = 0;
 
 	function gotoName(name: string) {
-		goto(`/ddnet/players/${encodeAsciiURIComponent(name)}`);
+		goto(`/ddnet/p?n=${encodeAsciiURIComponent(name)}`);
 	}
 
 	async function query() {

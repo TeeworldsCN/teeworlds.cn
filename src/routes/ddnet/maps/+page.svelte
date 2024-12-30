@@ -193,10 +193,10 @@
 					class="mt-2 aspect-map h-auto w-full rounded-md border border-slate-600 hover:border-blue-500 active:border-blue-300"
 					style="background-image: url({map.thumbnail}); background-size: cover; background-repeat: no-repeat; background-position: center;"
 					onmousedown={() => {
-						preloadData(`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`);
+						preloadData(`/ddnet/m?n=${encodeAsciiURIComponent(map.name)}`);
 					}}
 					onclick={() => {
-						goto(`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`);
+						goto(`/ddnet/m?n=${encodeAsciiURIComponent(map.name)}`);
 					}}
 					aria-label={map.name}
 				>

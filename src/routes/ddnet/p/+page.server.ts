@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { decodeAsciiURIComponent } from '$lib/link';
 import { ranks } from '$lib/server/fetches/ranks';
@@ -32,8 +32,12 @@ interface MapData {
 	pending_points?: number;
 }
 
-export const load = (async ({ fetch, params, parent }) => {
-	const name = decodeAsciiURIComponent(params.name);
+export const load = (async ({ fetch, url, parent }) => {
+	const query = url.searchParams.get('n');
+	if (!query) {
+		return redirect(302, '/ddnet/players');
+	}
+	const name = decodeAsciiURIComponent(query);
 	const data = await (
 		await fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`)
 	).json();

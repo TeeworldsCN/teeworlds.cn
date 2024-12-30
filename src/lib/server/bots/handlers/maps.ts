@@ -93,6 +93,6 @@ export const handleMaps: Handler = async ({ reply, fetch, args }) => {
 	return await reply.textLink(lines.join('\n'), {
 		label: '🔗 地图详情',
 		prefix: '详情: ',
-		url: `https://teeworlds.cn/ddnet/maps/${encodeAsciiURIComponent(targetMap.name)}`
+		url: `https://teeworlds.cn/ddnet/m?n=${encodeAsciiURIComponent(targetMap.name)}`
 	});
 };
