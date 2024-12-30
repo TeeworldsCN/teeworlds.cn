@@ -25,6 +25,7 @@
 		"croner": "^9.0.0",
 		"keyv": "^5.2.3",
 		"markdown-it": "^14.1.0",
+		"mint-filter": "^4.0.3",
 		"nativeshare": "^2.1.5",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.2",

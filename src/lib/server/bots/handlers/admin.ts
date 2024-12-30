@@ -3,7 +3,6 @@ import {
 	getUserByUsername,
 	PERMISSION_LIST,
 	updateUserData,
-	type User
 } from '$lib/server/db/users';
 import { type Handler } from '../protocol/types';
 import { ArgParser } from '../utils/arg-parser';

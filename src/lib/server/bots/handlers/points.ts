@@ -1,4 +1,5 @@
 import { encodeAsciiURIComponent } from '$lib/link';
+import { allowedText } from '$lib/server/filter';
 import { getPlayer } from '$lib/server/players';
 import type { Handler } from '../protocol/types';
 
@@ -24,7 +25,7 @@ export const handlePoints: Handler = async ({ user, reply, args }) => {
 		return { ignored: true, message: '玩家信息未加载，分数功能未启用' };
 	}
 
-	if (!player.name) {
+	if (!player.name || !allowedText(player.name)) {
 		return await reply.text('未找到相关的玩家信息');
 	}
 
