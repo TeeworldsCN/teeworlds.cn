@@ -25,11 +25,6 @@
 {/if}
 
 <div class="mt-8">
-	<ToolboxButton
-		href="https://qun.qq.com/qqweb/qunpro/share?_wv=3&_wwv=128&inviteCode=AI8a2&from=246610&biz=ka#/pc"
-		newTab
-	>
-		QQ频道
-	</ToolboxButton>
+	<ToolboxButton href="https://pd.qq.com/s/h52kbyrkr?businessType=9" newTab>QQ频道</ToolboxButton>
 	<div class="text-semibold text-2xl">加入社区获取游戏动态与活动消息</div>
 </div>
