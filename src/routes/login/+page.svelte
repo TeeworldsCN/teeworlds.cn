@@ -12,16 +12,17 @@
 
 	afterNavigate(() => {
 		error = data.error;
+		const errorElement = document.getElementById('error');
+		errorElement?.classList.remove('motion-preset-shake');
+		requestAnimationFrame(() => {
+			setTimeout(() => {
+				errorElement?.classList.add('motion-preset-shake');
+			}, 0);
+		});
 	});
-
-	const removeError = () => {
-		setTimeout(() => {
-			error = '';
-		}, 1000);
-	};
 </script>
 
-<div class="card mx-auto w-96 p-4">
+<div class="mx-auto w-96 p-4">
 	<div class="h-[4rem]">
 		{#if data.registered}
 			<div class="mb-4 flex items-center justify-between rounded-lg bg-slate-600 px-4 py-2">
@@ -30,7 +31,10 @@
 		{/if}
 
 		{#if error}
-			<div class="mb-4 flex items-center justify-between rounded-lg bg-orange-900 px-4 py-2">
+			<div
+				id="error"
+				class="motion-preset-shake mb-4 flex items-center justify-between rounded-lg bg-orange-900 px-4 py-2"
+			>
 				<p>{error}</p>
 			</div>
 		{/if}
@@ -40,7 +44,7 @@
 			<p class="text-lg font-semibold">登录入口</p>
 		</div>
 		<div class="h-full max-h-[calc(100svh-20rem)] space-y-3 overflow-y-auto p-4">
-			<form class="flex flex-col space-y-2" method="POST" action="?/login" use:enhance>
+			<form class="flex flex-col space-y-2" method="POST" use:enhance>
 				<div class="flex flex-col space-y-2">
 					<label for="username" class="text-sm font-medium text-slate-300">用户名</label>
 					{#key 'username'}
@@ -49,7 +53,6 @@
 							id="username"
 							name="username"
 							bind:value={username}
-							onfocus={removeError}
 							class="w-full rounded-l-md border border-slate-500 bg-slate-600 px-3 py-2 text-sm font-normal shadow-md md:flex-1"
 						/>
 					{/key}
@@ -63,7 +66,6 @@
 							id="password"
 							name="password"
 							bind:value={password}
-							onfocus={removeError}
 							class="w-full rounded-l-md border border-slate-500 bg-slate-600 px-3 py-2 text-sm font-normal shadow-md md:flex-1"
 						/>
 					{/key}
@@ -71,7 +73,6 @@
 				<div class="flex flex-col space-y-2">
 					<button
 						type="submit"
-						onsubmit={() => (error = '')}
 						class="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:bg-blue-500 disabled:opacity-50"
 						disabled={!username || !password}
 					>

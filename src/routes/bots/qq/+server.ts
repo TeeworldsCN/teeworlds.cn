@@ -56,18 +56,18 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 			onNewline = false;
 			mode = 'DIRECT';
 			replyMethod = (msg: QQMessage) =>
-				bot.replyToC2CMessage(payload.d.author.user_openid, payload.d.id, msg);
+				bot.sendC2CMessage(payload.d.author.user_openid, msg, { msgId: payload.d.id });
 		} else if (payload.t == 'DIRECT_MESSAGE_CREATE') {
 			onNewline = false;
 			mode = 'DIRECT';
 			replyMethod = (msg: QQMessage) =>
-				bot.replyToDirectMessage(payload.d.guild_id, payload.d.id, msg);
+				bot.sendDirectMessage(payload.d.guild_id, msg, { msgId: payload.d.id });
 		} else if (payload.t == 'GROUP_AT_MESSAGE_CREATE') {
 			onNewline = true;
 			group = payload.d.group_id;
 			mode = 'GROUP';
 			replyMethod = (msg: QQMessage) =>
-				bot.replyToGroupAtMessage(payload.d.group_openid, payload.d.id, msg);
+				bot.sendGroupMessage(payload.d.group_openid, msg, { msgId: payload.d.id });
 		} else if (payload.t == 'AT_MESSAGE_CREATE') {
 			// handle at message in channel
 			if (message.startsWith('<@!')) {
@@ -78,7 +78,7 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 			group = `${payload.d.guild_id}:${payload.d.channel_id}`;
 			mode = 'GROUP';
 			replyMethod = (msg: QQMessage) =>
-				bot.replyToAtMessage(payload.d.channel_id, payload.d.id, msg);
+				bot.sendChannelMessage(payload.d.channel_id, msg, { msgId: payload.d.id });
 		}
 
 		const wrapNewline = (msg: string) => (onNewline ? '\n' + msg : msg);

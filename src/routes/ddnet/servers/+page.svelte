@@ -43,7 +43,7 @@
 	</button>
 </div>
 
-<div class="card h-[calc(100svh-18rem)] max-h-[calc(100svh-18rem)] w-full p-4">
+<div class="h-[calc(100svh-18rem)] max-h-[calc(100svh-18rem)] w-full p-4">
 	<VirtualScroll keeps={75} data={servers()} key="key" let:data>
 		<div class="w-full rounded bg-slate-700 px-5 my-1 py-1">{data.info.name}</div>
 	</VirtualScroll>

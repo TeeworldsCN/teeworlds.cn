@@ -18,6 +18,14 @@
 cargo run --release --manifest-path ./rust/Cargo.toml -- --force-gen
 ```
 
+安装依赖
+
+```bash
+bun install
+```
+
+启动开发服务端
+
 ```bash
 bun --bun dev
 ```

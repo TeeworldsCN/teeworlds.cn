@@ -103,14 +103,19 @@ export class FetchCache<T> {
 
 				if (!this.skipHead) {
 					if (cache) {
-						// check against the cache tag if a cache is available
-						response = await thisFetch(this.url, { method: 'HEAD' });
-						if (response.ok) {
-							tag = response.headers.get('etag') || response.headers.get('last-modified');
-							if (tag) {
-								outdated = cache.tag != tag;
+						try {
+							// check against the cache tag if a cache is available
+							response = await thisFetch(this.url, { method: 'HEAD' });
+							if (response.ok) {
+								tag = response.headers.get('etag') || response.headers.get('last-modified');
+								if (tag) {
+									outdated = cache.tag != tag;
+								}
+							} else {
+								// if the upstream errored. just pretend it is up to date
+								outdated = false;
 							}
-						} else {
+						} catch {
 							// if the upstream errored. just pretend it is up to date
 							outdated = false;
 						}
@@ -125,25 +130,27 @@ export class FetchCache<T> {
 				// if the cache is outdated, fetch the file again
 				if (outdated) {
 					const abort = new AbortController();
-					const result = await thisFetch(this.url, { signal: abort.signal });
+					try {
+						const result = await thisFetch(this.url, { signal: abort.signal });
 
-					if (result.ok) {
-						tag = result.headers.get('etag') || result.headers.get('last-modified');
-						if (!this.alwaysFetch && cache && tag == cache.tag) {
-							// tag is the same, drop the connection immediately and just use the cache
-							abort.abort();
-							return cache.data;
+						if (result.ok) {
+							tag = result.headers.get('etag') || result.headers.get('last-modified');
+							if (!this.alwaysFetch && cache && tag == cache.tag) {
+								// tag is the same, drop the connection immediately and just use the cache
+								abort.abort();
+								return cache.data;
+							}
+							data = await this.transformer(result);
+							let stringData;
+							if (tag) {
+								// only cache if the tag is valid
+								stringData = JSON.stringify(data);
+								await volatile.set<CachedData>(key, { tag, data: stringData });
+								this.nextQueryTime = now + this.minQueryInterval * 1000;
+							}
+							return { data };
 						}
-						data = await this.transformer(result);
-						let stringData;
-						if (tag) {
-							// only cache if the tag is valid
-							stringData = JSON.stringify(data);
-							await volatile.set<CachedData>(key, { tag, data: stringData });
-							this.nextQueryTime = now + this.minQueryInterval * 1000;
-						}
-						return { data };
-					}
+					} catch {}
 				}
 
 				// not outdated, use the cache directly if it exists
@@ -151,7 +158,7 @@ export class FetchCache<T> {
 					return cache.data;
 				}
 
-				// not outdated but no cache, means the head response is possibly not ok
+				// not outdated but no cache, means the head response is possibly not ok or errored
 				if (response) {
 					throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
 				} else {
