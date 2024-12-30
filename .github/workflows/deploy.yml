@@ -26,6 +26,8 @@ jobs:
         run: mkdir -p cache
 
       - name: Build with Vite
+        env:
+          ORIGIN: https://teeworlds.cn
         run: bun --bun run vite build
 
       - name: Move scripts to build folder
