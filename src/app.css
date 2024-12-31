@@ -12,3 +12,9 @@
 	-ms-overflow-style: none; /* IE and Edge */
 	scrollbar-width: none; /* Firefox */
 }
+
+/* Fake one line content to make line height the same as the content when there is no content */
+.fake-content::after {
+	content: '.';
+	visibility: hidden;
+}
