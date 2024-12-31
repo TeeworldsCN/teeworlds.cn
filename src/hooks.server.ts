@@ -1,6 +1,7 @@
 import { tokenToUser } from '$lib/server/db/users';
 import { volatile } from '$lib/server/keyv';
-import { mapReleases } from '$lib/server/tasks/map-releases';
+import { mapTracker } from '$lib/server/tasks/map-tracker';
+import { recordTracker } from '$lib/server/tasks/record-tracker';
 import { type ServerInit } from '@sveltejs/kit';
 import type { Cron } from 'croner';
 
@@ -18,7 +19,8 @@ export const init: ServerInit = async () => {
 
 	initTasks(
 		// initialize scheduled tasks
-		mapReleases
+		mapTracker,
+		recordTracker
 	);
 };
 
@@ -47,7 +49,7 @@ export const handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-export function handleError({ event, error }) {
+export function handleError({ error }) {
 	if (error instanceof Error) {
 		if (error.constructor.name === 'SvelteKitError' && (error as any).status == 404) {
 			return;

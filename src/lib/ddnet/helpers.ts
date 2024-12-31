@@ -21,7 +21,11 @@ const MAP_TYPES: { [key: string]: string } = {
 	insane: '疯狂',
 	oldschool: '传统',
 	race: '竞速',
-	fun: '娱乐'
+	fun: '娱乐',
+	"ddmax.easy": "古典.Easy",
+	"ddmax.next": "古典.Next",
+	"ddmax.pro": "古典.Pro",
+	"ddmax.nut": "古典.Nut",
 };
 
 export const mapType = (type: string) => {

@@ -30,6 +30,7 @@
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.2",
 		"prettier-plugin-tailwindcss": "^0.6.9",
+		"rss-parser": "^3.13.0",
 		"svelte": "^5.15.0",
 		"svelte-adapter-bun": "^0.5.2",
 		"svelte-check": "^4.1.1",

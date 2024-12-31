@@ -1,3 +1,4 @@
+import { PERMISSIONS } from '$lib/types';
 import { volatile } from '../keyv';
 import { sqlite } from '../sqlite';
 import crypto from 'crypto';
@@ -10,12 +11,7 @@ sqlite
 	.run();
 
 export type UserPermissions = Permission[];
-const _PERMISSION_LIST = [
-	// permissions
-	'SUPER',
-	'WEB_ADMIN'
-] as const;
-export const PERMISSION_LIST = _PERMISSION_LIST as any as string[];
+export const PERMISSION_LIST = PERMISSIONS as any as string[];
 type Permission = (typeof PERMISSION_LIST)[number];
 
 export interface UserData {

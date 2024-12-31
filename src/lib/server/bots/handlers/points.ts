@@ -1,3 +1,4 @@
+import { numberToSub } from '$lib/helpers';
 import { encodeAsciiURIComponent } from '$lib/link';
 import { allowedText } from '$lib/server/filter';
 import { getPlayer } from '$lib/server/players';
@@ -42,7 +43,7 @@ export const handlePoints: Handler = async ({ user, reply, args }) => {
 			.filter((rank) => rank.always || rank.rank.rank)
 			.map((rank) => {
 				if (rank.rank.rank) {
-					return `${rank.name}: ${rank.rank.points}pts [No.${rank.rank.rank}]`;
+					return `${rank.name}: ${rank.rank.points}pts ₍ₙₒ.${numberToSub(rank.rank.rank)}₎`;
 				} else {
 					return `${rank.name}: 无记录`;
 				}

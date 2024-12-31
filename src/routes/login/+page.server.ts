@@ -1,4 +1,4 @@
-import { authenticateByUsername, deleteToken, generateToken } from '$lib/server/db/users';
+import { authenticateByUsername, generateToken } from '$lib/server/db/users';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -13,7 +13,7 @@ export const load = (async ({ locals, url, parent }) => {
 }) satisfies PageServerLoad;
 
 export const actions = {
-	login: async ({ request, cookies }) => {
+	default: async ({ request, cookies, url }) => {
 		const body = await request.formData();
 		if (!body) {
 			return error(400, { message: 'Bad Request' });
@@ -32,16 +32,7 @@ export const actions = {
 		}
 
 		cookies.set('token', await generateToken(user.uuid), { path: '/' });
-		return redirect(302, '/');
-	},
-
-	logout: async ({ cookies }) => {
-		// get the token from the cookie
-		const token = cookies.get('token');
-		if (token) {
-			await deleteToken(token);
-		}
-		cookies.delete('token', { path: '/' });
-		return { success: true };
+		const ref = url.searchParams.get('ref') || '/';
+		return redirect(302, ref);
 	}
 } satisfies Actions;

@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import { volatile } from '$lib/server/keyv';
 
 // QQ OpenAPI
 const END_POINT = 'https://api.sgroup.qq.com';
@@ -29,15 +30,22 @@ export interface QQMessage {
 	};
 }
 
+type QQBotSendOptions = {
+	/** If provided, the message will count as a reply */
+	msgId?: string;
+};
+type QQBotMessageHandler = (
+	target: string,
+	message: QQMessage,
+	options?: QQBotSendOptions
+) => Promise<QQRequestError | any>;
+
 export class QQBot {
 	private secret: string;
 
 	private privateKey: CryptoKey | null;
 	private publicKey: CryptoKey | null;
 	private callbacks: (() => void)[] | null = [];
-
-	private accessToken: string | undefined;
-	private accessTokenExpires: number | undefined;
 
 	constructor(secret: string) {
 		this.secret = secret;
@@ -103,8 +111,9 @@ export class QQBot {
 	}
 
 	async getAccessToken() {
-		if (this.accessToken && this.accessTokenExpires && Date.now() < this.accessTokenExpires) {
-			return this.accessToken;
+		const accessToken = await volatile.get<string>('qqbot:accessToken');
+		if (accessToken) {
+			return accessToken;
 		}
 
 		const url = new URL('https://bots.qq.com/app/getAppAccessToken');
@@ -131,9 +140,13 @@ export class QQBot {
 			return '';
 		}
 
-		this.accessToken = json.access_token;
-		this.accessTokenExpires = Date.now() + (parseInt(json.expires_in) - 30) * 1000;
-		return this.accessToken;
+		await volatile.set<string>(
+			'qqbot:accessToken',
+			json.access_token,
+			(parseInt(json.expires_in) - 30) * 1000
+		);
+
+		return json.access_token;
 	}
 
 	/**
@@ -150,8 +163,7 @@ export class QQBot {
 		return body;
 	}
 
-	async replyToC2CMessage(openid: string, msgId: string, message: QQMessage) {
-		const url = new URL(`/v2/users/${openid}/messages`, END_POINT);
+	async sendMessage(url: URL, message: QQMessage, options?: QQBotSendOptions) {
 		const token = await this.getAccessToken();
 		if (!token) {
 			console.error('Can not get access token.');
@@ -165,7 +177,7 @@ export class QQBot {
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
-				msg_id: msgId,
+				msg_id: options?.msgId,
 				...message
 			})
 		});
@@ -176,105 +188,97 @@ export class QQBot {
 				message: 'Failed to send message',
 				body: await res.text(),
 				error: true,
-				isInternal: true
+				internal: true
 			};
 		}
 		return res.json();
 	}
 
-	async replyToGroupAtMessage(groupId: string, msgId: string, message: QQMessage) {
-		const url = new URL(`/v2/groups/${groupId}/messages`, END_POINT);
-		const token = await this.getAccessToken();
-		if (!token) {
-			console.error('Can not get access token.');
-			return;
-		}
+	sendC2CMessage: QQBotMessageHandler = async (openId, message, options) => {
+		const url = new URL(`/v2/users/${openId}/messages`, END_POINT);
+		return this.sendMessage(url, message, options);
+	};
 
-		const res = await fetch(url, {
-			method: 'POST',
-			headers: {
-				Authorization: `QQBot ${token}`,
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				msg_id: msgId,
-				...message
-			})
-		});
+	sendGroupMessage: QQBotMessageHandler = async (openId, message, options) => {
+		const url = new URL(`/v2/groups/${openId}/messages`, END_POINT);
+		return this.sendMessage(url, message, options);
+	};
 
-		if (res.status != 200) {
-			return {
-				code: res.status,
-				message: 'Failed to send message',
-				body: await res.text(),
-				error: true,
-				isInternal: true
-			};
-		}
-		return res.json();
-	}
-
-	async replyToDirectMessage(guildId: string, msgId: string, message: QQMessage) {
+	sendDirectMessage: QQBotMessageHandler = async (guildId, message, options) => {
 		const url = new URL(`/dms/${guildId}/messages`, END_POINT);
+		return this.sendMessage(url, message, options);
+	};
+
+	sendChannelMessage: QQBotMessageHandler = async (channelId, message, options) => {
+		const url = new URL(`/channels/${channelId}/messages`, END_POINT);
+		return this.sendMessage(url, message, options);
+	};
+
+	private async request<T>(
+		url: URL,
+		method: 'GET' | 'POST' | 'PUT' = 'GET',
+		body?: any
+	): Promise<QQRequestResult<T>> {
 		const token = await this.getAccessToken();
 		if (!token) {
 			console.error('Can not get access token.');
-			return;
+			return {
+				code: -1,
+				message: 'Can not get access token.',
+				error: true,
+				internal: true
+			};
 		}
 
 		const res = await fetch(url, {
-			method: 'POST',
+			method: method,
 			headers: {
 				Authorization: `QQBot ${token}`,
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify({
-				msg_id: msgId,
-				...message
-			})
+			body: body ? JSON.stringify(body) : undefined
 		});
+
 		if (res.status != 200) {
 			return {
 				code: res.status,
-				message: 'Failed to send message',
+				message: 'Request failed',
 				body: await res.text(),
 				error: true,
-				isInternal: true
+				internal: true
 			};
 		}
-		return res.json();
+
+		return { error: false, data: (await res.json()) as T };
 	}
 
-	async replyToAtMessage(channelId: string, msgId: string, message: QQMessage) {
-		const url = new URL(`/channels/${channelId}/messages`, END_POINT);
-		const token = await this.getAccessToken();
-		if (!token) {
-			console.error('Can not get access token.');
-			return;
-		}
+	/** Get all available guilds, currently maxed out at 100 without pagination, but we won't need more than 100 anyway */
+	async getGuilds(): Promise<QQRequestResult<QQGuild[]>> {
+		const url = new URL(`/users/@me/guilds`, END_POINT);
+		return this.request<QQGuild[]>(url);
+	}
 
-		const res = await fetch(url, {
-			method: 'POST',
-			headers: {
-				Authorization: `QQBot ${token}`,
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				msg_id: msgId,
-				...message
-			})
-		});
+	async getChannels(guildId: string): Promise<QQRequestResult<QQChannel[]>> {
+		const url = new URL(`/guilds/${guildId}/channels`, END_POINT);
+		return this.request<QQChannel[]>(url);
+	}
 
-		if (res.status != 200) {
-			return {
-				code: res.status,
-				message: 'Failed to send message',
-				body: await res.text(),
-				error: true,
-				isInternal: true
-			};
-		}
-		return res.json();
+	async listThreads(channelId: string): Promise<QQRequestResult<QQThreads>> {
+		const url = new URL(`/channels/${channelId}/threads`, END_POINT);
+		return this.request<QQThreads>(url);
+	}
+
+	async getThread(
+		channelId: string,
+		threadId: string
+	): Promise<QQRequestResult<{ thread: QQThread }>> {
+		const url = new URL(`/channels/${channelId}/threads/${threadId}`, END_POINT);
+		return this.request<{ thread: QQThread }>(url);
+	}
+
+	async publishThread(channelId: string, title: string, content: QQRichText) {
+		const url = new URL(`/channels/${channelId}/threads`, END_POINT);
+		return this.request<any>(url, 'PUT', { title, content: JSON.stringify(content), format: 4 });
 	}
 }
 
@@ -374,4 +378,121 @@ interface CallbackPayload<T, U extends string> {
 	id: string;
 	d: T;
 	t: U;
+}
+
+export type QQRequestResult<T> = QQRequestSuccess<T> | QQRequestError;
+
+export interface QQRequestSuccess<T> {
+	error: false;
+	data: T;
+}
+export interface QQRequestError {
+	code: number;
+	message: string;
+	body?: string;
+	error: true;
+	internal: true;
+}
+
+export interface QQGuild {
+	id: string;
+	name: string;
+	icon: string;
+	owner_id: string;
+	owner: boolean;
+	joined_at: string;
+	member_count: number;
+	max_members: number;
+	description: string;
+}
+
+export interface QQChannel {
+	id: string;
+	guild_id: string;
+	name: string;
+	type: number;
+	position: number;
+	parent_id: string;
+	owner_id: string;
+	sub_type: number;
+}
+
+export interface QQThreads {
+	threads: QQThread[];
+}
+
+export interface QQThread {
+	guild_id: string;
+	channel_id: string;
+	author_id: string;
+	thread_info: {
+		thread_id: string;
+		title: string;
+		content: string;
+		date_time: string;
+	};
+}
+
+export interface QQRichText {
+	paragraphs: QQRichTextParagraph[];
+}
+
+export enum QQRichTextAlignment {
+	Left = 0,
+	Center = 1,
+	Right = 2
+}
+
+export enum QQRichTextType {
+	Text = 1,
+	Image = 2,
+	Video = 3,
+	Url = 4
+}
+
+export type QQRichTextElem =
+	| QQRichTextElemText
+	| QQRichTextElemImage
+	| QQRichTextElemVideo
+	| QQRichTextElemUrl;
+export type QQRichTextElemText = {
+	text: {
+		text: string;
+		props?: {
+			font_bold?: boolean;
+			italic?: boolean;
+			underline?: boolean;
+		};
+	};
+	type: QQRichTextType.Text;
+};
+
+export type QQRichTextElemImage = {
+	image: {
+		third_url: string;
+		width_percent: number;
+	};
+	type: QQRichTextType.Image;
+};
+
+export type QQRichTextElemVideo = {
+	video: {
+		third_url: string;
+	};
+	type: QQRichTextType.Video;
+};
+
+export type QQRichTextElemUrl = {
+	url: {
+		url: string;
+		desc: string;
+	};
+	type: QQRichTextType.Url;
+};
+
+export interface QQRichTextParagraph {
+	elems: QQRichTextElem[];
+	props?: {
+		alignment?: QQRichTextAlignment;
+	};
 }

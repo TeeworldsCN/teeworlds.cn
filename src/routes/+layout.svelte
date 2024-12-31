@@ -36,7 +36,7 @@
 					<a href="/" class="text-lg font-bold"> TeeworldsCN </a>
 				</div>
 				{#if data.user}
-					<form class="flex" method="POST" action="/login?/logout" use:enhance>
+					<form class="flex" method="POST" action="/login/logout" use:enhance>
 						<div class="scrollbar-hide mr-5 max-w-40 justify-center overflow-x-auto text-nowrap">
 							{data.user.username}
 						</div>
