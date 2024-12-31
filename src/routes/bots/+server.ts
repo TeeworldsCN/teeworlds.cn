@@ -84,7 +84,7 @@ export const POST: RequestHandler = async ({ fetch, request, url }) => {
 			}
 		},
 		'WEBSITE',
-		'WEBSITE',
+		mode == 'group' ? 'WEBSITE' : '',
 		body.message,
 		body,
 		mode == 'group' ? 'GROUP' : 'DIRECT'

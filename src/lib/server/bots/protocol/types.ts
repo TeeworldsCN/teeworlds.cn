@@ -20,6 +20,7 @@ export type SendReply = {
 };
 
 export type Handler = (data: {
+	platform: string;
 	uid: string;
 	user: User | null;
 	group: string;

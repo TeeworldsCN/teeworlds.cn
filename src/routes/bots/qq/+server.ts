@@ -60,6 +60,7 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 		} else if (payload.t == 'DIRECT_MESSAGE_CREATE') {
 			onNewline = false;
 			mode = 'DIRECT';
+			group = `${payload.d.guild_id}:${payload.d.channel_id}`;
 			replyMethod = (msg: QQMessage) =>
 				bot.sendDirectMessage(payload.d.guild_id, msg, { msgId: payload.d.id });
 		} else if (payload.t == 'GROUP_AT_MESSAGE_CREATE') {

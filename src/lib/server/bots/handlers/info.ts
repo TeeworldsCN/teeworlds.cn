@@ -10,3 +10,7 @@ export const handleToolbox: Handler = async ({ reply }) =>
 export const handleShowUid: Handler = async ({ reply, uid }) => {
 	return await reply.text(`您的 UID 是 ${uid}`);
 };
+
+export const handleShowGid: Handler = async ({ reply, group }) => {
+	return await reply.text(`这里的 GID 是 ${group}`);
+};

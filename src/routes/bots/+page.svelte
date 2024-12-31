@@ -8,6 +8,8 @@
 	let inputValue = $state('');
 	const COMMANDS = ['custom', 'error', 'last', 'user', 'getuser'];
 
+	let groupMode = $state(false);
+
 	async function sendCommand(command: string, args: string) {
 		const url = new URL('/bots/', window.location.href);
 		url.searchParams.set('mode', command);
@@ -51,10 +53,13 @@
 			}
 		}
 
-		const msg = await fetch('/bots/', {
+		const target = groupMode ? '/bots?mode=group' : '/bots';
+		const token = new URL(window.location.href).hash.slice(1);
+		const msg = await fetch(target, {
 			method: 'POST',
 			headers: {
-				'Content-Type': 'application/json'
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`
 			},
 			body: JSON.stringify({
 				message: inputText
@@ -88,6 +93,13 @@
 	<div class="h-full w-full rounded-lg bg-slate-700 shadow-md">
 		<div class="flex items-center justify-between rounded-t-lg border-b bg-teal-700 p-4">
 			<p class="text-lg font-semibold">DDNet 豆豆</p>
+			<button
+				class="-my-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+				onclick={() => {
+					groupMode = !groupMode;
+				}}
+				>{#if groupMode}群聊模式{:else}私聊模式{/if}</button
+			>
 		</div>
 		<div class="h-full max-h-[calc(100svh-20rem)] space-y-3 overflow-y-auto p-4">
 			{#each $messages as message}

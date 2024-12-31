@@ -1,8 +1,9 @@
+import { persistent } from '$lib/server/db/kv';
 import {
 	createUser,
 	getUserByUsername,
 	PERMISSION_LIST,
-	updateUserData,
+	updateUserData
 } from '$lib/server/db/users';
 import { type Handler } from '../protocol/types';
 import { ArgParser } from '../utils/arg-parser';
@@ -55,10 +56,6 @@ export const adminPermissionRemove: Handler = async ({ reply, args }) => {
 		return await reply.text(`All permissions have been removed from "${uid}"`);
 	}
 
-	if (!PERMISSION_LIST.includes(permission.toUpperCase())) {
-		return await reply.text(`Unknown permission "${permission}"`);
-	}
-
 	if (user.data.permissions) {
 		user.data.permissions = user.data.permissions.filter((perm) => perm !== permission);
 		if (user.data.permissions.length == 0) {
@@ -85,4 +82,68 @@ export const adminCheckPermission: Handler = async ({ uid, reply, args }) => {
 	return await reply.text(
 		`User "${targetUid}" has permission ${user.data.permissions?.join(', ')}`
 	);
+};
+
+export const adminAllowLink: Handler = async ({ platform, group, reply, args, mode }) => {
+	const parser = new ArgParser(args);
+	const arg = parser.getRest(0);
+	if (!arg) {
+		return await reply.text('/allow-link <true|false>');
+	}
+
+	const allow = arg.toLowerCase() == 'true';
+
+	if (mode == 'DIRECT') {
+		persistent.set<boolean>(`bot:allow-link:${platform}:DIRECT`, allow);
+
+		if (allow) {
+			return await reply.text(`已允许所有私聊查询链接`);
+		} else {
+			return await reply.text(`已禁止所有私聊查询链接`);
+		}
+	}
+
+	if (mode != 'GROUP' || !group || !platform) {
+		return await reply.text('仅支持在群里设置');
+	}
+
+	const groupOrGuild = group.split(':')[0];
+	if (allow) {
+		persistent.set<boolean>(`bot:allow-link:${platform}:${groupOrGuild}`, allow);
+	} else {
+		persistent.delete(`bot:allow-link:${platform}:${groupOrGuild}`);
+	}
+
+	if (allow) {
+		return await reply.text(`已允许机器人在本群查询链接`);
+	} else {
+		return await reply.text(`已禁止机器人在本群查询链接`);
+	}
+};
+
+export const adminRateLimit: Handler = async ({ platform, group, reply, args, mode }) => {
+	if (mode != 'GROUP' || !group || !platform) {
+		return await reply.text('仅支持在群里设置');
+	}
+
+	const parser = new ArgParser(args);
+	const arg = parser.getRest(0);
+	if (!arg) {
+		return await reply.text('/rate-limit <true|false>');
+	}
+
+	const limit = arg.toLowerCase() == 'true';
+
+	const groupOrGuild = group.split(':')[0];
+	if (limit) {
+		persistent.set<boolean>(`bot:rate-limit:${platform}:${groupOrGuild}`, limit);
+	} else {
+		persistent.delete(`bot:rate-limit:${platform}:${groupOrGuild}`);
+	}
+
+	if (limit) {
+		return await reply.text(`已限制群组中机器人的查询频率`);
+	} else {
+		return await reply.text(`已取消限制群组中机器人的查询频率`);
+	}
 };

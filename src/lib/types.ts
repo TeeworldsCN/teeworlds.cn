@@ -7,5 +7,5 @@ export const SUBSCRIPTION_KEYS = [
 export const PERMISSIONS = [
 	// permissions
 	'SUPER',
-	'WEB_ADMIN'
+	'GROUP_SETTINGS'
 ] as const;

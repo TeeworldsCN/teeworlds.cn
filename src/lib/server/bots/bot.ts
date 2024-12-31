@@ -1,7 +1,9 @@
 import type { SendReply, SendResult } from './protocol/types';
 import { AsyncQueue } from '$lib/async-queue';
 import { commands } from '.';
-import { getUserByUsername, type UserPermissions } from '../db/users';
+import { getUserByUsername, hasPermission, type UserPermissions } from '../db/users';
+import { persistent } from '../db/kv';
+import { RateLimiter } from './utils/rate-limiter';
 
 let customBody: any = null;
 let customToken: string | null = null;
@@ -54,11 +56,11 @@ export const registerCustom = (body: any) => {
 };
 
 const queue = new AsyncQueue();
-// const limiter = new RateLimiter('bot', {
-// 	threshold: 3,
-// 	interval: 60,
-// 	cooldown: 300
-// });
+const limiter = new RateLimiter('bot', {
+	threshold: 3,
+	interval: 60,
+	cooldown: 300
+});
 
 const handle = async (
 	fetch: typeof global.fetch,
@@ -70,22 +72,6 @@ const handle = async (
 	raw: any,
 	mode: 'GROUP' | 'DIRECT'
 ) => {
-	// TODO: don't need to trigger rate limit if the command does not exist
-	// consider move this after we implemented a better command parser
-	// rate limit in group mode
-	// if (mode == 'GROUP') {
-	// 	const { limited, triggered } = await limiter.isLimited(user);
-	// 	if (triggered) {
-	// 		return await reply.text(
-	// 			'您操作太频繁了！请5分钟后再试。需要大量查询请私聊豆豆。\n或直接用工具箱查询：https://teeworlds.cn/ddnet'
-	// 		);
-	// 	}
-
-	// 	if (limited) {
-	// 		return { ignored: true, message: 'rate limited' };
-	// 	}
-	// }
-
 	const uid = `${platform}:${user}`;
 	const transaction: Transaction = {
 		uid,
@@ -124,8 +110,42 @@ const handle = async (
 	}
 
 	const cmd = commands.parse(msg, permissions);
+	const groupOrGuild = group.split(':')[0] || 'DIRECT';
+
+	if (mode == 'GROUP' && !cmd.fallback) {
+		const rateLimited = persistent.get<boolean>(`bot:rate-limit:${platform}:${groupOrGuild}`);
+		if (rateLimited && !hasPermission(databaseUser, 'GROUP_SETTINGS')) {
+			const { limited, triggered } = await limiter.isLimited(user, group);
+			if (triggered) {
+				return await reply.textLink('您操作太频繁了！请5分钟后再试。需要大量查询请私聊豆豆。', {
+					label: '🔗 DDNet 工具箱',
+					prefix: '或者直接用 DDNet 工具箱：',
+					url: 'https://teeworlds.cn/ddnet'
+				});
+			}
+
+			if (limited) {
+				return { ignored: true, message: 'rate limited' };
+			}
+		}
+	}
+
+	const allowLink = persistent.get<boolean>(`bot:allow-link:${platform}:${groupOrGuild}`);
+
+	if (!allowLink) {
+		reply = {
+			...reply,
+			link: (_) => {
+				return reply.text('抱歉，该功能正在维护中。');
+			},
+			textLink: (msg: string) => {
+				return reply.text(msg);
+			}
+		};
+	}
 
 	const handlerArgs = {
+		platform,
 		uid,
 		user: databaseUser,
 		reply,
