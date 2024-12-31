@@ -110,7 +110,7 @@ const handle = async (
 	}
 
 	const cmd = commands.parse(msg, permissions);
-	const groupOrGuild = group.split(':')[0] || 'DIRECT';
+	const groupOrGuild = mode == 'GROUP' ? group.split(':')[0] || 'DIRECT' : 'DIRECT';
 
 	if (mode == 'GROUP' && !cmd.fallback) {
 		const rateLimited = persistent.get<boolean>(`bot:rate-limit:${platform}:${groupOrGuild}`);

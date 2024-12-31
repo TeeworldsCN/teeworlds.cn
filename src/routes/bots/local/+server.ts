@@ -35,6 +35,26 @@ export const POST: RequestHandler = async ({ fetch, locals, request, url, cookie
 				});
 				return { success: true };
 			},
+			image: (url) => {
+				response = new Response(JSON.stringify({ content: `![image](${url})` }), {
+					headers: { 'content-type': 'application/json' }
+				});
+				return { success: true };
+			},
+			imageText: (msg, url) => {
+				msg += `\n\n![image](${url})`;
+				response = new Response(JSON.stringify({ content: msg }), {
+					headers: { 'content-type': 'application/json' }
+				});
+				return { success: true };
+			},
+			imageTextLink: (msg, url, link) => {
+				msg += `\n\n![image](${url})\n\n[${link.label}](${link.url})`;
+				response = new Response(JSON.stringify({ content: msg }), {
+					headers: { 'content-type': 'application/json' }
+				});
+				return { success: true };
+			},
 			custom: (body) => {
 				response = new Response(JSON.stringify(body), {
 					headers: { 'content-type': 'application/json' }
