@@ -5,7 +5,8 @@
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import { secondsToDate } from '$lib/date';
-	import { mapType, numberToStars, secondsToChineseTime, secondsToTime } from '$lib/ddnet/helpers';
+	import { mapType, numberToStars } from '$lib/ddnet/helpers';
+	import { secondsToChineseTime, secondsToTime } from '$lib/helpers';
 	import { share } from '$lib/share';
 
 	const { data } = $props();
@@ -38,12 +39,12 @@
 	<div class="text-md font-bold"><span>作者：</span><Mappers authors={mapperTransformed()} /></div>
 </div>
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-	<div class="rounded-lg bg-slate-700 p-4 shadow-md relative">
-		<div class="flex flex-col md:flex-row flex-wrap">
+	<div class="relative rounded-lg bg-slate-700 p-4 shadow-md">
+		<div class="flex flex-col flex-wrap md:flex-row">
 			<img
 				width="360"
 				height="225"
-				class="mb-4 rounded mr-4"
+				class="mb-4 mr-4 rounded"
 				src={data.map.thumbnail}
 				alt="{data.map.name} thumbnail"
 			/>
@@ -57,7 +58,7 @@
 		<button
 			class="absolute bottom-4 right-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
 			onclick={() =>
-      (window.location.href = `https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(data.map.name)}.map`)}
+				(window.location.href = `https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(data.map.name)}.map`)}
 		>
 			查看地图
 		</button>

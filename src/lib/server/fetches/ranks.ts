@@ -1,4 +1,4 @@
-import { unescapeHTML } from '$lib/ddnet/helpers';
+import { unescapeHTML } from '$lib/helpers';
 import { FetchCache } from '$lib/server/fetch-cache';
 
 interface PointInfo {

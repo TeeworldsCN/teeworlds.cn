@@ -22,3 +22,35 @@ export const numberToSub = (num: number) => {
 	}
 	return result;
 };
+
+export const unescapeHTML = (str: string) => {
+	return str
+		.replace(/&amp;/g, '&')
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&quot;/g, '"')
+		.replace(/&#x27;/g, "'");
+};
+
+export const secondsToTime = (totalSeconds: number) => {
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const seconds = Math.floor(totalSeconds % 60);
+
+	if (hours > 0)
+		return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+	return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+};
+
+export const secondsToChineseTime = (totalSeconds: number) => {
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const seconds = Math.floor(totalSeconds % 60);
+	const remainder = Math.floor((totalSeconds - Math.floor(totalSeconds)) * 100);
+
+	const ender = remainder == 0 ? '整' : remainder.toString().padStart(2, '0');
+
+	if (hours > 0)
+		return `${hours.toString().padStart(2, '0')}时${minutes.toString().padStart(2, '0')}分${seconds.toString().padStart(2, '0')}秒${ender}`;
+	return `${minutes.toString().padStart(2, '0')}分${seconds.toString().padStart(2, '0')}秒${ender}`;
+};

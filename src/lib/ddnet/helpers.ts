@@ -3,15 +3,6 @@ export const numberToStars = (num: number) => {
 	return `${'★'.repeat(stars)}${'☆'.repeat(Math.max(0, 5 - stars))}`;
 };
 
-export const unescapeHTML = (str: string) => {
-	return str
-		.replace(/&amp;/g, '&')
-		.replace(/&lt;/g, '<')
-		.replace(/&gt;/g, '>')
-		.replace(/&quot;/g, '"')
-		.replace(/&#x27;/g, "'");
-};
-
 const MAP_TYPES: { [key: string]: string } = {
 	solo: '单人',
 	dummy: '分身',
@@ -22,17 +13,17 @@ const MAP_TYPES: { [key: string]: string } = {
 	oldschool: '传统',
 	race: '竞速',
 	fun: '娱乐',
-	"ddmax.easy": "古典.Easy",
-	"ddmax.next": "古典.Next",
-	"ddmax.pro": "古典.Pro",
-	"ddmax.nut": "古典.Nut",
+	'ddmax.easy': '古典.Easy',
+	'ddmax.next': '古典.Next',
+	'ddmax.pro': '古典.Pro',
+	'ddmax.nut': '古典.Nut'
 };
 
 export const mapType = (type: string) => {
 	return MAP_TYPES[type.toLowerCase()] || type;
 };
 
-const FLAG_DEFAULT: string = '/assets/flags/default.png'
+const FLAG_DEFAULT: string = '/assets/flags/default.png';
 const FLAG_MAP: { [key: string]: typeof FLAG_DEFAULT } = {
 	GER: '/assets/flags/DE.png',
 	CHN: '/assets/flags/CN.png',
@@ -58,27 +49,4 @@ const FLAG_MAP: { [key: string]: typeof FLAG_DEFAULT } = {
 
 export const flagAsset = (flag: string) => {
 	return FLAG_MAP[flag] || FLAG_DEFAULT;
-};
-
-export const secondsToTime = (totalSeconds: number) => {
-	const hours = Math.floor(totalSeconds / 3600);
-	const minutes = Math.floor((totalSeconds % 3600) / 60);
-	const seconds = Math.floor(totalSeconds % 60);
-
-	if (hours > 0)
-		return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-	return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-};
-
-export const secondsToChineseTime = (totalSeconds: number) => {
-	const hours = Math.floor(totalSeconds / 3600);
-	const minutes = Math.floor((totalSeconds % 3600) / 60);
-	const seconds = Math.floor(totalSeconds % 60);
-	const remainder = Math.floor((totalSeconds - Math.floor(totalSeconds)) * 100);
-
-	const ender = remainder == 0 ? '整' : remainder.toString().padStart(2, '0');
-
-	if (hours > 0)
-		return `${hours.toString().padStart(2, '0')}时${minutes.toString().padStart(2, '0')}分${seconds.toString().padStart(2, '0')}秒${ender}`;
-	return `${minutes.toString().padStart(2, '0')}分${seconds.toString().padStart(2, '0')}秒${ender}`;
 };

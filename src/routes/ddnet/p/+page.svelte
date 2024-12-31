@@ -5,7 +5,8 @@
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import { secondsToDate } from '$lib/date';
-	import { mapType, secondsToTime } from '$lib/ddnet/helpers';
+	import { mapType } from '$lib/ddnet/helpers';
+	import { secondsToTime } from '$lib/helpers';
 	import { share } from '$lib/share';
 
 	let { data } = $props();
