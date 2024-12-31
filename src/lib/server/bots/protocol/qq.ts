@@ -28,7 +28,7 @@ export interface QQMessage {
 		message_id: string;
 		ignore_get_message_error: boolean;
 	};
-	media?: string;
+	media?: { file_info: string };
 }
 
 type QQBotSendOptions = {
@@ -171,16 +171,16 @@ export class QQBot {
 	}
 
 	/** Make text media image (qq only) */
-	makeGroupTextImage(content: string, file_info: string): QQMessage {
+	makeGroupTextImage(content: string, file_info: { file_info: string }): QQMessage {
 		return { msg_type: 7, content, media: file_info };
 	}
 
 	/** Make media image (qq only) */
-	makeGroupImage(file_info: string): QQMessage {
+	makeGroupImage(file_info: { file_info: string }): QQMessage {
 		return { msg_type: 7, content: ' ', media: file_info };
 	}
 
-	async uploadGroupMedia(image: string, groudId: string): Promise<string | null> {
+	async uploadGroupMedia(image: string, groudId: string): Promise<{ file_info: string } | null> {
 		const url = new URL(`/v2/groups/${groudId}/files`, END_POINT);
 		const result = await this.request<{ file_info: string }>(url, 'POST', {
 			file_type: 1,
@@ -192,10 +192,10 @@ export class QQBot {
 			);
 			return null;
 		}
-		return result.data.file_info;
+		return result.data;
 	}
 
-	async uploadDirectMedia(image: string, openId: string): Promise<string | null> {
+	async uploadDirectMedia(image: string, openId: string): Promise<{ file_info: string } | null> {
 		const url = new URL(`/v2/users/${openId}/files`, END_POINT);
 		const result = await this.request<{ file_info: string }>(url, 'POST', {
 			file_type: 1,
@@ -207,7 +207,7 @@ export class QQBot {
 			);
 			return null;
 		}
-		return result.data.file_info;
+		return result.data;
 	}
 
 	async sendMessage(url: URL, message: QQMessage, options?: QQBotSendOptions) {
