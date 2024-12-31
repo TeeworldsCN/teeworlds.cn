@@ -48,6 +48,7 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 		let message: string = payload.d.content;
 		let uid = payload.d.author.id;
 		let group = 'DIRECT';
+		let channel = false;
 
 		// group message always at the caller. so adding a newline looks nicer
 		let onNewline = false;
@@ -58,6 +59,7 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 			replyMethod = (msg: QQMessage) =>
 				bot.sendC2CMessage(payload.d.author.user_openid, msg, { msgId: payload.d.id });
 		} else if (payload.t == 'DIRECT_MESSAGE_CREATE') {
+			channel = true;
 			onNewline = false;
 			mode = 'DIRECT';
 			group = `${payload.d.guild_id}:${payload.d.channel_id}`;
@@ -75,6 +77,7 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 				const closingIndex = message.indexOf('>');
 				message = message.slice(closingIndex + 1).trim();
 			}
+			channel = true;
 			onNewline = false;
 			group = `${payload.d.guild_id}:${payload.d.channel_id}`;
 			mode = 'GROUP';
@@ -98,6 +101,46 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 					textLink: (msg, link) => {
 						msg += `\n${link.prefix}${link.url}`;
 						return replyMethod(bot.makeText(wrapNewline(msg)));
+					},
+					image: async (url) => {
+						if (channel) {
+							return replyMethod(bot.makeChannelImage(url));
+						}
+						const file_info =
+							mode == 'GROUP'
+								? await bot.uploadGroupMedia(url, group)
+								: await bot.uploadDirectMedia(url, uid);
+						if (file_info) {
+							return replyMethod(bot.makeGroupImage(file_info));
+						}
+						return replyMethod(bot.makeText('非常抱歉，消息在路上丢了。。。'));
+					},
+					imageText: async (msg, url) => {
+						if (channel) {
+							return replyMethod(bot.makeChannelTextImage(msg, url));
+						}
+						const file_info =
+							mode == 'GROUP'
+								? await bot.uploadGroupMedia(url, group)
+								: await bot.uploadDirectMedia(url, uid);
+						if (file_info) {
+							return replyMethod(bot.makeGroupTextImage(msg, file_info));
+						}
+						return replyMethod(bot.makeText('非常抱歉，消息在路上丢了。。。'));
+					},
+					imageTextLink: async (msg, url, link) => {
+						msg += `\n${link.prefix}${link.url}`;
+						if (channel) {
+							return replyMethod(bot.makeChannelTextImage(msg, url));
+						}
+						const file_info =
+							mode == 'GROUP'
+								? await bot.uploadGroupMedia(url, group)
+								: await bot.uploadDirectMedia(url, uid);
+						if (file_info) {
+							return replyMethod(bot.makeGroupTextImage(msg, file_info));
+						}
+						return replyMethod(bot.makeText('非常抱歉，消息在路上丢了。。。'));
 					},
 					custom: (body: QQMessage) => replyMethod(bot.makeCustom(body))
 				},

@@ -10,12 +10,17 @@ export interface SendTypeLink {
 	prefix: string;
 	/** Link url */
 	url: string;
+	/** allow the link to be sent regardless of the group settings */
+	bypass?: boolean;
 }
 
 export type SendReply = {
 	text: (msg: string) => Promise<SendResult> | SendResult;
 	link: (link: SendTypeLink) => Promise<SendResult> | SendResult;
 	textLink: (msg: string, link: SendTypeLink) => Promise<SendResult> | SendResult;
+	image: (url: string) => Promise<SendResult> | SendResult;
+	imageText: (msg: string, url: string) => Promise<SendResult> | SendResult;
+	imageTextLink: (msg: string, url: string, link: SendTypeLink) => Promise<SendResult> | SendResult;
 	custom: (body: any) => Promise<SendResult> | SendResult;
 };
 

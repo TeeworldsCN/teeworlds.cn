@@ -131,15 +131,21 @@ const handle = async (
 	}
 
 	const allowLink = persistent.get<boolean>(`bot:allow-link:${platform}:${groupOrGuild}`);
-
 	if (!allowLink) {
+		const originalReply = reply;
 		reply = {
-			...reply,
-			link: (_) => {
-				return reply.text('抱歉，该功能正在维护中。');
+			...originalReply,
+			link: (link) => {
+				if (link.bypass) return originalReply.link(link);
+				return originalReply.text('抱歉，该功能正在维护中。');
 			},
-			textLink: (msg: string) => {
-				return reply.text(msg);
+			textLink: (msg, link) => {
+				if (link.bypass) return originalReply.textLink(msg, link);
+				return originalReply.text(msg);
+			},
+			imageTextLink: (msg, url, link) => {
+				if (link.bypass) return originalReply.imageTextLink(msg, url, link);
+				return originalReply.imageText(msg, url);
 			}
 		};
 	}

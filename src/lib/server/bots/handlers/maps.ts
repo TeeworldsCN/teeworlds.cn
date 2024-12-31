@@ -1,6 +1,7 @@
 import { mapType, numberToStars } from '$lib/ddnet/helpers';
 import { encodeAsciiURIComponent } from '$lib/link';
-import { maps } from '$lib/server/fetches/maps';
+import { maps, type MapList } from '$lib/server/fetches/maps';
+import { convert } from '$lib/server/imgproxy';
 import type { Handler } from '../protocol/types';
 
 const checkMapName = (map: any, search: string) => {
@@ -65,7 +66,7 @@ export const handleMaps: Handler = async ({ reply, fetch, args }) => {
 		return await reply.text(`未找到名为 ${mapName} 的地图`);
 	}
 
-	let targetMap = null;
+	let targetMap: MapList[0] | null = null;
 
 	// find exact match
 	for (const map of filteredMaps) {
@@ -83,6 +84,8 @@ export const handleMaps: Handler = async ({ reply, fetch, args }) => {
 			}
 			return a.points - b.points;
 		})[0];
+
+		if (!targetMap) return await reply.text(`未找到名为 ${mapName} 的地图`);
 	}
 
 	const lines = [
@@ -90,7 +93,7 @@ export const handleMaps: Handler = async ({ reply, fetch, args }) => {
 		`[${mapType(targetMap.type)} ${numberToStars(targetMap.difficulty)}] ${targetMap.points}pts`
 	];
 
-	return await reply.textLink(lines.join('\n'), {
+	return await reply.imageTextLink(lines.join('\n'), targetMap.thumbnail, {
 		label: '🔗 地图详情',
 		prefix: '详情: ',
 		url: `https://teeworlds.cn/ddnet/m?n=${encodeAsciiURIComponent(targetMap.name)}`

@@ -28,6 +28,7 @@ export interface QQMessage {
 		message_id: string;
 		ignore_get_message_error: boolean;
 	};
+	media?: string;
 }
 
 type QQBotSendOptions = {
@@ -149,18 +150,64 @@ export class QQBot {
 		return json.access_token;
 	}
 
-	/**
-	 * Make a text message
-	 */
+	/** Make a text message */
 	makeText(content: string): QQMessage {
 		return { msg_type: 0, content };
 	}
 
-	/**
-	 * Make custom message
-	 */
+	/** Make custom message */
 	makeCustom(body: any): QQMessage {
 		return body;
+	}
+
+	/** Make text image (guild only) */
+	makeChannelTextImage(content: string, image: string): QQMessage {
+		return { msg_type: 0, content, image };
+	}
+
+	/** Make image (guild only) */
+	makeChannelImage(image: string): QQMessage {
+		return { msg_type: 0, image };
+	}
+
+	/** Make text media image (qq only) */
+	makeGroupTextImage(content: string, file_info: string): QQMessage {
+		return { msg_type: 7, content, media: file_info };
+	}
+
+	/** Make media image (qq only) */
+	makeGroupImage(file_info: string): QQMessage {
+		return { msg_type: 7, content: ' ', media: file_info };
+	}
+
+	async uploadGroupMedia(image: string, groudId: string): Promise<string | null> {
+		const url = new URL(`/v2/groups/${groudId}/files`, END_POINT);
+		const result = await this.request<{ file_info: string }>(url, 'POST', {
+			file_type: 1,
+			url: image
+		});
+		if (result.error) {
+			console.error(
+				`Failed to upload group media: ${result.code} ${result.message} ${result.body}`
+			);
+			return null;
+		}
+		return result.data.file_info;
+	}
+
+	async uploadDirectMedia(image: string, openId: string): Promise<string | null> {
+		const url = new URL(`/v2/users/${openId}/files`, END_POINT);
+		const result = await this.request<{ file_info: string }>(url, 'POST', {
+			file_type: 1,
+			url: image
+		});
+		if (result.error) {
+			console.error(
+				`Failed to upload direct media: ${result.code} ${result.message} ${result.body}`
+			);
+			return null;
+		}
+		return result.data.file_info;
 	}
 
 	async sendMessage(url: URL, message: QQMessage, options?: QQBotSendOptions) {

@@ -1,7 +1,7 @@
 import { CommandRouter } from './utils/command-router';
 import { handleFallback } from './handlers/fallback';
 import { handleHelp } from './handlers/help';
-import { handleShowGid, handleShowUid, handleToolbox } from './handlers/info';
+import { handleReport, handleShowGid, handleShowUid, handleToolbox } from './handlers/info';
 import { handleMaps } from './handlers/maps';
 import { handlePoints } from './handlers/points';
 import {
@@ -36,6 +36,10 @@ commands
 	.add('地图', handleMaps)
 	.add('map', handleMaps)
 	.add('maps', handleMaps)
+
+	.add('举报', handleReport)
+	.add('report', handleReport)
+	.add('举报游戏行为', handleReport)
 
 	.add('工具箱', handleToolbox)
 
