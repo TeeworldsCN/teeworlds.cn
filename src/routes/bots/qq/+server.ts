@@ -117,28 +117,28 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 					},
 					imageText: async (msg, url) => {
 						if (channel) {
-							return replyMethod(bot.makeChannelTextImage(msg, url));
+							return replyMethod(bot.makeChannelTextImage(wrapNewline(msg), url));
 						}
 						const file_info =
 							mode == 'GROUP'
 								? await bot.uploadGroupMedia(url, group)
 								: await bot.uploadDirectMedia(url, uid);
 						if (file_info) {
-							return replyMethod(bot.makeGroupTextImage(msg, file_info));
+							return replyMethod(bot.makeGroupTextImage(wrapNewline(msg), file_info));
 						}
 						return replyMethod(bot.makeText('非常抱歉，消息在路上丢了。。。'));
 					},
 					imageTextLink: async (msg, url, link) => {
 						msg += `\n${link.prefix}${link.url}`;
 						if (channel) {
-							return replyMethod(bot.makeChannelTextImage(msg, url));
+							return replyMethod(bot.makeChannelTextImage(wrapNewline(msg), url));
 						}
 						const file_info =
 							mode == 'GROUP'
 								? await bot.uploadGroupMedia(url, group)
 								: await bot.uploadDirectMedia(url, uid);
 						if (file_info) {
-							return replyMethod(bot.makeGroupTextImage(msg, file_info));
+							return replyMethod(bot.makeGroupTextImage(wrapNewline(msg), file_info));
 						}
 						return replyMethod(bot.makeText('非常抱歉，消息在路上丢了。。。'));
 					},
