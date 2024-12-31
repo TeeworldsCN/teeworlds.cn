@@ -66,7 +66,6 @@ const publishRecord = async (record: { title: string; date: number }) => {
 		unknown: ['', '记录', '提升了']
 	}[entry.type];
 
-
 	const info = entry.firstFinish
 		? `🥇 [${entry.region}] ${titles[0]} ${entry.players} 创下了${titles[1]}！\n地图：${server} - ${entry.map}\n记录：${entry.record}\n(🏁 首杀记录！)`
 		: `🥇 [${entry.region}] ${titles[0]} ${entry.players} 创下了${titles[1]}！\n地图：${server} - ${entry.map}\n记录：${entry.record}\n(相比上个记录 ${entry.oldRecord} ${titles[2]} ${entry.delta})`;
@@ -87,30 +86,37 @@ const publishRecord = async (record: { title: string; date: number }) => {
 	}
 };
 
-// run every 10 minutes
-export const recordTracker = new Cron('*/10 * * * *', async () => {
+// run every 5 minutes
+export const recordTracker = new Cron('*/5 * * * *', async () => {
+	const now = new Date();
+	const time = now.getHours() + now.getMinutes() / 60;
+	if (time < 6.5 || time > 23.5) {
+		// do not run before 06:30 am or after 11:30 pm
+		return;
+	}
+
 	const data = await records.fetch();
 	if (!data) return;
 
-	const lastestRecord = data[0];
-	if (!lastestRecord) return;
-
-	const lastestRecordDate = lastestRecord.date;
+	data.sort((a, b) => b.date - a.date);
 	const knownRecordDate = persistent.get<number>(RECORD_TRACKER_KEY);
 
 	if (!knownRecordDate) {
 		// ignore the first run
-		persistent.set(RECORD_TRACKER_KEY, lastestRecordDate);
+		const lastestRecord = data[0];
+		if (!lastestRecord) return;
+		persistent.set(RECORD_TRACKER_KEY, lastestRecord.date);
+		console.log(`No known record, starting over from ${lastestRecord.date}`);
 		return;
 	}
 
-	if (lastestRecordDate <= knownRecordDate) {
-		// no update, ignore
-		return;
-	}
+	// find the first record that is right after the known record
+	const lastestRecord = data.findLast((record) => record.date > knownRecordDate);
+	if (!lastestRecord) return;
 
 	// consider this released regardless whether publish failed or not
-	persistent.set(RECORD_TRACKER_KEY, knownRecordDate);
+	persistent.set(RECORD_TRACKER_KEY, lastestRecord.date);
+	console.log(`Setting record tracker to ${lastestRecord.date}`);
 	await publishRecord(lastestRecord);
 });
 

@@ -79,25 +79,34 @@ export const mapTracker = new Cron('*/30 * * * *', async () => {
 	const data = await maps.fetch();
 	if (!data) return;
 
-	const lastestMap = data[0];
+	const knownReleaseMap = persistent.get<string>(MAP_TRACKER_KEY);
+
+	if (!knownReleaseMap) {
+		// ignore the first run
+		const lastestMap = data[0];
+		if (!lastestMap) return;
+		persistent.set(MAP_TRACKER_KEY, lastestMap.name);
+		console.log(`No last known map, starting over from ${lastestMap.name}`);
+		return;
+	}
+
+	const knownMapIndex = data.findIndex((map) => map.name == knownReleaseMap);
+	if (knownMapIndex < 0) {
+		const lastestMap = data[0];
+		if (!lastestMap) return;
+		// can't find the last known map, ignore and start over from the lastest map
+		// when this triggers, it doesn't actually publish the lastest map
+		persistent.set(MAP_TRACKER_KEY, lastestMap.name);
+		console.log(`Didn't find the last known map ${knownReleaseMap}, starting over from ${lastestMap.name}`);
+		return;
+	}
+
+	const lastestMap = data[knownMapIndex - 1];
 	if (!lastestMap) return;
 
-	const lastestReleaseDate = new Date(lastestMap.release).getTime();
-	const knownReleaseDate = persistent.get<number>(MAP_TRACKER_KEY);
-
-	if (!knownReleaseDate) {
-		// ignore the first run
-		persistent.set(MAP_TRACKER_KEY, lastestReleaseDate);
-		return;
-	}
-
-	if (lastestReleaseDate <= knownReleaseDate) {
-		// no update, ignore
-		return;
-	}
-
 	// consider this released regardless whether publish failed or not
-	persistent.set(MAP_TRACKER_KEY, lastestReleaseDate);
+	persistent.set(MAP_TRACKER_KEY, lastestMap.name);
+	console.log(`Setting record tracker to ${lastestMap.name}`);
 	await publishMap(lastestMap);
 });
 
