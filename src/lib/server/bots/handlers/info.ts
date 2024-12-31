@@ -8,15 +8,7 @@ export const handleToolbox: Handler = async ({ reply }) =>
 	});
 
 export const handleReport: Handler = async ({ reply }) => {
-	return await reply.textLink(
-		'请前往QQ频道的 “举报恶意行为” 讨论组提供信息，将会有群管理协助你',
-		{
-			label: '举报恶意行为',
-			prefix: '→ ',
-			url: 'https://pd.qq.com/s/2hcgw9j3j?businessType=7',
-			bypass: true
-		}
-	);
+	return await reply.text('请前往QQ频道的 “举报恶意行为” 讨论组提供信息，将会有群管理协助你');
 };
 
 export const handleShowUid: Handler = async ({ reply, uid }) => {
