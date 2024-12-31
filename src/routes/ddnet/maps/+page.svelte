@@ -299,9 +299,9 @@
 		{/each}
 		{#each Array(Math.max(12 - paginatedMaps.length, 0)) as _}
 			<div
-				class="rounded border border-slate-700 bg-slate-700 p-4 pt-3 opacity-90 shadow"
+				class="rounded border border-slate-700 bg-slate-700 p-4 pt-3 shadow"
 				class:animate-pulse={!maps.length}
-				class:opacity-30={maps.length}
+				class:opacity-20={maps.length}
 			>
 				<div class="h-8 w-28 text-lg">
 					<span
