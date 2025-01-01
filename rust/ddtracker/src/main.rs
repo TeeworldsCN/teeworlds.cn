@@ -89,6 +89,13 @@ async fn task(client: &Client, conn: &mut Connection) -> Result<(), Box<dyn std:
         });
     }
 
+    fn update_time_info_stmt<'a>(tx: &'a Transaction<'a>, time: i64) {
+        let mut stmt = tx
+            .prepare("INSERT OR REPLACE INTO info (key, value) VALUES (?, ?)")
+            .unwrap();
+        stmt.execute(params!["last_update", time]).unwrap();
+    }
+
     if let Some(servers) = servers_data["servers"].as_array() {
         for server in servers {
             if let (Some(addresses), Some(info), Some(location)) = (
@@ -174,6 +181,7 @@ async fn task(client: &Client, conn: &mut Connection) -> Result<(), Box<dyn std:
                 }
             }
         }
+        update_time_info_stmt(&tx, now);
         tx.commit()?;
     }
     Ok(())
