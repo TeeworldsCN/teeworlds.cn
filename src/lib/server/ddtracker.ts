@@ -1,12 +1,18 @@
+import { building } from '$app/environment';
 import { env } from '$env/dynamic/private';
-import sqlite from 'bun:sqlite';
+import sqlite, { type Database } from 'bun:sqlite';
 
-const ddtrackerPath = env.DDTRACKER_PATH || './cache/ddtracker.db';
-const db = sqlite.open(ddtrackerPath, { readonly: true });
+let db: Database | null = null;
+if (!building) {
+	const ddtrackerPath = env.DDTRACKER_PATH || './cache/ddtracker.db';
+	db = sqlite.open(ddtrackerPath, { readonly: true });
+}
 
 export type DDNetSkin = { n: string; b?: number; f?: number };
 
 export const getCurrentSkinInRegion = (name: string, region: string) => {
+	if (!db) return null;
+
 	const location = region.split(':');
 	if (location.length >= 2) {
 		const result = db
@@ -38,6 +44,8 @@ export const getCurrentSkinInRegion = (name: string, region: string) => {
 };
 
 export const getFrequentSkinInRegion = (name: string, region: string) => {
+	if (!db) return null;
+
 	const updateTime = db
 		.prepare<{ value: string }, string>('SELECT value FROM info where key = ?')
 		.get('last_update');
@@ -92,6 +100,8 @@ export const getFrequentSkinInRegion = (name: string, region: string) => {
 };
 
 export const getFrequentSkin = (name: string) => {
+	if (!db) return null;
+
 	const updateTime = db
 		.prepare<{ value: string }, string>('SELECT value FROM info where key = ?')
 		.get('last_update');
@@ -133,6 +143,8 @@ export const getFrequentSkin = (name: string) => {
 };
 
 export const getCurrentSkin = (name: string) => {
+	if (!db) return null;
+
 	const result = db
 		.prepare<{ skin_history: string }, [string]>('SELECT skin_history FROM clients WHERE name = ?')
 		.all(name);
