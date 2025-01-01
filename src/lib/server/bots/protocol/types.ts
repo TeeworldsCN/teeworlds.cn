@@ -6,12 +6,14 @@ export type SendResult = object;
 export interface SendTypeLink {
 	/** If button is supported, it will be displayed as a button with label */
 	label: string;
-	/**  If button is not supported, it will be displayed as a `prefix: url` text line */
+	/** If button is not supported, it will be displayed as a `prefix: url` text line */
 	prefix: string;
 	/** Link url */
 	url: string;
-	/** allow the link to be sent regardless of the group settings */
+	/** Allow the link to be sent regardless of the group settings */
 	bypass?: boolean;
+	/** Replace the link with a text message if link it not allowed */
+	fallback?: string;
 }
 
 export type SendReply = {

@@ -136,14 +136,17 @@ const handle = async (
 		reply = {
 			...originalReply,
 			link: (link) => {
+				if (link.fallback) return originalReply.text(link.fallback);
 				if (link.bypass) return originalReply.link(link);
 				return originalReply.text('抱歉，该功能正在维护中。');
 			},
 			textLink: (msg, link) => {
+				if (link.fallback) return originalReply.text(msg + `\n${link.fallback}`);
 				if (link.bypass) return originalReply.textLink(msg, link);
 				return originalReply.text(msg);
 			},
 			imageTextLink: (msg, url, link) => {
+				if (link.fallback) return originalReply.imageText(msg + `\n${link.fallback}`, url);
 				if (link.bypass) return originalReply.imageTextLink(msg, url, link);
 				return originalReply.imageText(msg, url);
 			}
