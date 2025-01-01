@@ -1,5 +1,6 @@
 use indexmap::IndexMap;
 use rmp_serde::Deserializer;
+use serde::de::IgnoredAny;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
@@ -121,39 +122,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut players: HashMap<String, PlayerInfo> = HashMap::new();
 
-    let types: Result<Vec<String>, _> = Deserialize::deserialize(&mut deserializer);
-    match types {
-        Ok(data) => {
-            drop(data);
-        }
-        Err(e) => {
-            eprintln!("Failed to deserialize types: {:?}", e);
-            return Ok(());
-        }
-    }
+    // Vec<String>
+    let _types: IgnoredAny = Deserialize::deserialize(&mut deserializer)?;
 
-    let maps: Result<IndexMap<String, Vec<(String, i32, i32)>>, _> =
-        Deserialize::deserialize(&mut deserializer);
-    match maps {
-        Ok(data) => {
-            drop(data);
-        }
-        Err(e) => {
-            eprintln!("Failed to deserialize maps: {:?}", e);
-            return Ok(());
-        }
-    }
+    // IndexMap<String, Vec<(String, i32, i32)>
+    let _maps: IgnoredAny = Deserialize::deserialize(&mut deserializer)?;
 
     let total_points: Result<i32, _> = Deserialize::deserialize(&mut deserializer);
-    match total_points {
-        Ok(_) => {
-            // unused
-        }
-        Err(e) => {
-            eprintln!("Failed to deserialize total_points: {:?}", e);
-            return Ok(());
-        }
-    }
 
     let points_ranks: Result<Vec<(String, u32)>, _> = Deserialize::deserialize(&mut deserializer);
     match points_ranks {
