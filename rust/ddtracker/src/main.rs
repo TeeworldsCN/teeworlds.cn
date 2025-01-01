@@ -9,7 +9,7 @@ use serde_json::{json, Map, Value};
 use tokio::time::Duration;
 use uuid::Uuid;
 
-const SERVERS_URL: &str = "https://master3.ddnet.org/ddnet/15/servers.json";
+const SERVERS_URL: &str = "https://master1.ddnet.org/ddnet/15/servers.json";
 const CRON_EXPRESSION: &str = "0 * * * * *";
 
 #[tokio::main]
