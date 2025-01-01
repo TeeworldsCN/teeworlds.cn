@@ -28,10 +28,11 @@ jobs:
       - name: Build with Vite
         run: bun --bun run vite build
 
-      - name: Move scripts to build folder
-        run: |
-          mv rust build
-          mv scripts build
+      - name: Move rust scripts to build folder
+        run: mv rust build
+
+      - name: Bundle scripts
+        run: bun run bundle
 
       - name: Archive Build Folder
         run: tar -czvf build.tar.gz -C build .

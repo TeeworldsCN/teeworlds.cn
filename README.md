@@ -15,7 +15,7 @@
 使用 Rust 处理数据
 
 ```bash
-cargo run --release --manifest-path ./rust/Cargo.toml -- --force-gen
+cargo run --release --manifest-path ./rust/player-cache/Cargo.toml -- --force-gen
 ```
 
 安装依赖
