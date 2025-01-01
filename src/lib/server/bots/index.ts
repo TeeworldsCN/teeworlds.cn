@@ -13,6 +13,7 @@ import {
 } from './handlers/admin';
 import { handleBind } from './handlers/bind';
 import { handleRegister } from './handlers/register';
+import { handleStats } from './handlers/stats';
 
 export const commands = new CommandRouter();
 commands
@@ -40,6 +41,12 @@ commands
 	.add('举报', handleReport)
 	.add('report', handleReport)
 	.add('举报游戏行为', handleReport)
+
+	.add('服务器', handleStats)
+	.add('状态', handleStats)
+	.add('stats', handleStats)
+	.add('status', handleStats)
+	.add('stat', handleStats)
 
 	.add('工具箱', handleToolbox)
 
