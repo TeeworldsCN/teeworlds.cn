@@ -29,10 +29,8 @@ export class CommandRouter {
 
 	public parse(msg: string, permissions: UserPermissions): Command {
 		msg = msg.trim();
-		if (msg.startsWith('/ ')) {
-			msg = msg.slice(2);
-		} else if (msg.startsWith('/')) {
-			msg = msg.slice(1);
+		if (msg.startsWith('/')) {
+			msg = msg.slice(1).trim();
 		}
 
 		let command = msg;
