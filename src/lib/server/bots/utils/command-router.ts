@@ -31,14 +31,18 @@ export class CommandRouter {
 		let command = msg;
 		let args = '';
 
+		msg = msg.trim();
+
+		if (msg.startsWith('/ ')) {
+			msg = msg.slice(2);
+		} else if (command.startsWith('/')) {
+			msg = msg.slice(1);
+		}
+
 		const firstSpace = msg.indexOf(' ');
 		if (firstSpace >= 0) {
 			command = msg.slice(0, firstSpace);
 			args = msg.slice(firstSpace + 1).trim();
-		}
-
-		if (command.startsWith('/')) {
-			command = command.slice(1);
 		}
 
 		// check permissions
