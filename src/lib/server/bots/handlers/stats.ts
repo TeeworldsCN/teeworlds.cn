@@ -35,16 +35,20 @@ export const handleStats: Handler = async ({ reply }) => {
 	const otherServers = allServers.filter((server) => !server.name.startsWith('CHN'));
 	const upServer = otherServers.filter((server) => server.online4 || server.online6);
 	const attackedServers = upServer.filter(
-		(server) => (server.packets_rx || 0) > 275000 || (server.packets_tx || 0) > 300000
-	);
-	const attackedRegions = attackedServers.reduce(
-		(set, server) => set.add(server.name.slice(0, 3)),
-		new Set<string>()
+		(server) => (server.packets_rx || 0) > 150000 || (server.packets_tx || 0) > 150000
 	);
 
 	let otherText = `外服正常服务器数量：${upServer.length - attackedServers.length} / ${otherServers.length}`;
 	if (attackedServers.length > 0) {
-		otherText += `(${Array.from(attackedRegions.values()).join(',')} 正在被攻击 ⚔️)`;
+		otherText += `\n${attackedServers
+			.map(
+				(server) =>
+					`[${server.name}] (${formatNumber((server.packets_rx || 0) + (server.packets_tx || 0), {
+						maxFractionDigits: 0,
+						unit: 'pps'
+					})})`
+			)
+			.join(',')} 正在被攻击 ⚔️`;
 	}
 
 	await reply.text(
@@ -62,7 +66,7 @@ export const handleStats: Handler = async ({ reply }) => {
 
 				if (!server.uptime || (!server.online4 && !server.online6)) {
 					return `🪦 [${server.name}]\t已失联`;
-				} else if ((server.packets_rx || 0) > 275000 || (server.packets_tx || 0) > 300000) {
+				} else if ((server.packets_rx || 0) > 150000 || (server.packets_tx || 0) > 150000) {
 					return `⚔️ [${server.name}]\t负载 ${loadPercent}%\t数据 ${uploadText}↑/${downloadText}↓ (${packetText})\t疑似被攻击`;
 				} else if (loadPercent > 100) {
 					return `🔥 [${server.name}]\t负载 ${loadPercent}%\t数据 ${uploadText}↑/${downloadText}↓ (${packetText})\t高负载`;
