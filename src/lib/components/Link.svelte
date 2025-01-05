@@ -10,7 +10,7 @@
 	}: {
 		href: string;
 		className?: string;
-		type?: 'main' | 'info';
+		type?: 'main' | 'info' | 'subtle';
 		children: Snippet;
 		[key: string]: any;
 	} = $props();
@@ -19,7 +19,11 @@
 <a
 	{href}
 	{...rest}
-	class="{type == 'main'
-		? 'text-orange-400 hover:text-orange-300'
-		: 'text-slate-200 hover:text-blue-300'} {className}">{@render children()}</a
+	class={className}
+	class:text-orange-400={type == 'main'}
+	class:hover:text-orange-300={type == 'main'}
+	class:text-slate-200={type == 'info'}
+	class:hover:text-blue-300={type == 'info'}
+	class:text-slate-600={type == 'subtle'}
+	class:hover:text-slate-500={type == 'subtle'}>{@render children()}</a
 >

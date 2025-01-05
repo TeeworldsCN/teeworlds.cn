@@ -1,28 +1,146 @@
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
-	import { onDestroy, onMount } from 'svelte';
+	import serverSearch, { type SortKey } from '$lib/stores/server-search.js';
 	import VirtualScroll from 'svelte-virtual-scroll-list';
 
 	const { data } = $props();
 
-    let loading = $state(false);
+	let loading = $state(false);
+
+	const modes = {
+		containsStd: (mode: string) =>
+			mode.toLowerCase().includes('dm') ||
+			mode.toLowerCase().includes('ctf') ||
+			mode.toLowerCase().includes('lms') ||
+			mode.toLowerCase().includes('lts'),
+		startsWithInsta: (mode: string) => mode[0] == 'i' || mode[0] == 'g',
+		isStd: (mode: string) =>
+			mode == 'DM' || mode == 'TDM' || mode == 'CTF' || mode == 'LMS' || mode == 'LTS',
+		isFreeze: (mode: string) =>
+			mode.toLowerCase().includes('f-ddrace') || mode.toLowerCase().includes('freeze'),
+		isModdedStd: (mode: string) => modes.containsStd(mode) && !modes.startsWithInsta(mode),
+		isInsta: (mode: string) => modes.containsStd(mode) && modes.startsWithInsta(mode),
+		isFng: (mode: string) => mode.toLowerCase().includes('fng'),
+		isCatch: (mode: string) => mode.toLowerCase().includes('catch'),
+		isGores: (mode: string) => mode.toLowerCase().includes('gores'),
+		isBW: (mode: string) => mode.toLowerCase().includes('bw'),
+		isDDNet: (mode: string) =>
+			mode.toLowerCase().includes('ddnet') ||
+			mode.toLowerCase().includes('ddracenet') ||
+			mode.toLowerCase().includes('0xf'),
+		isDDRace: (mode: string) =>
+			(mode.toLowerCase().includes('ddrace') && !mode.toLowerCase().includes('ddracenet')) ||
+			mode.toLowerCase().includes('mkrace'),
+		isRace: (mode: string) =>
+			mode.toLowerCase().includes('race') || mode.toLowerCase().includes('fastcap'),
+		isSDDR: (mode: string) => mode.toLowerCase().includes('s-ddr')
+	};
 
 	const refresh = async () => {
-        loading = true;
+		loading = true;
 		await invalidate('/ddnet/servers');
-        loading = false;
+		loading = false;
+	};
+
+	const regionLevel = (location: string) => {
+		if (location == 'as:cn') return 0;
+		if (location.startsWith('as')) return 1;
+		return 2;
+	};
+
+	const sortValue = (server: any, key: SortKey) => {
+		if (key.key == 'region') {
+			return regionLevel(server.location);
+		} else if (key.key == 'player') {
+			return server.info.clients.length;
+		} else if (key.key == 'name') {
+			return server.info.name;
+		} else if (key.key == 'map') {
+			return server.info.map.name;
+		} else if (key.key == 'mode') {
+			return server.info.game_type;
+		}
+		return 0;
 	};
 
 	const servers = $derived(() =>
-		data.servers.map((server) => ({ key: server.addresses[0], ...server }))
+		data.servers
+			.filter((server) => {
+				if ($serverSearch.exclude) {
+					const terms = $serverSearch.exclude.split(';');
+					for (const term of terms) {
+						if (server.searchText.includes(term.trim().toLowerCase())) {
+							return false;
+						}
+					}
+				}
+				if ($serverSearch.include) {
+					const terms = $serverSearch.include.split(';');
+					for (const term of terms) {
+						if (!server.searchText.includes(term.trim().toLowerCase())) {
+							return false;
+						}
+					}
+				}
+				return true;
+			})
+			.sort((a, b) => {
+				for (const key of $serverSearch.sort) {
+					const aValue = sortValue(a, key);
+					const bValue = sortValue(b, key);
+					if (aValue == bValue) continue;
+					if (key.desc) {
+						return aValue > bValue ? -1 : 1;
+					} else {
+						return aValue > bValue ? 1 : -1;
+					}
+				}
+				// if all values are equal, sort by name
+				return a.info.name.localeCompare(b.info.name);
+			})
+			.map((server) => server)
 	);
 
-	onDestroy(() => {});
+	const toggleSort = (key: SortKey['key']) => {
+		serverSearch.update((value) => {
+			if (value.sort[0].key == key) {
+				value.sort[0].desc = !value.sort[0].desc;
+			} else {
+				const deleting = value.sort.findIndex((sort) => sort.key == key);
+				if (deleting >= 0) {
+					value.sort.splice(deleting, 1);
+				}
+				value.sort.unshift({ key, desc: false });
+			}
+			return value;
+		});
+	};
 
-	$effect(() => {});
-
-	onMount(async () => {});
+	const togglePlayerSort = () => {
+		serverSearch.update((value) => {
+			if (value.sort[0].key == 'player' && value.sort[0].desc) {
+				value.sort[0].desc = false;
+			} else if (value.sort[0].key == 'player' && !value.sort[0].desc) {
+				// remove player & region key
+				const deleting = value.sort.findIndex((sort) => sort.key == 'region');
+				if (deleting >= 0) {
+					value.sort.splice(deleting, 1);
+				}
+				value.sort.splice(0, 1);
+				value.sort.unshift({ key: 'region', desc: false }, { key: 'player', desc: true });
+			} else {
+				// remove player & region key
+				const deleting = value.sort.findIndex((sort) => sort.key == 'region');
+				if (deleting >= 0) {
+					value.sort.splice(deleting, 1);
+				}
+				value.sort.splice(0, 1);
+				value.sort.unshift({ key: 'player', desc: true }, { key: 'region', desc: false });
+			}
+			return value;
+		});
+	};
 </script>
 
 <Breadcrumbs
@@ -33,18 +151,144 @@
 	]}
 />
 
-<div class="mb-4 md:flex md:space-x-5">
+<div class="mb-2 flex w-full gap-1">
+	<div class="flex flex-grow flex-col gap-1 sm:flex-row">
+		<input
+			type="text"
+			placeholder="🔎 搜索"
+			class="flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-slate-300 md:mb-0"
+			bind:value={$serverSearch.include}
+		/>
+		<input
+			type="text"
+			placeholder="🚫 排除"
+			class="flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-slate-300 md:mb-0"
+			bind:value={$serverSearch.exclude}
+		/>
+	</div>
 	<button
-		class="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:bg-blue-500 disabled:opacity-50"
+		class="rounded bg-blue-500 px-4 py-1 text-white hover:bg-blue-600 disabled:bg-blue-500 disabled:opacity-50"
 		onclick={refresh}
-        disabled={loading}
+		disabled={loading}
 	>
-		刷新服务器列表
+		刷新
 	</button>
 </div>
 
-<div class="h-[calc(100svh-18rem)] max-h-[calc(100svh-18rem)] w-full p-4">
-	<VirtualScroll keeps={75} data={servers()} key="key" let:data>
-		<div class="w-full rounded bg-slate-700 px-5 my-1 py-1">{data.info.name}</div>
-	</VirtualScroll>
+<div class="rounded-lg bg-slate-900 px-1 py-1">
+	<div class="flex h-[32px] w-full gap-1 rounded-t bg-slate-800 px-1 text-left sm:gap-2">
+		<button
+			class="w-14 rounded-t-lg text-center text-sm opacity-0 hover:bg-slate-700 hover:opacity-100 sm:text-base md:w-20"
+		>
+			社区
+		</button>
+		<button
+			class="flex-1 text-nowrap rounded-t-lg px-4 text-left text-sm hover:bg-slate-700 sm:text-base"
+			class:bg-slate-600={$serverSearch.sort[0].key == 'name'}
+			onclick={() => toggleSort('name')}
+		>
+			名称
+		</button>
+		<button
+			class="w-8 overflow-hidden text-nowrap rounded-t-lg px-0 text-center text-sm hover:bg-slate-700 sm:w-16 sm:text-base md:px-4 md:text-left lg:w-24"
+			class:bg-slate-600={$serverSearch.sort[0].key == 'mode'}
+			onclick={() => toggleSort('mode')}
+		>
+			模式
+		</button>
+		<button
+			class="w-16 text-nowrap rounded-t-lg px-0 text-center text-sm hover:bg-slate-700 sm:text-base md:px-4 md:text-left lg:w-48"
+			class:bg-slate-600={$serverSearch.sort[0].key == 'map'}
+			onclick={() => toggleSort('map')}
+		>
+			地图
+		</button>
+		<button
+			class="w-12 text-nowrap rounded-t-lg px-0 text-center text-sm hover:bg-slate-700 sm:text-base md:w-16 md:px-4 md:text-right lg:w-24"
+			class:bg-slate-600={$serverSearch.sort[0].key == 'player'}
+			class:bg-amber-900={$serverSearch.sort[0].key == 'region' &&
+				$serverSearch.sort[1].key == 'player'}
+			class:hover:bg-amber-800={$serverSearch.sort[0].key == 'region' &&
+				$serverSearch.sort[1].key == 'player'}
+			onclick={() => togglePlayerSort()}
+		>
+			玩家
+		</button>
+		<button
+			class="hidden w-6 text-nowrap rounded-t-lg text-sm hover:bg-slate-700 sm:text-base md:block md:w-16 lg:w-24"
+			class:bg-slate-600={$serverSearch.sort[0].key == 'region' &&
+				$serverSearch.sort[1].key != 'player'}
+			class:bg-amber-900={$serverSearch.sort[0].key == 'region' &&
+				$serverSearch.sort[1].key == 'player'}
+			class:hover:bg-amber-800={$serverSearch.sort[0].key == 'region' &&
+				$serverSearch.sort[1].key == 'player'}
+			onclick={() => togglePlayerSort()}
+		>
+			地区
+		</button>
+		<button
+			class="block w-6 text-nowrap rounded-t-lg text-sm hover:bg-slate-700 sm:text-base md:hidden"
+			class:bg-slate-600={$serverSearch.sort[0].key == 'region' &&
+				$serverSearch.sort[1].key != 'player'}
+			class:bg-amber-900={$serverSearch.sort[0].key == 'region' &&
+				$serverSearch.sort[1].key == 'player'}
+			class:hover:bg-amber-800={$serverSearch.sort[0].key == 'region' &&
+				$serverSearch.sort[1].key == 'player'}
+			onclick={() => togglePlayerSort()}
+		>
+			🌎
+		</button>
+	</div>
+	<div
+		class="w-ful overflow h-[calc(100svh-16.5rem)] sm:h-[calc(100svh-14rem)] md:h-[calc(100svh-17rem)]"
+	>
+		<VirtualScroll keeps={75} data={servers()} key="key" estimateSize={32} let:data>
+			<button
+				class="flex h-[32px] w-full gap-1 rounded px-1 py-1 text-left hover:bg-slate-700 sm:gap-2"
+				onclick={() => {}}
+			>
+				<span class="my-auto w-3 text-nowrap text-xs md:text-base"
+					>{data.info.passworded ? '🔒' : ''}</span
+				>
+				<span class="w-8 px-0 py-1 text-center md:w-16 md:px-2">
+					{#if data.community_icon}
+						<img class="h-full w-full object-contain" src={data.community_icon} alt="" />
+					{/if}
+				</span>
+				<span
+					class="my-auto flex-1 flex-grow overflow-hidden overflow-ellipsis text-nowrap text-xs sm:text-base"
+					>{data.info.name}</span
+				>
+				<span
+					class="my-auto w-8 overflow-hidden text-nowrap text-xs sm:w-16 sm:text-base lg:w-24 lg:overflow-ellipsis"
+					class:text-[#ff8080]={modes.isFreeze(data.info.game_type)}
+					class:text-[#ffff88]={modes.isCatch(data.info.game_type)}
+					class:text-[#7ffa7d]={modes.isStd(data.info.game_type)}
+					class:text-[#ff8b8a]={modes.isInsta(data.info.game_type)}
+					class:text-[#75b3ec]={modes.isDDNet(data.info.game_type)}
+					class:text-[#d38bff]={modes.isDDRace(data.info.game_type)}
+					class:text-[#85ffea]={modes.isRace(data.info.game_type)}
+					class:text-[#f29e7a]={modes.isBW(data.info.game_type)}
+					class:text-[#e976ec]={modes.isFng(data.info.game_type)}
+					class:text-[#78dff1]={modes.isGores(data.info.game_type)}
+				>
+					{data.info.game_type}
+				</span>
+				<span
+					class="my-auto w-16 overflow-hidden text-nowrap text-xs sm:text-base lg:w-48 lg:overflow-ellipsis"
+					>{data.info.map.name}</span
+				>
+				<span
+					class="my-auto w-12 overflow-hidden text-nowrap text-right text-xs md:w-16 md:text-sm lg:w-24 lg:text-base"
+					>{data.info.clients.length}/{data.info.max_players}</span
+				>
+				<span
+					class="my-auto w-6 overflow-hidden text-nowrap text-center text-xs md:w-16 md:text-base lg:w-24"
+					class:text-green-400={regionLevel(data.location) == 0}
+					class:text-green-600={regionLevel(data.location) == 1}
+					class:text-orange-600={regionLevel(data.location) == 2}>{data.region}</span
+				>
+			</button>
+		</VirtualScroll>
+	</div>
 </div>

@@ -29,7 +29,7 @@
 	class="flex min-h-svh flex-col bg-slate-800 {navigating.to ? 'opacity-60' : 'opacity-100'}"
 	style={navigating.to ? 'transition: opacity 0.1s ease-in-out 0.1s;' : ''}
 >
-	<header class="flex bg-slate-900 p-4 text-slate-300">
+	<header class="flex bg-slate-900 px-4 py-2 text-slate-300 md:py-4">
 		<div class="container mx-auto">
 			<div class="flex w-full">
 				<div class="flex-grow">
@@ -55,9 +55,9 @@
 		</div>
 	</main>
 
-	<footer class="bg-slate-900 p-4 text-slate-300">
+	<footer class="bg-slate-900 p-1 text-slate-300 md:p-4">
 		<div class="container mx-auto text-center">
-			<Link href="https://beian.miit.gov.cn/" type="info" className="font-bold"
+			<Link href="https://beian.miit.gov.cn/" type="subtle" className="font-bold"
 				>冀ICP备2021002466号</Link
 			>
 		</div>

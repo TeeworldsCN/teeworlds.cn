@@ -32,9 +32,48 @@ export type ServerInfo = {
 	};
 }[];
 
-export const servers = new FetchCache<string>(
+export type GameServerType = {
+	name: string;
+	flagId: number;
+	servers: { [key: string]: string };
+};
+
+export type GameInfo = {
+	communities: {
+		id: string;
+		name: string;
+		has_finishes: boolean;
+		icon: {
+			sha256: string;
+			url: string;
+			servers?: GameServerType[];
+		};
+		contact_urls: string[];
+	}[];
+	servers: GameServerType[];
+	'servers-kog': GameServerType[];
+	'community-icons-download-url': string;
+	news: string;
+	'map-download-url': string;
+	location: string;
+	version: string;
+	'stun-servers-ipv6': string[];
+	'stun-servers-ipv4': string[];
+	'warn-pnglite-incompatible-images': boolean;
+};
+
+export const servers = new FetchCache<{ servers: ServerInfo }>(
 	'https://master1.ddnet.org/ddnet/15/servers.json',
-	async (response) => await response.text(),
+	async (response) => await response.json(),
+	{
+		minQueryInterval: 2,
+		skipHead: true
+	}
+);
+
+export const gameInfo = new FetchCache<GameInfo>(
+	'https://info.ddnet.org/info',
+	async (response) => await response.json(),
 	{
 		minQueryInterval: 2,
 		skipHead: true

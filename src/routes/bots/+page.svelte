@@ -89,19 +89,21 @@
 		{ text: '豆豆', title: 'DDNet 豆豆' }
 	]}
 />
-<div class="right-4 h-full max-h-[calc(100svh-12rem)] w-full">
+<div class="right-4 h-full max-h-[calc(100svh-9rem)] w-full md:max-h-[calc(100svh-12rem)]">
 	<div class="h-full w-full rounded-lg bg-slate-700 shadow-md">
-		<div class="flex items-center justify-between rounded-t-lg border-b bg-teal-700 p-4">
+		<div class="flex items-center justify-between rounded-t-lg border-b bg-teal-700 px-4 py-2">
 			<p class="text-lg font-semibold">DDNet 豆豆</p>
 			<button
-				class="-my-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+				class="-my-4 rounded bg-blue-500 px-4 py-1 text-white hover:bg-blue-600"
 				onclick={() => {
 					groupMode = !groupMode;
 				}}
 				>{#if groupMode}群聊模式{:else}私聊模式{/if}</button
 			>
 		</div>
-		<div class="h-full max-h-[calc(100svh-20rem)] space-y-3 overflow-y-auto p-4">
+		<div
+			class="h-full max-h-[calc(100svh-16rem)] space-y-3 overflow-y-auto p-4 md:max-h-[calc(100svh-19rem)]"
+		>
 			{#each $messages as message}
 				<div class="flex items-end" class:justify-end={message.from !== 'bot'}>
 					<div
