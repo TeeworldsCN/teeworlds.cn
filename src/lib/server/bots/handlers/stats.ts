@@ -1,3 +1,4 @@
+import { formatNumber } from '$lib/helpers';
 import type { Handler } from '../protocol/types';
 
 export const handleStats: Handler = async ({ reply }) => {
@@ -29,32 +30,46 @@ export const handleStats: Handler = async ({ reply }) => {
 		}[];
 	};
 
-	const servers = json.servers.filter((server) => server.name.startsWith('CHN'));
+	const allServers = json.servers.filter((server) => !server.type.startsWith('master'));
+	const servers = allServers.filter((server) => server.name.startsWith('CHN'));
+	const otherServers = allServers.filter((server) => !server.name.startsWith('CHN'));
+	const upServer = otherServers.filter((server) => server.online4 || server.online6);
+	const attackedServers = upServer.filter(
+		(server) => (server.packets_rx || 0) > 275000 || (server.packets_tx || 0) > 300000
+	);
+	const attackedRegions = attackedServers.reduce(
+		(set, server) => set.add(server.name.slice(0, 3)),
+		new Set<string>()
+	);
+
+	let otherText = `外服正常服务器数量：${upServer.length - attackedServers.length} / ${otherServers.length}`;
+	if (attackedServers.length > 0) {
+		otherText += `(${Array.from(attackedRegions.values()).join(',')} 正在被攻击 ⚔️)`;
+	}
 
 	await reply.text(
 		servers
 			.map((server) => {
 				const loadPercent = Math.round((server.load || 0) * 100);
 				const packet = (server.packets_rx || 0) + (server.packets_tx || 0);
-				let packetText = '';
-				if (packet > 1000000) {
-					packetText = `${Math.round(packet / 1000000)}m`;
-				} else if (packet > 1000) {
-					packetText = `${Math.round(packet / 1000)}k`;
-				} else {
-					packetText = `${packet}`;
-				}
+				let packetText = formatNumber(packet, { maxFractionDigits: 0, unit: 'pps' });
+				let uploadText = formatNumber(server.network_tx || 0, {
+					maxFractionDigits: 1
+				});
+				let downloadText = formatNumber(server.network_rx || 0, {
+					maxFractionDigits: 1
+				});
 
 				if (!server.uptime || (!server.online4 && !server.online6)) {
-					return `🪦 [${server.name}] 已失联`;
+					return `🪦 [${server.name}]\t已失联`;
 				} else if ((server.packets_rx || 0) > 275000 || (server.packets_tx || 0) > 300000) {
-					return `⚔️ [${server.name}] 负载 ${loadPercent}% - 数据量 ${packetText} - 疑似被攻击`;
+					return `⚔️ [${server.name}]\t负载 ${loadPercent}%\t数据 ${uploadText}↑/${downloadText}↓ (${packetText})\t疑似被攻击`;
 				} else if (loadPercent > 100) {
-					return `🔥 [${server.name}] 负载 ${loadPercent}% - 数据量 ${packetText} - 高负载`;
+					return `🔥 [${server.name}]\t负载 ${loadPercent}%\t数据 ${uploadText}↑/${downloadText}↓ (${packetText})\t高负载`;
 				} else {
-					return `✅ [${server.name}] 负载 ${loadPercent}% - 数据量 ${packetText} - 在线`;
+					return `✅ [${server.name}]\t负载 ${loadPercent}%\t数据 ${uploadText}↑/${downloadText}↓ (${packetText})\t在线`;
 				}
 			})
-			.join('\n') + '\n数据有时效性，不保证完全准确'
+			.join('\n') + `\n${otherText}\n数据有时效性，不保证完全准确`
 	);
 };
