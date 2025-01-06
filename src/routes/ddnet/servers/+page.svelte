@@ -402,7 +402,7 @@
 						{#if joinViaDDNet(selectedServer.addresses)}
 							<a
 								class="w-full rounded bg-[#4a9be5] px-2 py-2 text-center font-semibold text-white hover:bg-[#4585c1] active:bg-[#3b6db9]"
-								href={joinViaSteam(selectedServer.addresses)}
+								href={joinViaDDNet(selectedServer.addresses)}
 								><Fa class="inline" icon={faCrosshairs}></Fa> 打开 DDNet 加入</a
 							>
 						{/if}
