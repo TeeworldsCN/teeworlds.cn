@@ -1,4 +1,5 @@
 import { FetchCache } from '../fetch-cache';
+import { convert } from '../imgproxy';
 
 export type ServerInfo = {
 	addresses: string[];
@@ -73,7 +74,15 @@ export const servers = new FetchCache<{ servers: ServerInfo }>(
 
 export const gameInfo = new FetchCache<GameInfo>(
 	'https://info.ddnet.org/info',
-	async (response) => await response.json(),
+	async (response) => {
+		const result = (await response.json()) as GameInfo;
+		for (const community of result.communities) {
+			if (community.icon.url) {
+				community.icon.url = (await convert(community.icon.url)).toString();
+			}
+		}
+		return result;
+	},
 	{
 		minQueryInterval: 2,
 		skipHead: true

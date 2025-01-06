@@ -1,12 +1,50 @@
 <script lang="ts">
-	import { invalidate } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+	import Modal from '$lib/components/Modal.svelte';
+	import { joinViaDDNet, joinViaSteam, showScore, sortPlayers } from '$lib/ddnet/helpers';
 	import serverSearch, { type SortKey } from '$lib/stores/server-search.js';
+	import Fa from 'svelte-fa';
 	import VirtualScroll from 'svelte-virtual-scroll-list';
+	import { faSteam } from '@fortawesome/free-brands-svg-icons';
+	import { faCrosshairs } from '@fortawesome/free-solid-svg-icons';
+	import { addrToBase64, base64ToAddr } from '$lib/helpers.js';
+	import { page } from '$app/state';
 
 	const { data } = $props();
 
+	const showServerInfo = (server: (typeof data.servers)[0]) => {
+		selectedServer = server;
+		if (selectedServer) {
+			sortPlayers(selectedServer.info.clients, selectedServer.info.client_score_kind);
+		}
+		showModal = true;
+		serverAddress = server.key;
+		goto(`#${addrToBase64(server.key)}`, { keepFocus: true, noScroll: true, replaceState: true });
+	};
+
+	const processHashQuery = (hash: string) => {
+		if (hash.startsWith('#')) {
+			hash = `${hash.slice(1)}`;
+		}
+		if (!hash) {
+			showModal = false;
+			return;
+		}
+		serverAddress = base64ToAddr(hash);
+		selectedServer = data.servers.find((server) => server.key == serverAddress) || null;
+		if (selectedServer) {
+			sortPlayers(selectedServer.info.clients, selectedServer.info.client_score_kind);
+		}
+		showModal = true;
+	};
+
 	let loading = $state(false);
+	let showModal = $state(false);
+	let selectedServer = $state(null) as (typeof data.servers)[0] | null;
+	let serverAddress = $state(null) as string | null;
+
+	processHashQuery(page.url.hash);
 
 	const modes = {
 		containsStd: (mode: string) =>
@@ -141,7 +179,19 @@
 			return value;
 		});
 	};
+
+	$effect(() => {
+		if (!showModal) {
+			goto('', { keepFocus: true, noScroll: true, replaceState: true });
+		}
+	});
 </script>
+
+<svelte:window
+	on:hashchange={() => {
+		processHashQuery(page.url.hash);
+	}}
+/>
 
 <Breadcrumbs
 	breadcrumbs={[
@@ -240,19 +290,24 @@
 		</button>
 	</div>
 	<div
-		class="w-ful overflow h-[calc(100svh-16.5rem)] sm:h-[calc(100svh-14rem)] md:h-[calc(100svh-17rem)]"
+		class="w-ful scrollbar-subtle h-[calc(100svh-16.5rem)] sm:h-[calc(100svh-14rem)] md:h-[calc(100svh-17rem)]"
 	>
 		<VirtualScroll keeps={75} data={servers()} key="key" estimateSize={32} let:data>
 			<button
 				class="flex h-[32px] w-full gap-1 rounded px-1 py-1 text-left hover:bg-slate-700 sm:gap-2"
-				onclick={() => {}}
+				onclick={() => {
+					showServerInfo(data);
+				}}
 			>
 				<span class="my-auto w-3 text-nowrap text-xs md:text-base"
 					>{data.info.passworded ? '🔒' : ''}</span
 				>
-				<span class="w-8 px-0 py-1 text-center md:w-16 md:px-2">
+				<span class="inline-block h-full w-8 px-0 text-center md:w-16 md:px-2">
 					{#if data.community_icon}
-						<img class="h-full w-full object-contain" src={data.community_icon} alt="" />
+						<div
+							class="h-full w-full bg-contain bg-no-repeat"
+							style="background-image: url({data.community_icon})"
+						></div>
 					{/if}
 				</span>
 				<span
@@ -291,4 +346,91 @@
 			</button>
 		</VirtualScroll>
 	</div>
+	<Modal bind:show={showModal}>
+		{#if selectedServer}
+			<div
+				class="scrollbar-subtle flex max-h-[calc(100svh-8rem)] w-[512px] max-w-[calc(100svw-3rem)] flex-col gap-4 overflow-y-auto rounded-lg bg-slate-700 p-3 text-left shadow-lg"
+			>
+				<div class="flew flew-col gap-1">
+					<h1 class="flex-grow text-xl font-bold">{selectedServer.info.name}</h1>
+				</div>
+				<div
+					class="mt-2 grid grid-cols-2 gap-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3"
+				>
+					<p class="mb-2">
+						<span class="mb-1 text-base font-bold">游戏模式</span>
+						<span class="ml-2">{selectedServer.info.game_type}</span>
+					</p>
+					<p class="mb-2">
+						<span class="mb-1 text-base font-bold">地图</span>
+						<span class="ml-2">{selectedServer.info.map.name}</span>
+					</p>
+					<p class="mb-2">
+						<span class="mb-1 text-base font-bold">版本</span>
+						<span class="ml-2">{selectedServer.info.version}</span>
+					</p>
+					<p class="mb-2">
+						<span class="mb-1 text-base font-bold">密码</span>
+						<span class="ml-2">{selectedServer.info.passworded ? '有' : '无'}</span>
+					</p>
+					<p class="mb-2">
+						<span class="mb-1 text-base font-bold">需要账号</span>
+						<span class="ml-2">{selectedServer.info.requires_login ? '是' : '否'}</span>
+					</p>
+					<p class="mb-2">
+						<span class="mb-1 text-base font-bold">地区</span>
+						<span class="ml-2">{selectedServer.region}</span>
+					</p>
+				</div>
+				<div
+					class="mt-2 flex flex-row justify-center gap-2 rounded-lg bg-slate-600 px-3 py-1 align-middle shadow-md sm:py-3"
+				>
+					<div class="flex-grow">
+						<p class="mb-1 text-base font-bold">地址</p>
+						{#each selectedServer.addresses as address}
+							<p class="ml-2">{address}</p>
+						{/each}
+					</div>
+					<div class="collapse flex flex-col gap-1 sm:visible">
+						{#if joinViaSteam(selectedServer.addresses)}
+							<a
+								class="w-full rounded bg-[#090909] px-4 py-2 text-center font-semibold text-white hover:bg-gray-900 active:bg-gray-800"
+								href={joinViaSteam(selectedServer.addresses)}
+								><Fa class="inline" icon={faSteam}></Fa> 通过 Steam 加入</a
+							>
+						{/if}
+						{#if joinViaDDNet(selectedServer.addresses)}
+							<a
+								class="w-full rounded bg-[#4a9be5] px-2 py-2 text-center font-semibold text-white hover:bg-[#4585c1] active:bg-[#3b6db9]"
+								href={joinViaSteam(selectedServer.addresses)}
+								><Fa class="inline" icon={faCrosshairs}></Fa> 打开 DDNet 加入</a
+							>
+						{/if}
+					</div>
+				</div>
+				<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
+					<h3 class="font-bold">玩家列表</h3>
+					{#each selectedServer.info.clients as client}
+						<div class="mb-1 flex flex-row rounded bg-slate-700 px-1">
+							<div class="w-20 self-center text-center">
+								{showScore(client.score, selectedServer.info.client_score_kind)}
+							</div>
+							<div class="flex h-[3.25rem] flex-col">
+								<p class="font-semibold">{client.name}</p>
+								<p class="text-sm">{client.clan}</p>
+							</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{:else}
+			<div
+				class="scrollbar-subtle flex max-h-[calc(100svh-8rem)] w-[512px] max-w-[calc(100svw-3rem)] flex-col gap-4 overflow-y-auto rounded-lg bg-slate-700 p-3 text-left shadow-lg"
+			>
+				<h3 class="text-center text-xl font-bold">未找到对应的服务器</h3>
+				<p>正在查看服务器：{serverAddress}</p>
+				<p>当前服务器可能不在线或列表服务器出现了问题。</p>
+			</div>
+		{/if}
+	</Modal>
 </div>

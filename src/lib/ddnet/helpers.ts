@@ -55,3 +55,94 @@ const FLAG_MAP: { [key: string]: typeof FLAG_DEFAULT } = {
 export const flagAsset = (flag: string) => {
 	return FLAG_MAP[flag] || FLAG_DEFAULT;
 };
+
+export const showScore = (score: number, kind: string) => {
+	if (kind == 'time') {
+		if (score <= 0) return '';
+		const total = score;
+		const hours = Math.floor(total / 3600);
+		const minutes = Math.floor((total % 3600) / 60);
+		const seconds = Math.floor(total % 60);
+		if (hours > 0)
+			return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+		return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+	}
+	return score.toString();
+};
+
+export const sortPlayers = <T extends { name: string; score: number; is_player: boolean }>(
+	players: T[],
+	kind: string
+) => {
+	players.sort((a, b) => {
+		if (a.is_player && !b.is_player) return -1;
+		if (!a.is_player && b.is_player) return 1;
+
+		if (kind == 'time') {
+			if (a.score < 0 && b.score > 0) return 1;
+			if (a.score >= 0 && b.score < 0) return -1;
+		}
+
+		if (a.score != b.score) {
+			if (kind == 'time') {
+				return a.score - b.score;
+			} else {
+				return b.score - a.score;
+			}
+		}
+
+		return a.name.localeCompare(b.name);
+	});
+	return players;
+};
+
+export const joinViaSteam = (addresses: string[]) => {
+	for (const address of addresses) {
+		const url = new URL(address);
+		console.log(url.protocol);
+		console.log(url.hostname);
+		if (url.protocol == 'tw-0.6+udp:') {
+			return `steam://rungameid/412220//${encodeURIComponent(url.host)}`;
+		}
+	}
+	return null;
+};
+
+export const joinViaDDNet = (addresses: string[]) => {
+	for (const address of addresses) {
+		const url = new URL(address);
+		if (url.protocol == 'tw-0.6+udp:') {
+			return `ddnet://`;
+		}
+	}
+};
+
+export const primaryAddress = (addresses: string[]) => {
+	for (const address of addresses) {
+		const url = new URL(address);
+		if (url.protocol == 'tw-0.6+udp:') {
+			return url.host;
+		}
+	}
+	for (const address of addresses) {
+		const url = new URL(address);
+		if (url.protocol == 'tw-0.7+udp:') {
+			return url.host;
+		}
+	}
+	return addresses[0];
+};
+
+const REGION_MAP: { [key: string]: string } = {
+	'as:cn': '中国',
+	as: '亚洲',
+	eu: '欧洲',
+	na: '北美',
+	oc: '南美',
+	sa: '南非',
+	af: '非洲'
+};
+
+export const region = (region: string) => {
+	return REGION_MAP[region] || REGION_MAP[region.split(':')[0]] || region;
+};

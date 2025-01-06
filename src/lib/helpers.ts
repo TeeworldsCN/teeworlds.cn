@@ -1,3 +1,5 @@
+import { decode, encode } from './base64url';
+
 const SUPERSCRIPTS = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
 const SUBSCRIPTS = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
 
@@ -136,4 +138,30 @@ export const secondsToChineseTime = (totalSeconds: number) => {
 	if (hours > 0)
 		return `${hours.toString().padStart(2, '0')}时${minutes.toString().padStart(2, '0')}分${seconds.toString().padStart(2, '0')}秒${ender}`;
 	return `${minutes.toString().padStart(2, '0')}分${seconds.toString().padStart(2, '0')}秒${ender}`;
+};
+
+export const addrToBase64 = (address: string) => {
+	const ipPort = address.split(':');
+	if (ipPort.length != 2) {
+		return null;
+	}
+	const ip = ipPort[0];
+	const port = parseInt(ipPort[1]);
+	const part = ip.split('.');
+	const addr = new Uint8Array(6);
+	addr[0] = parseInt(part[0]);
+	addr[1] = parseInt(part[1]);
+	addr[2] = parseInt(part[2]);
+	addr[3] = parseInt(part[3]);
+	addr[4] = port / 256;
+	addr[5] = port % 256;
+	return encode(addr);
+};
+
+export const base64ToAddr = (base64: string) => {
+	const addr = decode(base64, { buffer: true });
+	if (addr.length != 6) {
+		return null;
+	}
+	return `${addr[0]}.${addr[1]}.${addr[2]}.${addr[3]}:${addr[4] * 256 + addr[5]}`;
 };

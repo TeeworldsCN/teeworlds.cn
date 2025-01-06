@@ -18,3 +18,28 @@
 	content: '.';
 	visibility: hidden;
 }
+
+.scrollbar-subtle *::-webkit-scrollbar {
+	height: 6px;
+	width: 6px;
+}
+.scrollbar-subtle  *::-webkit-scrollbar-track {
+	border-radius: 5px;
+	background-color: #101625;
+}
+.scrollbar-subtle  *::-webkit-scrollbar-track:hover {
+	background-color: #101625;
+}
+.scrollbar-subtle  *::-webkit-scrollbar-track:active {
+	background-color: #101625;
+}
+.scrollbar-subtle  *::-webkit-scrollbar-thumb {
+	border-radius: 5px;
+	background-color: #617ca2;
+}
+.scrollbar-subtle  *::-webkit-scrollbar-thumb:hover {
+	background-color: #4c607e;
+}
+.scrollbar-subtle  *::-webkit-scrollbar-thumb:active {
+	background-color: #6a87b1;
+}

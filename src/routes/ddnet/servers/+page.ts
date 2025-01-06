@@ -1,19 +1,6 @@
+import { primaryAddress, region } from '$lib/ddnet/helpers';
 import type { GameInfo, ServerInfo } from '$lib/server/fetches/servers';
 import type { PageLoad } from './$types';
-
-const REGION_MAP: { [key: string]: string } = {
-	'as:cn': '中国',
-	as: '亚洲',
-	eu: '欧洲',
-	na: '北美',
-	oc: '南美',
-	sa: '南非',
-	af: '非洲'
-};
-
-const region = (region: string) => {
-	return REGION_MAP[region] || REGION_MAP[region.split(':')[0]] || region;
-};
 
 export const load = (async ({ fetch, parent }) => {
 	const data = (await (await fetch('/ddnet/servers')).json()) as {
@@ -33,10 +20,12 @@ export const load = (async ({ fetch, parent }) => {
 	const servers = data.servers.map((server) => {
 		const ip = server.addresses[0].split('://')[1];
 		const community = gameInfo.communities.find((community) =>
-			community.icon.servers?.flatMap((server) => Object.values(server.servers).flatMap((server) => server)).includes(ip)
+			community.icon.servers
+				?.flatMap((server) => Object.values(server.servers).flatMap((server) => server))
+				.includes(ip)
 		);
 		return {
-			key: server.addresses[0],
+			key: primaryAddress(server.addresses),
 			...server,
 			region: region(server.location),
 			community: community?.name,

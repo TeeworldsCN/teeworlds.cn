@@ -1,4 +1,4 @@
-import { encode, decode } from 'universal-base64url';
+import { encode, decode } from '$lib/base64url';
 
 export const fetchDDNetAsync = async (url: string) => {
 	const response = await fetch(url);
@@ -44,7 +44,7 @@ export const decodeAsciiURIComponent = (str: string) => {
 	let segment = '';
 
 	for (const char of str) {
-		if (char == "!") {
+		if (char == '!') {
 			if (segment) {
 				result += decode(segment.slice(1));
 				segment = '';
