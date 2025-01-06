@@ -14,6 +14,14 @@
 
 	const { data } = $props();
 
+	const checkMapName = async (map: string) => {
+		const url = `/ddnet/m?n=${encodeURIComponent(map)}`;
+		const response = await fetch(url, { method: 'HEAD' });
+		if (response.ok && selectedServer?.info?.map?.name == map) {
+			mapLink = url;
+		}
+	};
+
 	const showServerInfo = (server: (typeof data.servers)[0]) => {
 		selectedServer = server;
 		if (selectedServer) {
@@ -78,14 +86,6 @@
 		isRace: (mode: string) =>
 			mode.toLowerCase().includes('race') || mode.toLowerCase().includes('fastcap'),
 		isSDDR: (mode: string) => mode.toLowerCase().includes('s-ddr')
-	};
-
-	const checkMapName = async (map: string) => {
-		const url = `/ddnet/m?n=${encodeURIComponent(map)}`;
-		const response = await fetch(url, { method: 'HEAD' });
-		if (response.ok && selectedServer?.info?.map?.name == map) {
-			mapLink = url;
-		}
 	};
 
 	const refresh = async () => {
