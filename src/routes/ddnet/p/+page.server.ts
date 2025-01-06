@@ -38,11 +38,15 @@ export const load = (async ({ fetch, url, parent }) => {
 		return redirect(302, '/ddnet/players');
 	}
 	const name = decodeAsciiURIComponent(query);
-	const data = await (
-		await fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`)
-	).json();
+	const response = await fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`);
+	if (!response.ok) {
+		console.log(`Failed to fetch player ${name}`);
+		return error(500);
+	}
 
-	if (!data.player) {
+	const data = await response.json();
+
+	if (!data || !data.player) {
 		return error(404);
 	}
 
