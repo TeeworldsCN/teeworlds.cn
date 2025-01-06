@@ -21,6 +21,11 @@
 </div>
 
 <div class="mt-8">
+	<ToolboxButton href="/ddnet/servers">服务器列表</ToolboxButton>
+	<div class="text-semibold text-2xl">显示 DDNet 服务器列表</div>
+</div>
+
+<div class="mt-8">
 	<ToolboxButton href="/link/?ref={encodeURIComponent('https://wiki.ddnet.org/wiki/Main_Page/zh')}"
 		>中文 Wiki</ToolboxButton
 	>
