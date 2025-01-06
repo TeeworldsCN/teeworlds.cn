@@ -1,4 +1,4 @@
-import { createUser, getUserByUsername, updateUserData } from '$lib/server/db/users';
+import { createUser, updateUserData } from '$lib/server/db/users';
 import type { Handler } from '../protocol/types';
 
 export const handleBind: Handler = async ({ uid, user, reply, args }) => {

@@ -14,6 +14,7 @@ import {
 import { handleBind } from './handlers/bind';
 import { handleDeleteUser, handleRegister, handleResetPassword } from './handlers/register';
 import { handleStats } from './handlers/stats';
+import { handleFind } from './handlers/find';
 
 export const commands = new CommandRouter();
 commands
@@ -41,6 +42,9 @@ commands
 	.add('举报', handleReport)
 	.add('report', handleReport)
 	.add('举报游戏行为', handleReport)
+
+	.add('找人', handleFind)
+	.add('find', handleFind)
 
 	.add('服务器', handleStats)
 	.add('状态', handleStats)
