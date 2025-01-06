@@ -26,12 +26,12 @@ export const actions = {
 			return error(400, { message: 'Bad Request' });
 		}
 
-		const user = authenticateByUsername(username, password);
+		const user = await authenticateByUsername(username, password);
 		if (!user) {
 			return redirect(302, `/login?error=${encodeURIComponent('用户名或密码错误')}`);
 		}
 
-		cookies.set('token', await generateToken(user.uuid), { path: '/' });
+		cookies.set('token', await generateToken(user), { path: '/' });
 		const ref = url.searchParams.get('ref') || '/';
 		return redirect(302, ref);
 	}

@@ -1,4 +1,4 @@
-import { error, fail, redirect, type Actions } from '@sveltejs/kit';
+import { error, redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { volatile } from '$lib/server/keyv';
 import { createUserWithPass } from '$lib/server/db/users';
@@ -43,20 +43,27 @@ export const actions = {
 		if (username.length < 3) {
 			return redirect(
 				302,
-				`/login/register?token=${registerToken}&error=${encodeURIComponent('用户名长度至少为3个字符')}`
+				`/login/register?token=${encodeURIComponent(registerToken)}&error=${encodeURIComponent('用户名长度至少为3个字符')}`
 			);
 		}
 
-		const result = createUserWithPass(username, password, {});
+		if (username.includes(':')) {
+			return redirect(
+				302,
+				`/login/register?token=${encodeURIComponent(registerToken)}&error=${encodeURIComponent('很抱歉，用户名不能包含 ":"')}`
+			);
+		}
+
+		const result = await createUserWithPass(username, password, {});
 		if (!result.success) {
 			return redirect(
 				302,
-				`/login/register?token=${registerToken}&error=${encodeURIComponent(result.error)}`
+				`/login/register?token=${encodeURIComponent(registerToken)}&error=${encodeURIComponent(result.error)}`
 			);
 		}
 
 		await volatile.delete(`register:${registerToken}`);
 
-		return redirect(302, '/login?registered=true');
+		return redirect(302, `/login?registered=${encodeURIComponent('注册成功，你现在可以登录了')}`);
 	}
 } satisfies Actions;

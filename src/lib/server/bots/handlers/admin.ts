@@ -22,7 +22,7 @@ export const adminPermissionAdd: Handler = async ({ reply, args }) => {
 
 	const user = getUserByUsername(uid);
 	if (!user) {
-		createUser(uid, { permissions: [permission] });
+		await createUser(uid, { permissions: [permission] });
 	} else {
 		if (user.data.permissions) {
 			user.data.permissions.push(permission);

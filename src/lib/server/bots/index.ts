@@ -12,7 +12,7 @@ import {
 	adminRateLimit
 } from './handlers/admin';
 import { handleBind } from './handlers/bind';
-import { handleRegister } from './handlers/register';
+import { handleDeleteUser, handleRegister, handleResetPassword } from './handlers/register';
 import { handleStats } from './handlers/stats';
 
 export const commands = new CommandRouter();
@@ -59,6 +59,8 @@ commands
 
 	// register
 	.add('register', handleRegister, ['REGISTER'])
+	.add('reset-pw', handleResetPassword, ['REGISTER'])
+	.add('delete-user', handleDeleteUser, ['REGISTER'])
 
 	// catch all unknown command
 	.fallback(handleFallback);

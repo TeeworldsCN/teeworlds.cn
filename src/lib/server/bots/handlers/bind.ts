@@ -21,7 +21,7 @@ export const handleBind: Handler = async ({ uid, user, reply, args }) => {
 	}
 
 	if (!user) {
-		const result = createUser(uid, { name: playerName });
+		const result = await createUser(uid, { name: playerName });
 		if (!result.success) {
 			return await reply.text(
 				`豆豆好像出了点问题。。。豆豆也不知道该怎么办了。。。要不等下重试一下？`

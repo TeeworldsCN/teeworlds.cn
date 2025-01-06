@@ -1,14 +1,17 @@
 import { PERMISSIONS } from '$lib/types';
 import { volatile } from '../keyv';
 import { sqlite } from '../sqlite';
-import crypto from 'crypto';
+import nodeCrypto from 'crypto';
 
 // user table
 sqlite
 	.query(
-		'CREATE TABLE IF NOT EXISTS user (uuid VARCHAR(36) PRIMARY KEY, username VARCHAR(255) UNIQUE, salt VARCHAR(16), hash TEXT, data TEXT)'
+		'CREATE TABLE IF NOT EXISTS user (uuid VARCHAR(36) PRIMARY KEY, username VARCHAR(255) UNIQUE, version INTEGER, hash TEXT, data TEXT)'
 	)
 	.run();
+// indexes
+sqlite.query('CREATE INDEX IF NOT EXISTS user_username ON user (username);').run();
+sqlite.query('CREATE INDEX IF NOT EXISTS hash_username ON user (hash);').run();
 
 export type UserPermissions = Permission[];
 export const PERMISSION_LIST = PERMISSIONS as any as string[];
@@ -24,24 +27,27 @@ export type UserUUID = string & { __userUUID: void };
 export type User = {
 	uuid: UserUUID;
 	username: string;
+	version: number;
 	data: UserData;
 };
 
 export interface Token {
 	uuid: UserUUID;
+	version: number;
 	expireAt: number;
 }
 
-export const getUserByUuid = (uuid: UserUUID | string) => {
+export const getUserByUuid = (uuid: UserUUID | string): User | null => {
 	const user = sqlite
 		.query<
 			{
 				uuid: UserUUID;
 				username: string;
+				version: number;
 				data: string;
 			},
 			string
-		>('SELECT uuid, username, data FROM user WHERE uuid = ?')
+		>('SELECT uuid, username, version, data FROM user WHERE uuid = ?')
 		.get(uuid);
 
 	if (!user) {
@@ -56,19 +62,20 @@ export const getUserByUuid = (uuid: UserUUID | string) => {
 		userdata = {};
 	}
 
-	return { uuid: user.uuid, username: user.username, data: userdata };
+	return { uuid: user.uuid, username: user.username, version: user.version, data: userdata };
 };
 
-export const getUserByUsername = (username: string) => {
+export const getUserByUsername = (username: string): User | null => {
 	const user = sqlite
 		.query<
 			{
 				uuid: UserUUID;
 				username: string;
+				version: number;
 				data: string;
 			},
 			string
-		>('SELECT uuid, username, data FROM user WHERE username = ?')
+		>('SELECT uuid, username, version, data FROM user WHERE username = ?')
 		.get(username);
 
 	if (!user) {
@@ -83,7 +90,7 @@ export const getUserByUsername = (username: string) => {
 		userdata = {};
 	}
 
-	return { uuid: user.uuid, username: user.username, data: userdata };
+	return { uuid: user.uuid, username: user.username, version: user.version, data: userdata };
 };
 
 export const updateUserData = (uuid: UserUUID, data: UserData) => {
@@ -103,21 +110,18 @@ export const createUser = (username: string, data: UserData) => {
 };
 
 type CreateUserResult = { success: true; uuid: UserUUID } | { success: false; error: string };
-export const createUserWithPass = (username: string, password: string | null, data: UserData) => {
+export const createUserWithPass = async (
+	username: string,
+	password: string | null,
+	data: UserData
+) => {
 	try {
 		const uuid = crypto.randomUUID();
-
-		const salt = password ? crypto.randomBytes(12).toString('base64') : null;
-		const hash = password
-			? crypto
-					.createHash('sha256')
-					.update(salt + password)
-					.digest('base64')
-			: null;
+		const hash = password ? await Bun.password.hash(password) : null;
 
 		const result = sqlite
-			.query('INSERT INTO user (uuid, username, salt, hash, data) VALUES (?, ?, ?, ?, ?)')
-			.run(uuid, username, salt, hash, JSON.stringify(data));
+			.query('INSERT INTO user (uuid, username, hash, data, version) VALUES (?, ?, ?, ?, ?)')
+			.run(uuid, username, hash, JSON.stringify(data), 1);
 
 		if (result.changes > 0) {
 			return {
@@ -151,7 +155,7 @@ export const tokenToUser = async (token: string) => {
 	if (!data) return null;
 
 	const user = getUserByUuid(data.uuid);
-	if (!user) return null;
+	if (!user || user.version != data.version) return null;
 
 	// need to refresh the token per day
 	const twoDays = 2 * 24 * 60 * 60 * 1000;
@@ -160,46 +164,57 @@ export const tokenToUser = async (token: string) => {
 		await deleteToken(token);
 		return {
 			user,
-			token: await generateToken(user.uuid)
+			token: await generateToken(user)
 		};
 	}
 	return { user, token };
 };
 
-export const authenticateByUsername = (username: string, password: string) => {
+export const authenticateByUsername = async (username: string, password: string) => {
 	const user = sqlite
 		.query<
 			{
 				uuid: UserUUID;
-				salt: string;
+				username: string;
+				version: number;
 				hash: string;
 			},
 			string
-		>('SELECT uuid, salt, hash FROM user WHERE username = ?')
+		>('SELECT uuid, username, version, hash FROM user WHERE username = ?')
 		.get(username);
 	if (!user) return null;
-	if (!user.salt || !user.hash) return null;
+	if (!user.hash) return null;
 
-	const hash = crypto.createHash('sha256');
-	hash.update(user.salt + password);
-	const hashStr = hash.digest('base64');
-	if (hashStr != user.hash) return null;
-	return user;
+	if (await Bun.password.verify(password, user.hash)) {
+		return user;
+	}
+	return null;
 };
 
-export const generateToken = async (uuid: UserUUID) => {
-	const token = new Uint8Array(64);
+export const generateToken = async (user: Omit<User, 'data'>) => {
+	const token = new Uint8Array(16);
 	crypto.getRandomValues(token);
-	const tokenStr = Buffer.from(token).toString('hex');
+	const tokenStr = Buffer.from(token).toString('base64url');
 	// token will be available for three days
 	const duration = 3 * 24 * 60 * 60 * 1000;
 	const tokenExpiration = Date.now() + duration;
 	await volatile.set<Token>(
 		`user:token:${tokenStr}`,
-		{ uuid, expireAt: tokenExpiration },
+		{ uuid: user.uuid, version: user.version, expireAt: tokenExpiration },
 		duration
 	);
 	return tokenStr;
+};
+
+export const changePassword = async (uuid: UserUUID, password: string) => {
+	const user = getUserByUuid(uuid);
+	if (!user) return null;
+
+	const hash = await Bun.password.hash(password);
+	const result = sqlite
+		.query('UPDATE user SET (hash, version) = (?, COALESCE(version + 1, 0)) WHERE uuid = ?')
+		.run(hash, uuid);
+	return result.changes > 0;
 };
 
 export const deleteToken = async (token: string) => {
