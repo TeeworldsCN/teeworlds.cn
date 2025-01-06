@@ -11,14 +11,14 @@ const regionLevel = (location: string) => {
 
 export const handleFind: Handler = async ({ user, reply, args }) => {
 	let name = args.trim();
-	if (!name) {
-		name = user?.data?.name || '';
-	}
-
 	let findingSelf = false;
 
 	if (!name) {
 		findingSelf = true;
+		name = user?.data?.name || '';
+	}
+
+	if (!name) {
 		return await reply.textLink('找人请提供 <玩家名>。或者使用 DDNet 工具箱直接搜索', {
 			label: '🔗 服务器列表',
 			prefix: '→ ',
