@@ -46,7 +46,7 @@ export const handleFind: Handler = async ({ user, reply, args }) => {
 
 	if (findingSelf) {
 		return await reply.textLink(
-			`${name} 在 ${server.info.name} 玩 ${server.info.game_type} - ${server.info.map.name}。快来加入吧！${others ? `\n（另有${others}个同名玩家在其他服务器，还请注意}` : ''}`,
+			`${name} 在 ${server.info.name} 玩 ${server.info.game_type} - ${server.info.map.name}。快来加入吧！${others ? `\n（另有${others}个同名玩家在其他服务器，还请注意）` : ''}`,
 			{
 				label: '🔗 服务器信息',
 				prefix: '服务器信息：',
@@ -56,7 +56,7 @@ export const handleFind: Handler = async ({ user, reply, args }) => {
 	}
 
 	return await reply.textLink(
-		`玩家 ${name} 在 ${server.info.name} 玩 ${server.info.game_type} - ${server.info.map.name}${others ? `\n（另有${others}个同名玩家在其他服务器，还请注意}` : ''}`,
+		`玩家 ${name} 在 ${server.info.name} 玩 ${server.info.game_type} - ${server.info.map.name}${others ? `\n（另有${others}个同名玩家在其他服务器，还请注意）` : ''}`,
 		{
 			label: '🔗 服务器信息',
 			prefix: '服务器信息：',

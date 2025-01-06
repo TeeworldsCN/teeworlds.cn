@@ -98,11 +98,8 @@ export const sortPlayers = <T extends { name: string; score: number; is_player: 
 
 export const joinViaSteam = (addresses: string[]) => {
 	for (const address of addresses) {
-		const url = new URL(address);
-		console.log(url.protocol);
-		console.log(url.hostname);
-		if (url.protocol == 'tw-0.6+udp:') {
-			return `steam://rungameid/412220//${encodeURIComponent(url.host)}`;
+		if (address.startsWith('tw-0.6+udp://')) {
+			return `steam://rungameid/412220//${encodeURIComponent(address.slice(13))}`;
 		}
 	}
 	return null;
@@ -110,24 +107,21 @@ export const joinViaSteam = (addresses: string[]) => {
 
 export const joinViaDDNet = (addresses: string[]) => {
 	for (const address of addresses) {
-		const url = new URL(address);
-		if (url.protocol == 'tw-0.6+udp:') {
-			return `ddnet://`;
+		if (address.startsWith('tw-0.6+udp://')) {
+			return `ddnet://${address.slice(13)}`;
 		}
 	}
 };
 
 export const primaryAddress = (addresses: string[]) => {
 	for (const address of addresses) {
-		const url = new URL(address);
-		if (url.protocol == 'tw-0.6+udp:') {
-			return url.host;
+		if (address.startsWith('tw-0.6+udp://')) {
+			return address.slice(13);
 		}
 	}
 	for (const address of addresses) {
-		const url = new URL(address);
-		if (url.protocol == 'tw-0.7+udp:') {
-			return url.host;
+		if (address.startsWith('tw-0.7+udp://')) {
+			return address.slice(13);
 		}
 	}
 	return addresses[0];
