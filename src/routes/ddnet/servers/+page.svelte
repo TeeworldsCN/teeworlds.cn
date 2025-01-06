@@ -10,6 +10,7 @@
 	import { faCrosshairs } from '@fortawesome/free-solid-svg-icons';
 	import { addrToBase64, base64ToAddr } from '$lib/helpers.js';
 	import { page } from '$app/state';
+	import MapLink from '$lib/components/ddnet/MapLink.svelte';
 
 	const { data } = $props();
 
@@ -17,6 +18,7 @@
 		selectedServer = server;
 		if (selectedServer) {
 			sortPlayers(selectedServer.info.clients, selectedServer.info.client_score_kind);
+			checkMapName(selectedServer.info.map.name);
 		}
 		showModal = true;
 		serverAddress = server.key;
@@ -29,12 +31,14 @@
 		}
 		if (!hash) {
 			showModal = false;
+			mapLink = null;
 			return;
 		}
 		serverAddress = base64ToAddr(hash);
 		selectedServer = data.servers.find((server) => server.key == serverAddress) || null;
 		if (selectedServer) {
 			sortPlayers(selectedServer.info.clients, selectedServer.info.client_score_kind);
+			checkMapName(selectedServer.info.map.name);
 		}
 		showModal = true;
 	};
@@ -43,6 +47,7 @@
 	let showModal = $state(false);
 	let selectedServer = $state(null) as (typeof data.servers)[0] | null;
 	let serverAddress = $state(null) as string | null;
+	let mapLink = $state(null) as string | null;
 
 	processHashQuery(page.url.hash);
 
@@ -73,6 +78,14 @@
 		isRace: (mode: string) =>
 			mode.toLowerCase().includes('race') || mode.toLowerCase().includes('fastcap'),
 		isSDDR: (mode: string) => mode.toLowerCase().includes('s-ddr')
+	};
+
+	const checkMapName = async (map: string) => {
+		const url = `/ddnet/m?n=${encodeURIComponent(map)}`;
+		const response = await fetch(url, { method: 'HEAD' });
+		if (response.ok && selectedServer?.info?.map?.name == map) {
+			mapLink = url;
+		}
 	};
 
 	const refresh = async () => {
@@ -182,6 +195,7 @@
 
 	$effect(() => {
 		if (!showModal) {
+			mapLink = null;
 			goto('', { keepFocus: true, noScroll: true, replaceState: true });
 		}
 	});
@@ -363,7 +377,11 @@
 					</p>
 					<p class="mb-2">
 						<span class="mb-1 text-base font-bold">地图</span>
-						<span class="ml-2">{selectedServer.info.map.name}</span>
+						<span class="ml-2"
+							>{#if mapLink}<MapLink className="font-semibold" map={selectedServer.info.map.name}
+									>{selectedServer.info.map.name}</MapLink
+								>{:else}{selectedServer.info.map.name}{/if}</span
+						>
 					</p>
 					<p class="mb-2">
 						<span class="mb-1 text-base font-bold">版本</span>
