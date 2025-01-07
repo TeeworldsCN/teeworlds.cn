@@ -2,19 +2,32 @@ import { error, redirect } from '@sveltejs/kit';
 import { convert } from '$lib/server/imgproxy';
 import type { PageServerLoad } from './$types';
 import { basename } from 'path';
-import { decodeAsciiURIComponent } from '$lib/link';
+import { decodeAsciiURIComponent, encodeAsciiURIComponent } from '$lib/link';
+import { uaIsStrict } from '$lib/helpers';
 
 export const load = (async ({ url, parent }) => {
+	const parentData = await parent();
+
 	const query = url.searchParams.get('n');
 	if (!query) {
 		return redirect(302, '/ddnet/maps');
 	}
 
+	if (!uaIsStrict(parentData.ua) && query.startsWith('!!')) {
+		// redirect to the non-stamped version
+		return redirect(302, `/ddnet/m?n=${encodeAsciiURIComponent(decodeAsciiURIComponent(query))}`);
+	}
+
 	const name = decodeAsciiURIComponent(query);
-	const data = await (
-		await fetch(`https://ddnet.org/maps/?json=${encodeURIComponent(name)}`)
-	).json();
-	if (!data.name) {
+	let data;
+
+	try {
+		data = await (await fetch(`https://ddnet.org/maps/?json=${encodeURIComponent(name)}`)).json();
+	} catch {
+		// ignored, mostly paring error
+	}
+
+	if (!data || !data.name) {
 		return error(404);
 	}
 
@@ -67,5 +80,5 @@ export const load = (async ({ url, parent }) => {
 		}[];
 		icon: string;
 	};
-	return { map, ...(await parent()) };
+	return { map, ...parentData };
 }) satisfies PageServerLoad;

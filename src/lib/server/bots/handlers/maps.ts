@@ -1,7 +1,6 @@
 import { mapType, numberToStars } from '$lib/ddnet/helpers';
 import { encodeAsciiURIComponent } from '$lib/link';
 import { maps, type MapList } from '$lib/server/fetches/maps';
-import { convert } from '$lib/server/imgproxy';
 import type { Handler } from '../protocol/types';
 
 const checkMapName = (map: any, search: string) => {
@@ -96,6 +95,6 @@ export const handleMaps: Handler = async ({ reply, fetch, args }) => {
 	return await reply.imageTextLink(lines.join('\n'), targetMap.thumbnail, {
 		label: '🔗 地图详情',
 		prefix: '详情: ',
-		url: `https://teeworlds.cn/ddnet/m?n=${encodeAsciiURIComponent(targetMap.name)}`
+		url: `https://teeworlds.cn/ddnet/m?n=${encodeAsciiURIComponent(targetMap.name, true)}`
 	});
 };

@@ -165,3 +165,8 @@ export const base64ToAddr = (base64: string) => {
 	}
 	return `${addr[0]}.${addr[1]}.${addr[2]}.${addr[3]}:${addr[4] * 256 + addr[5]}`;
 };
+
+export const uaIsStrict = (ua: string | null) => {
+	if (!ua) return false;
+	return ua.includes('QQ/');
+};

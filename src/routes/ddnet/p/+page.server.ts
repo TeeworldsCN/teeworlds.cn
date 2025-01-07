@@ -1,8 +1,9 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { decodeAsciiURIComponent } from '$lib/link';
+import { decodeAsciiURIComponent, encodeAsciiURIComponent } from '$lib/link';
 import { ranks } from '$lib/server/fetches/ranks';
 import type { MapList } from '$lib/server/fetches/maps';
+import { uaIsStrict } from '$lib/helpers';
 
 interface PlayerRank {
 	points?: number;
@@ -33,18 +34,28 @@ interface MapData {
 }
 
 export const load = (async ({ fetch, url, parent }) => {
+	const parentData = await parent();
+
 	const query = url.searchParams.get('n');
 	if (!query) {
 		return redirect(302, '/ddnet/players');
 	}
-	const name = decodeAsciiURIComponent(query);
-	const response = await fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`);
-	if (!response.ok) {
-		console.log(`Failed to fetch player ${name}`);
-		return error(500);
+
+	if (!uaIsStrict(parentData.ua) && query.startsWith('!!')) {
+		// redirect to the non-stamped version
+		return redirect(302, `/ddnet/p?n=${encodeAsciiURIComponent(decodeAsciiURIComponent(query))}`);
 	}
 
-	const data = await response.json();
+	const name = decodeAsciiURIComponent(query);
+	let data;
+
+	try {
+		data = await (
+			await fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`)
+		).json();
+	} catch {
+		// ignored, mostly paring error
+	}
 
 	if (!data || !data.player) {
 		return error(404);

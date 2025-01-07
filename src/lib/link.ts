@@ -13,9 +13,18 @@ const URL_ALLOWED_CHARS = new Set(
 );
 const isURLAllowed = (char: string) => URL_ALLOWED_CHARS.has(char);
 
-export const encodeAsciiURIComponent = (str: string) => {
+export const encodeAsciiURIComponent = (str: string, stamped = false) => {
 	let result = '';
 	let segment = '';
+
+	if (stamped) {
+		const nowSeconds = Math.floor(Date.now() / 1000);
+		const time = new Uint8Array(4);
+		time.set([nowSeconds >> 24, nowSeconds >> 16, nowSeconds >> 8, nowSeconds]);
+		result += '!!';
+		result += encode(time);
+		result += '!!';
+	}
 
 	const commit = () => {
 		if (segment) {
@@ -42,6 +51,15 @@ export const encodeAsciiURIComponent = (str: string) => {
 export const decodeAsciiURIComponent = (str: string) => {
 	let result = '';
 	let segment = '';
+
+	if (str.startsWith('!!')) {
+		// remove time stamp
+		str = str.slice(2);
+		const index = str.indexOf('!!', 2);
+		if (index >= 0) {
+			str = str.slice(index + 2);
+		}
+	}
 
 	for (const char of str) {
 		if (char == '!') {
