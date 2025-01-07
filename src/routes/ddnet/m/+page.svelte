@@ -7,6 +7,7 @@
 	import { secondsToDate } from '$lib/date';
 	import { mapType, numberToStars } from '$lib/ddnet/helpers';
 	import { secondsToChineseTime, secondsToTime } from '$lib/helpers';
+	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
 
 	const { data } = $props();
@@ -18,7 +19,7 @@
 	afterNavigate(() => {
 		share({
 			icon: new URL(data.map.icon, window.location.href).href,
-			link: window.location.href,
+			link: `https://teeworlds.cn/goto#m${encodeAsciiURIComponent(data.map.name)}`,
 			title: `${data.map.name}`,
 			desc: `${mapType(data.map.type)} ${numberToStars(data.map.difficulty)} (${data.map.points}pt) 作者：${mapperTransformed()}${data.map.median_time ? ` 均时：${secondsToTime(data.map.median_time)}` : ''}`
 		});

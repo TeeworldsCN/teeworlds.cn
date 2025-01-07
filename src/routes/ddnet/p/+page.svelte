@@ -7,6 +7,7 @@
 	import { secondsToDate } from '$lib/date';
 	import { mapType } from '$lib/ddnet/helpers';
 	import { secondsToTime } from '$lib/helpers';
+	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
 
 	let { data } = $props();
@@ -16,7 +17,7 @@
 	afterNavigate(() => {
 		share({
 			icon: `${window.location.origin}/shareicon.png`,
-			link: window.location.href,
+			link: `https://teeworlds.cn/goto#p${encodeAsciiURIComponent(data.player.player)}`,
 			title: data.player.player,
 			desc: `玩家信息：${data.player.points.points}pts`
 		});

@@ -13,7 +13,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const data = await fetch(iconPath.toString());
 	return new Response(data.body, {
 		headers: {
-			'content-type': 'image/png'
+			'content-type': data.headers.get('content-type') || 'image/png'
 		}
 	});
 };
