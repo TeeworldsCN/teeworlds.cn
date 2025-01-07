@@ -51,7 +51,7 @@ export const handleMaps: Handler = async ({ reply, fetch, args }) => {
 		return await reply.textLink('查图请提供 <地图名>。或者使用 DDNet 工具箱', {
 			label: '🔗 排名查询工具',
 			prefix: '→ ',
-			url: 'https://teeworlds.cn/ddnet/maps'
+			url: 'https://teeworlds.cn/goto#m'
 		});
 	}
 
@@ -95,6 +95,6 @@ export const handleMaps: Handler = async ({ reply, fetch, args }) => {
 	return await reply.imageTextLink(lines.join('\n'), targetMap.thumbnail, {
 		label: '🔗 地图详情',
 		prefix: '详情: ',
-		url: `https://teeworlds.cn/ddnet/m?n=${encodeAsciiURIComponent(targetMap.name, true)}`
+		url: `https://teeworlds.cn/goto#m${encodeAsciiURIComponent(targetMap.name, true)}`
 	});
 };

@@ -53,6 +53,6 @@ export const handlePoints: Handler = async ({ user, reply, args }) => {
 	return await reply.textLink(lines.join('\n'), {
 		label: `🔗 玩家详情`,
 		prefix: '详情点击：',
-		url: `https://teeworlds.cn/ddnet/p?n=${encodeAsciiURIComponent(player.name, true)}`
+		url: `https://teeworlds.cn/goto#p${encodeAsciiURIComponent(player.name, true)}`
 	});
 };

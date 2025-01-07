@@ -16,7 +16,7 @@ export const handleBind: Handler = async ({ uid, user, reply, args }) => {
 		return await reply.textLink('绑定名字请提供 <玩家名>。或者直接使用 DDNet 工具箱', {
 			label: '🔗 排名查询工具',
 			prefix: '→ ',
-			url: 'https://teeworlds.cn/ddnet/players'
+			url: 'https://teeworlds.cn/goto#p'
 		});
 	}
 

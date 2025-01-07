@@ -1,0 +1,58 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
+	import { onMount } from 'svelte';
+
+	let showLinks = $state(false);
+
+	onMount(() => {
+		let hash = page.url.hash;
+		let target = null;
+
+		if (hash) {
+			if (hash.startsWith('#')) hash = `${hash.slice(1)}`;
+			if (hash == 'm') target = `/ddnet/maps`;
+			else if (hash == 'p') target = `/ddnet/players`;
+            else if (hash == 's') target = `/ddnet/servers`;
+			else if (hash.startsWith('m')) target = `/ddnet/m?n=${hash.slice(1)}`;
+			else if (hash.startsWith('p')) target = `/ddnet/p?n=${hash.slice(1)}`;
+            else if (hash.startsWith('s')) target = `/ddnet/servers#${hash.slice(1)}`;
+		}
+
+		setTimeout(() => {
+			if (!target) {
+				showLinks = true;
+			} else {
+				goto(target);
+			}
+		}, 1500);
+	});
+</script>
+
+{#if !showLinks}
+	<div></div>
+{:else}
+	<Breadcrumbs
+		breadcrumbs={[
+			{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },
+			{ text: '快捷菜单', title: '快捷菜单' }
+		]}
+	/>
+
+	<div class="mt-8">
+		<ToolboxButton href="/ddnet/players">查看排名</ToolboxButton>
+		<div class="text-semibold text-2xl">查看 DDNet 排名与玩家分数</div>
+	</div>
+
+	<div class="mt-8">
+		<ToolboxButton href="/ddnet/maps">查询地图</ToolboxButton>
+		<div class="text-semibold text-2xl">查找 DDNet 官方地图</div>
+	</div>
+
+	<div class="mt-8">
+		<ToolboxButton href="/ddnet/servers">服务器列表</ToolboxButton>
+		<div class="text-semibold text-2xl">显示 DDNet 服务器列表</div>
+	</div>
+{/if}

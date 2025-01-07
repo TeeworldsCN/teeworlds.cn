@@ -22,7 +22,7 @@ export const handleFind: Handler = async ({ user, reply, args }) => {
 		return await reply.textLink('找人请提供 <玩家名>。或者使用 DDNet 工具箱直接搜索', {
 			label: '🔗 服务器列表',
 			prefix: '→ ',
-			url: 'https://teeworlds.cn/ddnet/servers'
+			url: 'https://teeworlds.cn/goto#s'
 		});
 	}
 
@@ -50,7 +50,7 @@ export const handleFind: Handler = async ({ user, reply, args }) => {
 			{
 				label: '🔗 服务器信息',
 				prefix: '服务器信息：',
-				url: `https://teeworlds.cn/ddnet/servers#${addrToBase64(primaryAddress(server.addresses))}`
+				url: `https://teeworlds.cn/goto#s${addrToBase64(primaryAddress(server.addresses))}`
 			}
 		);
 	}
@@ -60,7 +60,7 @@ export const handleFind: Handler = async ({ user, reply, args }) => {
 		{
 			label: '🔗 服务器信息',
 			prefix: '服务器信息：',
-			url: `https://teeworlds.cn/ddnet/servers#${addrToBase64(primaryAddress(server.addresses))}`
+			url: `https://teeworlds.cn/goto#s${addrToBase64(primaryAddress(server.addresses))}`
 		}
 	);
 };
