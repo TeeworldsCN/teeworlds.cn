@@ -4,6 +4,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import ColorConverter from 'css-filter-converter';
 	import { ddnetColorToRgb } from '$lib/ddnet/helpers';
+	import type { ColorToFilterResult } from 'css-filter-converter/lib/shared/types/result';
 
 	const {
 		url,
@@ -20,12 +21,8 @@
 		'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAACACAYAAADktbcKAAAFVklEQVR4nO3dXW8UVRjA8f+2ZVsJYCuCpYoYFYjKmwQSFRHilZFPwCf0K3ilCIbEqBWRKCSG+AYCKgUE6ZbWevHMZueCttTd2bN75v9LNsyy285zYOfZc+a8gSRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkqSB0UgdgIbOOLCx+HMcGAMWgQWgBfwDzCeLTusyljoADZ0DwJurvD4LfNWnWNSlkdQBaOj83eXrGiDWANS2AdgLPAOcXeV9c8BtorrfAh4VP9skmgR31jjPSSJJfEc0G5SQ9wDUBPYXjyawDHwE3K/gXJuA08TnrkUkgUuYCJIZTR2AknoR+BDYReez0AAeAjcqON9rwAvF8RgwA7xK1CruVXA+rcEEUE9N4B3gbaL63jYHfAH8QNQEeu0W8CcwSfQktGPZDUwB14ClCs6rFZgA6ul54uJve0C0+88Df1HNxd92F7hMJJtpOgloCvgdawJ9ZQKop7vE//00cBX4mPhm7qc5IhGMA9uAC0TNQ1IfjAA7UgdRmMEuaUmSJKkHchnnkUs5Bo7trnw1iD7+fakD6dIe4BQmgUrYC5Cv/cDrwE5iBN7PacP5X04AR4DNxIzDm2nDyY81gDxtAY6Wnq81Pn9QleM+QowVUA+ZAPJ0nM5Er1vAxYSxdOMiET9EbfVYwliyZALIzzQx0g9iWO0Zqh3ZV6VlIv728OAZBmfsQhZMAPk5XDq+zPBW/9vuAFdKzw+v9EatnwkgL9vpzLb7F/g2YSy9dIEoD0TtZjphLFmxFyAv88Rkms3EXf8f04bTMwtET8YYseTYr3QSgqTHyC2551YeSZIkSZIkSZKeTF3vkNe13D3jxiB5eA94iRgDcJ5YXDNXM8SKxpuBn4BPk0Yz5EwAeZggVtfdSv7fimPE7kUQC4qqCw4FzkP5Qmgli6I/yuVrJosiEyaAPJQvhNy32SonAGsAXTIB5KE83bdOS2fVqayVMAHkoU7V4jo1dypnAshDudo/kSyK/ignOBNAl0wAeWgBj4DbxOKZOVsk9i98RP73O6QnknvX30rqWm5JkiRJkiRJUt3ldoc8t/IMBP9R8zIK7AZOEjMDh3FD0JW8C7xFDP+dw2XBe8KBQHl5ls7Fv4eYM5+DTcBeYJJYC2Br2nDyYQLIy03genE8AhxMGEsvHaLzWf0NuJEwlqyYAPIzWzpuf2sOsymiHG2zK71R62cCyM91OkuCjRJNgmGdNtsATtC5V3UNv/17ygSQp3N0JgVtBw4kjKUbB4n4IcrzecJYsmQCyNMd4OvS82FtBjxdOv4SuJsqEGnYNIBTwL7UgXRpD1GOYW3GSMnkctHkUg5JkiQpoRFil51BsANvSCfhXID6OkpsKTZFjB1IsZZgkxjae4xIANcSxFBrJoB62gkcL46niAlE94nuw35oAK8AH9CphUwDf2BXX1+ZAOppnlhff1vxfAPwcvFYJFYXrkID2AW8T3RPbii9dhX4Hliq6Nx6DBNAPS0BvxCTh3bQWWv/KWKX4cXitV47RAzt3Vj6uwfAJ8A3ePH3nQmg3u4BV4gLfiux8+4ycJZq1ty/T3zzN4rff4HY3ruqGofW4AALtTWBN4AtwGervO85YnGOFnERLxJV+fHid5xj9drDSSLxXMKNPZIbSx2ABsYCUQ1fyySrL8gxyeoJ4Mw6YlLF7HvVeq21ylAuqxDVgk0ArdcEcRNvvHiMEs2AVvF4SPQySJIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSVKV/gMpgLodSf6HygAAAABJRU5ErkJggg==';
 
 	let skin = $state(useDefault ? DEFAULT_SKIN : X_SPEC_SKIN);
-	let bodyFilter = $state(
-		body != null ? ColorConverter.rgbToFilter(ddnetColorToRgb(body)).color : null
-	);
-	let feetFilter = $state(
-		feet != null ? ColorConverter.rgbToFilter(ddnetColorToRgb(feet)).color : null
-	);
+	let bodyFilter = $state(null) as string | null;
+	let feetFilter = $state(null) as string | null;
 
 	let abortController: AbortController | null = null;
 
