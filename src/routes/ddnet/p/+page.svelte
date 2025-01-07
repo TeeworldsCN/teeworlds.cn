@@ -50,6 +50,7 @@
 			url={data.skin.n}
 			body={data.skin.b}
 			feet={data.skin.f}
+			useDefault
 			className="w-16 h-16 -mb-1 -mt-1 mr-2"
 		></TeeRender>
 		<div class="text-2xl font-bold">{data.player.player}</div>
@@ -63,7 +64,7 @@
 		<h2 class="mb-3 text-xl font-bold">
 			玩家信息 <FlagSpan
 				flag={data.player.favorite_server.server}
-				title="常玩地区：{data.player.favorite_server.server}"
+				tooltip="常玩地区：{data.player.favorite_server.server}"
 			/>
 			{#if data.player.pending_unknown || data.player.pending_points}
 				<button
@@ -93,10 +94,15 @@
 							<span class="text-sm">No.</span>{rank.rank.rank} - {rank.rank
 								.points}pts{#if i == 0 && (rank.rank.pending || data.player.pending_unknown)}<span
 									class="cursor-pointer font-semibold text-blue-300 hover:text-blue-400"
-									title="根据最近过图记录，有{data.player.pending_unknown ? '至少' : ''}{rank.rank
-										.pending || '?'}分尚未结算。{data.player.pending_unknown
-										? '今日过图超过10次，数据可能不准确，请以明日结算结果为准。'
-										: ''}"
+									use:tippy={{
+										content: `根据最近过图记录，有${data.player.pending_unknown ? '至少' : ''}${
+											rank.rank.pending || '?'
+										}分尚未结算。${
+											data.player.pending_unknown
+												? '今日过图超过10次，数据可能不准确，请以明日结算结果为准。'
+												: ''
+										}`
+									}}
 									>{' '}+{rank.rank.pending}{#if data.player.pending_unknown}?{/if}</span
 								>{/if}
 						</p>

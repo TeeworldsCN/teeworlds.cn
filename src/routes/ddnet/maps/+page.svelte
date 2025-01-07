@@ -8,6 +8,7 @@
 	import type { MapList } from '$lib/server/fetches/maps';
 	import { ddnetDate, mapType, numberToStars } from '$lib/ddnet/helpers';
 	import { browser } from '$app/environment';
+	import tippy from 'svelte-tippy';
 
 	let maps: MapList = $state([]);
 	let error = $state();
@@ -289,7 +290,7 @@
 					{#each map.tiles as tile}
 						<img
 							class="m-0 mr-1 inline-block h-8 w-8 rounded bg-gray-600 p-0"
-							title={tile}
+							use:tippy={{ content: tile }}
 							src={`/assets/tiles/${tile}.png`}
 							alt={tile}
 						/>

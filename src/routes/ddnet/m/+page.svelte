@@ -9,6 +9,7 @@
 	import { secondsToChineseTime, secondsToTime } from '$lib/helpers';
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
+	import { tippy } from 'svelte-tippy';
 
 	const { data } = $props();
 
@@ -51,7 +52,7 @@
 			/>
 			<div>
 				<h2 class="mb-3 text-xl font-bold">地图信息</h2>
-				<p title={data.map.type}>类型：{mapType(data.map.type)}</p>
+				<p use:tippy={{ content: data.map.type }}>类型：{mapType(data.map.type)}</p>
 				<p>分数：{data.map.points}</p>
 				<p>难度：{numberToStars(data.map.difficulty)}</p>
 			</div>
@@ -70,7 +71,7 @@
 			发布日期：{data.map.release ? secondsToDate(data.map.release) : '远古'}
 		</p>
 		{#if data.map.median_time}
-			<p title={`${data.map.median_time.toFixed(2.0)}秒`}>
+			<p use:tippy={{ content: `${data.map.median_time.toFixed(2.0)}秒` }}>
 				平均时间：{secondsToTime(data.map.median_time)}
 			</p>
 		{/if}
@@ -97,7 +98,9 @@
 					<li>
 						<span class="inline-block w-8 text-right">{rank.rank}.</span>
 						<span
-							title="于 {secondsToDate(rank.timestamp)} 用时 {secondsToChineseTime(rank.time)} 完成"
+							use:tippy={{
+								content: `于 ${secondsToDate(rank.timestamp)} 用时 ${secondsToChineseTime(rank.time)} 完成`
+							}}
 							class="inline-block w-20 text-right">{secondsToTime(rank.time)}</span
 						>
 						<FlagSpan flag={rank.country} />
@@ -120,7 +123,9 @@
 				<li>
 					<span class="inline-block w-8 text-right">{rank.rank}.</span>
 					<span
-						title="于 {secondsToDate(rank.timestamp)} 用时 {secondsToChineseTime(rank.time)} 完成"
+						use:tippy={{
+							content: `于 ${secondsToDate(rank.timestamp)} 用时 ${secondsToChineseTime(rank.time)} 完成`
+						}}
 						class="inline-block w-20 text-right">{secondsToTime(rank.time)}</span
 					>
 					<FlagSpan flag={rank.country} />
@@ -140,9 +145,11 @@
 				<li>
 					<span class="inline-block w-8 text-right">{finishes.rank}.</span>
 					<span
-						title="首次完成：{secondsToDate(finishes.min_timestamp)}，最后完成：{secondsToDate(
-							finishes.max_timestamp
-						)}，最快用时：{secondsToChineseTime(finishes.time)}"
+						use:tippy={{
+							content: `首次完成：${secondsToDate(finishes.min_timestamp)}，最后完成：${secondsToDate(
+								finishes.max_timestamp
+							)}，最快用时：${secondsToChineseTime(finishes.time)}`
+						}}
 						class="inline-block w-20 text-right">{finishes.num} 次</span
 					>
 					<span class="ml-3"
