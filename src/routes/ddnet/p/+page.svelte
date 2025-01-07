@@ -17,11 +17,12 @@
 	let explaination = $state(false);
 
 	const hoursToColor = (value: number) => {
-		const weight = (24 - value) / 24;
-		const h = Math.floor(weight * 240);
-		const s = Math.floor(70 + (1.0 - weight) * 30);
-		const l = Math.floor(40 + (1.0 - weight) * 10);
-		return `hsl(${h}deg, ${s}%, ${l}%)`;
+		const weight = value / 24;
+		const h = Math.round((1.0 - weight) * 200);
+		const s = Math.round(70 + weight * 30);
+		const l = Math.round(40 + weight * 10);
+		const a = Math.min(weight / 0.2, 1);
+		return `hsl(${h}deg, ${s}%, ${l}%, ${a})`;
 	};
 
 	afterNavigate(() => {
