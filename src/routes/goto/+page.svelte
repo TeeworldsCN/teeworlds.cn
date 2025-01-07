@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, preloadCode, preloadData } from '$app/navigation';
 	import { page } from '$app/state';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
@@ -15,19 +15,28 @@
 			if (hash.startsWith('#')) hash = `${hash.slice(1)}`;
 			if (hash == 'm') target = `/ddnet/maps`;
 			else if (hash == 'p') target = `/ddnet/players`;
-            else if (hash == 's') target = `/ddnet/servers`;
+			else if (hash == 's') target = `/ddnet/servers`;
 			else if (hash.startsWith('m')) target = `/ddnet/m?n=${hash.slice(1)}`;
 			else if (hash.startsWith('p')) target = `/ddnet/p?n=${hash.slice(1)}`;
-            else if (hash.startsWith('s')) target = `/ddnet/servers#${hash.slice(1)}`;
+			else if (hash.startsWith('s')) target = `/ddnet/servers#${hash.slice(1)}`;
 		}
 
 		setTimeout(() => {
-			if (!target) {
-				showLinks = true;
-			} else {
+			if (target) {
 				goto(target);
 			}
 		}, 1500);
+
+		if (!target) {
+			showLinks = true;
+		} else {
+			setTimeout(() => {
+				if (target) {
+					preloadData(target);
+					preloadCode(target);
+				}
+			}, 750);
+		}
 	});
 </script>
 
