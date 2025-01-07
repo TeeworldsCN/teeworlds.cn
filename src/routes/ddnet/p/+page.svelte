@@ -10,10 +10,19 @@
 	import { secondsToTime } from '$lib/helpers';
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
+	import { tippy } from 'svelte-tippy';
 
 	let { data } = $props();
 
 	let explaination = $state(false);
+
+	const hoursToColor = (value: number) => {
+		const weight = (24 - value) / 24;
+		const h = Math.floor(weight * 240);
+		const s = Math.floor(70 + (1.0 - weight) * 30);
+		const l = Math.floor(40 + (1.0 - weight) * 10);
+		return `hsl(${h}deg, ${s}%, ${l}%)`;
+	};
 
 	afterNavigate(() => {
 		share({
@@ -74,9 +83,8 @@
 		<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
 			{#each data.ranks as rank, i}
 				<div
-					class="rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3 {rank.rank.rank
-						? ''
-						: 'opacity-50'}"
+					class="rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3"
+					class:opacity-50={!rank.rank.rank}
 				>
 					<h3 class="mb-1 text-base font-bold">{rank.name}</h3>
 					{#if rank.rank.rank}
@@ -212,6 +220,62 @@
 					{/each}
 				</div>
 			{/each}
+		</div>
+	</div>
+	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
+		<h2 class="mb-3 text-xl font-bold">玩家活跃</h2>
+		<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+			<div class="rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
+				<h3 class="mb-1 text-base font-bold">首次记录</h3>
+				<p>
+					<MapLink map={data.player.first_finish.map} className="font-semibold"
+						>{data.player.first_finish.map}</MapLink
+					> ({secondsToTime(data.player.first_finish.time)})
+				</p>
+				<p>于 {secondsToDate(data.player.first_finish.timestamp)} 完成</p>
+			</div>
+			<div
+				class="rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3"
+				class:opacity-50={!data.player.hours_played_past_365_days}
+			>
+				<h3 class="mb-1 text-base font-bold">活跃时间</h3>
+				{#if data.player.hours_played_past_365_days}
+					<p>
+						<span class="font-semibold">365天内游玩：</span>{data.player.hours_played_past_365_days}
+						小时
+					</p>
+				{:else}
+					<p>过去 365 天未游玩</p>
+				{/if}
+			</div>
+		</div>
+		<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
+			<h3 class="mb-1 text-base font-bold">活跃记录</h3>
+			<div class="scrollbar-subtle mx-auto max-w-fit overflow-x-auto rounded bg-slate-700 p-3">
+				<div class="flex flex-row flex-nowrap gap-2">
+					<div class="flex flex-col text-sm">
+						<p class="-mt-1 flex-grow text-nowrap">周一</p>
+						<p class="text-nowrap">周日</p>
+					</div>
+					<div class="flex flex-col flex-nowrap gap-[0.125rem]">
+						{#each data.activity as row, index}
+							<div class="flex flex-row flex-nowrap gap-[0.125rem]">
+								{#each row as col}
+									{#if col.date}
+										<div
+											use:tippy={{ content: `${col.date} - ${col.hours} 小时` }}
+											class="h-3 w-3 rounded-sm border border-slate-800"
+											style="background-color: {hoursToColor(col.hours)}"
+										></div>
+									{:else}
+										<div class=" h-3 w-3 border border-transparent"></div>
+									{/if}
+								{/each}
+							</div>
+						{/each}
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 </div>

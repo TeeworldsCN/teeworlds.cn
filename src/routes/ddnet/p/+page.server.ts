@@ -105,6 +105,13 @@ export const load = (async ({ fetch, url, parent }) => {
 		data_update_time?: number;
 	};
 
+	// remove useless activity data way past 365 days
+	const lastActivity = new Date(player.activity[player.activity.length - 1].date);
+	player.activity = player.activity.filter(
+		(activity) =>
+			new Date(activity.date).getTime() > lastActivity.getTime() - 366 * 24 * 60 * 60 * 1000
+	);
+
 	const mapsResponse = await fetch(`/ddnet/maps`);
 
 	if (mapsResponse.ok) {
