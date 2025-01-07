@@ -1,4 +1,4 @@
-export function encode(str: string | Uint8Array) {
+export function encodeBase64Url(str: string | Uint8Array) {
 	if (typeof str == 'string') {
 		str = new TextEncoder().encode(str);
 	}
@@ -8,9 +8,9 @@ export function encode(str: string | Uint8Array) {
 		.replace(/=+$/, '');
 }
 
-export function decode(str: string, options?: { buffer: false }): string;
-export function decode(str: string, options: { buffer: true }): Uint8Array;
-export function decode(
+export function decodeBase64Url(str: string, options?: { buffer: false }): string;
+export function decodeBase64Url(str: string, options: { buffer: true }): Uint8Array;
+export function decodeBase64Url(
 	str: string,
 	{ buffer = false }: { buffer?: boolean } = {}
 ): string | Uint8Array {

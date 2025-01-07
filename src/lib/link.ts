@@ -1,4 +1,4 @@
-import { encode, decode } from '$lib/base64url';
+import { encodeBase64Url, decodeBase64Url } from '$lib/base64url';
 
 export const fetchDDNetAsync = async (url: string) => {
 	const response = await fetch(url);
@@ -22,13 +22,13 @@ export const encodeAsciiURIComponent = (str: string, stamped = false) => {
 		const time = new Uint8Array(4);
 		time.set([nowSeconds >> 24, nowSeconds >> 16, nowSeconds >> 8, nowSeconds]);
 		result += '!!';
-		result += encode(time);
+		result += encodeBase64Url(time);
 		result += '!!';
 	}
 
 	const commit = () => {
 		if (segment) {
-			result += `!${encode(segment)}!`;
+			result += `!${encodeBase64Url(segment)}!`;
 			segment = '';
 		}
 	};
@@ -64,7 +64,7 @@ export const decodeAsciiURIComponent = (str: string) => {
 	for (const char of str) {
 		if (char == '!') {
 			if (segment) {
-				result += decode(segment.slice(1));
+				result += decodeBase64Url(segment.slice(1));
 				segment = '';
 			} else {
 				segment += char;

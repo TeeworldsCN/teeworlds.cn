@@ -1,4 +1,4 @@
-import { decode, encode } from './base64url';
+import { decodeBase64Url, encodeBase64Url } from './base64url';
 
 const SUPERSCRIPTS = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
 const SUBSCRIPTS = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
@@ -155,11 +155,11 @@ export const addrToBase64 = (address: string) => {
 	addr[3] = parseInt(part[3]);
 	addr[4] = port / 256;
 	addr[5] = port % 256;
-	return encode(addr);
+	return encodeBase64Url(addr);
 };
 
 export const base64ToAddr = (base64: string) => {
-	const addr = decode(base64, { buffer: true });
+	const addr = decodeBase64Url(base64, { buffer: true });
 	if (addr.length != 6) {
 		return null;
 	}
