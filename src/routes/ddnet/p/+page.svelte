@@ -4,6 +4,7 @@
 	import MapLink from '$lib/components/ddnet/MapLink.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
+	import TeeRender from '$lib/components/TeeRender.svelte';
 	import { secondsToDate } from '$lib/date';
 	import { mapType } from '$lib/ddnet/helpers';
 	import { secondsToTime } from '$lib/helpers';
@@ -34,7 +35,15 @@
 />
 
 <div class="mb-4">
-	<div class="text-2xl font-bold">{data.player.player}</div>
+	<div class="flex flex-row items-center">
+		<TeeRender
+			url={data.skin.n}
+			body={data.skin.b}
+			feet={data.skin.f}
+			className="w-16 h-16 -mb-1 -mt-1 mr-2"
+		></TeeRender>
+		<div class="text-2xl font-bold">{data.player.player}</div>
+	</div>
 	<div class="text-md font-bold">
 		<span>最近活跃：{secondsToDate(data.last_finish.timestamp)}</span>
 	</div>

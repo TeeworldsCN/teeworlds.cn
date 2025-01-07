@@ -65,6 +65,7 @@ export const load = (async ({ data, parent }) => {
 
 	return {
 		player,
+		skin: data.skin,
 		last_finish,
 		statsCols,
 		ranks,

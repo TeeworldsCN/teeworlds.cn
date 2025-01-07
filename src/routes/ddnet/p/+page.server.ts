@@ -4,6 +4,8 @@ import { decodeAsciiURIComponent, encodeAsciiURIComponent } from '$lib/link';
 import { ranks } from '$lib/server/fetches/ranks';
 import type { MapList } from '$lib/server/fetches/maps';
 import { uaIsStrict } from '$lib/helpers';
+import { getSkin } from '$lib/server/ddtracker';
+import { skins } from '$lib/server/fetches/skins';
 
 interface PlayerRank {
 	points?: number;
@@ -145,7 +147,18 @@ export const load = (async ({ fetch, url, parent }) => {
 		}
 	}
 
+	const skinList = await skins.fetch();
+	const skin = (getSkin(player.player) || {}) as {
+		n?: string;
+		b?: number;
+		f?: number;
+	};
+
+	if (skin.n) {
+		skin.n = skinList.skins.find((s) => s.name == skin.n)?.url;
+	}
+
 	// always check the rank page for update time
 	player.data_update_time = (await ranks.fetch()).update_time;
-	return { player, ...(await parent()) };
+	return { player, skin, ...(await parent()) };
 }) satisfies PageServerLoad;

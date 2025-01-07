@@ -140,3 +140,52 @@ const REGION_MAP: { [key: string]: string } = {
 export const region = (region: string) => {
 	return REGION_MAP[region] || REGION_MAP[region.split(':')[0]] || region;
 };
+
+export const ddnetColorToRgb = (color: number) => {
+	const h = ((color >> 16) & 0xff) / 255;
+	const s = ((color >> 8) & 0xff) / 255;
+	const l = 0.5 + ((color & 0xff) / 255) * 0.5;
+
+	const h1 = h * 6;
+	const c = (1 - Math.abs(2 * l - 1)) * s;
+	const x = c * (1 - Math.abs((h1 % 2) - 1));
+
+	let r = 0;
+	let g = 0;
+	let b = 0;
+
+	switch (Math.floor(h1)) {
+		case 0:0
+			r = c;
+			g = x;
+			break;
+		case 1:
+			r = x;
+			g = c;
+			break;
+		case 2:
+			g = c;
+			b = x;
+			break;
+		case 3:
+			g = x;
+			b = c;
+			break;
+		case 4:
+			r = x;
+			b = c;
+			break;
+		case 5:
+			r = c;
+			b = x;
+			break;
+		case 6:
+			r = c;
+			b = x;
+			break;
+	}
+
+	const m = l - c / 2;
+	console.log(c);
+	return `rgb(${Math.round((r + m) * 255)},${Math.round((g + m) * 255)},${Math.round((b + m) * 255)})`;
+};
