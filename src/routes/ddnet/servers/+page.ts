@@ -2,6 +2,9 @@ import { primaryAddress, region } from '$lib/ddnet/helpers';
 import type { GameInfo, ServerInfo } from '$lib/server/fetches/servers';
 import type { PageLoad } from './$types';
 
+/** disabling ssr because it give user a false sense of readiness before hydration */
+export const ssr = false;
+
 export const load = (async ({ fetch, parent }) => {
 	const data = (await (await fetch('/ddnet/servers')).json()) as {
 		servers: ServerInfo;

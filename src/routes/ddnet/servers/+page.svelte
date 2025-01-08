@@ -2,7 +2,7 @@
 	import { goto, invalidate } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Modal from '$lib/components/Modal.svelte';
-	import { joinViaDDNet, joinViaSteam, showScore, sortPlayers } from '$lib/ddnet/helpers';
+	import { ddnetColorToRgb, joinViaDDNet, joinViaSteam, showScore, sortPlayers } from '$lib/ddnet/helpers';
 	import serverSearch, { type SortKey } from '$lib/stores/server-search.js';
 	import Fa from 'svelte-fa';
 	import VirtualScroll from 'svelte-virtual-scroll-list';
@@ -11,6 +11,8 @@
 	import { addrToBase64, base64ToAddr } from '$lib/helpers.js';
 	import { page } from '$app/state';
 	import MapLink from '$lib/components/ddnet/MapLink.svelte';
+	import TeeRender from '$lib/components/TeeRender.svelte';
+	import tippy from 'tippy.js';
 
 	const { data } = $props();
 
@@ -196,6 +198,7 @@
 	$effect(() => {
 		if (!showModal) {
 			mapLink = null;
+			selectedServer = null;
 			goto('', { keepFocus: true, noScroll: true, replaceState: true });
 		}
 	});
@@ -429,10 +432,17 @@
 				<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
 					<h3 class="font-bold">玩家列表</h3>
 					{#each selectedServer.info.clients as client}
-						<div class="mb-1 flex flex-row rounded bg-slate-700 px-1">
+						<div class="mb-1 flex flex-row items-center rounded bg-slate-700 px-1">
 							<div class="w-20 self-center text-center">
 								{showScore(client.score, selectedServer.info.client_score_kind)}
 							</div>
+							<TeeRender
+								name={client.skin.name}
+								className="w-8 h-8 mr-2"
+								useDefault
+								body={client.skin ? client.skin.color_body : null}
+								feet={client.skin ? client.skin.color_feet : null}
+							></TeeRender>
 							<div class="flex h-[3.25rem] flex-col">
 								<p class="font-semibold">{client.name}</p>
 								<p class="text-sm">{client.clan}</p>

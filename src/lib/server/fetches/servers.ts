@@ -26,6 +26,8 @@ export type ServerInfo = {
 			is_player: boolean;
 			skin: {
 				name: string;
+				color_body: number;
+				color_feet: number;
 			};
 			afk: boolean;
 			team: number;

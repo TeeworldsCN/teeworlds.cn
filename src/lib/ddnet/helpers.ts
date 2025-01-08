@@ -155,7 +155,7 @@ export const ddnetColorToRgb = (color: number) => {
 	let b = 0;
 
 	switch (Math.floor(h1)) {
-		case 0:0
+		case 0:
 			r = c;
 			g = x;
 			break;
@@ -186,6 +186,5 @@ export const ddnetColorToRgb = (color: number) => {
 	}
 
 	const m = l - c / 2;
-	console.log(c);
-	return `rgb(${Math.round((r + m) * 255)},${Math.round((g + m) * 255)},${Math.round((b + m) * 255)})`;
+	return { r: (r + m) * 255, g: (g + m) * 255, b: (b + m) * 255 };
 };

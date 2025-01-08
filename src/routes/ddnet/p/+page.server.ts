@@ -173,7 +173,7 @@ export const load = (async ({ fetch, url, parent }) => {
 	};
 
 	if (skin.n) {
-		skin.n = skinData.skins.find((s) => s.name == skin.n)?.url;
+		skin.n = skinData.map[skin.n];
 	}
 
 	// always check the rank page for update time
