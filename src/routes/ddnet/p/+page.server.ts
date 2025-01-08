@@ -118,11 +118,16 @@ export const load = (async ({ fetch, url, parent }) => {
 	const player = playerData;
 
 	// remove useless activity data way past 365 days
-	const lastActivity = new Date(player.activity[player.activity.length - 1].date);
-	player.activity = player.activity.filter(
-		(activity) =>
-			new Date(activity.date).getTime() > lastActivity.getTime() - 366 * 24 * 60 * 60 * 1000
-	);
+	if (player.activity && player.activity.length > 1) {
+		const date = player.activity[player.activity.length - 1]?.date;
+		if (date) {
+			const lastActivity = new Date(date);
+			player.activity = player.activity.filter(
+				(activity) =>
+					new Date(activity.date).getTime() > lastActivity.getTime() - 366 * 24 * 60 * 60 * 1000
+			);
+		}
+	}
 
 	// find all maps that are in last finishes
 	const lastFinishMaps = mapData.filter((map) =>
