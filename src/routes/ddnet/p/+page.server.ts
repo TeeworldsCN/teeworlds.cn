@@ -2,7 +2,7 @@ import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { decodeAsciiURIComponent, encodeAsciiURIComponent } from '$lib/link';
 import { ranks } from '$lib/server/fetches/ranks';
-import type { MapList } from '$lib/server/fetches/maps';
+import { maps } from '$lib/server/fetches/maps';
 import { uaIsStrict } from '$lib/helpers';
 import { getSkin } from '$lib/server/ddtracker';
 import { skins } from '$lib/server/fetches/skins';
@@ -49,12 +49,15 @@ export const load = (async ({ fetch, url, parent }) => {
 	}
 
 	const name = decodeAsciiURIComponent(query);
+	const fetchPlayer = fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`);
+	const fetchMaps = maps.fetch();
+	const fetchSkins = skins.fetch();
+	const fetchRanks = ranks.fetch();
+
 	let data;
 
 	try {
-		data = await (
-			await fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`)
-		).json();
+		data = await (await fetchPlayer).json();
 	} catch {
 		// ignored, mostly paring error
 	}
@@ -112,40 +115,37 @@ export const load = (async ({ fetch, url, parent }) => {
 			new Date(activity.date).getTime() > lastActivity.getTime() - 366 * 24 * 60 * 60 * 1000
 	);
 
-	const mapsResponse = await fetch(`/ddnet/maps`);
+	const mapList = await fetchMaps;
 
-	if (mapsResponse.ok) {
-		const maps = (await mapsResponse.json()) as MapList;
-		// find all maps that are in last finishes
-		const lastFinishMaps = maps.filter((map) =>
-			player.last_finishes.some((finish) => finish.map == map.name)
-		);
+	// find all maps that are in last finishes
+	const lastFinishMaps = mapList.filter((map) =>
+		player.last_finishes.some((finish) => finish.map == map.name)
+	);
 
-		// insert pending maps into map data
-		for (const map of lastFinishMaps) {
-			const type = player.types[map.type];
-			const typeMaps = type?.maps;
-			if (!typeMaps) continue;
+	// insert pending maps into map data
+	for (const map of lastFinishMaps) {
+		const type = player.types[map.type];
+		const typeMaps = type?.maps;
+		if (!typeMaps) continue;
 
-			const targetMap = typeMaps[map.name];
-			if (!targetMap) continue;
+		const targetMap = typeMaps[map.name];
+		if (!targetMap) continue;
 
-			// don't count already finished maps
-			if (targetMap.first_finish) continue;
+		// don't count already finished maps
+		if (targetMap.first_finish) continue;
 
-			targetMap.finishes = 1;
-			targetMap.pending = true;
+		targetMap.finishes = 1;
+		targetMap.pending = true;
 
-			// find the first finish time from the last finish list
-			const time = player.last_finishes.find((finish) => finish.map == map.name)?.time;
-			targetMap.time = time ?? undefined;
+		// find the first finish time from the last finish list
+		const time = player.last_finishes.find((finish) => finish.map == map.name)?.time;
+		targetMap.time = time ?? undefined;
 
-			const points = targetMap.points;
+		const points = targetMap.points;
 
-			if (points) {
-				player.pending_points = (player.pending_points || 0) + points;
-				type.pending_points = (type.pending_points || 0) + points;
-			}
+		if (points) {
+			player.pending_points = (player.pending_points || 0) + points;
+			type.pending_points = (type.pending_points || 0) + points;
 		}
 
 		const lastFinish = player.last_finishes[player.last_finishes.length - 1];
@@ -154,7 +154,7 @@ export const load = (async ({ fetch, url, parent }) => {
 		}
 	}
 
-	const skinList = await skins.fetch();
+	const skinList = await fetchSkins;
 	const skin = (getSkin(player.player) || {}) as {
 		n?: string;
 		b?: number;
@@ -166,6 +166,6 @@ export const load = (async ({ fetch, url, parent }) => {
 	}
 
 	// always check the rank page for update time
-	player.data_update_time = (await ranks.fetch()).update_time;
+	player.data_update_time = (await fetchRanks).update_time;
 	return { player, skin, ...(await parent()) };
 }) satisfies PageServerLoad;
