@@ -4,7 +4,6 @@
 	import { onDestroy, onMount } from 'svelte';
 	import ColorConverter from 'css-filter-converter';
 	import { ddnetColorToRgb } from '$lib/ddnet/helpers';
-	import type { ColorToFilterResult } from 'css-filter-converter/lib/shared/types/result';
 
 	const {
 		url,

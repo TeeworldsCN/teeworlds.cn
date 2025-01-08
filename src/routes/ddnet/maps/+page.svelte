@@ -8,7 +8,7 @@
 	import type { MapList } from '$lib/server/fetches/maps';
 	import { ddnetDate, mapType, numberToStars } from '$lib/ddnet/helpers';
 	import { browser } from '$app/environment';
-	import tippy from 'svelte-tippy';
+	import { tippy } from '$lib/tippy';
 
 	let maps: MapList = $state([]);
 	let error = $state();

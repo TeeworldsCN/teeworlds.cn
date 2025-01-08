@@ -9,7 +9,7 @@
 	import { secondsToChineseTime, secondsToTime } from '$lib/helpers';
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
-	import { tippy } from 'svelte-tippy';
+	import { tippy } from '$lib/tippy';
 
 	const { data } = $props();
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { flagAsset } from '$lib/ddnet/helpers';
-	import { tippy } from 'svelte-tippy';
+	import { tippy } from '$lib/tippy';
 	const { flag, tooltip }: { flag: string; tooltip?: string } = $props();
 </script>
 
