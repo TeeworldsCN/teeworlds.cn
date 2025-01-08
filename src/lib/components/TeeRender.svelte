@@ -21,6 +21,15 @@
 		className = '',
 		/** Whether to always start fetching the skin even if it is not visible */
 		alwaysFetch = false,
+		/**
+		 * Color matching iteration count, default to 3.
+		 * This is because we use a weird color to filter converter using a guessimation algorithm.
+		 * The color can randomly mismatch. Increasing the iteration can increase the chance of it looking correct.
+		 *
+		 * We did this because when showing multiple tees, multiple canvases can slow down the browser.
+		 * This way we can at least use pure css to render the tees, and it is easier to scale.
+		 */
+		maxLossIter = 3,
 		...rest
 	} = $props();
 
@@ -128,8 +137,8 @@
 	});
 
 	$effect(() => {
-		bodyFilter = body != null ? rgbToFilter(ddnetColorToRgb(body)).color : null;
-		feetFilter = feet != null ? rgbToFilter(ddnetColorToRgb(feet)).color : null;
+		bodyFilter = body != null ? rgbToFilter(ddnetColorToRgb(body), maxLossIter).color : null;
+		feetFilter = feet != null ? rgbToFilter(ddnetColorToRgb(feet), maxLossIter).color : null;
 	});
 </script>
 
@@ -143,26 +152,38 @@
 		<div class="tee-render-pass" style="filter: grayscale(1)">
 			<div class="tee-foot-outline back"></div>
 		</div>
-		<div class="tee-render-pass" style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {feetFilter}">
+		<div
+			class="tee-render-pass"
+			style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {feetFilter}"
+		>
 			<div class="tee-foot-outline back"></div>
 		</div>
 		<div class="tee-render-pass" style="filter: grayscale(1)">
 			<div class="tee-body-outline"></div>
 		</div>
-		<div class="tee-render-pass" style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {bodyFilter}">
+		<div
+			class="tee-render-pass"
+			style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {bodyFilter}"
+		>
 			<div class="tee-body-outline"></div>
 		</div>
 		<div class="tee-render-pass" style="filter: grayscale(1)">
 			<div class="tee-foot-outline front"></div>
 		</div>
-		<div class="tee-render-pass" style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {feetFilter}">
+		<div
+			class="tee-render-pass"
+			style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {feetFilter}"
+		>
 			<div class="tee-foot-outline front"></div>
 		</div>
 
 		<div class="tee-render-pass" style="filter: grayscale(1)">
 			<div class="tee-foot back"></div>
 		</div>
-		<div class="tee-render-pass" style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {feetFilter}">
+		<div
+			class="tee-render-pass"
+			style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {feetFilter}"
+		>
 			<div class="tee-foot back"></div>
 		</div>
 
@@ -187,7 +208,10 @@
 		<div class="tee-render-pass" style="filter: grayscale(1)">
 			<div class="tee-foot front"></div>
 		</div>
-		<div class="tee-render-pass" style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {feetFilter}">
+		<div
+			class="tee-render-pass"
+			style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {feetFilter}"
+		>
 			<div class="tee-foot front"></div>
 		</div>
 	{:else}

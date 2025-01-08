@@ -46,12 +46,14 @@
 
 <div class="mb-4">
 	<div class="flex flex-row items-center">
+		<!-- increased max loss iter to make the color more accurate at least in player page -->
 		<TeeRender
 			url={data.skin.n}
 			body={data.skin.b}
 			feet={data.skin.f}
 			useDefault
 			className="w-16 h-16 -mb-1 -mt-1 mr-2"
+			maxLossIter={10}
 		></TeeRender>
 		<div class="text-2xl font-bold">{data.player.player}</div>
 	</div>
