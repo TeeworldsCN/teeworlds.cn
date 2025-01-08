@@ -54,59 +54,68 @@ export const load = (async ({ fetch, url, parent }) => {
 	const fetchSkins = skins.fetch();
 	const fetchRanks = ranks.fetch();
 
-	let data;
+	const [playerData, mapData, skinData, rankData] = await Promise.all([
+		(async () => {
+			let data: {
+				player: string;
+				points: {
+					total: number;
+					points: number;
+					rank: number;
+				};
+				team_rank: PlayerRank;
+				rank: PlayerRank;
+				points_last_year: PlayerRank;
+				points_last_month: PlayerRank;
+				points_last_week: PlayerRank;
+				favorite_server: {
+					server: string;
+				};
+				first_finish: {
+					timestamp: number;
+					map: string;
+					time: number;
+				};
+				last_finishes: {
+					timestamp: number;
+					map: string;
+					time: number;
+					country: string;
+					type: string;
+				}[];
+				favorite_partners: {
+					name: string;
+					finishes: number;
+				}[];
+				types: { [key: string]: MapData };
+				activity: {
+					date: string;
+					hours_played: number;
+				}[];
+				hours_played_past_365_days: number;
+				pending_points?: number;
+				pending_unknown?: boolean;
+				data_update_time?: number;
+			} | null = null;
 
-	try {
-		data = await (await fetchPlayer).json();
-	} catch {
-		// ignored, mostly paring error
-	}
+			try {
+				data = await (await fetchPlayer).json();
+			} catch {
+				// ignored, mostly paring error
+			}
 
-	if (!data || !data.player) {
+			return data;
+		})(),
+		fetchMaps,
+		fetchSkins,
+		fetchRanks
+	]);
+
+	if (!playerData || !playerData.player) {
 		return error(404);
 	}
 
-	const player = data as {
-		player: string;
-		points: {
-			total: number;
-			points: number;
-			rank: number;
-		};
-		team_rank: PlayerRank;
-		rank: PlayerRank;
-		points_last_year: PlayerRank;
-		points_last_month: PlayerRank;
-		points_last_week: PlayerRank;
-		favorite_server: {
-			server: string;
-		};
-		first_finish: {
-			timestamp: number;
-			map: string;
-			time: number;
-		};
-		last_finishes: {
-			timestamp: number;
-			map: string;
-			time: number;
-			country: string;
-			type: string;
-		}[];
-		favorite_partners: {
-			name: string;
-			finishes: number;
-		}[];
-		types: { [key: string]: MapData };
-		activity: {
-			date: string;
-			hours_played: number;
-		}[];
-		hours_played_past_365_days: number;
-		pending_points?: number;
-		pending_unknown?: boolean;
-		data_update_time?: number;
-	};
+	const player = playerData;
 
 	// remove useless activity data way past 365 days
 	const lastActivity = new Date(player.activity[player.activity.length - 1].date);
@@ -115,10 +124,8 @@ export const load = (async ({ fetch, url, parent }) => {
 			new Date(activity.date).getTime() > lastActivity.getTime() - 366 * 24 * 60 * 60 * 1000
 	);
 
-	const mapList = await fetchMaps;
-
 	// find all maps that are in last finishes
-	const lastFinishMaps = mapList.filter((map) =>
+	const lastFinishMaps = mapData.filter((map) =>
 		player.last_finishes.some((finish) => finish.map == map.name)
 	);
 
@@ -154,7 +161,6 @@ export const load = (async ({ fetch, url, parent }) => {
 		}
 	}
 
-	const skinList = await fetchSkins;
 	const skin = (getSkin(player.player) || {}) as {
 		n?: string;
 		b?: number;
@@ -162,10 +168,11 @@ export const load = (async ({ fetch, url, parent }) => {
 	};
 
 	if (skin.n) {
-		skin.n = skinList.skins.find((s) => s.name == skin.n)?.url;
+		skin.n = skinData.skins.find((s) => s.name == skin.n)?.url;
 	}
 
 	// always check the rank page for update time
-	player.data_update_time = (await fetchRanks).update_time;
+	player.data_update_time = rankData.update_time;
+
 	return { player, skin, ...(await parent()) };
 }) satisfies PageServerLoad;
