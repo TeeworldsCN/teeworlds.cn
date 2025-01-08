@@ -6,6 +6,8 @@
 	import 'tippy.js/dist/tippy.css';
 	import '../app.css';
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
+	import Fa from 'svelte-fa';
+	import { faGithub } from '@fortawesome/free-brands-svg-icons';
 
 	let { children, data } = $props();
 
@@ -56,10 +58,16 @@
 		</div>
 	</main>
 
-	<footer class="bg-slate-900 p-1 text-slate-300 md:p-4">
-		<div class="container mx-auto text-center">
+	<footer class="flex flex-row bg-slate-900 px-4 py-1 text-slate-300 md:py-4 items-center">
+		<div class="text-sm sm:text-base">
 			<Link href="https://beian.miit.gov.cn/" type="subtle" className="font-bold"
 				>冀ICP备2021002466号</Link
+			>
+		</div>
+		<div class="flex-grow"></div>
+		<div>
+			<Link href="https://github.com/TeeworldsCN/teeworlds.cn" type="subtle" className="font-bold"
+				><Fa icon={faGithub} class="inline"></Fa> GitHub</Link
 			>
 		</div>
 	</footer>
