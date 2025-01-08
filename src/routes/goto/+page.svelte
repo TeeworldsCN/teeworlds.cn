@@ -35,7 +35,7 @@
 					preloadData(target);
 					preloadCode(target);
 				}
-			}, 750);
+			}, 100);
 		}
 	});
 </script>
