@@ -1,3 +1,5 @@
+/** Custom typing for js only library nativeshare */
+
 declare module 'nativeshare' {
 	export default class NativeShare {
 		constructor(options: {
