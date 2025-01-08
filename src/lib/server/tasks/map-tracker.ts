@@ -4,6 +4,7 @@ import { persistent } from '../db/kv';
 import { getSubscriptions } from '../db/subs';
 import { BOT, QQRichTextType } from '../bots/protocol/qq';
 import { mapType, numberToStars } from '$lib/ddnet/helpers';
+import { encodeAsciiURIComponent } from '$lib/link';
 
 const publishMap = async (map: MapList[0]) => {
 	if (!map) return;
@@ -52,7 +53,7 @@ const publishMap = async (map: MapList[0]) => {
 						elems: [
 							{
 								url: {
-									url: `https://teeworlds.cn/ddnet/m?n=${encodeURIComponent(map.name)}`,
+									url: `https://teeworlds.cn/goto#m${encodeAsciiURIComponent(map.name)}`,
 									desc: '🔗 地图详情'
 								},
 								type: QQRichTextType.Url
