@@ -117,6 +117,15 @@ export const unescapeHTML = (str: string) => {
 		.replace(/&#x27;/g, "'");
 };
 
+export const escapeHTML = (str: string) => {
+	return str
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#x27;');
+};
+
 export const secondsToTime = (totalSeconds: number) => {
 	const hours = Math.floor(totalSeconds / 3600);
 	const minutes = Math.floor((totalSeconds % 3600) / 60);

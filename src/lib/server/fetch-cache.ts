@@ -160,9 +160,9 @@ export class FetchCache<T> {
 
 				// not outdated but no cache, means the head response is possibly not ok or errored
 				if (response) {
-					throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+					throw new Error(`Failed to fetch data: ${this.url} ${response.status} ${response.statusText}`);
 				} else {
-					throw new Error('Failed to fetch data: Unknown error');
+					throw new Error(`Failed to fetch data: ${this.url} Unknown error`);
 				}
 			})();
 

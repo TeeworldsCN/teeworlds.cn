@@ -29,7 +29,9 @@
 </script>
 
 <div
-	class="flex min-h-svh flex-col bg-slate-800 {navigating.to ? 'opacity-60' : 'opacity-100'}"
+	class="max-w-svw flex min-h-svh flex-col overflow-x-hidden bg-slate-800 {navigating.to
+		? 'opacity-60'
+		: 'opacity-100'}"
 	style={navigating.to ? 'transition: opacity 0.1s ease-in-out 0.1s;' : ''}
 >
 	<header class="flex bg-slate-900 px-4 py-2 text-slate-300 md:py-4">
@@ -52,14 +54,14 @@
 		</div>
 	</header>
 
-	<main class="flex-grow basis-1 bg-slate-800 p-2 text-slate-300 md:p-4">
-		<div class="container mx-auto h-full">
+	<main class="flex flex-grow bg-slate-800 p-2 text-slate-300 md:p-4">
+		<div class="container relative mx-auto flex-grow">
 			{@render children()}
 		</div>
 	</main>
 
-	<footer class="flex flex-row bg-slate-900 px-4 py-1 text-slate-300 md:py-4 items-center">
-		<div class="text-sm sm:text-base">
+	<footer class="flex flex-row items-center bg-slate-900 px-4 py-1 text-slate-300 md:py-4">
+		<div class="text-sm md:text-base">
 			<Link href="https://beian.miit.gov.cn/" type="subtle" className="font-bold"
 				>冀ICP备2021002466号</Link
 			>

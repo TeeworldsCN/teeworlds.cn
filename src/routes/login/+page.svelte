@@ -57,7 +57,6 @@
 						/>
 					{/key}
 				</div>
-				<input type="password" id="password" bind:value={password} class="hidden" />
 				<div class="flex flex-col space-y-2">
 					<label for="password" class="text-sm font-medium text-slate-300">密码</label>
 					{#key 'password'}
