@@ -188,3 +188,5 @@ export const ddnetColorToRgb = (color: number) => {
 	const m = l - c / 2;
 	return { r: (r + m) * 255, g: (g + m) * 255, b: (b + m) * 255 };
 };
+
+export const normalizeMapname = (name: string) => name.replace(/\W/g, '_');

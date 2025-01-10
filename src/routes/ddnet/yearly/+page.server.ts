@@ -2,10 +2,12 @@ import type { PageServerLoad } from './$types';
 import { getSkin } from '$lib/server/ddtracker';
 import { getPlayer } from '$lib/server/players';
 import { decodeAsciiURIComponent } from '$lib/link';
+import { decodeBase64Url } from '$lib/base64url';
+import { decode } from 'msgpackr';
 
 export const load = (async ({ url, parent }) => {
-	const year = parseInt(url.searchParams.get('year') || '2024');
-	const name = decodeAsciiURIComponent(url.searchParams.get('name') || '');
+	let year = parseInt(url.searchParams.get('year') || '2024');
+	let name = decodeAsciiURIComponent(url.searchParams.get('name') || '');
 
 	if (!name) {
 		return { year, ...(await parent()) };

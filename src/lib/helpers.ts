@@ -136,17 +136,32 @@ export const secondsToTime = (totalSeconds: number) => {
 	return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-export const secondsToChineseTime = (totalSeconds: number) => {
+export const secondsToChineseTime = (
+	totalSeconds: number,
+	withoutMillis = false,
+	noPad = false
+) => {
 	const hours = Math.floor(totalSeconds / 3600);
 	const minutes = Math.floor((totalSeconds % 3600) / 60);
 	const seconds = Math.floor(totalSeconds % 60);
 	const remainder = Math.floor((totalSeconds - Math.floor(totalSeconds)) * 100);
 
-	const ender = remainder == 0 ? '整' : remainder.toString().padStart(2, '0');
+	const ender =
+		remainder == 0 ? '整' : noPad ? remainder.toString() : remainder.toString().padStart(2, '0');
+
+	if (noPad) {
+		if (hours > 0)
+			return `${hours.toString()}小时${minutes.toString()}分${seconds.toString()}秒${withoutMillis ? '' : ender}`;
+		return `${minutes.toString()}分${seconds.toString()}秒${withoutMillis ? '' : ender}`;
+	}
 
 	if (hours > 0)
-		return `${hours.toString().padStart(2, '0')}时${minutes.toString().padStart(2, '0')}分${seconds.toString().padStart(2, '0')}秒${ender}`;
-	return `${minutes.toString().padStart(2, '0')}分${seconds.toString().padStart(2, '0')}秒${ender}`;
+		return `${hours.toString().padStart(2, '0')}时${minutes.toString().padStart(2, '0')}分${seconds.toString().padStart(2, '0')}秒${withoutMillis ? '' : ender}`;
+	return `${minutes.toString().padStart(2, '0')}分${seconds.toString().padStart(2, '0')}秒${withoutMillis ? '' : ender}`;
+};
+
+export const dateToChineseTime = (date: Date) => {
+	return `${date.getHours()}时${date.getMinutes()}分`;
 };
 
 export const addrToBase64 = (address: string) => {
