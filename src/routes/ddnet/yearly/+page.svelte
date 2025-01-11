@@ -729,70 +729,82 @@
 			const type = d.mps[0].toLowerCase();
 			let bg;
 
+			if (type == 'novice') {
+				bg = {
+					background: '/assets/yearly/t.png',
+					mapper: 'Teeasy - 作者: Tridemy & Cøke'
+				};
+			} else if (type == 'moderate') {
+				bg = {
+					background: '/assets/yearly/cs.png',
+					mapper: 'Cyber Space - 作者: Kaniosek'
+				};
+			} else if (type == 'brutal') {
+				bg = {
+					background: '/assets/yearly/gt.png',
+					mapper: 'GalacTees - 作者: Kaniosek'
+				};
+			} else if (type == 'insane') {
+				bg = {
+					background: '/assets/yearly/c.png',
+					mapper: 'Catharsis - 作者: Doshik'
+				};
+			} else if (type == 'dummy') {
+				bg = {
+					background: '/assets/yearly/q.png',
+					mapper: 'quon - 作者: yo bitch'
+				};
+			} else if (type == 'solo') {
+				bg = {
+					background: '/assets/yearly/a.png',
+					mapper: 'Amethyst - 作者: ♂S1mple♂'
+				};
+			} else if (type.startsWith('ddmax')) {
+				bg = {
+					background: '/assets/yearly/nj.png',
+					mapper: 'Night Jungle - 作者: JeanneDark & Knight :3'
+				};
+			} else if (type == 'oldschool') {
+				bg = {
+					background: '/assets/yearly/sr.png',
+					mapper: 'Sunrise - 作者: geroy231 & Father'
+				};
+			} else if (type == 'race') {
+				bg = {
+					background: '/assets/yearly/g.png',
+					mapper: 'Grenadium - 作者: texnonik'
+				};
+			} else {
+				bg = {
+					background: '/assets/yearly/qd.png',
+					mapper: 'Quickdraw - 作者: FJP'
+				};
+			}
+
 			if (d.mps[1] >= 20) {
 				if (type == 'novice') {
 					titles.push({ bg: '#10002b', color: '#fff', text: '锤锤打打' });
-					bg = {
-						background: '/assets/yearly/t.png',
-						mapper: 'Teeasy - 作者: Tridemy & Cøke'
-					};
 				} else if (type == 'moderate') {
 					titles.push({ bg: '#240046', color: '#fff', text: '循序渐进' });
-					bg = {
-						background: '/assets/yearly/cs.png',
-						mapper: 'Cyber Space - 作者: Kaniosek'
-					};
 				} else if (type == 'brutal') {
 					titles.push({ bg: '#3c096c', color: '#fff', text: '专业玩家' });
-					bg = {
-						background: '/assets/yearly/gt.png',
-						mapper: 'GalacTees - 作者: Kaniosek'
-					};
 				} else if (type == 'insane') {
 					titles.push({ bg: '#5a189a', color: '#fff', text: 'P.R.O' });
-					bg = {
-						background: '/assets/yearly/c.png',
-						mapper: 'Catharsis - 作者: Doshik'
-					};
 				} else if (type == 'dummy') {
 					titles.push({ bg: '#6f1d1b', color: '#fff', text: '左脚踩右脚' });
-					bg = {
-						background: '/assets/yearly/q.png',
-						mapper: 'quon - 作者: yo bitch'
-					};
 				} else if (type == 'solo') {
 					titles.push({ bg: '#bb9457', color: '#000', text: '唯我独尊' });
-					bg = {
-						background: '/assets/yearly/a.png',
-						mapper: 'Amethyst - 作者: ♂S1mple♂'
-					};
 				} else if (type.startsWith('ddmax')) {
 					titles.push({ bg: '#432818', color: '#fff', text: '经典永传' });
-					bg = {
-						background: '/assets/yearly/nj.png',
-						mapper: 'Night Jungle - 作者: JeanneDark & Knight :3'
-					};
 				} else if (type == 'oldschool') {
 					titles.push({ bg: '#99582a', color: '#000', text: '传统至上' });
-					bg = {
-						background: '/assets/yearly/sr.png',
-						mapper: 'Sunrise - 作者: geroy231 & Father'
-					};
 				} else if (type == 'race') {
 					titles.push({ bg: '#ffe6a7', color: '#000', text: '奥运健将' });
-					bg = {
-						background: '/assets/yearly/g.png',
-						mapper: 'Grenadium - 作者: texnonik'
-					};
 				}
 			}
 
 			if (d.mps[1] >= 10 && type == 'fun') {
 				titles.push({ bg: '#ffbf69', color: '#000', text: 'TRUE PLAYER' });
-				bg = {
-					background: '/assets/yearly/qd.png',
-					mapper: 'Quickdraw - 作者: FJP'
-				};
 			}
 
 			allTitles.push(...titles);
