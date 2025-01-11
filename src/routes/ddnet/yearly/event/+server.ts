@@ -267,7 +267,7 @@ export const POST: RequestHandler = async ({ url }) => {
 				d.n = name;
 				d.y = year;
 
-				const totalSteps = 13;
+				const totalSteps = 14;
 				let currentStep = 0;
 
 				const updateProgress = () => {

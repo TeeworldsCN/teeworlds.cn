@@ -12,6 +12,7 @@
 	import type { YearlyData } from './event/+server.js';
 	import type { MapList } from '$lib/server/fetches/maps.js';
 	import qrcode from 'qrcode';
+	import { share } from '$lib/share.js';
 
 	const { data } = $props();
 
@@ -51,6 +52,10 @@
 		background?: string;
 		mapper?: string;
 		format?: Snippet<[number, CardData]>;
+		leftTeeTop?: number;
+		leftTeeSkin?: { n: string; b?: number; f?: number } | null;
+		rightTeeTop?: number;
+		rightTeeSkin?: { n: string; b?: number; f?: number } | null;
 	}
 
 	let totalCards = $state(null) as {
@@ -63,8 +68,82 @@
 	let showContent = $state(true);
 
 	let referenceScrollTop = 0;
-
 	let scrollVersion = 0;
+
+	let error = $state(false);
+	let shareableQRCode = $state('');
+
+	const leftTeePose = {
+		bodyRotation: 15,
+		eyesRotation: -8,
+		frontFootRotation: 69,
+		backFootRotation: 50,
+		eyesPosition: '-4%, 0%',
+		frontFootPosition: '-17%, -1%',
+		backFootPosition: '-7%, -4%'
+	};
+	const rightTeePose = {
+		bodyRotation: -17,
+		eyesRotation: 3,
+		frontFootRotation: -35,
+		backFootRotation: -74,
+		eyesPosition: '-56%, -2%',
+		frontFootPosition: '-5%, -11%',
+		backFootPosition: '9%, 12%'
+	};
+
+	const ENDING_PHRASE = [
+		'蛇年吉祥，愿你快乐如歌。',
+		'祝福你新年快乐，无忧无虑。',
+		'祝你新年快乐，蒸蒸日上。',
+		'新的一年，愿美好与你常在。',
+		'新年快乐，愿你蛇年幸福。',
+		'蛇年平安，愿你的笑容更加灿烂。',
+		'祈愿蛇年，事事顺心如意！',
+		'新的一年，愿你幸福绽放。',
+		'蛇年伊始，祝福伴你左右。',
+		'在蛇年，愿你幸福环绕每一天。',
+		'蛇年祥瑞，愿你梦想成真。',
+		'新年新气象，愿蛇年充满惊喜。',
+		'迎接蛇年，希望好运常伴。',
+		'新年新气象，万事如意。',
+		'新年愿你财运亨通，富足美满。',
+		'祝新年吉祥，快乐常在身边。',
+		'祝愿蛇年，团团圆圆，快乐常在。',
+		'蛇年大展宏图，吉祥如意！',
+		'新春蛇年，心情愉快每一天。',
+		'祝你蛇年幸福安康，快乐常伴。',
+		'蛇年如意，生活更有滋味。',
+		'新春佳节，愿你蛇年大吉。',
+		'新年快乐，蛇年幸福满满。',
+		'新年到来，愿你心想事成。',
+		'愿蛇年好运与你紧紧相随。',
+		'祝新春快乐，事业步步高升。',
+		'祝新年身体健康，心情愉悦。',
+		'新春佳节，阖家欢乐安康。',
+		'蛇年好运连连，快乐无限！',
+		'新年快乐，愿烦恼烟消云散。',
+		'新年新景象，幸福安康每一天。',
+		'新的一年，祝你笑口常开。',
+		'祝愿新年快乐，梦想成真。',
+		'蛇年里，祝福你幸福无忧。',
+		'愿好运伴随你一年四季。',
+		'祝你蛇年如意安康，福星高照。',
+		'在蛇年，愿你的生活精彩无比。',
+		'新年伊始，愿你好运连连。',
+		'在蛇年里，心想事成每一天！',
+		'祝蛇年财源广进，事业辉煌。',
+		'蛇年到了，愿你微笑每天。',
+		'蛇年来临，愿你快乐无边！',
+		'新年愿你幸福相伴，快乐无边。',
+		'蛇年好运，事事顺心无阻。',
+		'迎来蛇年，盼望步步高升。',
+		'愿蛇年带给你无尽的欢欣。',
+		'祝你新年喜悦不断，幸福久久。',
+		'新的一年，愿你的生活多姿多彩。'
+	];
+
+	let endingPhrase = $state(Math.floor(Math.random() * ENDING_PHRASE.length));
 
 	const easeInOut = (t: number) => {
 		return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
@@ -195,6 +274,7 @@
 
 			d = result.d;
 		} catch (e) {
+			error = true;
 			console.error(e);
 		}
 
@@ -206,7 +286,7 @@
 			const titles: { bg: string; color: string; text: string }[] = [];
 			if (d.tp >= 10000) {
 				firstWord = '傲视群雄';
-				titles.push({ bg: '#219fdf', color: '#fff', text: '傲视群雄' });
+				titles.push({ bg: '#ffba08', color: '#000', text: '傲视群雄' });
 				enderLevel = 3;
 			} else if (d.tp >= 3000) {
 				firstWord = '成绩赫然';
@@ -221,7 +301,7 @@
 			if (delta >= 5000) {
 				verb = '您火力全开，<span class="font-semibold text-orange-400">斩获了</span>';
 				enderLevel = Math.max(enderLevel, 3);
-				titles.push({ bg: '#fdd300', color: '#000', text: '火力全开' });
+				titles.push({ bg: '#dc2f02', color: '#fff', text: '火力全开' });
 			} else if (delta >= 1000) {
 				verb = '您不留余力，<span class="font-semibold text-orange-400">收获了</span>';
 				enderLevel = Math.max(enderLevel, 2);
@@ -257,10 +337,12 @@
 					}
 				],
 				background: '/assets/yearly/Back_in_Festivity.png',
+				leftTeeTop: 5,
+				leftTeeSkin: data.skin,
 				mapper: 'Test Mapper Text - Test Mapper Text Test Mapper Text Test Mapper Text'
 			});
 		} else {
-			const titles = [{ bg: '#fdd300', color: '#000', text: '隐士' }];
+			const titles = [{ bg: '#b7b7a4', color: '#000', text: '隐士' }];
 			// 今年分数
 			allTitles.push(...titles);
 			cards.push({
@@ -298,7 +380,7 @@
 			// 分数成就
 			const titles = [];
 			if (d.mpg[1] >= 34) {
-				titles.push({ bg: '#fdd300', color: '#000', text: '登峰造极' });
+				titles.push({ bg: '#a8dadc', color: '#000', text: '登峰造极' });
 				allTitles.push(...titles);
 				cards.push({
 					titles,
@@ -336,7 +418,7 @@
 					mapper: `${d.mpg[0]} - 作者: ${getMapper(d.mpg[0])}`
 				});
 			} else {
-				if (d.mpg[1] >= 18) titles.push({ bg: '#fdd300', color: '#000', text: '渐入佳境' });
+				if (d.mpg[1] >= 18) titles.push({ bg: '#f1faee', color: '#000', text: '渐入佳境' });
 				allTitles.push(...titles);
 				cards.push({
 					titles,
@@ -380,8 +462,13 @@
 			if (d.mhr[1] > 1) {
 				const titles = [];
 				if (d.mhr[0] == '清晨') {
-					titles.push({ bg: '#fdd300', color: '#000', text: '早起鸟' });
+					titles.push({ bg: '#2a9d8f', color: '#000', text: '早起鸟' });
 				}
+
+				if ((d.tr || 0) >= 10 && d.mhr[1] / d.tr >= 0.5) {
+					titles.push({ bg: '#e5989b', color: '#000', text: '定时打卡' });
+				}
+
 				allTitles.push(...titles);
 				cards.push({
 					titles,
@@ -455,8 +542,16 @@
 			else if (d.mmr[0] == 7) word = '骄阳似火';
 			else if (d.mmr[0] == 10) word = '硕果累累';
 
+			const titles = [];
+			if (d.tr && d.tr >= 10 && d.mmr[3] / d.tr >= 0.5) {
+				titles.push({ bg: '#e07a5f', color: '#000', text: '集中特训' });
+			}
+
+			allTitles.push(...titles);
+
 			// 常来季度
 			cards.push({
+				titles,
 				content: [
 					{
 						type: 't',
@@ -479,7 +574,7 @@
 		if (d.lnf) {
 			// 夜猫子
 			const dateTime = new Date(d.lnf[2]);
-			const titles = [{ bg: '#fdd300', color: '#000', text: '夜猫子' }];
+			const titles = [{ bg: '#14213d', color: '#fff', text: '夜猫子' }];
 			allTitles.push(...titles);
 			cards.push({
 				titles,
@@ -516,11 +611,11 @@
 			// 新潮追随者
 			const titles = [];
 			if (d.ymf[1] >= 80) {
-				titles.push({ bg: '#fdd300', color: '#000', text: '新潮追随者' });
+				titles.push({ bg: '#a0c4ff', color: '#000', text: '新潮追随者' });
 			} else if (d.ymf[1] >= 60) {
-				titles.push({ bg: '#fdd300', color: '#000', text: '潮流前沿' });
+				titles.push({ bg: '#caffbf', color: '#000', text: '潮流前沿' });
 			} else if (d.ymf[1] >= 40) {
-				titles.push({ bg: '#fdd300', color: '#000', text: '宝藏猎人' });
+				titles.push({ bg: '#ffd6a5', color: '#000', text: '宝藏猎人' });
 			}
 			allTitles.push(...titles);
 			cards.push({
@@ -550,7 +645,7 @@
 			// 离发布最近完成
 			const titles = [];
 			if (d.nrr[1] < 2 * 60 * 60) {
-				titles.push({ bg: '#fdd300', color: '#000', text: '猎鹰' });
+				titles.push({ bg: '#3f37c9', color: '#fff', text: '猎鹰' });
 			}
 			allTitles.push(...titles);
 			cards.push({
@@ -586,28 +681,28 @@
 
 			if (d.mps[1] >= 20) {
 				if (type == 'novice') {
-					titles.push({ bg: '#fdd300', color: '#000', text: '锤锤打打' });
+					titles.push({ bg: '#10002b', color: '#fff', text: '锤锤打打' });
 				} else if (type == 'moderate') {
-					titles.push({ bg: '#fdd300', color: '#000', text: '循序渐进' });
+					titles.push({ bg: '#240046', color: '#fff', text: '循序渐进' });
 				} else if (type == 'brutal') {
-					titles.push({ bg: '#fdd300', color: '#000', text: '专业玩家' });
+					titles.push({ bg: '#3c096c', color: '#fff', text: '专业玩家' });
 				} else if (type == 'insane') {
-					titles.push({ bg: '#fdd300', color: '#000', text: 'P.R.O' });
+					titles.push({ bg: '#5a189a', color: '#fff', text: 'P.R.O' });
 				} else if (type == 'dummy') {
-					titles.push({ bg: '#fdd300', color: '#000', text: '左脚踩右脚' });
+					titles.push({ bg: '#6f1d1b', color: '#fff', text: '左脚踩右脚' });
 				} else if (type == 'solo') {
-					titles.push({ bg: '#fdd300', color: '#000', text: '唯我独尊' });
+					titles.push({ bg: '#bb9457', color: '#000', text: '唯我独尊' });
 				} else if (type.startsWith('ddmax')) {
-					titles.push({ bg: '#fdd300', color: '#000', text: '经典永传' });
+					titles.push({ bg: '#432818', color: '#fff', text: '经典永传' });
 				} else if (type == 'oldschool') {
-					titles.push({ bg: '#fdd300', color: '#000', text: '传统至上' });
+					titles.push({ bg: '#99582a', color: '#000', text: '传统至上' });
 				} else if (type == 'race') {
-					titles.push({ bg: '#fdd300', color: '#000', text: '奥运健将' });
+					titles.push({ bg: '#ffe6a7', color: '#000', text: '奥运健将' });
 				}
 			}
 
 			if (d.mps[1] >= 10 && type == 'fun') {
-				titles.push({ bg: '#fdd300', color: '#000', text: 'TRUE PLAYER' });
+				titles.push({ bg: '#ffbf69', color: '#000', text: 'TRUE PLAYER' });
 			}
 
 			allTitles.push(...titles);
@@ -662,18 +757,22 @@
 		if (d.mfm && d.mfm[1] > 1) {
 			// 通过最多的地图
 			const map = d.mfm[0];
+
 			const titles = [];
 			if (map.startsWith('Kobra')) {
-				titles.push({ bg: '#fdd300', color: '#000', text: '好孩子不玩蛇' });
+				titles.push({ bg: '#e0e1dd', color: '#000', text: '好孩子不玩蛇' });
 			} else if (map == 'LearnToPlay') {
-				titles.push({ bg: '#fdd300', color: '#000', text: '元老级萌新' });
+				titles.push({ bg: '#3d5a80', color: '#fff', text: '元老级萌新' });
 			} else if (map == 'Sunny Side Up') {
-				titles.push({ bg: '#fdd300', color: '#000', text: '旭日永存' });
+				titles.push({ bg: '#ffc300', color: '#000', text: '旭日永存' });
 			} else if (map == 'Tutorial') {
-				titles.push({ bg: '#fdd300', color: '#000', text: '入门踩断门槛' });
+				titles.push({ bg: '#a7c957', color: '#000', text: '入门踩断门槛' });
 			} else if (map == 'Epix') {
-				titles.push({ bg: '#fdd300', color: '#000', text: '狭路相逢' });
+				titles.push({ bg: '#89c2d9', color: '#000', text: '狭路相逢' });
+			} else if (map == 'Linear') {
+				titles.push({ bg: '#e9edc9', color: '#000', text: '一人的天空' });
 			}
+
 			allTitles.push(...titles);
 			cards.push({
 				titles,
@@ -703,9 +802,9 @@
 			const dateTime = new Date(d.lf[2]);
 			const titles = [];
 			if (d.lf[1] >= 12 * 60 * 60) {
-				titles.push({ bg: '#fdd300', color: '#000', text: '挂机狂魔' });
+				titles.push({ bg: '#c8b6ff', color: '#000', text: '挂机狂魔' });
 			} else if (d.lf[1] >= 4 * 60 * 60) {
-				titles.push({ bg: '#fdd300', color: '#000', text: '坚韧不拔' });
+				titles.push({ bg: '#ffd6ff', color: '#000', text: '坚韧不拔' });
 			}
 			allTitles.push(...titles);
 			cards.push({
@@ -749,14 +848,29 @@
 			// 最常玩队友
 			const titles = [];
 			if (d.mpt[0][1] >= 100) {
-				titles.push({ bg: '#fdd300', color: '#000', text: '所向披靡' });
+				titles.push({ bg: '#2ec4b6', color: '#000', text: '所向披靡' });
 			} else if (d.mpt[0][1] >= 50) {
-				titles.push({ bg: '#fdd300', color: '#000', text: '亲密无间' });
+				titles.push({ bg: '#00509d', color: '#fff', text: '亲密无间' });
 			} else if (d.mpt[0][1] >= 20) {
-				titles.push({ bg: '#fdd300', color: '#000', text: '同心协力' });
+				titles.push({ bg: '#00296b', color: '#fff', text: '情同手足' });
 			}
 			allTitles.push(...titles);
 			if (d.mpt[1]) {
+				let leftTeeSkin = null;
+				let rightTeeSkin = null;
+				try {
+					leftTeeSkin = await (
+						await fetch(
+							`/ddnet/playerskin?name=${encodeURIComponent(d.mpt[0][0])}&region=${encodeURIComponent('as:cn')}&fallback=true`
+						)
+					).json();
+					rightTeeSkin = await (
+						await fetch(
+							`/ddnet/playerskin?name=${encodeURIComponent(d.mpt[1][0])}&region=${encodeURIComponent('as:cn')}&fallback=true`
+						)
+					).json();
+				} catch {}
+
 				cards.push({
 					titles,
 					content: [
@@ -790,6 +904,10 @@
 						}
 					],
 					background: '/assets/yearly/Back_in_Festivity.png',
+					leftTeeSkin,
+					leftTeeTop: 8,
+					rightTeeSkin,
+					rightTeeTop: 55,
 					mapper: 'Test Mapper Text'
 				});
 			} else {
@@ -819,7 +937,7 @@
 			// 最大团队
 			const titles = [];
 			if (d.bt[0] >= 8) {
-				titles.push({ bg: '#fdd300', color: '#000', text: 'Tee军团' });
+				titles.push({ bg: '#bee9e8', color: '#000', text: 'Tee军团' });
 			}
 			allTitles.push(...titles);
 			cards.push({
@@ -855,7 +973,7 @@
 		}
 		if (d.map && d.map.length > 0) {
 			// 地图作者
-			const titles = [{ bg: '#fdd300', color: '#000', text: '奉献精神' }];
+			const titles = [{ bg: '#333533', color: '#fff', text: '制图达人' }];
 			allTitles.push(...titles);
 			cards.push({
 				titles,
@@ -893,18 +1011,52 @@
 						type: 'b',
 						bg: '#A00F2A',
 						color: '#fff',
-						text: `${d.y + 1}见！`,
+						text: `${d.y + 1}加油！`,
 						rotation: 0
 					}
 				],
 				t: 80,
-				l: 60,
+				l: 50,
 				b: 5,
 				r: 5,
 				format: noBlurRegularFormat,
 				background: '/assets/yearly/year.png'
 			});
 		}
+
+		// 新年快乐
+		cards.push({
+			format: shareFormat,
+			background: '/assets/yearly/end.png'
+		});
+
+		// Test Titles
+		// allTitles.splice(0, allTitles.length);
+		// allTitles.push(
+		// 	...[
+		// 		{ bg: '#fdd300', color: '#000', text: '傲视群雄' },
+		// 		{ bg: '#fdd300', color: '#000', text: '火力全开' },
+		// 		{ bg: '#fdd300', color: '#000', text: '登峰造极' },
+		// 		{ bg: '#fdd300', color: '#000', text: '早起鸟' },
+		// 		{ bg: '#fdd300', color: '#000', text: '定时打卡' },
+		// 		{ bg: '#fdd300', color: '#000', text: '集中特训' },
+		// 		{ bg: '#fdd300', color: '#000', text: '夜猫子' },
+		// 		{ bg: '#fdd300', color: '#000', text: '新潮追随者' },
+		// 		{ bg: '#fdd300', color: '#000', text: 'TRUE PLAYER' },
+		// 		{ bg: '#fdd300', color: '#000', text: '好孩子不玩蛇' },
+		// 		{ bg: '#fdd300', color: '#000', text: '挂机狂魔' },
+		// 		{ bg: '#fdd300', color: '#000', text: '所向披靡' },
+		// 		{ bg: '#fdd300', color: '#000', text: 'Tee军团' },
+		// 		{ bg: '#fdd300', color: '#000', text: '猎鹰' },
+		// 		{ bg: '#fdd300', color: '#000', text: '制图达人' }
+		// 	]
+		// );
+
+		if (allTitles.length == 0) {
+			allTitles.push({ bg: '#8338ec', color: '#fff', text: '深藏功与名' });
+		}
+
+		shareableQRCode = await qrcode.toDataURL(window.location.href);
 
 		totalCards = {
 			cards,
@@ -925,10 +1077,29 @@
 		// make sure we clear the data after navigation, so we prompt the user to generate the page again
 
 		totalCards = null;
+		error = false;
 		cardReady = false;
 		startAnimation = true;
 		loadingProgress = -1;
 		currentCard = -1;
+
+		endingPhrase = Math.floor(Math.random() * ENDING_PHRASE.length);
+
+		if (data.name) {
+			share({
+				icon: `${window.location.origin}/shareicon.png`,
+				link: window.location.href,
+				title: 'DDNet 年度总结 - TeeworldsCN',
+				desc: `${data.name}的${data.year}年度总结`
+			});
+		} else {
+			share({
+				icon: `${window.location.origin}/shareicon.png`,
+				link: window.location.href,
+				title: 'DDNet 年度总结 - TeeworldsCN',
+				desc: '快来查看你的年度总结吧！'
+			});
+		}
 	});
 
 	let dragStart = 0;
@@ -991,6 +1162,7 @@
 			}
 		} else {
 			showContent = !showContent;
+			endingPhrase = Math.floor(Math.random() * ENDING_PHRASE.length);
 		}
 		draggingPointer = null;
 	};
@@ -1080,7 +1252,9 @@
 				</div>
 			</div>
 		{/if}
-		<div class="absolute h-full w-full overflow-hidden rounded-3xl shadow-2xl shadow-black">
+		<div
+			class="absolute h-full w-full overflow-hidden rounded-3xl bg-slate-500 shadow-2xl shadow-black"
+		>
 			<div
 				class="absolute h-full w-full bg-cover bg-center"
 				style="background-image: url({card.background})"
@@ -1088,6 +1262,25 @@
 				{@render format(id, card)}
 			</div>
 		</div>
+		{#if card.titles}
+			<div
+				class="absolute bottom-[-5%] left-[5%] right-[5%] flex flex-row flex-nowrap text-[0.6em]"
+			>
+				{#each card.titles as title, i}
+					<div
+						class="m-[1%] text-nowrap rounded-3xl border border-white/50 px-[4%] py-[1%] text-center font-semibold"
+						style="background-color: {title.bg};{title.color ? `color: ${title.color};` : ''}"
+						class:motion-delay-1000={i == 0}
+						class:motion-delay-1500={i == 1}
+						class:motion-delay-2000={i == 2}
+						class:motion-preset-shrink={showContent && id == currentCard}
+						class:opacity-0={!showContent || id != currentCard}
+					>
+						{title.text}
+					</div>
+				{/each}
+			</div>
+		{/if}
 	</div>
 {/snippet}
 
@@ -1106,6 +1299,46 @@
 			style="left: {card.l ?? 5}%; top: {card.t ?? 5}%; right: {card.r ?? 5}%; bottom: {card.b ??
 				5}%;"
 		>
+			{#if card.leftTeeSkin}
+				<div
+					class="absolute left-[-12.5%] h-[20%] w-[20%] motion-duration-500 motion-delay-700"
+					style="top: {card.leftTeeTop ?? 0}%"
+					class:motion-translate-x-in-[-50%]={showContent && id == currentCard}
+					class:motion-translate-x-out-[-50%]={!showContent && id != currentCard}
+					class:motion-rotate-in-[-12deg]={showContent && id == currentCard}
+					class:motion-rotate-out-[-12deg]={!showContent && id != currentCard}
+				>
+					<TeeRender
+						name={card.leftTeeSkin.n}
+						body={card.leftTeeSkin.b}
+						feet={card.leftTeeSkin.f}
+						className="h-full w-full"
+						useDefault
+						alwaysFetch
+						pose={leftTeePose}
+					/>
+				</div>
+			{/if}
+			{#if card.rightTeeSkin}
+				<div
+					class="absolute right-[-12.5%] h-[20%] w-[20%] motion-duration-500 motion-delay-700"
+					style="top: {card.rightTeeTop ?? 0}%"
+					class:motion-translate-x-in-[50%]={showContent && id == currentCard}
+					class:motion-translate-x-out-[50%]={!showContent && id != currentCard}
+					class:motion-rotate-in-[12deg]={showContent && id == currentCard}
+					class:motion-rotate-out-[12deg]={!showContent && id != currentCard}
+				>
+					<TeeRender
+						name={card.rightTeeSkin.n}
+						body={card.rightTeeSkin.b}
+						feet={card.rightTeeSkin.f}
+						className="h-full w-full"
+						useDefault
+						alwaysFetch
+						pose={rightTeePose}
+					/>
+				</div>
+			{/if}
 			{#if card.content}
 				{#each card.content as item}
 					{#if item.type == 't'}
@@ -1166,6 +1399,66 @@
 	</div>
 {/snippet}
 
+{#snippet shareFormat(id: number, card: CardData)}
+	<div class="flex h-full w-full items-center justify-center text-[0.6em]">
+		<div
+			class="absolute bottom-[2%] left-[2%] right-[2%] top-[2%] flex flex-col items-center justify-center gap-[3%]"
+		>
+			<div
+				class="absolute bottom-[35%] left-0 right-0 top-0 flex flex-grow items-center justify-center rounded-xl border-[0.25em] border-sky-200/60 bg-sky-100/90 pt-[7%]"
+			>
+				<div class="flex w-full flex-row flex-wrap items-center justify-center">
+					{#if totalCards?.titles}
+						{#each totalCards.titles as title}
+							<span
+								class="m-[1%] text-nowrap rounded-3xl border border-black/50 px-[4%] py-[1%] text-center font-semibold"
+								style="background-color: {title.bg};{title.color ? `color: ${title.color};` : ''}"
+							>
+								{title.text}
+							</span>
+						{/each}
+					{/if}
+				</div>
+			</div>
+			<div class="absolute top-[1%] font-semibold text-black">{data.name}的{data.year}年度称号</div>
+			<div
+				class="absolute left-[-9%] top-[70%] h-[20%] w-[20%] motion-duration-500 motion-delay-700"
+				class:motion-translate-x-in-[-70%]={id == currentCard}
+				class:motion-translate-x-out-[-70%]={id != currentCard}
+				class:motion-rotate-in-[-12deg]={id == currentCard}
+				class:motion-rotate-out-[-12deg]={id != currentCard}
+			>
+				<TeeRender
+					name={data.skin?.n}
+					body={data.skin?.b}
+					feet={data.skin?.f}
+					className="h-full w-full"
+					useDefault
+					alwaysFetch
+					pose={leftTeePose}
+				/>s
+			</div>
+			<div
+				class="absolute bottom-[9%] left-[7%] flex h-[25%] w-[65%] flex-row items-center justify-center motion-duration-500 motion-delay-1500"
+				class:motion-opacity-in-0={id == currentCard}
+			>
+				<div class="rounded-lg bg-red-700/80 px-[3%] py-[2%] text-center text-[0.9em] text-white">
+					{ENDING_PHRASE[endingPhrase]}
+				</div>
+			</div>
+			<div class="absolute bottom-[7.5%] right-[5%] flex h-[25%] w-[25%]">
+				<div
+					class="h-full w-full rounded-lg bg-white bg-cover bg-center"
+					style="background-image: url({shareableQRCode});"
+				></div>
+			</div>
+			<div class="absolute bottom-0 h-[5%] rounded bg-white/90 px-[3%] text-[0.85em] text-black">
+				截图分享，长按二维码识别，查看 DDNet 年度总结
+			</div>
+		</div>
+	</div>
+{/snippet}
+
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="fixed bottom-[2rem] left-0 right-0 top-[2.75rem] md:bottom-[3.5rem] md:top-[3.75rem]">
 	<div
@@ -1204,7 +1497,7 @@
 			</a>
 		</div>
 	</div>
-	{#if !totalCards || !cardReady}
+	{#if !totalCards || !cardReady || error}
 		<div
 			class="absolute z-50 flex h-full w-full items-center justify-center bg-slate-800 px-2"
 			out:fade
@@ -1222,15 +1515,34 @@
 					<div
 						class="absolute h-[150%] w-16 translate-x-[-400%] rotate-12 bg-slate-200/10 motion-translate-x-loop-[800%] motion-duration-[5000ms]"
 					></div>
-					<div class="rounded-3xl bg-slate-700/40 px-8 py-4 text-xl font-bold backdrop-blur-lg">
-						<div class="w-fit text-red-300 motion-scale-loop-[110%] motion-duration-2000">
-							新年快乐！
+					{#if error}
+						<div
+							class="motion-preset-shake rounded-3xl bg-red-700/40 px-8 py-4 text-xl font-bold text-white backdrop-blur-lg"
+						>
+							服务器出错，请稍后再试
 						</div>
-						欢迎来到{data.year}年度总结
-					</div>
+					{:else}
+						<div class="rounded-3xl bg-slate-700/40 px-8 py-4 text-xl font-bold backdrop-blur-lg">
+							<div class="w-fit text-red-300 motion-scale-loop-[110%] motion-duration-2000">
+								新年快乐！
+							</div>
+							欢迎来到{data.year}年度总结
+						</div>
+					{/if}
 				</div>
 				<div class="h-full max-h-[calc(100svh-20rem)] space-y-3 p-4">
-					{#if data.player}
+					{#if error}
+						<div class="flex h-[10rem] w-full flex-col items-center justify-center gap-4">
+							<div class="flex flex-col space-y-2">
+								<button
+									class="text-nowrap rounded bg-blue-500 px-4 py-2 text-white motion-translate-x-in-[-200%] motion-duration-1000 motion-delay-200 hover:bg-blue-600"
+									onclick={() => goto(`/ddnet/yearly`)}
+								>
+									重新输入名字
+								</button>
+							</div>
+						</div>
+					{:else if data.player}
 						{#if loadingProgress >= 0}
 							<div
 								class="flex h-[10rem] w-full flex-col items-center justify-center gap-4"
