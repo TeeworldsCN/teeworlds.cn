@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type Snippet } from 'svelte';
+	import { onDestroy, type Snippet } from 'svelte';
 
 	import { browser } from '$app/environment';
 	import TeeRender from '$lib/components/TeeRender.svelte';
@@ -280,6 +280,35 @@
 
 		const cards: CardData[] = [];
 		const allTitles: { bg: string; color: string; text: string }[] = [];
+
+		if (d.x) {
+			// REDACTED cards
+			cards.push({
+				content: [
+					{ type: 't', text: `截至 [REDACTED] 岁末，你总共拥有 [REDACTED]pts<br>傲视群雄` },
+					{
+						type: 't',
+						text: `你火力全开，<span class="font-semibold text-orange-400">斩获了</span>`
+					},
+					{ type: 'b', bg: '#fdd300', color: '#000', text: `[REDACTED]pts`, rotation: 4 },
+					{
+						type: 't',
+						text: `不畏浮云遮望眼，只缘身在最高层。你凭借精湛的操作与技巧，成为了实力的代言人`
+					}
+				],
+				background: '/assets/yearly/ssu.png',
+				leftTeeTop: 5,
+				leftTeeSkin: data.skin,
+				mapper: 'Sunny Side Up - 作者: Ravie',
+				format: redactedFormat
+			});
+
+			cards.push({
+				t: d.x,
+				format: redactedFormat2
+			});
+		}
+
 		if (d.tp && d.lp != null && d.tp - d.lp > 0) {
 			let firstWord;
 			let enderLevel = 1;
@@ -341,7 +370,7 @@
 				leftTeeSkin: data.skin,
 				mapper: 'Sunny Side Up - 作者: Ravie'
 			});
-		} else {
+		} else if (d.tp != null) {
 			const titles = [{ bg: '#b7b7a4', color: '#000', text: '隐士' }];
 			// 今年分数
 			allTitles.push(...titles);
@@ -1093,33 +1122,13 @@
 			});
 		}
 
-		// 新年快乐
-		cards.push({
-			format: shareFormat,
-			background: '/assets/yearly/end.png'
-		});
-
-		// Test Titles
-		// allTitles.splice(0, allTitles.length);
-		// allTitles.push(
-		// 	...[
-		// 		{ bg: '#fdd300', color: '#000', text: '傲视群雄' },
-		// 		{ bg: '#fdd300', color: '#000', text: '火力全开' },
-		// 		{ bg: '#fdd300', color: '#000', text: '登峰造极' },
-		// 		{ bg: '#fdd300', color: '#000', text: '早起鸟' },
-		// 		{ bg: '#fdd300', color: '#000', text: '定时打卡' },
-		// 		{ bg: '#fdd300', color: '#000', text: '集中特训' },
-		// 		{ bg: '#fdd300', color: '#000', text: '夜猫子' },
-		// 		{ bg: '#fdd300', color: '#000', text: '新潮追随者' },
-		// 		{ bg: '#fdd300', color: '#000', text: 'TRUE PLAYER' },
-		// 		{ bg: '#fdd300', color: '#000', text: '好孩子不玩蛇' },
-		// 		{ bg: '#fdd300', color: '#000', text: '挂机狂魔' },
-		// 		{ bg: '#fdd300', color: '#000', text: '所向披靡' },
-		// 		{ bg: '#fdd300', color: '#000', text: 'Tee军团' },
-		// 		{ bg: '#fdd300', color: '#000', text: '猎鹰' },
-		// 		{ bg: '#fdd300', color: '#000', text: '制图达人' }
-		// 	]
-		// );
+		// 分享
+		if (!d.x) {
+			cards.push({
+				format: shareFormat,
+				background: '/assets/yearly/end.png'
+			});
+		}
 
 		if (allTitles.length == 0) {
 			allTitles.push({ bg: '#8338ec', color: '#fff', text: '深藏功与名' });
@@ -1311,6 +1320,33 @@
 	});
 
 	let gotoName = $state('');
+
+	let redacted = $state(null) as HTMLSpanElement | null;
+	let redactedTimer = null as Timer | null;
+
+	$effect(() => {
+		if (redactedTimer) {
+			clearInterval(redactedTimer);
+			redactedTimer = null;
+		}
+
+		if (redacted) {
+			const el = redacted;
+			const updater = () => {
+				const time = parseInt(el.textContent || '0');
+				const delta = time - Math.round(Date.now() / 1000);
+				if (el.nextSibling) el.nextSibling.textContent = delta > 0 ? delta.toString() : 'SOON';
+			};
+			redactedTimer = setInterval(updater, 500);
+		}
+	});
+
+	onDestroy(() => {
+		if (redactedTimer) {
+			clearInterval(redactedTimer);
+			redactedTimer = null;
+		}
+	});
 </script>
 
 <svelte:window on:resize={onResize} />
@@ -1350,7 +1386,7 @@
 			</div>
 		{/if}
 		<div
-			class="absolute h-full w-full overflow-hidden rounded-3xl bg-slate-500 shadow-2xl shadow-black"
+			class="absolute h-full w-full overflow-hidden rounded-3xl bg-white shadow-2xl shadow-black"
 		>
 			<div
 				class="absolute h-full w-full bg-cover bg-center"
@@ -1493,6 +1529,43 @@
 				{/each}
 			{/if}
 		</div>
+	</div>
+{/snippet}
+
+{#snippet redactedFormat(id: number, card: CardData)}
+	<div class="relative h-full w-full">
+		{@render regularFormat(id, card)}
+		<div
+			class="absolute top-[47.5%] h-[5%] w-[150%] rotate-[-49deg] bg-contain bg-repeat-x"
+			style="background-image: url(/assets/yearly/chain.png)"
+		></div>
+		<div
+			class="absolute top-[47.5%] h-[5%] w-[150%] rotate-[49deg] bg-contain bg-repeat-x"
+			style="background-image: url(/assets/yearly/chain.png)"
+		></div>
+		<div
+			class="absolute top-[47.5%] h-[5%] w-[200%] translate-x-[-50%] rotate-[-32deg] bg-contain bg-repeat-x"
+			style="background-image: url(/assets/yearly/chain.png)"
+		></div>
+	</div>
+{/snippet}
+
+{#snippet redactedFormat2(id: number, card: CardData)}
+	<div class="relative h-full w-full">
+		<div
+			class="flex h-full w-full items-center justify-center text-[1.5em] font-bold text-orange-600"
+		>
+			<span class="hidden text-white" bind:this={redacted}>{card.t}</span>
+			<span></span>
+		</div>
+		<div
+			class="absolute top-[47.5%] h-[5%] w-[150%] rotate-[49deg] bg-contain bg-repeat-x"
+			style="background-image: url(/assets/yearly/chain.png)"
+		></div>
+		<div
+			class="absolute top-[47.5%] h-[5%] w-[150%] translate-x-[-25%] translate-y-[-200%] rotate-[-24deg] bg-contain bg-repeat-x"
+			style="background-image: url(/assets/yearly/chain.png)"
+		></div>
 	</div>
 {/snippet}
 

@@ -45,6 +45,8 @@ export type YearlyData = {
 	nrr: [string, number];
 	/** mapper special */
 	map: string[];
+	/** [REDACTED] */
+	x: number;
 };
 
 const fetchDDStats = async (sql: string) => {
