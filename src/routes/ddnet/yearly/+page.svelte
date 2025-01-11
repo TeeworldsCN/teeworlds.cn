@@ -1708,7 +1708,7 @@
 							<div class="w-fit text-red-300 motion-scale-loop-[110%] motion-duration-2000">
 								新年快乐！
 							</div>
-							欢迎来到{data.year}年度总结
+							DDNet {data.year} 年度总结
 						</div>
 					{/if}
 				</div>
