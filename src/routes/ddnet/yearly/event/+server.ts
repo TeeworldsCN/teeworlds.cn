@@ -49,10 +49,8 @@ export type YearlyData = {
 
 const fetchDDStats = async (sql: string) => {
 	sql = sql.replace(/\n/g, ' ');
-	console.log(sql);
-	// const result = await fetch(`https://db.ddstats.org/ddnet.json?sql=${encodeURIComponent(sql)}`);
-	const result = await fetch(`https://ddstats.teeworlds.cn/ddnet.json?sql=${encodeURIComponent(sql)}`);
-	
+	const result = await fetch(`https://db.ddstats.org/ddnet.json?sql=${encodeURIComponent(sql)}`);
+
 	if (!result.ok) {
 		throw new Error(`Failed to fetch data: ${result.status} ${result.statusText}`);
 	}
@@ -272,7 +270,6 @@ export const POST: RequestHandler = async ({ url }) => {
 
 				const updateProgress = () => {
 					if (stopped) return true;
-					console.log(currentStep, totalSteps);
 					currentStep++;
 					if (currentStep > totalSteps) currentStep = totalSteps;
 					emit('progress', `${Math.round((currentStep / totalSteps) * 100)}`);
@@ -399,9 +396,11 @@ export const POST: RequestHandler = async ({ url }) => {
 				if (stopped) return;
 				emit('data', JSON.stringify({ d }));
 				lock.set(false);
-			} catch {
+			} catch (e) {
 				if (stopped) return;
 				emit('error', 'Unknown error');
+				console.error(`Failed to generate yearly data for ${name} (${year})`);
+				console.error(e);
 			}
 		},
 		{

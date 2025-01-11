@@ -198,7 +198,7 @@ const solveWide = (target: Target): SPSA => {
 	return best;
 };
 
-export const rgbToFilter = (color: RGB, maxLossIter = 3) => {
+export const rgbToFilter = (color: RGB, maxLossIter = 1) => {
 	const target = { rgb: color, hsl: hsl(color) };
 	let result: SPSA = solveNarrow(target, solveWide(target));
 

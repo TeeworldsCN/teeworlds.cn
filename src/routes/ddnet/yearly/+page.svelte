@@ -299,25 +299,25 @@
 			const delta = d.tp - d.lp;
 			let verb;
 			if (delta >= 5000) {
-				verb = '您火力全开，<span class="font-semibold text-orange-400">斩获了</span>';
+				verb = '你火力全开，<span class="font-semibold text-orange-400">斩获了</span>';
 				enderLevel = Math.max(enderLevel, 3);
 				titles.push({ bg: '#dc2f02', color: '#fff', text: '火力全开' });
 			} else if (delta >= 1000) {
-				verb = '您不留余力，<span class="font-semibold text-orange-400">收获了</span>';
+				verb = '你不留余力，<span class="font-semibold text-orange-400">收获了</span>';
 				enderLevel = Math.max(enderLevel, 2);
 			} else {
-				verb = '您脚踏实地，<span class="font-semibold text-orange-400">得到了</span>';
+				verb = '你脚踏实地，<span class="font-semibold text-orange-400">得到了</span>';
 				enderLevel = Math.max(enderLevel, 1);
 			}
 
 			let enderText = '';
 			if (enderLevel == 3) {
-				enderText = '不畏浮云遮望眼，只缘身在最高层。您凭借精湛的操作与技巧，成为了实力的代言人';
+				enderText = '不畏浮云遮望眼，只缘身在最高层。你凭借精湛的操作与技巧，成为了实力的代言人';
 			} else if (enderLevel == 2) {
 				enderText =
-					'千淘万漉虽辛苦，吹尽狂沙始到金。您用行动证明了您的含金量，不畏艰险，亦不畏苦难';
+					'千淘万漉虽辛苦，吹尽狂沙始到金。你用行动证明了你的含金量，不畏艰险，亦不畏苦难';
 			} else {
-				enderText = '长风破浪会有时，直挂云帆济沧海。 相信接下来的您一定会更加出色';
+				enderText = '长风破浪会有时，直挂云帆济沧海。 相信接下来的你一定会更加出色';
 			}
 
 			// 今年分数
@@ -325,7 +325,7 @@
 			cards.push({
 				titles,
 				content: [
-					{ type: 't', text: `截至 ${d.y} 岁末，您总共拥有 ${d.tp}pts<br>${firstWord}` },
+					{ type: 't', text: `截至 ${d.y} 岁末，你总共拥有 ${d.tp}pts<br>${firstWord}` },
 					{
 						type: 't',
 						text: `${verb}`
@@ -336,10 +336,10 @@
 						text: `${enderText}`
 					}
 				],
-				background: '/assets/yearly/Back_in_Festivity.png',
+				background: '/assets/yearly/ssu.png',
 				leftTeeTop: 5,
 				leftTeeSkin: data.skin,
-				mapper: 'Test Mapper Text - Test Mapper Text Test Mapper Text Test Mapper Text'
+				mapper: 'Sunny Side Up - 作者: Ravie'
 			});
 		} else {
 			const titles = [{ bg: '#b7b7a4', color: '#000', text: '隐士' }];
@@ -350,19 +350,19 @@
 				content: [
 					{
 						type: 't',
-						text: `截至 ${data.year} 岁末，您的总分为 ${d.tp}pts`
+						text: `截至 ${data.year} 岁末，你的总分为 ${d.tp}pts`
 					},
 					{
 						type: 't',
-						text: `与往年相比，您尚未获得任何新pts`
+						text: `与往年相比，你尚未获得任何新pts`
 					},
 					{
 						type: 't',
-						text: '难不成您是某位功成身退的游戏高手？<br>又或是因为生活琐事，无法自由地驰骋于关卡之间？<br>不管怎样，无论是游戏里还是游戏外，瓶颈期就像黎明前的黑暗，熬过了就能迎来曙光'
+						text: '难不成你是某位功成身退的游戏高手？<br>又或是因为生活琐事，无法自由地驰骋于关卡之间？<br>不管怎样，无论是游戏里还是游戏外，瓶颈期就像黎明前的黑暗，熬过了就能迎来曙光'
 					},
 					{
 						type: 't',
-						text: '希望您知道，此时此刻绝非终点，而是另一个'
+						text: '希望你知道，此时此刻绝非终点，而是另一个'
 					},
 					{
 						type: 'b',
@@ -372,8 +372,8 @@
 						rotation: -4
 					}
 				],
-				background: '/assets/yearly/Back_in_Festivity.png',
-				mapper: 'Test Mapper Text'
+				background: '/assets/yearly/lf.png',
+				mapper: 'Lavender Forest - 作者: Pipou'
 			});
 		}
 		if (d.mpg) {
@@ -387,12 +387,12 @@
 					content: [
 						{
 							type: 't',
-							text: `在今年新通过的地图中<br>这张图足以成为您的<span class="font-semibold text-orange-400">生涯亮点</span>`
+							text: `在今年新通过的地图中<br>这张图足以成为你的<span class="font-semibold text-orange-400">生涯亮点</span>`
 						},
 						{ type: 'b', bg: '#fdd300', color: '#000', text: `${d.mpg[0]}`, rotation: -24, x: -50 },
 						{
 							type: 't',
-							text: `您因此拿下足足`,
+							text: `你因此拿下足足`,
 							t: -3,
 							b: -3,
 							rotation: -24
@@ -407,11 +407,11 @@
 						},
 						{
 							type: 't',
-							text: `这意味着您已成功攻克了疯狂难度的地图`
+							text: `这意味着你已成功攻克了疯狂难度的地图`
 						},
 						{
 							type: 't',
-							text: `期望您不会止步不前<br>而是将步伐迈向更极限的远方`
+							text: `期望你不会止步不前<br>而是将步伐迈向更极限的远方`
 						}
 					],
 					background: bgMap(d.mpg[0]),
@@ -425,12 +425,12 @@
 					content: [
 						{
 							type: 't',
-							text: `在今年新通过的地图中<br>这张图成为了您的<span class="font-semibold text-orange-400">高光时刻</span>`
+							text: `在今年新通过的地图中<br>这张图成为了你的<span class="font-semibold text-orange-400">高光时刻</span>`
 						},
 						{ type: 'b', bg: '#fdd300', color: '#000', text: `${d.mpg[0]}`, rotation: -24, x: -50 },
 						{
 							type: 't',
-							text: `您因通过这张地图获得了`,
+							text: `你因通过这张地图获得了`,
 							t: -3,
 							b: -3,
 							rotation: -24
@@ -445,7 +445,7 @@
 						},
 						{
 							type: 't',
-							text: `期待您今后继续披荆斩棘`
+							text: `期待你今后继续披荆斩棘`
 						},
 						{
 							type: 't',
@@ -459,88 +459,109 @@
 		}
 		if (d.tr && d.mhr && d.mhr[1] > 0) {
 			// 常玩时间
-			if (d.mhr[1] > 1) {
-				const titles = [];
-				if (d.mhr[0] == '清晨') {
-					titles.push({ bg: '#2a9d8f', color: '#000', text: '早起鸟' });
-				}
 
-				if ((d.tr || 0) >= 10 && d.mhr[1] / d.tr >= 0.5) {
-					titles.push({ bg: '#e5989b', color: '#000', text: '定时打卡' });
-				}
-
-				allTitles.push(...titles);
-				cards.push({
-					titles,
-					content: [
-						{
-							type: 't',
-							text: `今年您活力满满，战果颇丰<br>总共顺利<span class="font-semibold text-orange-400">冲过了终点</span>`
-						},
-						{
-							type: 'b',
-							text: `${d.tr} 次`,
-							bg: '#fdd300',
-							color: '#000',
-							rotation: -4
-						},
-						{
-							type: 't',
-							text: `在这其中<br>有 <span class="text-orange-400">${d.mhr[1]} 次</span>冲线，都是在`,
-							x: -30
-						},
-						{
-							type: 'b',
-							text: `${d.mhr[0]}`,
-							bg: '#fdd300',
-							color: '#000',
-							rotation: 4,
-							x: 125,
-							t: -18,
-							b: 3
-						},
-						{
-							type: 't',
-							text: '这个时间段对您来说有更加特殊的意义吗？'
-						},
-						{
-							type: 't',
-							text: '无论如何，希望您今后继续以饱满的热情，在更多地图中创造更多的奇迹'
-						}
-					],
-					background: '/assets/yearly/Back_in_Festivity.png',
-					mapper: 'Test Mapper Text'
-				});
-			} else {
-				cards.push({
-					content: [
-						{
-							type: 't',
-							text: `今年您活力满满，战果颇丰，总共顺利<span class="font-semibold text-orange-400">冲过了终点</span>`
-						},
-						{
-							type: 'b',
-							text: `${d.tr} 次`,
-							bg: '#fdd300',
-							color: '#000',
-							rotation: -4
-						},
-						{
-							type: 't',
-							text: '希望您今后继续以饱满的热情，在更多地图中创造更多的奇迹'
-						}
-					],
-					background: '/assets/yearly/Back_in_Festivity.png',
-					mapper: 'Test Mapper Text'
-				});
+			const titles = [];
+			if (d.mhr[0] == '清晨') {
+				titles.push({ bg: '#2a9d8f', color: '#000', text: '早起鸟' });
 			}
+
+			if ((d.tr || 0) >= 10 && d.mhr[1] / d.tr >= 0.5) {
+				titles.push({ bg: '#e5989b', color: '#000', text: '定时打卡' });
+			}
+
+			let bg;
+			switch (d.mhr[0]) {
+				case '清晨':
+				case '上午':
+					bg = {
+						background: '/assets/yearly/s.png',
+						mapper: 'Spoon - 作者: Ravie'
+					};
+					break;
+				case '下午':
+				case '傍晚':
+					bg = {
+						background: '/assets/yearly/w.png',
+						mapper: 'willow - 作者: louis'
+					};
+					break;
+				default:
+					bg = {
+						background: '/assets/yearly/sp.png',
+						mapper: 'Starlit Peaks - 作者: ♂S1mple♂'
+					};
+			}
+
+			allTitles.push(...titles);
+			cards.push({
+				titles,
+				content: [
+					{
+						type: 't',
+						text: `今年你活力满满，战果颇丰<br>总共顺利<span class="font-semibold text-orange-400">冲过了终点</span>`
+					},
+					{
+						type: 'b',
+						text: `${d.tr} 次`,
+						bg: '#fdd300',
+						color: '#000',
+						rotation: -4
+					},
+					{
+						type: 't',
+						text: `在这其中<br>有 <span class="text-orange-400">${d.mhr[1]} 次</span>冲线，都是在`,
+						x: -30
+					},
+					{
+						type: 'b',
+						text: `${d.mhr[0]}`,
+						bg: '#fdd300',
+						color: '#000',
+						rotation: 4,
+						x: 125,
+						t: -18,
+						b: 3
+					},
+					{
+						type: 't',
+						text: '这个时间段对你来说有更加特殊的意义吗？'
+					},
+					{
+						type: 't',
+						text: '无论如何，希望你今后继续以饱满的热情，在更多地图中创造更多的奇迹'
+					}
+				],
+				...bg
+			});
 		}
 		if (d.mmr && d.mmr[3] > 0) {
 			let word;
-			if (d.mmr[0] == 1) word = '傲雪凌霜';
-			else if (d.mmr[0] == 4) word = '满面春风';
-			else if (d.mmr[0] == 7) word = '骄阳似火';
-			else if (d.mmr[0] == 10) word = '硕果累累';
+			let bg;
+			if (d.mmr[0] == 1) {
+				word = '傲雪凌霜';
+				bg = {
+					background: '/assets/yearly/bif.png',
+					mapper: 'Back in Festivity - 作者: Silex & Pipou'
+				};
+			} else if (d.mmr[0] == 4) {
+				word = '满面春风';
+				bg = {
+					background: '/assets/yearly/p2.png',
+					mapper: 'powerless2 - 作者: spiritdote'
+				};
+			} else if (d.mmr[0] == 7) {
+				word = '骄阳似火';
+				bg = {
+					background: '/assets/yearly/h2.png',
+					mapper: 'Holidays 2 - 作者: Destoros'
+				};
+			} else if (d.mmr[0] == 10) {
+				word = '硕果累累';
+				bg = {
+					background: '/assets/yearly/lt.png',
+					mapper: 'Lonely Travel - 作者: QuiX'
+				};
+			}
 
 			const titles = [];
 			if (d.tr && d.tr >= 10 && d.mmr[3] / d.tr >= 0.5) {
@@ -555,7 +576,7 @@
 				content: [
 					{
 						type: 't',
-						text: `您与季节似乎有着一种奇怪的默契<br>您<span class="font-semibold text-orange-400">最常出没的季节是</span>`
+						text: `你与季节似乎有着一种奇怪的默契<br>你<span class="font-semibold text-orange-400">最常出没的季节是</span>`
 					},
 					{ type: 'b', bg: '#fdd300', color: '#000', text: `${d.mmr[2]}`, rotation: 5 },
 					{
@@ -564,11 +585,10 @@
 					},
 					{
 						type: 't',
-						text: `不知您是否能怀念当时${word}的自己？`
+						text: `不知你是否能怀念当时${word}的自己？`
 					}
 				],
-				background: '/assets/yearly/Back_in_Festivity.png',
-				mapper: 'Test Mapper Text'
+				...bg
 			});
 		}
 		if (d.lnf) {
@@ -585,7 +605,7 @@
 					},
 					{
 						type: 't',
-						text: `您耗时${secondsToChineseTime(d.lnf[1], true, true)}完成了 <span class="font-semibold text-orange-400">${d.lnf[0]}</span><br>在您过终点时已是`
+						text: `你耗时${secondsToChineseTime(d.lnf[1], true, true)}完成了 <span class="font-semibold text-orange-400">${d.lnf[0]}</span><br>在你过终点时已是`
 					},
 					{
 						type: 'b',
@@ -596,11 +616,11 @@
 					},
 					{
 						type: 't',
-						text: '周围万籁俱寂，而您却热血沸腾。您凭借着自己的专注与毅力，攻克了那最后一道难关'
+						text: '周围万籁俱寂，而你却热血沸腾。你凭借着自己的专注与毅力，攻克了那最后一道难关'
 					},
 					{
 						type: 't',
-						text: '您还能回忆起当时拼搏的自己吗'
+						text: '你还能回忆起当时拼搏的自己吗'
 					}
 				],
 				background: bgMap(d.lnf[0]),
@@ -623,7 +643,7 @@
 				content: [
 					{
 						type: 't',
-						text: `在今年新发布的 <span class="text-orange-400">${d.ymf[0]} 张</span>充满挑战的地图中<br>您成功完成了 <span class="font-semibold text-orange-400">${d.ymf[1]} 张</span><br>如此算下来，您一共完成今年新图的`
+						text: `在今年新发布的 <span class="text-orange-400">${d.ymf[0]} 张</span>充满挑战的地图中<br>你成功完成了 <span class="font-semibold text-orange-400">${d.ymf[1]} 张</span><br>如此算下来，你一共完成今年新图的`
 					},
 					{
 						type: 'b',
@@ -634,11 +654,11 @@
 					},
 					{
 						type: 't',
-						text: `在这些地图中，您尤其钟爱 <span class="text-orange-400 font-semibold">${mapType(d.ymfs[0])}</span> 类型的地图<br>总共完成了<span class="text-orange-400">${d.ymfs[2]}/${d.ymfs[1]} 张</span>`
+						text: `在这些地图中，你尤其钟爱 <span class="text-orange-400 font-semibold">${mapType(d.ymfs[0])}</span> 类型的地图<br>总共完成了<span class="text-orange-400">${d.ymfs[2]}/${d.ymfs[1]} 张</span>`
 					}
 				],
-				background: '/assets/yearly/Back_in_Festivity.png',
-				mapper: 'Test Mapper Text'
+				background: '/assets/yearly/p9.png',
+				mapper: 'Planet 9 - 作者: Silex'
 			});
 		}
 		if (d.nrr && d.nrr[1] < 24 * 60 * 60) {
@@ -664,11 +684,11 @@
 					},
 					{
 						type: 't',
-						text: `您就完成了地图，创下了记录<br>${d.nrr[1] >= 12 * 60 * 60 ? '成为了举世无双的存在' : '成为了万众瞩目的焦点'}`
+						text: `你就完成了地图，创下了记录<br>${d.nrr[1] >= 12 * 60 * 60 ? '成为了举世无双的存在' : '成为了万众瞩目的焦点'}`
 					},
 					{
 						type: 't',
-						text: `${d.nrr[1] >= 12 * 60 * 60 ? '雄鹰的眼眸都无法捕捉到您冲向终点的身影' : '猎豹的直觉都无法感知到您冲向终点的意向'}`
+						text: `${d.nrr[1] >= 12 * 60 * 60 ? '雄鹰的眼眸都无法捕捉到你冲向终点的身影' : '猎豹的直觉都无法感知到你冲向终点的意向'}`
 					}
 				],
 				background: bgMap(d.nrr[0]),
@@ -678,31 +698,72 @@
 		if (d.mps && d.mps[1] > 0) {
 			const titles = [];
 			const type = d.mps[0].toLowerCase();
+			let bg;
 
 			if (d.mps[1] >= 20) {
 				if (type == 'novice') {
 					titles.push({ bg: '#10002b', color: '#fff', text: '锤锤打打' });
+					bg = {
+						background: '/assets/yearly/t.png',
+						mapper: 'Teeasy - 作者: Tridemy & Cøke'
+					};
 				} else if (type == 'moderate') {
 					titles.push({ bg: '#240046', color: '#fff', text: '循序渐进' });
+					bg = {
+						background: '/assets/yearly/cs.png',
+						mapper: 'Cyber Space - 作者: Kaniosek'
+					};
 				} else if (type == 'brutal') {
 					titles.push({ bg: '#3c096c', color: '#fff', text: '专业玩家' });
+					bg = {
+						background: '/assets/yearly/gt.png',
+						mapper: 'GalacTees - 作者: Kaniosek'
+					};
 				} else if (type == 'insane') {
 					titles.push({ bg: '#5a189a', color: '#fff', text: 'P.R.O' });
+					bg = {
+						background: '/assets/yearly/c.png',
+						mapper: 'Catharsis - 作者: Doshik'
+					};
 				} else if (type == 'dummy') {
 					titles.push({ bg: '#6f1d1b', color: '#fff', text: '左脚踩右脚' });
+					bg = {
+						background: '/assets/yearly/q.png',
+						mapper: 'quon - 作者: yo bitch'
+					};
 				} else if (type == 'solo') {
 					titles.push({ bg: '#bb9457', color: '#000', text: '唯我独尊' });
+					bg = {
+						background: '/assets/yearly/a.png',
+						mapper: 'Amethyst - 作者: ♂S1mple♂'
+					};
 				} else if (type.startsWith('ddmax')) {
 					titles.push({ bg: '#432818', color: '#fff', text: '经典永传' });
+					bg = {
+						background: '/assets/yearly/nj.png',
+						mapper: 'Night Jungle - 作者: JeanneDark & Knight :3'
+					};
 				} else if (type == 'oldschool') {
 					titles.push({ bg: '#99582a', color: '#000', text: '传统至上' });
+					bg = {
+						background: '/assets/yearly/sr.png',
+						mapper: 'Sunrise - 作者: geroy231 & Father'
+					};
 				} else if (type == 'race') {
 					titles.push({ bg: '#ffe6a7', color: '#000', text: '奥运健将' });
+					bg = {
+						background: '/assets/yearly/g.png',
+						mapper: 'Grenadium - 作者: texnonik'
+					};
 				}
 			}
 
 			if (d.mps[1] >= 10 && type == 'fun') {
 				titles.push({ bg: '#ffbf69', color: '#000', text: 'TRUE PLAYER' });
+				bg = {
+					background: '/assets/yearly/qd.png',
+					mapper: 'Quickdraw - 作者: FJP'
+				};
 			}
 
 			allTitles.push(...titles);
@@ -712,7 +773,7 @@
 					content: [
 						{
 							type: 't',
-							text: `您今年最常体验的地图类型是`
+							text: `你今年最常体验的地图类型是`
 						},
 						{
 							type: 'b',
@@ -723,11 +784,10 @@
 						},
 						{
 							type: 't',
-							text: `您似乎发掘了 DDNet 的真正玩法。`
+							text: `你似乎发掘了 DDNet 的真正玩法`
 						}
 					],
-					background: '/assets/yearly/Back_in_Festivity.png',
-					mapper: 'Test Mapper Text'
+					...bg
 				});
 			} else {
 				cards.push({
@@ -735,7 +795,7 @@
 					content: [
 						{
 							type: 't',
-							text: `您今年最常体验的地图类型是`
+							text: `你今年最常体验的地图类型是`
 						},
 						{
 							type: 'b',
@@ -746,11 +806,10 @@
 						},
 						{
 							type: 't',
-							text: `您今年在${mapType(d.mps[0])}图中过了 <span class="font-semibold text-orange-400">${d.mps[1]} 次</span>终点`
+							text: `你在${mapType(d.mps[0])}图中过了 <span class="font-semibold text-orange-400">${d.mps[1]} 次</span>终点`
 						}
 					],
-					background: '/assets/yearly/Back_in_Festivity.png',
-					mapper: 'Test Mapper Text'
+					...bg
 				});
 			}
 		}
@@ -779,7 +838,7 @@
 				content: [
 					{
 						type: 't',
-						text: `您今年过关次数最多的地图是`
+						text: `你今年过关次数最多的地图是`
 					},
 					{
 						type: 'b',
@@ -790,7 +849,7 @@
 					},
 					{
 						type: 't',
-						text: `今年，您在这张地图里共计冲线了 <span class="font-semibold text-orange-400">${d.mfm[1]} 次</span><br>这张地图对您来说一定有着特别的意义`
+						text: `你在这张地图里共计冲线了 <span class="font-semibold text-orange-400">${d.mfm[1]} 次</span><br>这张地图对你来说一定有着特别的意义`
 					}
 				],
 				background: bgMap(d.mfm[0]),
@@ -812,7 +871,7 @@
 				content: [
 					{
 						type: 't',
-						text: `今年<span class="text-orange-400 font-semibold">${dateTime.getMonth() + 1}月${dateTime.getDate()}日</span>，您用时`
+						text: `今年<span class="text-orange-400 font-semibold">${dateTime.getMonth() + 1}月${dateTime.getDate()}日</span>，你用时`
 					},
 					{
 						type: 'b',
@@ -827,7 +886,7 @@
 					},
 					{
 						type: 't',
-						text: '这是您今年达成的<span class="font-semibold text-orange-400">最慢的通关记录</span><br>您坚韧不拔的优秀品质支撑您通过了终点'
+						text: '这是你今年达成的<span class="font-semibold text-orange-400">最慢的通关记录</span><br>你坚韧不拔的优秀品质支撑你通过了终点'
 					},
 					{
 						type: 't',
@@ -837,7 +896,7 @@
 					},
 					{
 						type: 't',
-						text: '这仅仅是您某种奇特的兴趣爱好？'
+						text: '这仅仅是你某种奇特的兴趣爱好？'
 					}
 				],
 				background: bgMap(d.lf[0]),
@@ -881,11 +940,11 @@
 						{ type: 'b', bg: '#fdd300', color: '#000', text: `${d.mpt[0][0]}`, rotation: -4 },
 						{
 							type: 't',
-							text: `是您的最佳拍档<br>你们一起总共获得了 <span class="font-semibold text-orange-400">${d.mpt[0][1]} 次</span>团队记录<br>合作的璀璨成果在你们心间熠熠生辉`
+							text: `是你的最佳拍档<br>你们一起总共获得了 <span class="font-semibold text-orange-400">${d.mpt[0][1]} 次</span>团队记录<br>合作的璀璨成果在你们心间熠熠生辉`
 						},
 						{
 							type: 't',
-							text: `另外，您还与`
+							text: `另外，你还与`
 						},
 						{
 							type: 'b',
@@ -900,17 +959,25 @@
 						},
 						{
 							type: 't',
-							text: `珍惜来之不易的友谊<br>期待今后您能够继续谱写出合作的新篇章`
+							text: `珍惜来之不易的友谊<br>期待今后你能够继续谱写出合作的新篇章`
 						}
 					],
-					background: '/assets/yearly/Back_in_Festivity.png',
 					leftTeeSkin,
 					leftTeeTop: 8,
 					rightTeeSkin,
 					rightTeeTop: 55,
-					mapper: 'Test Mapper Text'
+					background: '/assets/yearly/wx.png',
+					mapper: 'weixun - 作者: pinfandsj'
 				});
 			} else {
+				let rightTeeSkin = null;
+				try {
+					rightTeeSkin = await (
+						await fetch(
+							`/ddnet/playerskin?name=${encodeURIComponent(d.mpt[0][0])}&region=${encodeURIComponent('as:cn')}&fallback=true`
+						)
+					).json();
+				} catch {}
 				cards.push({
 					titles,
 					content: [
@@ -921,15 +988,17 @@
 						{ type: 'b', bg: '#fdd300', color: '#000', text: `${d.mpt[0][0]}`, rotation: -4 },
 						{
 							type: 't',
-							text: `是您的最佳拍档<br>你们一起总共获得了 <span class="font-semibold text-orange-400">${d.mpt[0][1]} 次</span>团队记录<br>合作的璀璨成果在你们心间熠熠生辉`
+							text: `是你的最佳拍档<br>你们一起总共获得了 <span class="font-semibold text-orange-400">${d.mpt[0][1]} 次</span>团队记录<br>合作的璀璨成果在你们心间熠熠生辉`
 						},
 						{
 							type: 't',
-							text: `珍惜来之不易的友谊<br>期待今后您能够继续谱写出合作的新篇章`
+							text: `珍惜来之不易的友谊<br>期待今后你能够继续谱写出合作的新篇章`
 						}
 					],
-					background: '/assets/yearly/Back_in_Festivity.png',
-					mapper: 'Test Mapper Text'
+					background: '/assets/yearly/wx.png',
+					mapper: 'weixun - 作者: pinfandsj',
+					rightTeeSkin,
+					rightTeeTop: 20
 				});
 			}
 		}
@@ -945,7 +1014,7 @@
 				content: [
 					{
 						type: 't',
-						text: `众人拾柴火焰高<br>您和另外 ${d.bt[0] - 1} 名玩家组成了`
+						text: `众人拾柴火焰高<br>你和另外 ${d.bt[0] - 1} 名玩家组成了`
 					},
 					{
 						type: 'b',
@@ -964,7 +1033,7 @@
 					},
 					{
 						type: 't',
-						text: `相信回味这段经历时<br>您会再次体验到团队的成就感`
+						text: `相信回味这段经历时<br>你会再次体验到团队的成就感`
 					}
 				],
 				background: bgMap(d.bt[1]),
@@ -980,7 +1049,7 @@
 				content: [
 					{
 						type: 't',
-						text: `今年您一共参与发布了地图`
+						text: `今年你一共参与发布了地图`
 					},
 					{
 						type: 'b',
@@ -995,7 +1064,7 @@
 					},
 					{
 						type: 't',
-						text: `诚挚地感谢您对 DDNet 社区做出的贡献`
+						text: `诚挚地感谢你对 DDNet 社区做出的贡献`
 					}
 				],
 				background: bgMap(d.map[0]),
@@ -1056,7 +1125,11 @@
 			allTitles.push({ bg: '#8338ec', color: '#fff', text: '深藏功与名' });
 		}
 
-		shareableQRCode = await qrcode.toDataURL(window.location.href);
+		const url = new URL(window.location.href);
+		url.searchParams.set('name', data.name);
+		url.searchParams.set('year', data.year.toString());
+
+		shareableQRCode = await qrcode.toDataURL(url.toString());
 
 		totalCards = {
 			cards,
@@ -1082,6 +1155,11 @@
 		startAnimation = true;
 		loadingProgress = -1;
 		currentCard = -1;
+
+		if (observer) {
+			observer.disconnect();
+			observer = null;
+		}
 
 		endingPhrase = Math.floor(Math.random() * ENDING_PHRASE.length);
 
@@ -1201,6 +1279,8 @@
 		}, 200);
 	};
 
+	let observer: IntersectionObserver | null = null;
+
 	$effect(() => {
 		totalCards;
 		// after review data is loaded and rendered. scroll to the bottom
@@ -1210,6 +1290,23 @@
 				top: scrollRoot.scrollHeight,
 				behavior: 'instant'
 			});
+		}
+
+		if (!observer) {
+			observer = new IntersectionObserver((entries) => {
+				for (const entry of entries) {
+					if (entry.isIntersecting) {
+						(entry.target as HTMLDivElement).style.visibility = 'visible';
+					} else {
+						(entry.target as HTMLDivElement).style.visibility = 'hidden';
+					}
+				}
+			});
+		}
+
+		const cards = document.querySelectorAll('.card');
+		for (const card of cards) {
+			observer.observe(card);
 		}
 	});
 
@@ -1510,7 +1607,7 @@
 			>
 				<div
 					class="relative flex h-32 items-center justify-center overflow-hidden rounded-t-lg bg-cover bg-center"
-					style="background-image: url(/assets/yearly/Back_in_Festivity.png)"
+					style="background-image: url(/assets/yearly/bif.png)"
 				>
 					<div
 						class="absolute h-[150%] w-16 translate-x-[-400%] rotate-12 bg-slate-200/10 motion-translate-x-loop-[800%] motion-duration-[5000ms]"
