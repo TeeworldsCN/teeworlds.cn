@@ -29,9 +29,11 @@ export const skins = new FetchCache<SkinInfo>(
 			result.skins.map(async (skin) => {
 				skin.url = (
 					skin.type == 'normal'
-						? await convert(`https://ddnet.org/skins/skin/${skin.name}.${skin.imgtype}`)
+						? await convert(
+								`https://ddnet.org/skins/skin/${encodeURIComponent(skin.name)}.${skin.imgtype}`
+							)
 						: await convert(
-								`https://ddnet.org/skins/skin/${skin.type}/${skin.name}.${skin.imgtype}`
+								`https://ddnet.org/skins/skin/${encodeURIComponent(skin.type)}/${encodeURIComponent(skin.name)}.${skin.imgtype}`
 							)
 				).toString();
 				map[skin.name] = skin.url;
