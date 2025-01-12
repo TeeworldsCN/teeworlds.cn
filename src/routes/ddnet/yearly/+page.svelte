@@ -674,7 +674,12 @@
 		if (d.lnf) {
 			// 夜猫子
 			const dateTime = new Date(d.lnf[2]);
-			const titles = [{ bg: '#14213d', color: '#fff', text: '夜猫子' }];
+			const titles = [];
+
+			if (dateTime.getHours() >= 2 || d.lnf[1] >= 2 * 60 * 60) {
+				titles.push({ bg: '#14213d', color: '#fff', text: '夜猫子' });
+			}
+
 			allTitles.push(...titles);
 			cards.push({
 				titles,
