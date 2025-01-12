@@ -374,39 +374,73 @@
 				mapper: 'Sunny Side Up - 作者: Ravie'
 			});
 		} else if (d.tp != null) {
-			const titles = [{ bg: '#b7b7a4', color: '#000', text: '隐士' }];
 			// 今年分数
-			allTitles.push(...titles);
-			cards.push({
-				titles,
-				content: [
-					{
-						type: 't',
-						text: `截至 ${data.year} 岁末，你的总分为 ${d.tp}pts`
-					},
-					{
-						type: 't',
-						text: `与往年相比，你尚未获得任何新pts`
-					},
-					{
-						type: 't',
-						text: '难不成你是某位功成身退的游戏高手？<br>又或是因为生活琐事，无法自由地驰骋于关卡之间？<br>不管怎样，无论是游戏里还是游戏外，瓶颈期就像黎明前的黑暗，熬过了就能迎来曙光'
-					},
-					{
-						type: 't',
-						text: '希望你知道，此时此刻绝非终点，而是另一个'
-					},
-					{
-						type: 'b',
-						bg: '#fdd300',
-						color: '#000',
-						text: `全新的起点`,
-						rotation: -4
-					}
-				],
-				background: '/assets/yearly/lf.png',
-				mapper: 'Lavender Forest - 作者: Pipou'
-			});
+			if (d.tp == 0) {
+				const titles = [{ bg: '#caffbf', color: '#000', text: '起跑者' }];
+				allTitles.push(...titles);
+
+				cards.push({
+					titles,
+					content: [
+						{
+							type: 't',
+							text: `截至 ${data.year} 岁末，还没有获得任何pts`
+						},
+						{
+							type: 't',
+							text: `但是我们的记录显示你已经开始了您的旅程`
+						},
+						{
+							type: 't',
+							text: '欢迎你的到来！希望你会喜欢这个'
+						},
+						{
+							type: 'b',
+							bg: '#fdd300',
+							color: '#000',
+							text: `全新的起点`,
+							rotation: -4
+						}
+					],
+					background: '/assets/yearly/lf.png',
+					mapper: 'Lavender Forest - 作者: Pipou'
+				});
+			} else {
+				const titles = [{ bg: '#b7b7a4', color: '#000', text: '隐士' }];
+				allTitles.push(...titles);
+
+				allTitles.push(...titles);
+				cards.push({
+					titles,
+					content: [
+						{
+							type: 't',
+							text: `截至 ${data.year} 岁末，你的总分为 ${d.tp}pts`
+						},
+						{
+							type: 't',
+							text: `与往年相比，你尚未获得任何新pts`
+						},
+						{
+							type: 't',
+							text: '难不成你是某位功成身退的游戏高手？<br>又或是因为生活琐事，无法自由地驰骋于关卡之间？<br>不管怎样，无论是游戏里还是游戏外，瓶颈期就像黎明前的黑暗，熬过了就能迎来曙光'
+						},
+						{
+							type: 't',
+							text: '希望你知道，此时此刻绝非终点，而是另一个'
+						},
+						{
+							type: 'b',
+							bg: '#fdd300',
+							color: '#000',
+							text: `全新的起点`,
+							rotation: -4
+						}
+					],
+					background: '/assets/yearly/lf.png',
+					mapper: 'Lavender Forest - 作者: Pipou'
+				});
+			}
 		}
 		if (d.mpg) {
 			// 分数成就
@@ -1720,7 +1754,9 @@
 				out:fade
 				in:fade
 			>
-				<div class="text-[0.7em] motion-preset-oscillate">↓{isMobile() ? '滑动' : '滚动'}以继续↓</div>
+				<div class="motion-preset-oscillate text-[0.7em]">
+					↓{isMobile() ? '滑动' : '滚动'}以继续↓
+				</div>
 			</div>
 		{/if}
 	</div>

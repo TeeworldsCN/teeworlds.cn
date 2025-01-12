@@ -129,7 +129,10 @@ const findServerFinishCount = async (tz: string, name: string, start: Date, end:
         (SELECT Server, Map FROM maps
             WHERE datetime(Timestamp, '${tz}') <= ${sqlstring.escape(end)} AND datetime(Timestamp, '${tz}') > ${sqlstring.escape(start)}
         ) m LEFT JOIN 
-        (SELECT Map FROM race WHERE Name = ${sqlstring.escape(name)} GROUP BY Map) r
+        (SELECT Map FROM race WHERE
+			Name = ${sqlstring.escape(name)}
+			AND datetime(Timestamp, '${tz}') <= ${sqlstring.escape(end)} AND datetime(Timestamp, '${tz}') > ${sqlstring.escape(start)}
+		 GROUP BY Map) r
     ON m.Map = r.Map GROUP BY Server;`;
 	const result = await fetchDDStats(sql);
 	return result.rows as [string, number, number][];
@@ -267,7 +270,7 @@ export const POST: RequestHandler = async ({ url }) => {
 				d.n = name;
 				d.y = year;
 
-				const totalSteps = 14;
+				const totalSteps = 13;
 				let currentStep = 0;
 
 				const updateProgress = () => {
