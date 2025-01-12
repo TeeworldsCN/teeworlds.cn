@@ -1338,6 +1338,12 @@
 		draggingPointer = null;
 	};
 
+	const onPointerCancel = (ev: PointerEvent) => {
+		if (ev.pointerId != draggingPointer) return;
+
+		draggingPointer = null;
+	};
+
 	let wheelDebounceTimer: Timer | null = null;
 	let overscrollAnimationTimer: Timer | null = null;
 
@@ -1745,6 +1751,7 @@
 		onpointerdown={onPointerDown}
 		onpointermove={onPointerMove}
 		onpointerup={onPointerUp}
+		onpointercancel={onPointerCancel}
 		onwheel={onWheel}
 	>
 		<div
