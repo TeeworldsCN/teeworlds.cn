@@ -956,7 +956,7 @@
 			const isBonusMap = mapHasBonus(d.lf[0]);
 			const dateTime = new Date(d.lf[2]);
 			const titles = [];
-			
+
 			if (isBonusMap) {
 				titles.push({ bg: '#f28482', color: '#000', text: '时间魔术师' });
 			} else if (d.lf[1] >= 12 * 60 * 60) {
@@ -967,44 +967,42 @@
 
 			allTitles.push(...titles);
 
-			if (isBonusMap) {
-				cards.push({
-					titles,
-					content: [
-						{
-							type: 't',
-							text: `今年<span class="text-orange-400 font-semibold">${dateTime.getMonth() + 1}月${dateTime.getDate()}日</span>，你用时`
-						},
-						{
-							type: 'b',
-							bg: '#fdd300',
-							color: '#000',
-							text: `${secondsToChineseTime(d.lf[1], true, true)}`,
-							rotation: -4
-						},
-						{
-							type: 't',
-							text: `完成了 <span class="font-semibold text-orange-400">${escapeHTML(d.lf[0])}</span>`
-						},
-						{
-							type: 't',
-							text: '这是你今年达成的<span class="font-semibold text-orange-400">最慢的通关记录</span><br>你坚韧不拔的优秀品质支撑你通过了终点'
-						},
-						{
-							type: 't',
-							text: '又或者说',
-							t: -2,
-							b: -2
-						},
-						{
-							type: 't',
-							text: isBonusMap ? '是某种神秘的时间魔法在作祟？' : '这仅仅是你某种奇特的兴趣爱好？'
-						}
-					],
-					background: bgMap(d.lf[0]),
-					mapper: `${d.lf[0]} - 作者: ${getMapper(d.lf[0])}`
-				});
-			}
+			cards.push({
+				titles,
+				content: [
+					{
+						type: 't',
+						text: `今年<span class="text-orange-400 font-semibold">${dateTime.getMonth() + 1}月${dateTime.getDate()}日</span>，你用时`
+					},
+					{
+						type: 'b',
+						bg: '#fdd300',
+						color: '#000',
+						text: `${secondsToChineseTime(d.lf[1], true, true)}`,
+						rotation: -4
+					},
+					{
+						type: 't',
+						text: `完成了 <span class="font-semibold text-orange-400">${escapeHTML(d.lf[0])}</span>`
+					},
+					{
+						type: 't',
+						text: '这是你今年达成的<span class="font-semibold text-orange-400">最慢的通关记录</span><br>你坚韧不拔的优秀品质支撑你通过了终点'
+					},
+					{
+						type: 't',
+						text: '又或者说',
+						t: -2,
+						b: -2
+					},
+					{
+						type: 't',
+						text: isBonusMap ? '是某种神秘的时间魔法在作祟？' : '这仅仅是你某种奇特的兴趣爱好？'
+					}
+				],
+				background: bgMap(d.lf[0]),
+				mapper: `${d.lf[0]} - 作者: ${getMapper(d.lf[0])}`
+			});
 		}
 		if (d.mpt && d.mpt[0]) {
 			// 最常玩队友
