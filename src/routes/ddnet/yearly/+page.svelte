@@ -3,10 +3,10 @@
 
 	import { browser } from '$app/environment';
 	import TeeRender from '$lib/components/TeeRender.svelte';
-	import { afterNavigate, goto, replaceState } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { fade } from 'svelte/transition';
-	import { dateToChineseTime, secondsToChineseTime, secondsToTime, uaIsMobile } from '$lib/helpers';
+	import { dateToChineseTime, escapeHTML, secondsToChineseTime, uaIsMobile } from '$lib/helpers';
 	import { mapType } from '$lib/ddnet/helpers.js';
 	import { source } from 'sveltekit-sse';
 	import type { YearlyData } from './event/+server.js';
@@ -455,7 +455,14 @@
 							type: 't',
 							text: `在今年新通过的地图中<br>这张图足以成为你的<span class="font-semibold text-orange-400">生涯亮点</span>`
 						},
-						{ type: 'b', bg: '#fdd300', color: '#000', text: `${d.mpg[0]}`, rotation: -24, x: -50 },
+						{
+							type: 'b',
+							bg: '#fdd300',
+							color: '#000',
+							text: `${escapeHTML(d.mpg[0])}`,
+							rotation: -24,
+							x: -50
+						},
 						{
 							type: 't',
 							text: `你因此拿下足足`,
@@ -493,7 +500,14 @@
 							type: 't',
 							text: `在今年新通过的地图中<br>这张图成为了你的<span class="font-semibold text-orange-400">高光时刻</span>`
 						},
-						{ type: 'b', bg: '#fdd300', color: '#000', text: `${d.mpg[0]}`, rotation: -24, x: -50 },
+						{
+							type: 'b',
+							bg: '#fdd300',
+							color: '#000',
+							text: `${escapeHTML(d.mpg[0])}`,
+							rotation: -24,
+							x: -50
+						},
 						{
 							type: 't',
 							text: `你因通过这张地图获得了`,
@@ -671,7 +685,7 @@
 					},
 					{
 						type: 't',
-						text: `你耗时${secondsToChineseTime(d.lnf[1], true, true)}完成了 <span class="font-semibold text-orange-400">${d.lnf[0]}</span><br>在你过终点时已是`
+						text: `你耗时${secondsToChineseTime(d.lnf[1], true, true)}完成了 <span class="font-semibold text-orange-400">${escapeHTML(d.lnf[0])}</span><br>在你过终点时已是`
 					},
 					{
 						type: 'b',
@@ -739,7 +753,7 @@
 				content: [
 					{
 						type: 't',
-						text: `距离 ${d.nrr[0]} 发布仅`
+						text: `距离 ${escapeHTML(d.nrr[0])} 发布仅`
 					},
 					{
 						type: 'b',
@@ -922,7 +936,7 @@
 						type: 'b',
 						bg: '#fdd300',
 						color: '#000',
-						text: `${d.mfm[0]}`,
+						text: `${escapeHTML(d.mfm[0])}`,
 						rotation: -3
 					},
 					{
@@ -1023,7 +1037,13 @@
 							type: 't',
 							text: `合作游戏中，当属伙伴最为重要`
 						},
-						{ type: 'b', bg: '#fdd300', color: '#000', text: `${d.mpt[0][0]}`, rotation: -4 },
+						{
+							type: 'b',
+							bg: '#fdd300',
+							color: '#000',
+							text: `${escapeHTML(d.mpt[0][0])}`,
+							rotation: -4
+						},
 						{
 							type: 't',
 							text: `是你的最佳拍档<br>你们一起总共获得了 <span class="font-semibold text-orange-400">${d.mpt[0][1]} 次</span>团队记录<br>合作的璀璨成果在你们心间熠熠生辉`
@@ -1036,7 +1056,7 @@
 							type: 'b',
 							bg: '#fdd300',
 							color: '#000',
-							text: `${d.mpt[1][0]}`,
+							text: `${escapeHTML(d.mpt[1][0])}`,
 							rotation: 4
 						},
 						{
@@ -1071,7 +1091,13 @@
 							type: 't',
 							text: `合作游戏中，当属伙伴最为重要`
 						},
-						{ type: 'b', bg: '#fdd300', color: '#000', text: `${d.mpt[0][0]}`, rotation: -4 },
+						{
+							type: 'b',
+							bg: '#fdd300',
+							color: '#000',
+							text: `${escapeHTML(d.mpt[0][0])}`,
+							rotation: -4
+						},
 						{
 							type: 't',
 							text: `是你的最佳拍档<br>你们一起总共获得了 <span class="font-semibold text-orange-400">${d.mpt[0][1]} 次</span>团队记录<br>合作的璀璨成果在你们心间熠熠生辉`
@@ -1115,7 +1141,7 @@
 					},
 					{
 						type: 't',
-						text: `团队成员分别有：${d.bt[2]}`
+						text: `团队成员分别有：${escapeHTML(d.bt[2])}`
 					},
 					{
 						type: 't',
@@ -1146,7 +1172,7 @@
 					},
 					{
 						type: 't',
-						text: `${d.map.length > 1 ? '分别是：' : ''}${d.map.join(', ')}`
+						text: `${d.map.length > 1 ? '分别是：' : ''}${escapeHTML(d.map.join(', '))}`
 					},
 					{
 						type: 't',
