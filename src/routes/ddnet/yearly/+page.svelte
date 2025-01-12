@@ -1138,7 +1138,7 @@
 					},
 					{
 						type: 't',
-						text: `共同完成了 <span class="font-semibold text-orange-400">${d.bt[1]}</span>`
+						text: `共同完成了 <span class="font-semibold text-orange-400">${escapeHTML(d.bt[1])}</span>`
 					},
 					{
 						type: 't',
