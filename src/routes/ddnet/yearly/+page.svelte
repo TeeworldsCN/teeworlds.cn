@@ -408,8 +408,6 @@
 			} else {
 				const titles = [{ bg: '#b7b7a4', color: '#000', text: '隐士' }];
 				allTitles.push(...titles);
-
-				allTitles.push(...titles);
 				cards.push({
 					titles,
 					content: [
