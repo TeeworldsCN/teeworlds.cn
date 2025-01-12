@@ -984,7 +984,7 @@
 						},
 						{
 							type: 't',
-							text: `完成了 <span class="font-semibold text-orange-400">${d.lf[0]}</span>`
+							text: `完成了 <span class="font-semibold text-orange-400">${escapeHTML(d.lf[0])}</span>`
 						},
 						{
 							type: 't',
