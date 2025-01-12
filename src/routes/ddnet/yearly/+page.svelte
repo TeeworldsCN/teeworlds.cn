@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { onDestroy, type Snippet } from 'svelte';
+	import { onDestroy, onMount, type Snippet } from 'svelte';
 
 	import { browser } from '$app/environment';
 	import TeeRender from '$lib/components/TeeRender.svelte';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { fade } from 'svelte/transition';
-	import { dateToChineseTime, secondsToChineseTime, secondsToTime } from '$lib/helpers';
+	import { dateToChineseTime, secondsToChineseTime, secondsToTime, uaIsMobile } from '$lib/helpers';
 	import { mapType } from '$lib/ddnet/helpers.js';
 	import { source } from 'sveltekit-sse';
 	import type { YearlyData } from './event/+server.js';
@@ -17,6 +17,8 @@
 	const { data } = $props();
 
 	const timeout = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+	const isMobile = $derived(() => uaIsMobile(data.ua));
 
 	interface CardTextItem {
 		type: 't';
@@ -224,8 +226,7 @@
 		}, 300);
 	};
 
-	let startAnimation = true;
-
+	let startAnimation = $state(true);
 	let loadingProgress = $state(-1);
 
 	let maps: MapList | null = null;
@@ -243,6 +244,8 @@
 		let d: Partial<YearlyData> = {};
 
 		const getMapper = (name: string) => maps?.find((map) => map.name == name)?.mapper || '不详';
+		const mapHasBonus = (name: string) =>
+			maps?.find((map) => map.name == name)?.tiles.includes('BONUS');
 
 		loadingProgress = 0;
 		try {
@@ -899,50 +902,58 @@
 		}
 		if (d.lf && d.lf[1] > 1) {
 			// 最慢的记录
+			const isBonusMap = mapHasBonus(d.lf[0]);
 			const dateTime = new Date(d.lf[2]);
 			const titles = [];
 			if (d.lf[1] >= 12 * 60 * 60) {
-				titles.push({ bg: '#c8b6ff', color: '#000', text: '挂机狂魔' });
+				if (isBonusMap) {
+					titles.push({ bg: '#f28482', color: '#000', text: '时间魔术师' });
+				} else {
+					titles.push({ bg: '#c8b6ff', color: '#000', text: '挂机狂魔' });
+				}
 			} else if (d.lf[1] >= 4 * 60 * 60) {
 				titles.push({ bg: '#ffd6ff', color: '#000', text: '坚韧不拔' });
 			}
 			allTitles.push(...titles);
-			cards.push({
-				titles,
-				content: [
-					{
-						type: 't',
-						text: `今年<span class="text-orange-400 font-semibold">${dateTime.getMonth() + 1}月${dateTime.getDate()}日</span>，你用时`
-					},
-					{
-						type: 'b',
-						bg: '#fdd300',
-						color: '#000',
-						text: `${secondsToChineseTime(d.lf[1], true, true)}`,
-						rotation: -4
-					},
-					{
-						type: 't',
-						text: `完成了 <span class="font-semibold text-orange-400">${d.lf[0]}</span>`
-					},
-					{
-						type: 't',
-						text: '这是你今年达成的<span class="font-semibold text-orange-400">最慢的通关记录</span><br>你坚韧不拔的优秀品质支撑你通过了终点'
-					},
-					{
-						type: 't',
-						text: '又或者说',
-						t: -2,
-						b: -2
-					},
-					{
-						type: 't',
-						text: '这仅仅是你某种奇特的兴趣爱好？'
-					}
-				],
-				background: bgMap(d.lf[0]),
-				mapper: `${d.lf[0]} - 作者: ${getMapper(d.lf[0])}`
-			});
+
+			if (isBonusMap) {
+				cards.push({
+					titles,
+					content: [
+						{
+							type: 't',
+							text: `今年<span class="text-orange-400 font-semibold">${dateTime.getMonth() + 1}月${dateTime.getDate()}日</span>，你用时`
+						},
+						{
+							type: 'b',
+							bg: '#fdd300',
+							color: '#000',
+							text: `${secondsToChineseTime(d.lf[1], true, true)}`,
+							rotation: -4
+						},
+						{
+							type: 't',
+							text: `完成了 <span class="font-semibold text-orange-400">${d.lf[0]}</span>`
+						},
+						{
+							type: 't',
+							text: '这是你今年达成的<span class="font-semibold text-orange-400">最慢的通关记录</span><br>你坚韧不拔的优秀品质支撑你通过了终点'
+						},
+						{
+							type: 't',
+							text: '又或者说',
+							t: -2,
+							b: -2
+						},
+						{
+							type: 't',
+							text: isBonusMap ? '是某种神秘的时间魔法在作祟？' : '这仅仅是你某种奇特的兴趣爱好？'
+						}
+					],
+					background: bgMap(d.lf[0]),
+					mapper: `${d.lf[0]} - 作者: ${getMapper(d.lf[0])}`
+				});
+			}
 		}
 		if (d.mpt && d.mpt[0]) {
 			// 最常玩队友
@@ -1353,10 +1364,35 @@
 		}
 	});
 
+	let originalMeta: HTMLMetaElement | null = null;
+
+	onMount(() => {
+		// Replace meta to prevent scaling
+		originalMeta = document.querySelector('meta[name="viewport"]');
+		if (originalMeta) {
+			originalMeta.remove();
+		}
+		document.head.insertAdjacentHTML(
+			'beforeend',
+			`<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />`
+		);
+	});
+
 	onDestroy(() => {
 		if (redactedTimer) {
 			clearInterval(redactedTimer);
 			redactedTimer = null;
+		}
+		if (browser) {
+		}
+
+		// Restore meta
+		if (originalMeta) {
+			const currentMeta = document.querySelector('meta[name="viewport"]');
+			if (currentMeta) {
+				currentMeta.remove();
+			}
+			document.head.appendChild(originalMeta);
 		}
 	});
 </script>
@@ -1678,6 +1714,15 @@
 				更换名字
 			</a>
 		</div>
+		{#if currentCard == 0 && !startAnimation}
+			<div
+				class="absolute bottom-[5%] left-0 right-0 z-20 flex items-center justify-center text-[7svw] sm:text-[4svh]"
+				out:fade
+				in:fade
+			>
+				<div class="text-[0.7em] motion-preset-oscillate">↓{isMobile() ? '滑动' : '滚动'}以继续↓</div>
+			</div>
+		{/if}
 	</div>
 	{#if !totalCards || !cardReady || error}
 		<div

@@ -194,3 +194,10 @@ export const uaIsStrict = (ua: string | null) => {
 	if (!ua) return false;
 	return ua.includes('QQ/');
 };
+
+export const uaIsMobile = (ua: string | null) => {
+	if (!ua) return false;
+	const regex =
+		/(iPhone|iPad|iPod|Android|BlackBerry|Windows Phone|BB10|webOS|IEMobile|Opera Mini|Mobile|Silk-Accelerated|(hpw|web)OS|Opera Mini)/i;
+	return regex.test(ua);
+};
