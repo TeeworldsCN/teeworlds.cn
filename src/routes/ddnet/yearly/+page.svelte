@@ -956,15 +956,15 @@
 			const isBonusMap = mapHasBonus(d.lf[0]);
 			const dateTime = new Date(d.lf[2]);
 			const titles = [];
-			if (d.lf[1] >= 12 * 60 * 60) {
-				if (isBonusMap) {
-					titles.push({ bg: '#f28482', color: '#000', text: '时间魔术师' });
-				} else {
-					titles.push({ bg: '#c8b6ff', color: '#000', text: '挂机狂魔' });
-				}
+			
+			if (isBonusMap) {
+				titles.push({ bg: '#f28482', color: '#000', text: '时间魔术师' });
+			} else if (d.lf[1] >= 12 * 60 * 60) {
+				titles.push({ bg: '#c8b6ff', color: '#000', text: '挂机狂魔' });
 			} else if (d.lf[1] >= 4 * 60 * 60) {
 				titles.push({ bg: '#ffd6ff', color: '#000', text: '坚韧不拔' });
 			}
+
 			allTitles.push(...titles);
 
 			if (isBonusMap) {

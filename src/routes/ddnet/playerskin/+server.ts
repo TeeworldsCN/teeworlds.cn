@@ -21,8 +21,12 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 
 	return new Response(JSON.stringify(skin), {
+		// enabled cors
 		headers: {
-			'content-type': 'application/json'
+			'content-type': 'application/json',
+			'access-control-allow-origin': '*',
+			'access-control-allow-methods': 'GET, HEAD',
+			'access-control-max-age': '86400'
 		}
 	});
 };
