@@ -109,7 +109,7 @@ const countTimeSliceFinishes = async (
 const findLateNightFinishedRace = async (tz: string, name: string, start: Date, end: Date) => {
 	const sql = `
     SELECT r.Map, r.Time, r.DateTime, m.Server FROM maps m JOIN
-		(SELECT Map, Time, datetime(Timestamp, '+08:00') as DateTime FROM race
+		(SELECT Map, Time, datetime(Timestamp, '${tz}') as DateTime FROM race
 			WHERE Name=${sqlstring.escape(name)}
 			AND (
 				(time(Timestamp, '${tz}') < '05:00' AND Time <= CAST(strftime('%M', datetime(Timestamp, '${tz}')) as INT) * 60 + CAST(strftime('%H', datetime(Timestamp, '${tz}')) as INT) * 3600 + 7200) OR
