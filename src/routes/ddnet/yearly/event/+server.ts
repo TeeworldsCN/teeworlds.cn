@@ -1,5 +1,5 @@
 import type { RequestHandler } from './$types';
-import sqlstring from 'sqlstring';
+import sqlstring from 'sqlstring-sqlite';
 import { produce } from 'sveltekit-sse';
 import { maps } from '$lib/server/fetches/maps';
 import { ddnetDate } from '$lib/ddnet/helpers';
