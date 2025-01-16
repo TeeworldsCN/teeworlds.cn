@@ -24,10 +24,10 @@ export type ServerInfo = {
 			country: number;
 			score: number;
 			is_player: boolean;
-			skin: {
+			skin?: {
 				name: string;
-				color_body: number;
-				color_feet: number;
+				color_body?: number;
+				color_feet?: number;
 			};
 			afk: boolean;
 			team: number;
