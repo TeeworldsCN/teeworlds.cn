@@ -35,20 +35,19 @@ interface MapData {
 	pending_points?: number;
 }
 
-export const load = (async ({ fetch, url, parent }) => {
+export const load = (async ({ fetch, url, parent, params }) => {
 	const parentData = await parent();
+	const param = params.name;
 
-	const query = url.searchParams.get('n');
-	if (!query) {
-		return redirect(302, '/ddnet/players');
-	}
-
-	if (!uaIsStrict(parentData.ua) && query.startsWith('!!')) {
+	if (!uaIsStrict(parentData.ua) && param.startsWith('!!')) {
 		// redirect to the non-stamped version
-		return redirect(302, `/ddnet/p?n=${encodeAsciiURIComponent(decodeAsciiURIComponent(query))}`);
+		return redirect(
+			302,
+			`/ddnet/players/${encodeAsciiURIComponent(decodeAsciiURIComponent(param))}`
+		);
 	}
 
-	const name = decodeAsciiURIComponent(query);
+	const name = decodeAsciiURIComponent(param);
 	const fetchPlayer = fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`);
 	const fetchMaps = maps.fetch();
 	const fetchSkins = skins.fetch();

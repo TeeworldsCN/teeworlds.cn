@@ -127,6 +127,13 @@ export const primaryAddress = (addresses: string[]) => {
 	return addresses[0];
 };
 
+export const isAddressValid = (addresses: string[]) => {
+	// ignore non-tw protocols
+	return addresses.some(
+		(address) => address.startsWith('tw-0.6+udp://') || address.startsWith('tw-0.7+udp://')
+	);
+};
+
 const REGION_MAP: { [key: string]: string } = {
 	'as:cn': '中国',
 	as: '亚洲',

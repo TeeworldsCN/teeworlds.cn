@@ -13,7 +13,7 @@
 
 <Link
 	data-sveltekit-preload-data="tap"
-	href={`/ddnet/p?n=${encodeAsciiURIComponent(player)}`}
+	href={`/ddnet/players/${encodeAsciiURIComponent(player)}`}
 	{...rest}
 	{className}>{@render children()}</Link
 >

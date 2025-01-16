@@ -266,10 +266,10 @@
 					class="relative mt-2 aspect-map h-auto w-full overflow-hidden rounded-md border border-slate-600 hover:border-blue-500 active:border-blue-300"
 					style="background-image: url({map.thumbnail}); background-size: cover; background-repeat: no-repeat; background-position: center;"
 					onmousedown={() => {
-						preloadData(`/ddnet/m?n=${encodeAsciiURIComponent(map.name)}`);
+						preloadData(`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`);
 					}}
 					onclick={() => {
-						goto(`/ddnet/m?n=${encodeAsciiURIComponent(map.name)}`);
+						goto(`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`);
 					}}
 					aria-label={map.name}
 				>

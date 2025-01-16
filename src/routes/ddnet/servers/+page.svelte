@@ -2,7 +2,7 @@
 	import { goto, invalidate } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Modal from '$lib/components/Modal.svelte';
-	import { ddnetColorToRgb, joinViaDDNet, joinViaSteam, showScore, sortPlayers } from '$lib/ddnet/helpers';
+	import { joinViaDDNet, joinViaSteam, showScore, sortPlayers } from '$lib/ddnet/helpers';
 	import serverSearch, { type SortKey } from '$lib/stores/server-search.js';
 	import Fa from 'svelte-fa';
 	import VirtualScroll from 'svelte-virtual-scroll-list';
@@ -17,7 +17,7 @@
 	const { data } = $props();
 
 	const checkMapName = async (map: string) => {
-		const url = `/ddnet/m?n=${encodeURIComponent(map)}`;
+		const url = `/ddnet/maps/${encodeURIComponent(map)}`;
 		const response = await fetch(url, { method: 'HEAD' });
 		if (response.ok && selectedServer?.info?.map?.name == map) {
 			mapLink = url;
@@ -437,7 +437,7 @@
 								{showScore(client.score, selectedServer.info.client_score_kind)}
 							</div>
 							<TeeRender
-								name={client.skin.name}
+								name={client.skin ? client.skin.name : ''}
 								className="w-8 h-8 mr-2"
 								useDefault
 								body={client.skin ? client.skin.color_body : null}

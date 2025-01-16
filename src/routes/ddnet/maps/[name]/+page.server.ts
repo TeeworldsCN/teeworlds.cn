@@ -5,20 +5,20 @@ import { basename } from 'path';
 import { decodeAsciiURIComponent, encodeAsciiURIComponent } from '$lib/link';
 import { uaIsStrict } from '$lib/helpers';
 
-export const load = (async ({ url, parent }) => {
+export const load = (async ({ url, parent, params }) => {
 	const parentData = await parent();
 
-	const query = url.searchParams.get('n');
-	if (!query) {
+	const param = params.name;
+	if (!param) {
 		return redirect(302, '/ddnet/maps');
 	}
 
-	if (!uaIsStrict(parentData.ua) && query.startsWith('!!')) {
+	if (!uaIsStrict(parentData.ua) && param.startsWith('!!')) {
 		// redirect to the non-stamped version
-		return redirect(302, `/ddnet/m?n=${encodeAsciiURIComponent(decodeAsciiURIComponent(query))}`);
+		return redirect(302, `/ddnet/maps/${encodeAsciiURIComponent(decodeAsciiURIComponent(param))}`);
 	}
 
-	const name = decodeAsciiURIComponent(query);
+	const name = decodeAsciiURIComponent(param);
 	let data;
 
 	try {
