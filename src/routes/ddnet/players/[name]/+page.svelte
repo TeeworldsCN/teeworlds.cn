@@ -68,7 +68,7 @@
 			},
 			data: {
 				labels: data.growth.map((_, index) => {
-					return new Date((data.endOfDay - (365 - index) * 24 * 60 * 60) * 1000).toLocaleDateString(
+					return new Date((data.endOfDay - (364 - index) * 24 * 60 * 60) * 1000).toLocaleDateString(
 						'zh-CN',
 						{
 							dateStyle: 'short'
