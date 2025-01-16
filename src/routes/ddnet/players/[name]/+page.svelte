@@ -4,6 +4,8 @@
 	import MapLink from '$lib/components/ddnet/MapLink.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
+	import Modal from '$lib/components/Modal.svelte';
+	import PointCalculation from '$lib/components/PointCalculation.svelte';
 	import TeeRender from '$lib/components/TeeRender.svelte';
 	import { secondsToDate } from '$lib/date';
 	import { mapType } from '$lib/ddnet/helpers';
@@ -11,11 +13,14 @@
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
 	import { tippy } from '$lib/tippy';
+	import { faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
 	import { Chart } from 'chart.js/auto';
+	import Fa from 'svelte-fa';
 
 	let { data } = $props();
 
 	let explaination = $state(false);
+	let showModal = $state(false);
 
 	const hoursToColor = (value: number) => {
 		const weight = value / 24;
@@ -105,20 +110,32 @@
 />
 
 <div class="mb-4">
-	<div class="flex flex-row items-center">
-		<!-- increased max loss iter to make the color more accurate at least in player page -->
-		<TeeRender
-			url={data.skin.n}
-			body={data.skin.b}
-			feet={data.skin.f}
-			useDefault
-			className="w-16 h-16 -mb-1 -mt-1 mr-2"
-			maxLossIter={10}
-		></TeeRender>
-		<div class="text-2xl font-bold">{data.player.player}</div>
-	</div>
-	<div class="text-md font-bold">
-		<span>最近活跃：{secondsToDate(data.last_finish.timestamp)}</span>
+	<div class="flex w-full flex-col items-center justify-between gap-2 sm:flex-row">
+		<div>
+			<div class="flex flex-row items-center">
+				<!-- increased max loss iter to make the color more accurate at least in player page -->
+				<TeeRender
+					url={data.skin.n}
+					body={data.skin.b}
+					feet={data.skin.f}
+					useDefault
+					className="w-16 h-16 -mb-1 -mt-1 mr-2"
+					maxLossIter={10}
+				></TeeRender>
+				<div class="text-2xl font-bold">{data.player.player}</div>
+			</div>
+			<div class="text-md font-bold">
+				<span>最近活跃：{secondsToDate(data.last_finish.timestamp)}</span>
+			</div>
+		</div>
+		<div>
+			<button
+				class="cursor-pointer text-nowrap rounded bg-slate-700 px-4 py-2 font-semibold hover:bg-slate-600 active:bg-slate-700"
+				onclick={() => {
+					showModal = !showModal;
+				}}><Fa class="inline" icon={faQuestionCircle}></Fa> 了解分数计算方式</button
+			>
+		</div>
 	</div>
 </div>
 <div class="grid grid-cols-1 gap-4 md:grid-cols-1">
@@ -150,7 +167,10 @@
 					class="rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3"
 					class:opacity-50={!rank.rank.rank}
 				>
-					<h3 class="mb-1 text-base font-bold">{rank.name}</h3>
+					<h3 class="mb-1 text-base font-bold">
+						{rank.icon}
+						{rank.name}
+					</h3>
 					{#if rank.rank.rank}
 						<p class="text-md">
 							<span class="text-sm">No.</span>{rank.rank.rank} - {rank.rank
@@ -358,3 +378,7 @@
 		</div>
 	</div>
 </div>
+
+<Modal bind:show={showModal}>
+	<PointCalculation></PointCalculation>
+</Modal>

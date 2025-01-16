@@ -52,6 +52,7 @@ export const load = (async ({ data, parent }) => {
 
 	// setup ranks
 	let ranks: {
+		icon: string;
 		name: string;
 		rank: {
 			points?: number;
@@ -59,12 +60,12 @@ export const load = (async ({ data, parent }) => {
 			pending?: number;
 		};
 	}[] = [
-		{ name: '🌎 总通过分', rank: { ...player.points, pending: player.pending_points } },
-		{ name: '👥 团队排位分', rank: player.team_rank },
-		{ name: '👤 个人排位分', rank: player.rank },
-		{ name: '📅 获得通过分 (近365天)', rank: player.points_last_year },
-		{ name: '📅 获得通过分 (近30天)', rank: player.points_last_month },
-		{ name: '📅 获得通过分 (近7天)', rank: player.points_last_week }
+		{ icon: '🌎', name: '总通过分', rank: { ...player.points, pending: player.pending_points } },
+		{ icon: '👥', name: '团队排位分', rank: player.team_rank },
+		{ icon: '👤', name: '个人排位分', rank: player.rank },
+		{ icon: '📅', name: '获得通过分 (近365天)', rank: player.points_last_year },
+		{ icon: '📅', name: '获得通过分 (近30天)', rank: player.points_last_month },
+		{ icon: '📅', name: '获得通过分 (近7天)', rank: player.points_last_week }
 	];
 
 	// setup activity

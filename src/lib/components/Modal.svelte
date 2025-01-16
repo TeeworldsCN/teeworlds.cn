@@ -12,7 +12,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <dialog
-	class="border-none bg-transparent text-slate-300 shadow-lg backdrop:bg-black/60"
+	class="fixed z-50 mx-auto overflow-visible border-none bg-transparent text-slate-300 shadow-lg backdrop:bg-black/60"
 	bind:this={dialog}
 	onclose={() => (show = false)}
 	onclick={(e) => {
@@ -23,7 +23,7 @@
 	<button
 		autofocus
 		onclick={() => dialog.close()}
-		class="float-right mr-5 rounded-t bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:outline-none"
+		class="absolute -top-8 right-0 flex h-8 w-16 items-center justify-center rounded-t-lg bg-slate-600 text-white hover:bg-slate-500 focus:outline-none active:bg-slate-600"
 		><Fa icon={faXmark}></Fa></button
 	>
 	<div>

@@ -3,8 +3,12 @@
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
+	import Modal from '$lib/components/Modal.svelte';
+	import PointCalculation from '$lib/components/PointCalculation.svelte';
 	import { encodeAsciiURIComponent } from '$lib/link';
 	import type { RankInfo } from '$lib/server/fetches/ranks.js';
+	import { faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
+	import Fa from 'svelte-fa';
 
 	let { data } = $props();
 
@@ -48,6 +52,7 @@
 	let ranks: RankInfo['ranks'] = $state(sliceRanks());
 
 	let searchName = $state('');
+	let showModal = $state(false);
 
 	const MIN_QUERY_INTERVAL = 200;
 	let queryingName: string | null = null;
@@ -118,7 +123,14 @@
 	]}
 />
 
-<div class="mb-4 md:flex md:space-x-5">
+<button
+	class="mb-2 cursor-pointer text-nowrap rounded bg-slate-700 px-4 py-2 font-semibold hover:bg-slate-600 active:bg-slate-700"
+	onclick={() => {
+		showModal = !showModal;
+	}}><Fa class="inline" icon={faQuestionCircle}></Fa> 了解分数计算方式</button
+>
+
+<div class="mb-4 space-y-2 md:flex md:space-x-5">
 	<input
 		type="text"
 		placeholder="查找玩家名"
@@ -200,3 +212,7 @@
 		})}
 	{/if}
 </div>
+
+<Modal bind:show={showModal}>
+	<PointCalculation></PointCalculation>
+</Modal>

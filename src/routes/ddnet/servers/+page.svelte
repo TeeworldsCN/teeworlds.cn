@@ -12,7 +12,6 @@
 	import { page } from '$app/state';
 	import MapLink from '$lib/components/ddnet/MapLink.svelte';
 	import TeeRender from '$lib/components/TeeRender.svelte';
-	import tippy from 'tippy.js';
 
 	const { data } = $props();
 
@@ -366,7 +365,7 @@
 	<Modal bind:show={showModal}>
 		{#if selectedServer}
 			<div
-				class="scrollbar-subtle flex max-h-[calc(100svh-8rem)] w-[512px] max-w-[calc(100svw-3rem)] flex-col gap-4 overflow-y-auto rounded-lg bg-slate-700 p-3 text-left shadow-lg"
+				class="scrollbar-subtle flex max-h-[calc(100svh-8rem)] w-[512px] max-w-[calc(100svw-3rem)] flex-col gap-4 overflow-y-auto rounded-l-lg rounded-br-lg bg-slate-700 p-3 text-left shadow-lg"
 			>
 				<div class="flew flew-col gap-1">
 					<h1 class="flex-grow text-xl font-bold">{selectedServer.info.name}</h1>
@@ -412,7 +411,7 @@
 							<p class="ml-2">{address}</p>
 						{/each}
 					</div>
-					<div class="collapse flex flex-col gap-1 sm:visible">
+					<div class="hidden flex-col gap-1 sm:flex">
 						{#if joinViaSteam(selectedServer.addresses)}
 							<a
 								class="w-full rounded bg-[#090909] px-4 py-2 text-center font-semibold text-white hover:bg-gray-900 active:bg-gray-800"
