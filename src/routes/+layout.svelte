@@ -3,7 +3,6 @@
 	import { navigating } from '$app/state';
 	import Link from '$lib/components/Link.svelte';
 	import { resetShare, share } from '$lib/share';
-	import 'tippy.js/dist/tippy.css';
 	import '../app.css';
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import Fa from 'svelte-fa';

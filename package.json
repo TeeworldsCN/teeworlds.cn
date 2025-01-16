@@ -25,6 +25,7 @@
 		"@types/markdown-it": "^14.1.2",
 		"@types/qrcode": "^1.5.5",
 		"autoprefixer": "^10.4.20",
+		"chart.js": "^4.4.7",
 		"croner": "^9.0.0",
 		"keyv": "^5.2.3",
 		"markdown-it": "^14.1.0",

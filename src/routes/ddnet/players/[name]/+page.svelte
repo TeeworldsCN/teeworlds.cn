@@ -11,6 +11,7 @@
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
 	import { tippy } from '$lib/tippy';
+	import { Chart } from 'chart.js/auto';
 
 	let { data } = $props();
 
@@ -31,6 +32,65 @@
 			link: `https://teeworlds.cn/goto#p${encodeAsciiURIComponent(data.player.player)}`,
 			title: data.player.player,
 			desc: `玩家信息：${data.player.points.points}pts`
+		});
+	});
+
+	$effect(() => {
+		data.growth;
+
+		const chart = new Chart(document.getElementById('growth-chart') as HTMLCanvasElement, {
+			type: 'line',
+			options: {
+				maintainAspectRatio: false,
+				interaction: {
+					mode: 'index',
+					axis: 'x',
+					intersect: false
+				},
+				plugins: {
+					legend: {
+						display: false
+					}
+				},
+				scales: {
+					x: {
+						ticks: {
+							maxTicksLimit: 4,
+							color: '#CBD5E1'
+						}
+					},
+					y: {
+						ticks: {
+							color: '#CBD5E1'
+						}
+					}
+				}
+			},
+			data: {
+				labels: data.growth.map((_, index) => {
+					return new Date((data.endOfDay - (365 - index) * 24 * 60 * 60) * 1000).toLocaleDateString(
+						'zh-CN',
+						{
+							dateStyle: 'short'
+						}
+					);
+				}),
+				datasets: [
+					{
+						data: data.growth.map((point, index) => {
+							return [index, point];
+						}),
+						segment: {
+							borderDash: (ctx) => (ctx.p1.parsed.y == 0 ? [5, 5] : undefined)
+						},
+						borderColor: '#FB923C',
+						fill: false,
+						pointRadius: 0,
+						tension: 0.5,
+						borderWidth: 2
+					}
+				]
+			}
 		});
 	});
 </script>
@@ -260,30 +320,40 @@
 		</div>
 		<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
 			<h3 class="mb-1 text-base font-bold">活跃记录</h3>
-			<div class="scrollbar-subtle mx-auto max-w-fit overflow-x-auto rounded bg-slate-700 p-3">
+			<div
+				class="scrollbar-subtle mx-auto max-w-fit overflow-x-auto rounded bg-slate-700 px-2 py-3 md:px-3"
+			>
 				<div class="flex flex-row flex-nowrap gap-2">
-					<div class="flex flex-col text-sm">
+					<div class="flex flex-col text-xs md:text-sm">
 						<p class="-mt-1 flex-grow text-nowrap">周一</p>
 						<p class="text-nowrap">周日</p>
 					</div>
-					<div class="flex flex-col flex-nowrap gap-[0.125rem]">
-						{#each data.activity as row, index}
-							<div class="flex flex-row flex-nowrap gap-[0.125rem]">
+					<div class="flex flex-col flex-nowrap lg:gap-[0.125rem]">
+						{#each data.activity as row}
+							<div class="flex flex-row flex-nowrap lg:gap-[0.125rem]">
 								{#each row as col}
 									{#if col.date}
 										<div
 											use:tippy={{ content: `${col.date} - ${col.hours} 小时` }}
-											class="h-3 w-3 rounded-sm border border-slate-800"
+											class="h-[0.6rem] w-[0.6rem] border border-slate-800 md:h-3 md:w-3"
 											style="background-color: {hoursToColor(col.hours)}"
 										></div>
 									{:else}
-										<div class=" h-3 w-3 border border-transparent"></div>
+										<div
+											class="h-[0.6rem] w-[0.6rem] border border-transparent md:h-3 md:w-3"
+										></div>
 									{/if}
 								{/each}
 							</div>
 						{/each}
 					</div>
 				</div>
+			</div>
+		</div>
+		<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
+			<h3 class="mb-1 text-base font-bold">增长趋势</h3>
+			<div class="mx-auto h-48 w-full rounded bg-slate-700 p-3">
+				<canvas id="growth-chart" class="h-full w-full"></canvas>
 			</div>
 		</div>
 	</div>

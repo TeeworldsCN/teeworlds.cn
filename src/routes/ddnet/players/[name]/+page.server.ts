@@ -35,7 +35,7 @@ interface MapData {
 	pending_points?: number;
 }
 
-export const load = (async ({ fetch, url, parent, params }) => {
+export const load = (async ({ fetch, parent, params, setHeaders }) => {
 	const parentData = await parent();
 	const param = params.name;
 
@@ -177,6 +177,12 @@ export const load = (async ({ fetch, url, parent, params }) => {
 
 	// always check the rank page for update time
 	player.data_update_time = rankData.update_time;
+
+	// set a 10 minute cache for the player page
+	// in case they are going back and forth between players
+	setHeaders({
+		'cache-control': 'public, max-age=600'
+	});
 
 	return { player, skin, ...(await parent()) };
 }) satisfies PageServerLoad;

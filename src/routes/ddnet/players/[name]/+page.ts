@@ -23,6 +23,7 @@ export const load = (async ({ data, parent }) => {
 		total_map: 0
 	};
 
+	// setup stats
 	let stats = types
 		.filter((type) => type != 'Fun')
 		.map((type) => {
@@ -49,6 +50,7 @@ export const load = (async ({ data, parent }) => {
 		stats.slice(Math.ceil(stats.length / 2))
 	];
 
+	// setup ranks
 	let ranks: {
 		name: string;
 		rank: {
@@ -65,9 +67,9 @@ export const load = (async ({ data, parent }) => {
 		{ name: '📅 获得通过分 (近7天)', rank: player.points_last_week }
 	];
 
+	// setup activity
 	// use berlin time zone to setup activity
 	const day = 24 * 60 * 60 * 1000;
-
 	const today = new Date(Date.now() - 7 * 60 * 60 * 1000);
 	today.setHours(0, 0, 0, 0);
 	const firstActivity = new Date(today.getTime() - 365 * day);
@@ -100,6 +102,34 @@ export const load = (async ({ data, parent }) => {
 		activityCols.push(row);
 	}
 
+	// setup growth
+	const maps = Object.keys(player.types)
+		.flatMap((type) =>
+			Object.values(player.types[type].maps)
+				.filter((map) => map.first_finish && map.points)
+				.map((map) => ({ p: map.points, t: map.first_finish! }))
+		)
+		.sort((a, b) => b.t - a.t);
+
+	// points of last 365 days
+	let currentPoints = player.points.points;
+	const endOfDay = new Date().setHours(23, 59, 59, 0) / 1000;
+	let currentDate = endOfDay;
+	let mapIndex = 0;
+
+	const growth: number[] = [];
+
+	for (let i = 0; i < 365; i++) {
+		while (maps[mapIndex] && maps[mapIndex].t >= currentDate) {
+			currentPoints -= maps[mapIndex].p;
+			mapIndex++;
+		}
+		growth.push(currentPoints);
+		currentDate -= 24 * 60 * 60;
+	}
+
+	growth.reverse();
+
 	return {
 		player: {
 			player: player.player,
@@ -118,6 +148,8 @@ export const load = (async ({ data, parent }) => {
 		last_finish,
 		statsCols,
 		ranks,
+		growth,
+		endOfDay,
 		...(await parent())
 	};
 }) satisfies PageLoad;
