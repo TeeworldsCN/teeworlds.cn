@@ -25,7 +25,7 @@ const MAP_TYPES: { [key: string]: string } = {
 };
 
 export const mapType = (type: string) => {
-	return MAP_TYPES[type.toLowerCase()] || type;
+	return MAP_TYPES[type?.toLowerCase?.()] || type;
 };
 
 const FLAG_DEFAULT: string = '/assets/flags/default.png';
@@ -197,3 +197,46 @@ export const ddnetColorToRgb = (color: number) => {
 };
 
 export const normalizeMapname = (name: string) => name.replace(/\W/g, '_');
+
+export const TILES = [
+	'BONUS',
+	'BOOST',
+	'CHECKPOINT_FIRST',
+	'CRAZY_SHOTGUN',
+	'DEATH',
+	'DFREEZE',
+	'DOOR',
+	'DRAGGER',
+	'EHOOK_START',
+	'HIT_END',
+	'JETPACK_START',
+	'JUMP',
+	'LASER_STOP',
+	'NPC_START',
+	'NPH_START',
+	'OLDLASER',
+	'PLASMAE',
+	'PLASMAF',
+	'PLASMAU',
+	'POWERUP_NINJA',
+	'SOLO_START',
+	'STOP',
+	'SUPER_START',
+	'SWITCH',
+	'SWITCH_TIMED',
+	'TELECHECK',
+	'TELEIN',
+	'TELEINEVIL',
+	'TELEINHOOK',
+	'TELEINWEAPON',
+	'TELE_GRENADE',
+	'TELE_GUN',
+	'TELE_LASER',
+	'THROUGH',
+	'THROUGH_ALL',
+	'TUNE',
+	'WALLJUMP',
+	'WEAPON_GRENADE',
+	'WEAPON_RIFLE',
+	'WEAPON_SHOTGUN'
+];

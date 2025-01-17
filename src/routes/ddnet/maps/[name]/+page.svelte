@@ -84,6 +84,19 @@
 		{#if data.map.biggest_team}
 			<p>最大团队：{data.map.biggest_team} 人</p>
 		{/if}
+		{#if data.map.tiles && data.map.tiles.length}
+			<p class="mb-1">图块特性：</p>
+			<div class="flex flex-row flex-wrap items-center justify-left gap-1">
+				{#each data.map.tiles as tile}
+					<img
+						class="m-0 mr-1 inline-block h-8 w-8 rounded bg-gray-600 p-0"
+						use:tippy={{ content: tile }}
+						src={`/assets/tiles/${tile}.png`}
+						alt={tile}
+					/>
+				{/each}
+			</div>
+		{/if}
 	</div>
 </div>
 

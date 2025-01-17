@@ -536,7 +536,7 @@
 							<span class="inline-block w-32 overflow-hidden pl-2 text-left lg:w-48"
 								><MapLink className="font-semibold" map={data.name}>{data.name}</MapLink></span
 							>
-							<span class="hidden w-8 overflow-hidden text-left md:inline-block lg:w-16"
+							<span class="hidden w-8 overflow-hidden text-left md:inline-block lg:w-20"
 								>{mapType(data.type)}</span
 							>
 							<span class="inline-block w-8 overflow-hidden sm:w-16">{data.map.points}</span>

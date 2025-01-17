@@ -106,7 +106,14 @@ export const load = (async ({ data, parent }) => {
 	// setup growth
 	const maps = Object.keys(player.types)
 		.flatMap((type) =>
-			Object.entries(player.types[type].maps).map(([name, map]) => ({ name, type, map }))
+			Object.entries(player.types[type].maps).map(([name, map]) => {
+				if (map.points == 0) {
+					// remove map ranks of 0-point maps
+					map.rank = undefined;
+					map.team_rank = undefined;
+				}
+				return { name, type, map };
+			})
 		)
 		.sort((a, b) => (b.map.first_finish || 0) - (a.map.first_finish || 0));
 
