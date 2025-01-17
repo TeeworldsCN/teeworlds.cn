@@ -1,49 +1,8 @@
 import { mapType, numberToStars } from '$lib/ddnet/helpers';
+import { checkMapName } from '$lib/ddnet/searches';
 import { encodeAsciiURIComponent } from '$lib/link';
 import { maps, type MapList } from '$lib/server/fetches/maps';
 import type { Handler } from '../protocol/types';
-
-const checkMapName = (map: any, search: string) => {
-	if (!search) {
-		return true;
-	}
-
-	let mapInitial = '';
-	let mapNameNoSeparator = '';
-	let prevIsUpper = false;
-	let prevIsSeparator = true;
-	for (let i = 0; i < map.name.length; i++) {
-		const char = map.name[i];
-		const isUpper = char.match(/[A-Z]/);
-		const isLetter = isUpper || char.match(/[a-z]/);
-		const isSeparator = char == '-' || char == '_' || char == ' ';
-		const isNumber = char.match(/[0-9]/);
-		if (isUpper) {
-			if (!prevIsUpper || prevIsSeparator) {
-				mapInitial += char;
-			}
-		} else if (isLetter) {
-			if (prevIsSeparator) {
-				mapInitial += char;
-			}
-		} else if (isNumber) {
-			mapInitial += char;
-		}
-		prevIsUpper = isUpper;
-		prevIsSeparator = isSeparator;
-		if (!isSeparator) {
-			mapNameNoSeparator += char;
-		}
-	}
-
-	const mapName = map.name.toLowerCase();
-	const searchTextLower = search.toLowerCase();
-	return (
-		mapInitial.toLowerCase() == searchTextLower ||
-		mapNameNoSeparator.toLowerCase().includes(searchTextLower) ||
-		mapName.includes(searchTextLower)
-	);
-};
 
 export const handleMaps: Handler = async ({ reply, fetch, args }) => {
 	const mapName = args.trim();
@@ -55,10 +14,10 @@ export const handleMaps: Handler = async ({ reply, fetch, args }) => {
 		});
 	}
 
-	const mapData: any[] = await maps.fetch();
+	const mapData = await maps.fetch();
 
-	const filteredMaps = mapData.filter((map: any) => {
-		return checkMapName(map, mapName);
+	const filteredMaps = mapData.filter((map: (typeof mapData)[0]) => {
+		return checkMapName(map.name, mapName);
 	});
 
 	if (filteredMaps.length == 0) {

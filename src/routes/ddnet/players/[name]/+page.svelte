@@ -9,18 +9,73 @@
 	import TeeRender from '$lib/components/TeeRender.svelte';
 	import { secondsToDate } from '$lib/date';
 	import { mapType } from '$lib/ddnet/helpers';
+	import { checkMapName } from '$lib/ddnet/searches.js';
 	import { secondsToTime } from '$lib/helpers';
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
 	import { tippy } from '$lib/tippy';
-	import { faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
+	import { faMap, faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
 	import { Chart } from 'chart.js/auto';
+	import { onMount } from 'svelte';
 	import Fa from 'svelte-fa';
+	import VirtualScroll from 'svelte-virtual-scroll-list';
 
 	let { data } = $props();
 
 	let explaination = $state(false);
-	let showModal = $state(false);
+	let pointModal = $state(false);
+	let mapModal = $state(false);
+	let searchMap = $state('');
+	let filterType = $state('all');
+	let sortType = $state('finish');
+
+	let filteredMaps = $derived(() => {
+		if (!searchMap) {
+			let maps = [...data.maps];
+			if (filterType != 'all') {
+				maps = maps.filter((map) => map.type.toLowerCase().startsWith(filterType));
+			}
+			if (sortType == 'unfinished') {
+				maps = maps.filter((map) => !map.map.first_finish);
+			}
+			if (sortType == 'rank') {
+				maps.sort((a, b) => {
+					const aRank = Math.min(a.map.team_rank || Infinity, a.map.rank || Infinity);
+					const bRank = Math.min(b.map.team_rank || Infinity, b.map.rank || Infinity);
+					if (aRank == bRank) {
+						if (a.map.first_finish == b.map.first_finish) {
+							return a.name.localeCompare(b.name);
+						}
+						return (b.map.first_finish || 0) - (a.map.first_finish || 0);
+					}
+					return aRank - bRank;
+				});
+			} else if (sortType == 'point') {
+				maps.sort((a, b) => {
+					const aPoint = a.map.first_finish ? a.map.points : 0;
+					const bPoint = b.map.first_finish ? b.map.points : 0;
+					if (aPoint == bPoint) {
+						if (a.map.first_finish == b.map.first_finish) {
+							return a.name.localeCompare(b.name);
+						}
+						return (b.map.first_finish || 0) - (a.map.first_finish || 0);
+					}
+					return bPoint - aPoint;
+				});
+			} else if (sortType == 'name') {
+				maps.sort((a, b) => a.name.localeCompare(b.name));
+			} else if (sortType == 'finish') {
+				maps.sort((a, b) => {
+					if (a.map.first_finish == b.map.first_finish) {
+						return a.name.localeCompare(b.name);
+					}
+					return (b.map.first_finish || 0) - (a.map.first_finish || 0);
+				});
+			}
+			return maps;
+		}
+		return data.maps.filter((map) => checkMapName(map.name, searchMap));
+	});
 
 	const hoursToColor = (value: number) => {
 		const weight = value / 24;
@@ -38,12 +93,16 @@
 			title: data.player.player,
 			desc: `玩家信息：${data.player.points.points}pts`
 		});
+
+		filterType = 'all';
+		sortType = 'finish';
+		searchMap = '';
 	});
 
-	$effect(() => {
-		data.growth;
+	let chart: Chart | null = null;
 
-		const chart = new Chart(document.getElementById('growth-chart') as HTMLCanvasElement, {
+	onMount(() => {
+		chart = new Chart(document.getElementById('growth-chart') as HTMLCanvasElement, {
 			type: 'line',
 			options: {
 				maintainAspectRatio: false,
@@ -72,19 +131,9 @@
 				}
 			},
 			data: {
-				labels: data.growth.map((_, index) => {
-					return new Date((data.endOfDay - (364 - index) * 24 * 60 * 60) * 1000).toLocaleDateString(
-						'zh-CN',
-						{
-							dateStyle: 'short'
-						}
-					);
-				}),
 				datasets: [
 					{
-						data: data.growth.map((point, index) => {
-							return [index, point];
-						}),
+						data: [],
 						segment: {
 							borderDash: (ctx) => (ctx.p1.parsed.y == 0 ? [5, 5] : undefined)
 						},
@@ -97,6 +146,25 @@
 				]
 			}
 		});
+	});
+
+	$effect(() => {
+		data.growth;
+
+		if (chart) {
+			chart.data.labels = data.growth.map((_, index) => {
+				return new Date((data.endOfDay - (364 - index) * 24 * 60 * 60) * 1000).toLocaleDateString(
+					'zh-CN',
+					{
+						dateStyle: 'short'
+					}
+				);
+			});
+			chart.data.datasets[0].data = data.growth.map((point, index) => {
+				return [index, point];
+			});
+			chart.update();
+		}
 	});
 </script>
 
@@ -130,16 +198,22 @@
 		</div>
 		<div>
 			<button
+				class="cursor-pointer text-nowrap rounded bg-blue-500 px-4 py-2 font-semibold hover:bg-blue-600 active:bg-blue-500"
+				onclick={() => {
+					mapModal = !mapModal;
+				}}><Fa class="inline" icon={faMap}></Fa> 过图数据</button
+			>
+			<button
 				class="cursor-pointer text-nowrap rounded bg-slate-700 px-4 py-2 font-semibold hover:bg-slate-600 active:bg-slate-700"
 				onclick={() => {
-					showModal = !showModal;
-				}}><Fa class="inline" icon={faQuestionCircle}></Fa> 了解分数计算方式</button
+					pointModal = !pointModal;
+				}}><Fa class="inline" icon={faQuestionCircle}></Fa> 分数说明</button
 			>
 		</div>
 	</div>
 </div>
 <div class="grid grid-cols-1 gap-4 md:grid-cols-1">
-	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
+	<div class="rounded-lg bg-slate-700 p-2 shadow-md md:p-4">
 		<h2 class="mb-3 text-xl font-bold">
 			玩家信息 <FlagSpan
 				flag={data.player.favorite_server.server}
@@ -234,7 +308,7 @@
 			</div>
 		{/if}
 	</div>
-	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
+	<div class="rounded-lg bg-slate-700 p-2 shadow-md md:p-4">
 		<h2 class="mb-3 text-xl font-bold">玩家数据</h2>
 		<div class="grid grid-cols-1 md:grid-cols-2 md:gap-2">
 			{#each data.statsCols as col, i}
@@ -311,7 +385,7 @@
 			{/each}
 		</div>
 	</div>
-	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
+	<div class="rounded-lg bg-slate-700 p-2 shadow-md md:p-4">
 		<h2 class="mb-3 text-xl font-bold">玩家活跃</h2>
 		<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 			<div class="rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
@@ -379,6 +453,132 @@
 	</div>
 </div>
 
-<Modal bind:show={showModal}>
+<Modal bind:show={pointModal}>
 	<PointCalculation></PointCalculation>
+</Modal>
+
+<Modal bind:show={mapModal}>
+	<div class="container rounded-l-lg rounded-br-lg bg-slate-700 p-2 shadow-md md:p-4">
+		<h2 class="mb-3 text-xl font-bold">过图数据</h2>
+		<div class="rounded-lg bg-slate-600 p-2">
+			<div class="mb-4 flex-col space-y-2 md:flex md:flex-row md:space-x-2 md:space-y-0">
+				<input
+					type="text"
+					placeholder="搜索地图名"
+					class="w-full cursor-text rounded border border-slate-600 bg-slate-700 px-4 py-2 text-slate-300 md:mb-0 md:flex-1"
+					bind:value={searchMap}
+				/>
+				<select
+					class="rounded border border-slate-600 bg-slate-700 px-4 py-2 text-slate-300 disabled:opacity-50"
+					disabled={!!searchMap}
+					bind:value={sortType}
+				>
+					<option value="finish">最近完成</option>
+					<option value="rank">最高排名</option>
+					<option value="point">最高分数</option>
+					<option value="name">首字母排序</option>
+					<option value="unfinished">仅未完成</option>
+				</select>
+				<select
+					class="rounded border border-slate-600 bg-slate-700 px-4 py-2 text-slate-300 disabled:opacity-50"
+					disabled={!!searchMap}
+					bind:value={filterType}
+				>
+					<option value="all">全部</option>
+					<option value="novice">新手</option>
+					<option value="moderate">中阶</option>
+					<option value="brutal">高阶</option>
+					<option value="insane">疯狂</option>
+					<option value="ddmax">古典</option>
+					<option value="oldschool">传统</option>
+					<option value="dummy">分身</option>
+					<option value="solo">单人</option>
+					<option value="race">竞速</option>
+					<option value="fun">娱乐</option>
+				</select>
+			</div>
+			<div
+				class="scrollbar-subtle h-[calc(100svh-22rem)] overflow-hidden sm:h-[calc(100svh-20rem)] md:h-[calc(100svh-17rem)]"
+			>
+				<div class="hidden cursor-default text-nowrap rounded-t bg-slate-700 text-center sm:block">
+					<span class="inline-block w-32 overflow-hidden pl-2 text-left lg:w-48">地图</span>
+					<span class="hidden w-8 overflow-hidden text-left md:inline-block lg:w-16">类型</span>
+					<span class="inline-block w-8 overflow-hidden sm:w-16">分数</span>
+					<span class="hidden w-16 overflow-hidden text-right md:inline-block">团队排名</span>
+					<span class="hidden w-16 overflow-hidden text-right md:inline-block">个人排名</span>
+					<span class="inline-block w-16 overflow-hidden text-right sm:w-24">最短记录</span>
+					<span class="hidden w-16 overflow-hidden md:inline-block">次数</span>
+					<span class="inline-block w-32 overflow-hidden lg:w-40">首次完成</span>
+				</div>
+				<div class="block cursor-default text-nowrap rounded-t bg-slate-700 text-center sm:hidden">
+					<span class="inline-block">地图</span>
+					<span class="inline-block">分数</span>
+					<span class="inline-block">记录</span>
+					<span class="inline-block">完成</span>
+				</div>
+				<div class="h-[calc(100%-1rem)]">
+					<VirtualScroll
+						keeps={75}
+						data={filteredMaps()}
+						key="name"
+						estimateSize={30}
+						let:data
+						let:index
+					>
+						<div slot="footer" class="rounded-lg bg-slate-800 text-center">到底了</div>
+						{@const isTeamTop10 = data.map.team_rank && data.map.team_rank <= 10}
+						{@const isRankTop10 = data.map.rank && data.map.rank <= 10}
+						<div
+							class="min-w-fit cursor-default flex-col text-nowrap text-center"
+							class:bg-slate-700={index % 2 == 1}
+							class:bg-slate-600={index % 2 == 0}
+						>
+							<span class="inline-block w-32 overflow-hidden pl-2 text-left lg:w-48"
+								><MapLink className="font-semibold" map={data.name}>{data.name}</MapLink></span
+							>
+							<span class="hidden w-8 overflow-hidden text-left md:inline-block lg:w-16"
+								>{mapType(data.type)}</span
+							>
+							<span class="inline-block w-8 overflow-hidden sm:w-16">{data.map.points}</span>
+							{#if data.map.pending}
+								<span
+									class="hidden w-16 overflow-hidden text-right md:inline-block"
+									class:text-blue-300={data.map.pending}>......</span
+								>
+								<span
+									class="hidden w-16 overflow-hidden text-right md:inline-block"
+									class:text-blue-300={data.map.pending}>......</span
+								>
+							{:else}
+								<span
+									class="hidden w-16 overflow-hidden text-right md:inline-block"
+									class:text-orange-500={isTeamTop10}
+									>{data.map.team_rank ? data.map.team_rank + '.' : ''}</span
+								>
+								<span
+									class="hidden w-16 overflow-hidden text-right md:inline-block"
+									class:text-orange-500={isRankTop10}
+									>{data.map.rank ? data.map.rank + '.' : ''}</span
+								>
+							{/if}
+							<span class="inline-block w-16 overflow-hidden text-right sm:w-24"
+								>{data.map.time ? secondsToTime(data.map.time) : ''}</span
+							>
+							<span class="hidden w-16 overflow-hidden md:inline-block">{data.map.finishes}</span>
+							<span
+								class="inline-block w-32 overflow-hidden lg:w-40"
+								class:text-blue-300={data.map.pending}
+								>{data.map.first_finish
+									? new Date(data.map.first_finish * 1000).toLocaleString('zh-CN', {
+											dateStyle: 'short',
+											timeStyle: 'short'
+										})
+									: ''}</span
+							>
+						</div>
+					</VirtualScroll>
+				</div>
+			</div>
+		</div>
+	</div>
 </Modal>

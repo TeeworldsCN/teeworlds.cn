@@ -111,8 +111,8 @@
 				loadingSkin = 'default';
 			}
 		} else {
-			skin = useDefault ? DEFAULT_SKIN : X_SPEC_SKIN;
-			loadingSkin = 'default';
+			skin = X_SPEC_SKIN;
+			loadingSkin = 'cancelled';
 		}
 	};
 
@@ -157,6 +157,7 @@
 	});
 
 	$effect(() => {
+		url;
 		name;
 		requestAnimationFrame(updateSkin);
 	});

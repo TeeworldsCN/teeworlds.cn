@@ -32,7 +32,6 @@ interface MapData {
 			pending?: boolean;
 		};
 	};
-	pending_points?: number;
 }
 
 export const load = (async ({ fetch, parent, params, setHeaders }) => {
@@ -145,20 +144,25 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 		// don't count already finished maps
 		if (targetMap.first_finish) continue;
 
+		const mapFinishInfo = player.last_finishes.find((finish) => finish.map == map.name);
+		if (!mapFinishInfo) continue;
+
 		targetMap.finishes = 1;
+		targetMap.first_finish = mapFinishInfo.timestamp;
 		targetMap.pending = true;
 
 		// find the first finish time from the last finish list
-		const time = player.last_finishes.find((finish) => finish.map == map.name)?.time;
+		const time = mapFinishInfo.time;
 		targetMap.time = time ?? undefined;
 
 		const points = targetMap.points;
 
 		if (points) {
 			player.pending_points = (player.pending_points || 0) + points;
-			type.pending_points = (type.pending_points || 0) + points;
 		}
 
+		// if player has played more than 10 maps in the last 24 hours,
+		// we can't garantee the estimated points are accurate.
 		const lastFinish = player.last_finishes[player.last_finishes.length - 1];
 		if (lastFinish && Date.now() / 1000 - lastFinish.timestamp < 24 * 60 * 60) {
 			player.pending_unknown = true;

@@ -123,18 +123,11 @@
 	]}
 />
 
-<button
-	class="mb-2 cursor-pointer text-nowrap rounded bg-slate-700 px-4 py-2 font-semibold hover:bg-slate-600 active:bg-slate-700"
-	onclick={() => {
-		showModal = !showModal;
-	}}><Fa class="inline" icon={faQuestionCircle}></Fa> 了解分数计算方式</button
->
-
-<div class="mb-4 space-y-2 md:flex md:space-x-5">
+<div class="mb-4 flex-col space-y-2 md:flex md:flex-row md:space-x-2 md:space-y-0">
 	<input
 		type="text"
 		placeholder="查找玩家名"
-		class="w-full rounded border border-slate-600 bg-slate-700 p-2 text-slate-300 md:mb-0 md:flex-1"
+		class="w-full rounded border border-slate-600 bg-slate-700 px-4 py-2 text-slate-300 md:mb-0 md:flex-1"
 		bind:value={searchName}
 		onkeydown={(ev) => {
 			if (ev.key == 'Enter') {
@@ -149,6 +142,12 @@
 	>
 		查询玩家
 	</button>
+	<button
+		class="cursor-pointer text-nowrap rounded bg-slate-700 px-4 py-2 font-semibold hover:bg-slate-600 active:bg-slate-700"
+		onclick={() => {
+			showModal = !showModal;
+		}}><Fa class="inline" icon={faQuestionCircle}></Fa> 分数说明</button
+	>
 </div>
 
 <!-- horizontally scrollable list of cards -->

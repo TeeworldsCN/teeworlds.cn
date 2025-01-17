@@ -9,6 +9,7 @@
 	import { ddnetDate, mapType, numberToStars } from '$lib/ddnet/helpers';
 	import { browser } from '$app/environment';
 	import { tippy } from '$lib/tippy';
+	import { checkMapName, checkMapper } from '$lib/ddnet/searches';
 
 	let maps: MapList = $state([]);
 	let error = $state();
@@ -49,74 +50,11 @@
 	let paginatedMaps = $state<typeof maps>([]);
 	let totalPages = $state(1);
 
-	const checkMapName = (map: any, search: string) => {
-		if (!search) {
-			return true;
-		}
-
-		let mapInitial = '';
-		let mapNameNoSeparator = '';
-		let prevIsUpper = false;
-		let prevIsSeparator = true;
-		for (let i = 0; i < map.name.length; i++) {
-			const char = map.name[i];
-			const isUpper = char.match(/[A-Z]/);
-			const isLetter = isUpper || char.match(/[a-z]/);
-			const isSeparator = char == '-' || char == '_' || char == ' ';
-			const isNumber = char.match(/[0-9]/);
-			if (isUpper) {
-				if (!prevIsUpper || prevIsSeparator) {
-					mapInitial += char;
-				}
-			} else if (isLetter) {
-				if (prevIsSeparator) {
-					mapInitial += char;
-				}
-			} else if (isNumber) {
-				mapInitial += char;
-			}
-			prevIsUpper = isUpper;
-			prevIsSeparator = isSeparator;
-			if (!isSeparator) {
-				mapNameNoSeparator += char;
-			}
-		}
-
-		const mapName = map.name.toLowerCase();
-		const searchTextLower = search.toLowerCase();
-		return (
-			mapInitial.toLowerCase() == searchTextLower ||
-			mapNameNoSeparator.toLowerCase().includes(searchTextLower) ||
-			mapName.includes(searchTextLower)
-		);
-	};
-
-	const checkMapper = (map: any, search: string) => {
-		if (!search) {
-			return true;
-		}
-
-		const mapperString = map.mapper || '不详';
-
-		if (search.startsWith('"') && search.endsWith('"')) {
-			// exact match
-			const mappers = (mapperString as string)
-				.split(',')
-				.flatMap((mapper) => mapper.split('&'))
-				.map((mapper) => mapper.trim());
-
-			search = search.slice(1, -1).toLowerCase();
-			return mappers.some((mapper) => mapper.toLowerCase() == search);
-		}
-
-		return mapperString.toLowerCase().includes(search.toLowerCase());
-	};
-
 	$effect(() => {
 		if (!Array.isArray(maps)) return;
 
-		const filteredMaps = maps.filter((map: any) => {
-			return checkMapName(map, searchName) && checkMapper(map, searchMapper);
+		const filteredMaps = maps.filter((map: (typeof maps)[0]) => {
+			return checkMapName(map.name, searchName) && checkMapper(map.mapper, searchMapper);
 		});
 
 		totalPages = Math.ceil(filteredMaps.length / pageSize);

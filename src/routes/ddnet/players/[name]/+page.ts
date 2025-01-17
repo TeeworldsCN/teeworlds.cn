@@ -106,11 +106,9 @@ export const load = (async ({ data, parent }) => {
 	// setup growth
 	const maps = Object.keys(player.types)
 		.flatMap((type) =>
-			Object.values(player.types[type].maps)
-				.filter((map) => map.first_finish && map.points)
-				.map((map) => ({ p: map.points, t: map.first_finish! }))
+			Object.entries(player.types[type].maps).map(([name, map]) => ({ name, type, map }))
 		)
-		.sort((a, b) => b.t - a.t);
+		.sort((a, b) => (b.map.first_finish || 0) - (a.map.first_finish || 0));
 
 	// points of last 365 days
 	let currentPoints = player.points.points;
@@ -121,8 +119,8 @@ export const load = (async ({ data, parent }) => {
 	const growth: number[] = [];
 
 	for (let i = 0; i < 365; i++) {
-		while (maps[mapIndex] && maps[mapIndex].t >= currentDate) {
-			currentPoints -= maps[mapIndex].p;
+		while (maps[mapIndex] && (maps[mapIndex].map.first_finish || 0) >= currentDate) {
+			currentPoints -= maps[mapIndex].map.points;
 			mapIndex++;
 		}
 		growth.push(currentPoints);
@@ -151,6 +149,7 @@ export const load = (async ({ data, parent }) => {
 		ranks,
 		growth,
 		endOfDay,
+		maps,
 		...(await parent())
 	};
 }) satisfies PageLoad;

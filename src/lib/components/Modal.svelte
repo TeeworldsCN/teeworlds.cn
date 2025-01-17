@@ -12,7 +12,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <dialog
-	class="fixed z-50 mx-auto overflow-visible border-none bg-transparent text-slate-300 shadow-lg backdrop:bg-black/60"
+	class="fixed z-50 overflow-visible border-none bg-transparent text-slate-300 shadow-lg backdrop:bg-black/60"
 	bind:this={dialog}
 	onclose={() => (show = false)}
 	onclick={(e) => {
