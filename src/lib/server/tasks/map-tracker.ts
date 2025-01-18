@@ -75,8 +75,8 @@ const publishMap = async (map: MapList[0]) => {
 
 const MAP_TRACKER_KEY = 'tracker:release';
 
-// run every 30 minutes
-export const mapTracker = new Cron('*/30 * * * *', async () => {
+// run every 5 minutes
+export const mapTracker = new Cron('*/5 * * * *', async () => {
 	const data = await maps.fetch();
 	if (!data) return;
 
@@ -98,7 +98,9 @@ export const mapTracker = new Cron('*/30 * * * *', async () => {
 		// can't find the last known map, ignore and start over from the lastest map
 		// when this triggers, it doesn't actually publish the lastest map
 		persistent.set(MAP_TRACKER_KEY, lastestMap.name);
-		console.log(`Didn't find the last known map ${knownReleaseMap}, starting over from ${lastestMap.name}`);
+		console.log(
+			`Didn't find the last known map ${knownReleaseMap}, starting over from ${lastestMap.name}`
+		);
 		return;
 	}
 
