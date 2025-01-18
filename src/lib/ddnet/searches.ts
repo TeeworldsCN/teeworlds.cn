@@ -12,7 +12,7 @@ export const checkMapName = (name: string, search: string) => {
 		const isUpper = !!char.match(/[A-Z]/);
 		const isLetter = isUpper || char.match(/[a-z]/);
 		const isSeparator = char == '-' || char == '_' || char == ' ';
-		const isNumber = char.match(/[0-9]/);
+		const isNumber = char.match(/[0-9\.]/);
 		if (isUpper) {
 			if (!prevIsUpper || prevIsSeparator) {
 				mapInitial += char;
@@ -31,11 +31,22 @@ export const checkMapName = (name: string, search: string) => {
 		}
 	}
 
+	let searchNoSeparator = '';
+	for (let i = 0; i < search.length; i++) {
+		const char = search[i];
+		const isSeparator = char == '-' || char == '_' || char == ' ';
+		if (!isSeparator) {
+			searchNoSeparator += char;
+		}
+	}
+
 	const mapName = name.toLowerCase();
 	const searchTextLower = search.toLowerCase();
+	const searchTextNoSeparatorLower = searchNoSeparator.toLowerCase();
+
 	return (
-		mapInitial.toLowerCase() == searchTextLower ||
-		mapNameNoSeparator.toLowerCase().includes(searchTextLower) ||
+		mapInitial.toLowerCase().startsWith(searchTextNoSeparatorLower) ||
+		mapNameNoSeparator.toLowerCase().includes(searchTextNoSeparatorLower) ||
 		mapName.includes(searchTextLower)
 	);
 };

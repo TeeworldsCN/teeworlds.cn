@@ -57,6 +57,8 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 	}
 
 	let type = '';
+	let diff = 0;
+
 	for (const keyword of Object.keys(MAPTYPE_KEYWORDS)) {
 		if (mapName.toLowerCase().startsWith(keyword)) {
 			type = MAPTYPE_KEYWORDS[keyword];
@@ -66,15 +68,12 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 
 	if (type) {
 		mapName = args.split(' ').slice(1).join(' ');
-	}
 
-	// attempt to make filters for map searches
-	let diff = 0;
-
-	for (const keyword of Object.keys(MAPDIFF_KEYWORDS)) {
-		if (args.toLowerCase().includes(keyword)) {
-			diff = MAPDIFF_KEYWORDS[keyword];
-			break;
+		for (const keyword of Object.keys(MAPDIFF_KEYWORDS)) {
+			if (args.toLowerCase().includes(keyword)) {
+				diff = MAPDIFF_KEYWORDS[keyword];
+				break;
+			}
 		}
 	}
 
@@ -152,13 +151,27 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 		return await reply.text(`不存在 ${descriptor} 图`);
 	}
 
-	const filteredMaps = mapData.filter((map: (typeof mapData)[0]) => {
-		return (
-			(!type || map.type.toLowerCase().startsWith(type)) &&
-			(!diff || map.difficulty == diff) &&
-			checkMapName(map.name, mapName)
-		);
-	});
+	const removeSeparator = (str: string) => {
+		let noSeparator = '';
+		for (let i = 0; i < str.length; i++) {
+			const char = str[i];
+			const isSeparator = char == '-' || char == '_' || char == ' ';
+			if (!isSeparator) {
+				noSeparator += char;
+			}
+		}
+		return noSeparator;
+	};
+
+	const filteredMaps = mapData
+		.filter((map: (typeof mapData)[0]) => {
+			return (
+				(!type || map.type.toLowerCase().startsWith(type)) &&
+				(!diff || map.difficulty == diff) &&
+				checkMapName(map.name, mapName)
+			);
+		})
+		.map((map) => ({ ...map, nameNoSeparator: removeSeparator(map.name) }));
 
 	if (filteredMaps.length == 0) {
 		return await reply.text(`未找到名为 ${mapName} 的地图`);
@@ -166,38 +179,50 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 
 	let targetMap: MapList[0] | null = null;
 
-	// find exact match
-	for (const map of filteredMaps) {
-		if (map.name.toLowerCase() == mapName.toLowerCase()) {
-			targetMap = map;
+	const mapNameNoSpeparator = removeSeparator(mapName);
+
+	// sort by lowest point (easiest, probably finished by most players)
+	// then oldest
+	targetMap = filteredMaps.sort((a, b) => {
+		const aExact = a.name.toLowerCase() == mapName.toLowerCase();
+		const bExact = b.name.toLowerCase() == mapName.toLowerCase();
+		const aCaseExact = a.name == mapName;
+		const bCaseExact = b.name == mapName;
+
+		if (aExact && bExact) {
+			if (aCaseExact != bCaseExact) {
+				return aCaseExact ? -1 : 1;
+			}
+		} else if (aExact && !bExact) {
+			return -1;
+		} else if (bExact && !aExact) {
+			return 1;
 		}
-	}
+
+		const aStartsWith = a.nameNoSeparator.toLowerCase().startsWith(mapNameNoSpeparator);
+		const bStartsWith = b.nameNoSeparator.toLowerCase().startsWith(mapNameNoSpeparator);
+		const aCaseStartsWith = a.nameNoSeparator.startsWith(mapNameNoSpeparator);
+		const bCaseStartsWith = b.nameNoSeparator.startsWith(mapNameNoSpeparator);
+
+		if (aStartsWith == bStartsWith) {
+			if (aCaseStartsWith != bCaseStartsWith) {
+				return aCaseStartsWith ? -1 : 1;
+			}
+			if (a.points == b.points) {
+				return new Date(a.release).getTime() - new Date(b.release).getTime();
+			}
+			return a.points - b.points;
+		}
+
+		if (aStartsWith) {
+			return -1;
+		}
+
+		return 1;
+	})[0];
 
 	if (!targetMap) {
-		// sort by lowest point (easiest, probably finished by most players)
-		// then oldest
-		targetMap = filteredMaps.sort((a, b) => {
-			const aStartsWith = a.name.toLowerCase().startsWith(mapName);
-			const bStartsWith = b.name.toLowerCase().startsWith(mapName);
-			const aCaseStartsWith = a.name.startsWith(mapName);
-			const bCaseStartsWith = b.name.startsWith(mapName);
-
-			if (aStartsWith == bStartsWith) {
-				if (aCaseStartsWith != bCaseStartsWith) {
-					return aCaseStartsWith ? -1 : 1;
-				}
-				if (a.points == b.points) {
-					return new Date(a.release).getTime() - new Date(b.release).getTime();
-				}
-				return a.points - b.points;
-			}
-
-			if (aStartsWith) {
-				return -1;
-			}
-
-			return 1;
-		})[0];
+		return await reply.text(`未找到名为 ${mapName} 的地图`);
 	}
 
 	const lines = [
