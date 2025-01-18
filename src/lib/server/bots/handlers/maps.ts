@@ -87,12 +87,12 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 		if (user && user.data?.name) {
 			const playerName = user.data.name;
 			const response = await fetch(
-				`https://ddnet.org/players/?json=${encodeURIComponent(playerName)}`
+				`https://info.ddnet.org/info?name=${encodeURIComponent(playerName)}`
 			);
 			if (response.ok) {
 				try {
-					const maps = (await response.json()) as string[];
-					for (const map of maps) {
+					const maps = (await response.json()) as { maps: string[] };
+					for (const map of maps.maps) {
 						finishedList.add(map);
 					}
 					usingName = true;
