@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import { secondsToDate } from '$lib/date';
-	import { mapType, numberToStars } from '$lib/ddnet/helpers';
+	import { KNOWN_REGIONS, mapType, numberToStars } from '$lib/ddnet/helpers';
 	import { secondsToChineseTime, secondsToTime } from '$lib/helpers';
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
@@ -36,9 +36,32 @@
 	]}
 />
 
-<div class="mb-4">
-	<div class="text-2xl font-bold">{data.map.name}</div>
-	<div class="text-md font-bold"><span>作者：</span><Mappers authors={mapperTransformed()} /></div>
+<div class="mb-4 flex justify-between selection:flex-row">
+	<div>
+		<div class="text-2xl font-bold">{data.map.name}</div>
+		<div class="text-md font-bold">
+			<span>作者：</span><Mappers authors={mapperTransformed()} />
+		</div>
+	</div>
+	<div class="flex items-center justify-center">
+		<select
+			class="rounded bg-slate-700 px-4 py-2 text-slate-300"
+			value={data.region}
+			onchange={(ev: Event) => {
+				const value = (ev.currentTarget as HTMLSelectElement).value;
+				if (value == 'GLOBAL') goto(`/ddnet/maps/${encodeAsciiURIComponent(data.map.name)}`);
+				else
+					goto(
+						`/ddnet/maps/${encodeAsciiURIComponent(data.map.name)}?server=${value.toLowerCase()}`
+					);
+			}}
+		>
+			<option value="GLOBAL">全球</option>
+			{#each Object.keys(KNOWN_REGIONS) as key}
+				<option value={key}>{KNOWN_REGIONS[key]}</option>
+			{/each}
+		</select>
+	</div>
 </div>
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 	<div class="relative rounded-lg bg-slate-700 p-4 shadow-md">
@@ -66,13 +89,19 @@
 		</button>
 	</div>
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
-		<h2 class="mb-3 text-xl font-bold">地图数据</h2>
+		<h2 class="mb-3 text-xl font-bold">
+			{#if data.region != 'GLOBAL'}
+				<FlagSpan flag={data.region} />
+			{/if}地图数据
+		</h2>
 		<p>
 			发布日期：{data.map.release ? secondsToDate(data.map.release) : '远古'}
 		</p>
 		{#if data.map.median_time}
-			<p use:tippy={{ content: `${data.map.median_time.toFixed(2.0)}秒` }}>
-				平均时间：{secondsToTime(data.map.median_time)}
+			<p>
+				平均时间：<span use:tippy={{ content: `${data.map.median_time.toFixed(2.0)}秒` }}
+					>{secondsToTime(data.map.median_time)}</span
+				>
 			</p>
 		{/if}
 		{#if data.map.median_time}
@@ -86,7 +115,7 @@
 		{/if}
 		{#if data.map.tiles && data.map.tiles.length}
 			<p class="mb-1">图块特性：</p>
-			<div class="flex flex-row flex-wrap items-center justify-left gap-1">
+			<div class="justify-left flex flex-row flex-wrap items-center gap-1">
 				{#each data.map.tiles as tile}
 					<img
 						class="m-0 mr-1 inline-block h-8 w-8 rounded bg-gray-600 p-0"
@@ -105,7 +134,12 @@
 >
 	{#if data.map.team_ranks.length}
 		<div class="mt-4 rounded-lg bg-slate-700 p-4 shadow-md">
-			<h2 class="text-xl font-bold">团队排名</h2>
+			<h2 class="text-xl font-bold">
+				{#if data.region != 'GLOBAL'}
+					<FlagSpan flag={data.region} />
+				{/if}
+				团队排名
+			</h2>
 			<ul class="mt-2">
 				{#each data.map.team_ranks as rank}
 					<li>
@@ -116,7 +150,9 @@
 							}}
 							class="inline-block w-20 text-right">{secondsToTime(rank.time)}</span
 						>
-						<FlagSpan flag={rank.country} />
+						{#if data.region == 'GLOBAL'}
+							<FlagSpan flag={rank.country} />
+						{/if}
 						<span>
 							{#each rank.players as player, i}
 								<PlayerLink {player} className="font-semibold">{player}</PlayerLink
@@ -130,7 +166,12 @@
 	{/if}
 
 	<div class="mt-4 rounded-lg bg-slate-700 p-4 shadow-md">
-		<h2 class="text-xl font-bold">个人排名</h2>
+		<h2 class="text-xl font-bold">
+			{#if data.region != 'GLOBAL'}
+				<FlagSpan flag={data.region} />
+			{/if}
+			个人排名
+		</h2>
 		<ul class="mt-2">
 			{#each data.map.ranks as rank}
 				<li>
@@ -141,7 +182,9 @@
 						}}
 						class="inline-block w-20 text-right">{secondsToTime(rank.time)}</span
 					>
-					<FlagSpan flag={rank.country} />
+					{#if data.region == 'GLOBAL'}
+						<FlagSpan flag={rank.country} />
+					{/if}
 					<span
 						><PlayerLink player={rank.player} className="font-semibold">{rank.player}</PlayerLink
 						></span
@@ -152,7 +195,12 @@
 	</div>
 
 	<div class="mt-4 rounded-lg bg-slate-700 p-4 shadow-md">
-		<h2 class="text-xl font-bold">完成次数</h2>
+		<h2 class="text-xl font-bold">
+			{#if data.region != 'GLOBAL'}
+				<FlagSpan flag={data.region} />
+			{/if}
+			完成次数
+		</h2>
 		<ul class="mt-2">
 			{#each data.map.max_finishes as finishes}
 				<li>

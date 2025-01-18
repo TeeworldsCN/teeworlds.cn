@@ -5,6 +5,10 @@ import { ranks, regionalRanks } from '$lib/server/fetches/ranks';
 export const load = (async ({ parent, url }) => {
 	const region = url.searchParams.get('server');
 
+	if (region && region.toLowerCase() != region) {
+		return error(404);
+	}
+
 	try {
 		// fetch regional ranks if region is provided
 		if (region) {

@@ -6,6 +6,12 @@ import { decodeAsciiURIComponent, encodeAsciiURIComponent } from '$lib/link';
 import { uaIsStrict } from '$lib/helpers';
 
 export const load = (async ({ url, parent, params }) => {
+	const region = url.searchParams.get('server');
+
+	if (region && region.toLowerCase() != region) {
+		return error(404);
+	}
+
 	const parentData = await parent();
 
 	const param = params.name;
@@ -22,7 +28,11 @@ export const load = (async ({ url, parent, params }) => {
 	let data;
 
 	try {
-		data = await (await fetch(`https://ddnet.org/maps/?json=${encodeURIComponent(name)}`)).json();
+		data = await (
+			await fetch(
+				`https://ddnet.org/maps/?json=${encodeURIComponent(name)}${region ? `&country=${region.toUpperCase()}` : ''}`
+			)
+		).json();
 	} catch {
 		// ignored, mostly paring error
 	}
@@ -80,5 +90,5 @@ export const load = (async ({ url, parent, params }) => {
 		}[];
 		icon: string;
 	};
-	return { map, ...parentData };
+	return { map, region: region ? region.toUpperCase() : 'GLOBAL', ...parentData };
 }) satisfies PageServerLoad;
