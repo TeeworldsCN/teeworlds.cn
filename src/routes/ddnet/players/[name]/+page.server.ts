@@ -1,7 +1,7 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { decodeAsciiURIComponent, encodeAsciiURIComponent } from '$lib/link';
-import { ranks } from '$lib/server/fetches/ranks';
+import { ranks, regionalRanks } from '$lib/server/fetches/ranks';
 import { maps } from '$lib/server/fetches/maps';
 import { uaIsStrict } from '$lib/helpers';
 import { getSkin } from '$lib/server/ddtracker';
@@ -63,6 +63,9 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 				};
 				team_rank: PlayerRank;
 				rank: PlayerRank;
+				server_points?: PlayerRank;
+				server_team_rank?: PlayerRank;
+				server_rank?: PlayerRank;
 				points_last_year: PlayerRank;
 				points_last_month: PlayerRank;
 				points_last_week: PlayerRank;
@@ -167,6 +170,17 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 		if (lastFinish && Date.now() / 1000 - lastFinish.timestamp < 24 * 60 * 60) {
 			player.pending_unknown = true;
 		}
+	}
+
+	const favoriteServer = player.favorite_server;
+	const serverCache = await regionalRanks(favoriteServer.server);
+	if (serverCache) {
+		try {
+			const serverRanks = await serverCache.fetch();
+			player.server_points = serverRanks.ranks.points.find((rank) => rank.name == player.player);
+			player.server_rank = serverRanks.ranks.rank.find((rank) => rank.name == player.player);
+			player.server_team_rank = serverRanks.ranks.team.find((rank) => rank.name == player.player);
+		} catch {}
 	}
 
 	const skin = (getSkin(player.player) || {}) as {

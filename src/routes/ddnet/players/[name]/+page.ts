@@ -1,3 +1,4 @@
+import type FlagSpan from '$lib/components/FlagSpan.svelte';
 import type { PageLoad } from './$types';
 
 export const load = (async ({ data, parent }) => {
@@ -63,6 +64,9 @@ export const load = (async ({ data, parent }) => {
 		{ icon: '🌎', name: '总通过分', rank: { ...player.points, pending: player.pending_points } },
 		{ icon: '👥', name: '团队排位分', rank: player.team_rank },
 		{ icon: '👤', name: '个人排位分', rank: player.rank },
+		{ icon: 'SV', name: '分数排名', rank: player.server_points || {} },
+		{ icon: 'SV', name: '个人排位', rank: player.server_rank || {} },
+		{ icon: 'SV', name: '团队排位', rank: player.server_team_rank || {} },
 		{ icon: '📅', name: '获得通过分 (近365天)', rank: player.points_last_year },
 		{ icon: '📅', name: '获得通过分 (近30天)', rank: player.points_last_month },
 		{ icon: '📅', name: '获得通过分 (近7天)', rank: player.points_last_week }

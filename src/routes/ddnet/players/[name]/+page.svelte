@@ -8,7 +8,7 @@
 	import PointCalculation from '$lib/components/PointCalculation.svelte';
 	import TeeRender from '$lib/components/TeeRender.svelte';
 	import { secondsToDate } from '$lib/date';
-	import { mapType } from '$lib/ddnet/helpers';
+	import { KNOWN_REGIONS, mapType } from '$lib/ddnet/helpers';
 	import { checkMapName } from '$lib/ddnet/searches.js';
 	import { secondsToTime } from '$lib/helpers';
 	import { encodeAsciiURIComponent } from '$lib/link.js';
@@ -242,8 +242,13 @@
 					class:opacity-50={!rank.rank.rank}
 				>
 					<h3 class="mb-1 text-base font-bold">
-						{rank.icon}
-						{rank.name}
+						{#if rank.icon == 'SV'}
+							<FlagSpan class="text-sm" flag={data.player.favorite_server.server} />
+							{KNOWN_REGIONS[data.player.favorite_server.server.toUpperCase()] || '地区'}{rank.name}
+						{:else}
+							{rank.icon}
+							{rank.name}
+						{/if}
 					</h3>
 					{#if rank.rank.rank}
 						<p class="text-md">
@@ -262,6 +267,8 @@
 									>{' '}+{rank.rank.pending}{#if data.player.pending_unknown}?{/if}</span
 								>{/if}
 						</p>
+					{:else if rank.icon == 'SV'}
+						<p class="text-md">未进前 500 名</p>
 					{:else}
 						<p class="text-md">未获得</p>
 					{/if}
