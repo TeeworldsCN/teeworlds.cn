@@ -5,6 +5,7 @@
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import PointCalculation from '$lib/components/PointCalculation.svelte';
+	import { KNOWN_REGIONS } from '$lib/ddnet/helpers.js';
 	import { encodeAsciiURIComponent } from '$lib/link';
 	import type { RankInfo } from '$lib/server/fetches/ranks.js';
 	import { faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
@@ -12,6 +13,10 @@
 
 	let { data } = $props();
 
+	let searchName = $state('');
+	let showModal = $state(false);
+
+	// slicing top 20 ranks for each ladder
 	const sliceRanks = () => {
 		const result: RankInfo['ranks'] = {
 			points: [],
@@ -27,6 +32,9 @@
 		return result;
 	};
 
+	let ranks: RankInfo['ranks'] = $state(sliceRanks());
+
+	// queried global ranks
 	const queryRanks = () => {
 		const result: RankInfo['ranks'] = {
 			points: [],
@@ -49,10 +57,21 @@
 		return result;
 	};
 
-	let ranks: RankInfo['ranks'] = $state(sliceRanks());
-
-	let searchName = $state('');
-	let showModal = $state(false);
+	// find top 500 ranks with search name
+	const searchRanksTop500 = () => {
+		const result: RankInfo['ranks'] = {
+			points: [],
+			team: [],
+			rank: [],
+			yearly: [],
+			monthly: [],
+			weekly: []
+		};
+		for (const ladder of Object.keys(data.ranks) as (keyof RankInfo['ranks'])[]) {
+			result[ladder] = data.ranks[ladder].filter((rank) => rank.name == searchName);
+		}
+		return result;
+	};
 
 	const MIN_QUERY_INTERVAL = 200;
 	let queryingName: string | null = null;
@@ -93,8 +112,10 @@
 	}
 
 	$effect(() => {
-		if (queryListName) {
+		if (data.region == 'GLOBAL' && queryListName) {
 			ranks = queryRanks();
+		} else if (searchName) {
+			ranks = searchRanksTop500();
 		} else {
 			ranks = sliceRanks();
 		}
@@ -105,13 +126,13 @@
 		query();
 	});
 
-	const LADDER_NAMES = {
-		points: '🌎 总通过分',
-		yearly: '📅 获得通过分 (近365天)',
-		monthly: '📅 获得通过分 (近30天)',
-		weekly: '📅 获得通过分 (近7天)',
-		team: '👥 团队排位分',
-		rank: '👤 个人排位分'
+	const LADDER_NAMES: Record<string, [string, string]> = {
+		points: ['总通过分', '🌎'],
+		yearly: ['获得通过分 (近365天)', '📅'],
+		monthly: ['获得通过分 (近30天)', '📅'],
+		weekly: ['获得通过分 (近7天)', '📅'],
+		team: ['团队排位分', '👥'],
+		rank: ['个人排位分', '👤']
 	};
 </script>
 
@@ -148,6 +169,20 @@
 			showModal = !showModal;
 		}}><Fa class="inline" icon={faQuestionCircle}></Fa> 分数说明</button
 	>
+	<select
+		class="rounded bg-slate-700 px-4 py-2 text-slate-300"
+		value={data.region}
+		onchange={(ev: Event) => {
+			const value = (ev.currentTarget as HTMLSelectElement).value;
+			if (value == 'GLOBAL') goto(`/ddnet/players`);
+			else goto(`/ddnet/players?server=${value.toLowerCase()}`);
+		}}
+	>
+		<option value="GLOBAL">全球</option>
+		{#each Object.keys(KNOWN_REGIONS) as key}
+			<option value={key}>{KNOWN_REGIONS[key]}</option>
+		{/each}
+	</select>
 </div>
 
 <!-- horizontally scrollable list of cards -->
@@ -171,6 +206,8 @@
 
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 	{#each Object.keys(ranks) as ladder}
+		{@const ladderName = LADDER_NAMES[ladder]}
+		{@const regionName = KNOWN_REGIONS[data.region] ?? '全球'}
 		<div
 			class="mt-4 rounded-lg bg-slate-700 p-4 shadow-md {ranks[
 				ladder as any as keyof RankInfo['ranks']
@@ -179,14 +216,30 @@
 				: ''}"
 		>
 			{#if ladder == 'points'}
-				<h2 class="text-xl font-bold">{LADDER_NAMES[ladder]}（共 {data.total_points}pts）</h2>
+				{#if data.region == 'GLOBAL'}
+					<h2 class="text-xl font-bold">
+						{ladderName[1]}{regionName}{ladderName[0]}（共 {data.total_points}pts）
+					</h2>
+				{:else}
+					<h2 class="text-xl font-bold">
+						<FlagSpan flag={data.region} />{regionName}{ladderName[0]}（共 {data.total_points}pts）
+					</h2>
+				{/if}
 			{:else}
-				<h2 class="text-xl font-bold">{LADDER_NAMES[ladder as any as keyof RankInfo['ranks']]}</h2>
+				<h2 class="text-xl font-bold">
+					{ladderName[1]}{regionName}{ladderName[0]}
+				</h2>
 			{/if}
 			<ul class="mt-2">
 				{#if ranks[ladder as any as keyof RankInfo['ranks']].length == 0}
 					<li>
-						<span class="text-center">未获得记录</span>
+						{#if data.region != 'GLOBAL' && !searchName}
+							<span class="text-center">无记录，可能已停服</span>
+						{:else if data.region != 'GLOBAL' && searchName}
+							<span class="text-center">未进区服前 500 名</span>
+						{:else}
+							<span class="text-center">未获得记录</span>
+						{/if}
 					</li>
 				{:else}
 					{#each ranks[ladder as any as keyof RankInfo['ranks']] as rank}

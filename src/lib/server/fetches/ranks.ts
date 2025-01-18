@@ -10,7 +10,7 @@ interface PointInfo {
 
 interface FinishInfo {
 	timestamp: number;
-	region: string;
+	region?: string;
 	type: string;
 	map: string;
 	name: string;
@@ -149,3 +149,58 @@ export const ranks = new FetchCache<RankInfo>('https://ddnet.org/ranks/', async 
 
 	return ranks;
 });
+
+// fetch caches for regional ranks
+const regionCache = new Map<string, FetchCache<RankInfo>>();
+export const regionalRanks = async (region: string) => {
+	if (!region) return null;
+	const existing = regionCache.get(region);
+	if (existing) return existing;
+
+	// create a new fetch cache for the region
+	// check whether the region exists first
+	const response = await fetch(`https://ddnet.org/ranks/${region}/`, { method: 'HEAD' });
+	if (!response.ok) {
+		return null;
+	}
+
+	const fetchCache = new FetchCache<RankInfo>(
+		`https://ddnet.org/ranks/${region}/`,
+		async (response) => {
+			const ranks = {
+				ranks: {
+					points: [],
+					team: [],
+					rank: [],
+					yearly: [],
+					monthly: [],
+					weekly: []
+				},
+				last_finishes: [],
+				total_points: 0,
+				update_time: 0
+			} satisfies RankInfo;
+
+			const html = await response.text();
+
+			// we actually want all 500 ranks, so people can check whether they hit the top 500
+			// there is no other way to check this
+			new HTMLRewriter()
+				.on(
+					[
+						'div[class="block2 ladder"] > h3',
+						'div[class="block2 ladder"] > table > tr',
+						'div[class="block2 ladder"] > table > tr > td',
+						'div[class="block2 ladder"] > table > tr > td > img'
+					].join(','),
+					new LadderHandler(ranks)
+				)
+				.on('p[class="toggle"] > span[data-type="date"]', new UpdateTimeHandler(ranks))
+				.transform(html);
+
+			return ranks;
+		}
+	);
+	regionCache.set(region, fetchCache);
+	return fetchCache;
+};
