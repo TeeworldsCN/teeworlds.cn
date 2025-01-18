@@ -71,8 +71,6 @@ export const handlePoints: Handler = async ({ user, reply, args }) => {
 		{ name: '🇨🇳 国服团队排位', rank: player.chnTeam, always: false }
 	];
 
-	console.log(data);
-
 	const lines = [
 		data.name,
 		...ranks
