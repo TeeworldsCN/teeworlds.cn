@@ -154,6 +154,8 @@ export const ranks = new FetchCache<RankInfo>('https://ddnet.org/ranks/', async 
 const regionCache = new Map<string, FetchCache<RankInfo>>();
 export const regionalRanks = async (region: string) => {
 	if (!region) return null;
+	region = region.toLowerCase();
+
 	const existing = regionCache.get(region);
 	if (existing) return existing;
 

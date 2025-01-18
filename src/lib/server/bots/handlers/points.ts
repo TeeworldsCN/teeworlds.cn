@@ -1,5 +1,6 @@
 import { numberToSub } from '$lib/helpers';
 import { encodeAsciiURIComponent } from '$lib/link';
+import { regionalRanks } from '$lib/server/fetches/ranks';
 import { allowedText } from '$lib/server/filter';
 import { getPlayer } from '$lib/server/players';
 import type { Handler } from '../protocol/types';
@@ -20,30 +21,65 @@ export const handlePoints: Handler = async ({ user, reply, args }) => {
 		});
 	}
 
-	const player = await getPlayer(playerName);
-	if (player == null) {
+	const data = await getPlayer(playerName);
+	if (data == null) {
 		// no valid player data. just pretend this doesn't work
 		return { ignored: true, message: '玩家信息未加载，分数功能未启用' };
 	}
+
+	const player = data as typeof data & {
+		chnRank?: {
+			points?: number;
+			rank?: number;
+		};
+		chnTeam?: {
+			points?: number;
+			rank?: number;
+		};
+	};
 
 	if (!player.name || !allowedText(player.name)) {
 		return await reply.text('未找到相关的玩家信息');
 	}
 
+	const chnFetch = await regionalRanks('chn');
+	if (chnFetch) {
+		try {
+			const chnRanks = await chnFetch.fetch();
+			const chnSoloRank = chnRanks.ranks.rank.find((rank) => rank.name == playerName);
+			const chnTeamRank = chnRanks.ranks.team.find((rank) => rank.name == playerName);
+
+			player.chnRank = chnSoloRank;
+			player.chnTeam = chnTeamRank;
+		} catch {}
+	}
+
 	const ranks = [
-		{ name: '🌎 总通过分', rank: player.points, always: true },
-		{ name: '📅 去年获得', rank: player.yearly, always: true },
+		{
+			name: '🌎 总通过分',
+			rank: player.points,
+			always: true
+		},
+		{
+			name: '📅 去年获得',
+			rank: player.yearly,
+			always: true
+		},
 		{ name: '👤 个人排位', rank: player.rank, always: false },
-		{ name: '👥 团队排位', rank: player.team, always: false }
+		{ name: '👥 团队排位', rank: player.team, always: false },
+		{ name: '🇨🇳 国服个人排位', rank: player.chnRank, always: false },
+		{ name: '🇨🇳 国服团队排位', rank: player.chnTeam, always: false }
 	];
 
+	console.log(data);
+
 	const lines = [
-		player.name,
+		data.name,
 		...ranks
-			.filter((rank) => rank.always || rank.rank.rank)
+			.filter((rank) => rank.always || rank.rank?.rank)
 			.map((rank) => {
-				if (rank.rank.rank) {
-					return `${rank.name}: ${rank.rank.points}pts ₍ₙₒ.${numberToSub(rank.rank.rank)}₎`;
+				if (rank.rank?.rank) {
+					return `${rank.name}: ${rank.rank.points}pts\t₍ₙ.${numberToSub(rank.rank.rank)}₎`;
 				} else {
 					return `${rank.name}: 无记录`;
 				}
