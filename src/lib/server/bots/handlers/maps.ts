@@ -124,7 +124,7 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 		if (randomMap) {
 			const lines = [
 				finishingDesc,
-				`${randomMap.name} (by ${randomMap.mapper})`,
+				randomMap.mapper ? `${randomMap.name} (by ${randomMap.mapper})` : randomMap.name,
 				`[${mapType(randomMap.type)} ${numberToStars(randomMap.difficulty)}] ${randomMap.points}pts`
 			];
 
