@@ -9,8 +9,8 @@ export type MapList = {
 	type: string;
 	points: number;
 	difficulty: number;
-	mapper: string;
-	release: string;
+	mapper?: string;
+	release?: string;
 	width: number;
 	height: number;
 	tiles: string[];
