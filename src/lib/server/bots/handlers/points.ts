@@ -17,7 +17,7 @@ export const handlePoints: Handler = async ({ user, reply, args }) => {
 		return await reply.textLink('查分请提供 <玩家名>。或者使用 DDNet 工具箱', {
 			label: '🔗 排名查询工具',
 			prefix: '→ ',
-			url: 'https://teeworlds.cn/ddnet/players'
+			url: 'https://teeworlds.cn/goto#p'
 		});
 	}
 
