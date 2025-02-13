@@ -1,4 +1,4 @@
-import { handleChat } from '$lib/server/bots/bot';
+import { handlePing } from '$lib/server/bots/bot';
 import { BOT, type QQMessage, type QQPayload } from '$lib/server/bots/protocol/qq';
 import type { RequestHandler } from './$types';
 
@@ -89,7 +89,7 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 
 		if (replyMethod && message) {
 			// don't await. give a success response asap
-			handleChat(
+			handlePing(
 				fetch,
 				'qq',
 				{
@@ -148,7 +148,8 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 				group,
 				message,
 				payload.d,
-				mode
+				mode,
+				payload.t == 'AT_MESSAGE_CREATE' || payload.t == 'GROUP_AT_MESSAGE_CREATE'
 			);
 		}
 

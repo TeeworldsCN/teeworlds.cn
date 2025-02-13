@@ -344,6 +344,7 @@ export type QQPayload =
 	| QQC2CMessageCreatePayload
 	| QQGroupAtMessageCreatePayload
 	| QQDirectMessageCreatePayload
+	| QQMessageCreatePayload
 	| QQAtMessageCreatePayload;
 
 export type QQC2CMessageCreatePayload = CallbackPayload<
@@ -389,6 +390,27 @@ export type QQDirectMessageCreatePayload = CallbackPayload<
 		timestamp: string;
 	},
 	'DIRECT_MESSAGE_CREATE'
+>;
+
+export type QQMessageCreatePayload = CallbackPayload<
+	{
+		author: {
+			avatar: string;
+			bot: boolean;
+			id: string;
+			username: string;
+		};
+		channel_id: string;
+		content: string;
+		guild_id: string;
+		id: string;
+		member: {
+			joined_at: string;
+			roles: string[];
+		};
+		timestamp: string;
+	},
+	'MESSAGE_CREATE'
 >;
 
 export type QQAtMessageCreatePayload = CallbackPayload<

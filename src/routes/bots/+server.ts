@@ -5,7 +5,7 @@ import {
 	getCustomError,
 	getLastTransaction,
 	getListenToUser,
-	handleChat,
+	handlePing,
 	registerCustom,
 	setListenToUser
 } from '$lib/server/bots/bot';
@@ -53,7 +53,7 @@ export const POST: RequestHandler = async ({ fetch, request, url }) => {
 	// handle chat
 	let response: Response | null = null;
 
-	await handleChat(
+	await handlePing(
 		fetch,
 		'web',
 		{
@@ -107,7 +107,8 @@ export const POST: RequestHandler = async ({ fetch, request, url }) => {
 		mode == 'group' ? 'WEBSITE' : '',
 		body.message,
 		body,
-		mode == 'group' ? 'GROUP' : 'DIRECT'
+		mode == 'group' ? 'GROUP' : 'DIRECT',
+		mode == 'group' ? true : false // always treat website msg as pinging the bot
 	);
 
 	if (response) {

@@ -1,5 +1,5 @@
 import type { RequestHandler } from './$types';
-import { handleChat } from '$lib/server/bots/bot';
+import { handlePing } from '$lib/server/bots/bot';
 
 export const POST: RequestHandler = async ({ fetch, locals, request, url, cookies }) => {
 	// check if it is called from localhost
@@ -12,7 +12,7 @@ export const POST: RequestHandler = async ({ fetch, locals, request, url, cookie
 	// handle chat
 	let response: Response | null = null;
 
-	await handleChat(
+	await handlePing(
 		fetch,
 		'cli',
 		{
@@ -66,7 +66,8 @@ export const POST: RequestHandler = async ({ fetch, locals, request, url, cookie
 		'CLI',
 		body.message,
 		body,
-		'DIRECT'
+		'DIRECT',
+		false,
 	);
 
 	if (response) {

@@ -62,16 +62,19 @@ const limiter = new RateLimiter('bot', {
 	cooldown: 300
 });
 
-const handle = async (
-	fetch: typeof global.fetch,
-	platform: string,
-	reply: SendReply,
-	user: string,
-	group: string,
-	msg: string,
-	raw: any,
-	mode: 'GROUP' | 'DIRECT'
-) => {
+type rootHandlerArgs = {
+	fetch: typeof global.fetch;
+	platform: string;
+	reply: SendReply;
+	user: string;
+	group: string;
+	msg: string;
+	raw: any;
+	mode: 'GROUP' | 'DIRECT';
+	isAt: boolean;
+};
+
+const handle = async ({ platform, user, msg, raw, mode, reply, group, isAt }: rootHandlerArgs) => {
 	const uid = `${platform}:${user}`;
 	const transaction: Transaction = {
 		uid,
@@ -163,7 +166,8 @@ const handle = async (
 		mode,
 		fetch,
 		group,
-		permissions
+		permissions,
+		isAt
 	};
 
 	const result = await commands.run(cmd, handlerArgs);
@@ -174,7 +178,11 @@ const handle = async (
 	return result;
 };
 
-export const handleChat: (
+export const handleMessage = async ({}: rootHandlerArgs) => {
+	// TODO: implement
+};
+
+export const handlePing = async (
 	fetch: typeof global.fetch,
 	platform: string,
 	reply: SendReply,
@@ -182,7 +190,24 @@ export const handleChat: (
 	group: string,
 	msg: string,
 	raw: any,
-	mode: 'GROUP' | 'DIRECT'
-) => Promise<SendResult> = async (...args) => {
-	return await queue.push(() => handle(...args));
+	mode: 'GROUP' | 'DIRECT',
+	isAt: boolean
+) => {
+	const args = {
+		fetch,
+		platform,
+		user,
+		msg,
+		raw,
+		mode,
+		reply,
+		group,
+		isAt
+	} satisfies rootHandlerArgs;
+
+	if (mode == 'GROUP' && !isAt) {
+		return await handleMessage(args);
+	}
+
+	return await queue.push(() => handle(args));
 };
