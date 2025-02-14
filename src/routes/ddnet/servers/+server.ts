@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { gameInfo, servers } from '$lib/server/fetches/servers';
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ url }) => {
 	try {
 		const serversData = await servers.fetch();
 		const gameInfoData = await gameInfo.fetch();

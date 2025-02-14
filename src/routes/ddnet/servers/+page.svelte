@@ -7,13 +7,18 @@
 	import Fa from 'svelte-fa';
 	import VirtualScroll from 'svelte-virtual-scroll-list';
 	import { faSteam } from '@fortawesome/free-brands-svg-icons';
-	import { faCrosshairs } from '@fortawesome/free-solid-svg-icons';
+	import { faCrosshairs, faFlagCheckered } from '@fortawesome/free-solid-svg-icons';
 	import { addrToBase64, base64ToAddr } from '$lib/helpers.js';
 	import { page } from '$app/state';
 	import MapLink from '$lib/components/ddnet/MapLink.svelte';
 	import TeeRender from '$lib/components/TeeRender.svelte';
+	import { encodeAsciiURIComponent } from '$lib/link.js';
 
-	const { data } = $props();
+	const { data: propData } = $props();
+
+	let name = $state(propData.name);
+
+	const finishedMaps = $derived(propData.maps ? new Set(propData.maps) : null);
 
 	const checkMapName = async (map: string) => {
 		const url = `/ddnet/maps/${encodeURIComponent(map)}`;
@@ -23,7 +28,7 @@
 		}
 	};
 
-	const showServerInfo = (server: (typeof data.servers)[0]) => {
+	const showServerInfo = (server: (typeof propData.servers)[0]) => {
 		selectedServer = server;
 		if (selectedServer) {
 			sortPlayers(selectedServer.info.clients, selectedServer.info.client_score_kind);
@@ -44,7 +49,7 @@
 			return;
 		}
 		serverAddress = base64ToAddr(hash);
-		selectedServer = data.servers.find((server) => server.key == serverAddress) || null;
+		selectedServer = propData.servers.find((server) => server.key == serverAddress) || null;
 		if (selectedServer) {
 			sortPlayers(selectedServer.info.clients, selectedServer.info.client_score_kind);
 			checkMapName(selectedServer.info.map.name);
@@ -54,7 +59,7 @@
 
 	let loading = $state(false);
 	let showModal = $state(false);
-	let selectedServer = $state(null) as (typeof data.servers)[0] | null;
+	let selectedServer = $state(null) as (typeof propData.servers)[0] | null;
 	let serverAddress = $state(null) as string | null;
 	let mapLink = $state(null) as string | null;
 
@@ -90,6 +95,16 @@
 	};
 
 	const refresh = async () => {
+		if (name != propData.name) {
+			if (name)
+				goto(`/ddnet/servers?name=${encodeAsciiURIComponent(name)}`, {
+					keepFocus: true,
+					noScroll: true
+				});
+			else goto(`/ddnet/servers`, { keepFocus: true, noScroll: true });
+			return;
+		}
+
 		loading = true;
 		await invalidate('/ddnet/servers');
 		loading = false;
@@ -117,7 +132,7 @@
 	};
 
 	const servers = $derived(() =>
-		data.servers
+		propData.servers
 			.filter((server) => {
 				if ($serverSearch.exclude) {
 					const terms = $serverSearch.exclude.split(';');
@@ -222,18 +237,24 @@
 		<input
 			type="text"
 			placeholder="🔎 搜索"
-			class="flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-slate-300 md:mb-0"
+			class="w-[unset] flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-slate-300 sm:w-1 md:mb-0"
 			bind:value={$serverSearch.include}
 		/>
 		<input
 			type="text"
 			placeholder="🚫 排除"
-			class="flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-slate-300 md:mb-0"
+			class="w-[unset] flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-slate-300 sm:w-1 md:mb-0"
 			bind:value={$serverSearch.exclude}
+		/>
+		<input
+			type="text"
+			placeholder="👤 玩家名"
+			class="hidden w-24 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-slate-300 sm:block md:w-48"
+			bind:value={name}
 		/>
 	</div>
 	<button
-		class="rounded bg-blue-500 px-4 py-1 text-white hover:bg-blue-600 disabled:bg-blue-500 disabled:opacity-50"
+		class="text-nowrap rounded bg-blue-500 px-4 py-1 text-white hover:bg-blue-600 disabled:bg-blue-500 disabled:opacity-50"
 		onclick={refresh}
 		disabled={loading}
 	>
@@ -347,7 +368,12 @@
 				</span>
 				<span
 					class="my-auto w-16 overflow-hidden text-nowrap text-xs sm:text-base lg:w-48 lg:overflow-ellipsis"
-					>{data.info.map.name}</span
+					>{#if finishedMaps}<span class="inline-block w-3 sm:w-6"
+							>{#if finishedMaps.has(data.info.map.name)}<Fa
+									class="inline"
+									icon={faFlagCheckered}
+								/>{/if}</span
+						>{/if}{data.info.map.name}</span
 				>
 				<span
 					class="my-auto w-12 overflow-hidden text-nowrap text-right text-xs md:w-16 md:text-sm lg:w-24 lg:text-base"

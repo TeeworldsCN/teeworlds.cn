@@ -58,6 +58,7 @@ export type GameInfo = {
 	'community-icons-download-url': string;
 	news: string;
 	'map-download-url': string;
+	maps?: string[];
 	location: string;
 	version: string;
 	'stun-servers-ipv6': string[];
@@ -86,7 +87,7 @@ export const gameInfo = new FetchCache<GameInfo>(
 		return result;
 	},
 	{
-		minQueryInterval: 2,
+		minQueryInterval: 1800,
 		skipHead: true
 	}
 );

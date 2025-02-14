@@ -1,7 +1,7 @@
 import { volatile } from './keyv';
 
 interface FetchCacheOptions {
-	/** how often can the cache be checked for updates. default to 60 seconds */
+	/** how often can the cache be checked for updates. default to 0 seconds */
 	minQueryInterval?: number;
 	/** always fetch without making a HEAD request first. default to false */
 	skipHead?: boolean;
