@@ -75,7 +75,7 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 		}
 	}
 
-	const mapData = await maps.fetch();
+	const mapData = (await maps.fetch()).result;
 
 	if (!mapName) {
 		const finishedList = new Set<string>();
@@ -207,7 +207,7 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 				return aCaseStartsWith ? -1 : 1;
 			}
 			if (a.points == b.points) {
-				return new Date(a.release).getTime() - new Date(b.release).getTime();
+				return new Date(a.release || 0).getTime() - new Date(b.release || 0).getTime();
 			}
 			return a.points - b.points;
 		}

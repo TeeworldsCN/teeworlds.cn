@@ -45,7 +45,7 @@ export const handlePoints: Handler = async ({ user, reply, args }) => {
 	const chnFetch = await regionalRanks('chn');
 	if (chnFetch) {
 		try {
-			const chnRanks = await chnFetch.fetch();
+			const chnRanks = (await chnFetch.fetch()).result;
 			const chnSoloRank = chnRanks.ranks.rank.find((rank) => rank.name == playerName);
 			const chnTeamRank = chnRanks.ranks.team.find((rank) => rank.name == playerName);
 
