@@ -133,7 +133,7 @@
 
 	{#each data.guilds as guild}
 		<div class="mb-2 flex items-center justify-between rounded-lg bg-slate-600 px-4 py-1">
-			<p class="text-lg">{guild.name}</p>
+			<p class="text-lg">{guild.name} <span class="text-slate-400 text-sm">({guild.id})</span></p>
 			<p class="text-lg">{guild.member_count} / {guild.max_members}</p>
 		</div>
 		{#if guild.channels}
@@ -143,7 +143,7 @@
 					onmouseenter={() => (hoveringChannel = channel.id)}
 					role="list"
 				>
-					<p class="text-lg">{channel.name}</p>
+					<p class="text-lg">{channel.name} <span class="text-slate-400 text-sm">({channel.id})</span></p>
 					<div>
 						<!-- add a dropdown menu to list all subkeys, and a submit button to add it-->
 						{#if hoveringChannel == channel.id}
