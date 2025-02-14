@@ -131,7 +131,7 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 	}
 
 	// find all maps that are in last finishes
-	const lastFinishMaps = mapData.filter((map) =>
+	const lastFinishMaps = mapData.result.filter((map) =>
 		player.last_finishes.some((finish) => finish.map == map.name)
 	);
 
@@ -177,9 +177,13 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 	if (serverCache) {
 		try {
 			const serverRanks = await serverCache.fetch();
-			player.server_points = serverRanks.ranks.points.find((rank) => rank.name == player.player);
-			player.server_rank = serverRanks.ranks.rank.find((rank) => rank.name == player.player);
-			player.server_team_rank = serverRanks.ranks.team.find((rank) => rank.name == player.player);
+			player.server_points = serverRanks.result.ranks.points.find(
+				(rank) => rank.name == player.player
+			);
+			player.server_rank = serverRanks.result.ranks.rank.find((rank) => rank.name == player.player);
+			player.server_team_rank = serverRanks.result.ranks.team.find(
+				(rank) => rank.name == player.player
+			);
 		} catch {}
 	}
 
@@ -190,11 +194,11 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 	};
 
 	if (skin.n) {
-		skin.n = skinData.map[skin.n];
+		skin.n = skinData.result.map[skin.n];
 	}
 
 	// always check the rank page for update time
-	player.data_update_time = rankData.update_time;
+	player.data_update_time = rankData.result.update_time;
 
 	// set a 10 minute cache for the player page
 	// in case they are going back and forth between players

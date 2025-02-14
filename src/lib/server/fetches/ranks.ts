@@ -117,38 +117,44 @@ class UpdateTimeHandler implements HTMLRewriterTypes.HTMLRewriterElementContentH
 	}
 }
 
-export const ranks = new FetchCache<RankInfo>('https://ddnet.org/ranks/', async (response) => {
-	const ranks = {
-		ranks: {
-			points: [],
-			team: [],
-			rank: [],
-			yearly: [],
-			monthly: [],
-			weekly: []
-		},
-		last_finishes: [],
-		total_points: 0,
-		update_time: 0
-	} satisfies RankInfo;
+export const ranks = new FetchCache<RankInfo>(
+	'https://ddnet.org/ranks/',
+	async (response) => {
+		const ranks = {
+			ranks: {
+				points: [],
+				team: [],
+				rank: [],
+				yearly: [],
+				monthly: [],
+				weekly: []
+			},
+			last_finishes: [],
+			total_points: 0,
+			update_time: 0
+		} satisfies RankInfo;
 
-	const html = await response.text();
+		const html = await response.text();
 
-	new HTMLRewriter()
-		.on(
-			[
-				'div[class="block2 ladder"] > h3',
-				'div[class="block2 ladder"] > table > tr:not([class="allPoints"])',
-				'div[class="block2 ladder"] > table > tr:not([class="allPoints"]) > td',
-				'div[class="block2 ladder"] > table > tr:not([class="allPoints"]) > td > img'
-			].join(','),
-			new LadderHandler(ranks)
-		)
-		.on('p[class="toggle"] > span[data-type="date"]', new UpdateTimeHandler(ranks))
-		.transform(html);
+		new HTMLRewriter()
+			.on(
+				[
+					'div[class="block2 ladder"] > h3',
+					'div[class="block2 ladder"] > table > tr:not([class="allPoints"])',
+					'div[class="block2 ladder"] > table > tr:not([class="allPoints"]) > td',
+					'div[class="block2 ladder"] > table > tr:not([class="allPoints"]) > td > img'
+				].join(','),
+				new LadderHandler(ranks)
+			)
+			.on('p[class="toggle"] > span[data-type="date"]', new UpdateTimeHandler(ranks))
+			.transform(html);
 
-	return ranks;
-});
+		return ranks;
+	},
+	{
+		minQueryInterval: 1800
+	}
+);
 
 // fetch caches for regional ranks
 const regionCache = new Map<string, FetchCache<RankInfo>>();
@@ -201,6 +207,9 @@ export const regionalRanks = async (region: string) => {
 				.transform(html);
 
 			return ranks;
+		},
+		{
+			minQueryInterval: 1800
 		}
 	);
 	regionCache.set(region, fetchCache);

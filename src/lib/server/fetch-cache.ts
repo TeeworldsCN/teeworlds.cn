@@ -1,7 +1,7 @@
 import { volatile } from './keyv';
 
 interface FetchCacheOptions {
-	/** how often can the cache be checked for updates. default to 0 seconds */
+	/** how often can the cache be checked for updates. default to 60 seconds */
 	minQueryInterval?: number;
 	/** always fetch without making a HEAD request first. default to false */
 	skipHead?: boolean;
@@ -11,7 +11,7 @@ interface FetchCacheOptions {
 
 type CachedData = {
 	tag: string;
-	data: any;
+	data: string;
 };
 
 export class FetchCache<T> {
@@ -23,9 +23,13 @@ export class FetchCache<T> {
 	private transformer: (response: Response) => Promise<T> | T;
 	private callbacks:
 		| (
-				| { cb: (result: string) => void; keepObject: false; error: (error: any) => void }
 				| {
-						cb: (result: string | { data: T }) => void;
+						cb: (result: { result: string; hit: boolean }) => void;
+						keepObject: false;
+						error: (error: any) => void;
+				  }
+				| {
+						cb: (result: { result: string; hit: boolean } | { data: T; hit: boolean }) => void;
 						keepObject: true;
 						error: (error: any) => void;
 				  }
@@ -53,26 +57,33 @@ export class FetchCache<T> {
 				this.skipHead = true;
 				this.minQueryInterval = -1;
 			}
+			this.minQueryInterval = Math.max(this.minQueryInterval, 1);
 		}
 
 		this.url = url;
 		this.transformer = transformer;
 	}
 
-	/** This might be useful for directly sending the response to the client without parsing the cached data */
-	async fetchAsString(): Promise<string>;
+	/**
+	 * This might be useful for directly sending the response to the client without parsing the cached data
+	 * @param cached true - use cache whenever possible, false - automatically determine whether to use cache or not, defaults to false
+	 */
+	async fetchAsString(cached?: boolean): Promise<{ result: string; hit: boolean; string: true }>;
 	async fetchAsString(
-		thisFetch: typeof global.fetch,
+		cached: boolean,
 		keepObject: true
-	): Promise<string | { data: T }>;
-	async fetchAsString(thisFetch: typeof global.fetch): Promise<string>;
+	): Promise<
+		{ result: string; hit: boolean; string: true } | { data: T; hit: boolean; string: false }
+	>;
 	async fetchAsString(
-		thisFetch: typeof global.fetch = fetch,
+		cached?: boolean,
 		keepObject: boolean = false
-	): Promise<string | { data: T }> {
+	): Promise<
+		{ result: string; hit: boolean; string: true } | { data: T; hit: boolean; string: false }
+	> {
 		if (this.callbacks) {
 			const lcbs = this.callbacks;
-			return new Promise<string>((resolve, reject) =>
+			return new Promise<{ result: string; hit: boolean; string: true }>((resolve, reject) =>
 				lcbs.push({
 					cb: (result: any) => resolve(result),
 					error: (error: any) => reject(error),
@@ -83,10 +94,20 @@ export class FetchCache<T> {
 
 		this.callbacks = [];
 		try {
-			const result: string | { data: T } = await (async () => {
-				const now = Date.now();
+			const result:
+				| { result: string; hit: boolean; string: true }
+				| { data: T; hit: boolean; string: false } = await (async () => {
+				const now = Date.now() / (this.minQueryInterval * 1000);
 				const key = `dd:cache:${this.url}`;
 				const cache = await volatile.get<CachedData>(key);
+
+				if (cached && cache) {
+					return {
+						result: cache.data,
+						hit: true,
+						string: true
+					};
+				}
 
 				// if the cache is not found, it is always outdated
 				let outdated = !cache;
@@ -96,16 +117,22 @@ export class FetchCache<T> {
 
 				let response: Response | null = null;
 
-				if (cache && this.nextQueryTime >= now) {
+				if (cache && this.minQueryInterval >= 1 && this.nextQueryTime && this.nextQueryTime > now) {
 					// if the cache is still fresh, don't do anything
-					return cache.data;
+					return {
+						result: cache.data,
+						hit: true,
+						string: true as const
+					};
 				}
+
+				this.nextQueryTime = Math.floor(now) + 1;
 
 				if (!this.skipHead) {
 					if (cache) {
 						try {
 							// check against the cache tag if a cache is available
-							response = await thisFetch(this.url, { method: 'HEAD' });
+							response = await fetch(this.url, { method: 'HEAD' });
 							if (response.ok) {
 								tag = response.headers.get('etag') || response.headers.get('last-modified');
 								if (tag) {
@@ -131,14 +158,18 @@ export class FetchCache<T> {
 				if (outdated) {
 					const abort = new AbortController();
 					try {
-						const result = await thisFetch(this.url, { signal: abort.signal });
+						const result = await fetch(this.url, { signal: abort.signal });
 
 						if (result.ok) {
 							tag = result.headers.get('etag') || result.headers.get('last-modified');
 							if (!this.alwaysFetch && cache && tag == cache.tag) {
 								// tag is the same, drop the connection immediately and just use the cache
 								abort.abort();
-								return cache.data;
+								return {
+									result: cache.data,
+									hit: true,
+									string: true as const
+								};
 							}
 							data = await this.transformer(result);
 							let stringData;
@@ -146,46 +177,63 @@ export class FetchCache<T> {
 								// only cache if the tag is valid
 								stringData = JSON.stringify(data);
 								await volatile.set<CachedData>(key, { tag, data: stringData });
-								this.nextQueryTime = now + this.minQueryInterval * 1000;
 							}
-							return { data };
+							return {
+								data,
+								hit: false,
+								string: false as const
+							};
 						}
 					} catch {}
 				}
 
 				// not outdated, use the cache directly if it exists
 				if (cache) {
-					return cache.data;
+					return {
+						result: cache.data,
+						hit: true,
+						string: true as const
+					};
 				}
+
+				// next query should try to fetch again since we don't have a cache and upstream errored
+				this.nextQueryTime = 0;
 
 				// not outdated but no cache, means the head response is possibly not ok or errored
 				if (response) {
-					throw new Error(`Failed to fetch data: ${this.url} ${response.status} ${response.statusText}`);
+					throw new Error(
+						`Failed to fetch data: ${this.url} ${response.status} ${response.statusText}`
+					);
 				} else {
 					throw new Error(`Failed to fetch data: ${this.url} Unknown error`);
 				}
 			})();
 
-			let stringData = null;
+			let stringData: { result: string; hit: boolean; string: true } | null = null;
+			const getStringData = () => {
+				if (!stringData) {
+					stringData = {
+						result: result.string ? result.result : JSON.stringify(result.data),
+						hit: result.hit,
+						string: true
+					};
+				}
+				return stringData;
+			};
+
 			for (const callback of this.callbacks) {
 				if (callback.keepObject) {
 					callback.cb(result);
 					continue;
 				}
-				if (stringData) {
-					callback.cb(stringData);
-					continue;
-				}
-				stringData = typeof result === 'string' ? result : JSON.stringify(result.data);
-				callback.cb(stringData);
+				callback.cb(getStringData());
 			}
 
 			this.callbacks = null;
 			if (keepObject) {
 				return result;
 			}
-			stringData ??= typeof result === 'string' ? result : JSON.stringify(result.data);
-			return stringData;
+			return getStringData();
 		} catch (e) {
 			console.error(e);
 			for (const callback of this.callbacks!) {
@@ -196,12 +244,15 @@ export class FetchCache<T> {
 		}
 	}
 
-	async fetch(thisFetch: typeof global.fetch = fetch): Promise<T> {
-		const result = await this.fetchAsString(thisFetch, true);
-		if (typeof result === 'string') {
-			return JSON.parse(result);
+	/**
+	 * Fetch the data
+	 * @param cached true - use cache whenever possible, false - automatically determine whether to use cache or not, defaults to false.
+	 */
+	async fetch(cached: boolean = false): Promise<{ result: T; hit: boolean; string: false }> {
+		const result = await this.fetchAsString(cached, true);
+		if (result.string) {
+			return { result: JSON.parse(result.result), hit: result.hit, string: false };
 		}
-		const { data } = result;
-		return data;
+		return { result: result.data, hit: result.hit, string: false };
 	}
 }

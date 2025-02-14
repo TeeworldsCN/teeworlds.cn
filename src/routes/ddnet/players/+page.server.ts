@@ -15,12 +15,12 @@ export const load = (async ({ parent, url }) => {
 			const fetch = await regionalRanks(region);
 			if (!fetch) return error(404);
 
-			const result = await fetch.fetch();
+			const result = (await fetch.fetch()).result;
 			return { ...result, region: region.toUpperCase(), ...(await parent()) };
 		}
 
 		// otherwise just fetch global ranks
-		const result = await ranks.fetch();
+		const result = (await ranks.fetch()).result;
 		return { ...result, region: 'GLOBAL', ...(await parent()) };
 	} catch {
 		return error(500);

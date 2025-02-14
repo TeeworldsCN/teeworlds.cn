@@ -95,7 +95,7 @@ export const recordTracker = new Cron('*/5 * * * *', async () => {
 		return;
 	}
 
-	const data = await records.fetch();
+	const data = (await records.fetch()).result;
 	if (!data) return;
 
 	data.sort((a, b) => b.date - a.date);
@@ -121,7 +121,7 @@ export const recordTracker = new Cron('*/5 * * * *', async () => {
 });
 
 export const triggerRecordRelease = async () => {
-	const data = await records.fetch();
+	const data = (await records.fetch()).result;
 	if (!data) return;
 
 	const lastestRecord = data[0];

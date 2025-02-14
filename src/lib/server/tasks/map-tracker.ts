@@ -77,7 +77,7 @@ const MAP_TRACKER_KEY = 'tracker:release';
 
 // run every 5 minutes
 export const mapTracker = new Cron('*/5 * * * *', async () => {
-	const data = await maps.fetch();
+	const data = (await maps.fetch()).result;
 	if (!data) return;
 
 	const knownReleaseMap = persistent.get<string>(MAP_TRACKER_KEY);
@@ -114,7 +114,7 @@ export const mapTracker = new Cron('*/5 * * * *', async () => {
 });
 
 export const triggerMapRelease = async () => {
-	const data = await maps.fetch();
+	const data = (await maps.fetch()).result;
 	if (!data) return;
 
 	const lastestMap = data[0];

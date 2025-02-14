@@ -378,14 +378,16 @@ export const POST: RequestHandler = async ({ url }) => {
 				const nearestReleaseRecord = await findNearestReleaseRecord(tz, name, start, end);
 				if (updateProgress()) return;
 				d.nrr = nearestReleaseRecord[0];
-				const mapList = await maps.fetch();
+				const mapList = (await maps.fetch()).result;
 				if (updateProgress()) return;
 				const mapperMaps = mapList
 					.filter((map) => {
-						const releaseDate = ddnetDate(map.release);
+						const releaseDate = map.release ? ddnetDate(map.release) : new Date(1970, 0, 1);
 						return releaseDate.getFullYear() == year;
 					})
 					.filter((map) => {
+						if (!map.mapper) return false;
+
 						const mappers = map.mapper
 							.split(',')
 							.flatMap((mapper) => mapper.split('&'))
