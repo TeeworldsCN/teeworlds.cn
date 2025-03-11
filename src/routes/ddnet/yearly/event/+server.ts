@@ -47,6 +47,8 @@ export type YearlyData = {
 	map: string[];
 	/** [REDACTED] */
 	x: number;
+	/** [REDACTED] */
+	z: [string, string];
 };
 
 const fetchDDStats = async (sql: string) => {
@@ -249,7 +251,7 @@ export const POST: RequestHandler = async ({ url }) => {
 	return produce(
 		async ({ emit, lock }) => {
 			try {
-				const data = await getYearlyData(name, year);
+				const data = getYearlyData(name, year);
 				if (data) {
 					const d = decode(data) as YearlyData;
 					if (stopped) return;

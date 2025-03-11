@@ -10,7 +10,7 @@ sqlite
 // indexes
 sqlite.query('CREATE INDEX IF NOT EXISTS idx_yearly_name_year ON yearly (name, year);').run();
 
-export const getYearlyData = async (name: string, year: number) => {
+export const getYearlyData = (name: string, year: number) => {
 	const result = sqlite
 		.query<
 			{
@@ -26,7 +26,7 @@ export const getYearlyData = async (name: string, year: number) => {
 	return result.data;
 };
 
-export const setYearlyData = async (name: string, year: number, data: Uint8Array) => {
+export const setYearlyData = (name: string, year: number, data: Uint8Array) => {
 	const result = sqlite
 		.query('INSERT OR REPLACE INTO yearly (name, year, data) VALUES (?, ?, ?)')
 		.run(name, year, data);
