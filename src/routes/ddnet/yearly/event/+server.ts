@@ -48,7 +48,7 @@ export type YearlyData = {
 	/** [REDACTED] */
 	x: number;
 	/** [REDACTED] */
-	z: [string, string];
+	z: [string, string, number];
 };
 
 const fetchDDStats = async (sql: string) => {
@@ -256,6 +256,12 @@ export const POST: RequestHandler = async ({ url }) => {
 					const d = decode(data) as YearlyData;
 					if (stopped) return;
 					emit('progress', '100');
+
+					// hide z
+					if (d.z) {
+						d.z[0] = '';
+						d.z[1] = '';
+					}
 					emit('data', JSON.stringify({ d }));
 					lock.set(false);
 					return;
