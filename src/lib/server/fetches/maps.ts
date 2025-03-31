@@ -69,6 +69,7 @@ const updateDatabaseMaps = async () => {
 		maps,
 		updated: Date.now()
 	});
+	await volatile.delete('dd:cache:https://ddnet.org/releases/maps.json');
 	databaseUpdating = false;
 };
 
