@@ -7,17 +7,21 @@ interface FetchCacheOptions {
 	skipHead?: boolean;
 	/** useful for debugging. always fetch the data from the upstream regardless of the cache */
 	alwaysFetch?: boolean;
+	/** version */
+	version?: number;
 }
 
 type CachedData = {
 	tag: string;
 	data: string;
+	v: number;
 };
 
 export class FetchCache<T> {
 	private url: string;
 	private nextQueryTime = 0;
 	private minQueryInterval = 60;
+	private version = 1;
 	private skipHead = false;
 	private alwaysFetch = false;
 	private transformer: (response: Response) => Promise<T> | T;
@@ -57,6 +61,7 @@ export class FetchCache<T> {
 				this.skipHead = true;
 				this.minQueryInterval = -1;
 			}
+			this.version = options.version ?? this.version;
 			this.minQueryInterval = Math.max(this.minQueryInterval, 1);
 		}
 
@@ -99,7 +104,10 @@ export class FetchCache<T> {
 				| { data: T; hit: boolean; string: false } = await (async () => {
 				const now = Date.now() / (this.minQueryInterval * 1000);
 				const key = `dd:cache:${this.url}`;
-				const cache = await volatile.get<CachedData>(key);
+				let cache = await volatile.get<CachedData>(key);
+				if (cache && cache.v !== this.version) {
+					cache = undefined;
+				}
 
 				if (cached && cache) {
 					return {
@@ -176,7 +184,11 @@ export class FetchCache<T> {
 							if (tag) {
 								// only cache if the tag is valid
 								stringData = JSON.stringify(data);
-								await volatile.set<CachedData>(key, { tag, data: stringData });
+								await volatile.set<CachedData>(key, {
+									tag,
+									data: stringData,
+									v: this.version
+								});
 							}
 							return {
 								data,
