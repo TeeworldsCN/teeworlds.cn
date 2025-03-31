@@ -96,7 +96,7 @@
 
 	processHashQuery(page.url.hash);
 
-	let paginatedMaps = $state<typeof maps>([]);
+	let paginatedMaps = $state<MapList>([]);
 	let totalPages = $state(1);
 
 	const checkTiles = (map: (typeof maps)[0], tiles: string[] | null) => {

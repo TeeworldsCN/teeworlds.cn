@@ -51,7 +51,7 @@ export const checkMapName = (name: string, search: string) => {
 	);
 };
 
-export const checkMapper = (mapper: string, search: string) => {
+export const checkMapper = (mapper: string | undefined, search: string) => {
 	if (!search) {
 		return true;
 	}
