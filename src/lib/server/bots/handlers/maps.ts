@@ -5,20 +5,20 @@ import { maps, type MapList } from '$lib/server/fetches/maps';
 import type { Handler } from '../protocol/types';
 
 const MAPTYPE_KEYWORDS: Record<string, string> = {
-	"-ro": 'random',
-	"-rnd": 'random',
+	'-ro': 'random',
+	'-rnd': 'random',
 	随: 'random',
 
-	"-n": 'novice',
-	"-m": 'moderate',
-	"-b": 'brutal',
-	"-i": 'insane',
-	"-dd": 'ddmax',
-	"-o": 'oldschool',
-	"-du": 'dummy',
-	"-s": 'solo',
-	"-ra": 'race',
-	"-f": 'fun',
+	'-n': 'novice',
+	'-m': 'moderate',
+	'-b': 'brutal',
+	'-i': 'insane',
+	'-dd': 'ddmax',
+	'-o': 'oldschool',
+	'-du': 'dummy',
+	'-s': 'solo',
+	'-ra': 'race',
+	'-f': 'fun',
 	新: 'novice',
 	中: 'moderate',
 	高: 'brutal',
@@ -68,7 +68,7 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 		mapName = args.split(' ').slice(1).join(' ');
 
 		for (const keyword of Object.keys(MAPDIFF_KEYWORDS)) {
-			if (args.toLowerCase().startsWith(keyword)) {
+			if (args.toLowerCase().indexOf(keyword) >= 0) {
 				diff = MAPDIFF_KEYWORDS[keyword];
 				break;
 			}
