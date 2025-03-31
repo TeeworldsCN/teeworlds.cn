@@ -1,7 +1,6 @@
 export const SUBSCRIPTION_KEYS = [
 	// subscription keys
-	'map',
-	'record'
+	'map'
 ] as const;
 
 export const PERMISSIONS = [

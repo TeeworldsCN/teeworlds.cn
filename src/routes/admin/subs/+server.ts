@@ -4,7 +4,6 @@ import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { triggerMapRelease } from '$lib/server/tasks/map-tracker';
 import { BOT } from '$lib/server/bots/protocol/qq';
-import { triggerRecordRelease } from '$lib/server/tasks/record-tracker';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!hasPermission(locals.user, 'SUPER')) {
@@ -18,7 +17,6 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 				value?: string;
 		  }
 		| { op: 'trigger-map' }
-		| { op: 'trigger-record' }
 		| { op: 'download-thread'; channel: string; title: string };
 
 	if (!body) {
@@ -28,14 +26,6 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	if (body.op == 'trigger-map') {
 		// force trigger a map release for testing
 		await triggerMapRelease();
-		return new Response(JSON.stringify({ success: true }), {
-			headers: { 'content-type': 'application/json' }
-		});
-	}
-
-	if (body.op == 'trigger-record') {
-		// force trigger a record release for testing
-		await triggerRecordRelease();
 		return new Response(JSON.stringify({ success: true }), {
 			headers: { 'content-type': 'application/json' }
 		});

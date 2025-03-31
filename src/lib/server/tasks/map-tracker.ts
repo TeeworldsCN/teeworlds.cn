@@ -109,7 +109,7 @@ export const mapTracker = new Cron('*/5 * * * *', async () => {
 
 	// consider this released regardless whether publish failed or not
 	persistent.set(MAP_TRACKER_KEY, lastestMap.name);
-	console.log(`Setting record tracker to ${lastestMap.name}`);
+	console.log(`Setting map tracker to ${lastestMap.name}`);
 	await publishMap(lastestMap);
 });
 

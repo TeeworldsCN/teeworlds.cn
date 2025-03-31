@@ -43,10 +43,6 @@
 		await sendOp({ op: 'trigger-map' });
 	};
 
-	const triggerRecordRelease = async () => {
-		await sendOp({ op: 'trigger-record' });
-	};
-
 	const downloadOp = async (body: any) => {
 		const result = await fetch('/admin/subs', {
 			method: 'POST',
@@ -74,9 +70,6 @@
 		<h1 class="text-center text-2xl font-bold">测试工具（危险）</h1>
 		<button class="rounded bg-sky-800 px-2 py-1 hover:bg-sky-700" onclick={triggerMapRelease}
 			>测试发布地图</button
-		>
-		<button class="rounded bg-sky-800 px-2 py-1 hover:bg-sky-700" onclick={triggerRecordRelease}
-			>测试发布世界记录</button
 		>
 	</div>
 

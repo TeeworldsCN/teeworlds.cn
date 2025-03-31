@@ -1,7 +1,6 @@
 import { tokenToUser } from '$lib/server/db/users';
 import { volatile } from '$lib/server/keyv';
 import { mapTracker } from '$lib/server/tasks/map-tracker';
-import { recordTracker } from '$lib/server/tasks/record-tracker';
 import { type ServerInit } from '@sveltejs/kit';
 import type { Cron } from 'croner';
 
@@ -19,8 +18,7 @@ export const init: ServerInit = async () => {
 
 	initTasks(
 		// initialize scheduled tasks
-		mapTracker,
-		recordTracker
+		mapTracker
 	);
 };
 
