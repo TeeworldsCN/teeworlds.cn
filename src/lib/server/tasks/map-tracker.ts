@@ -76,7 +76,7 @@ const publishMap = async (map: MapList[0]) => {
 const MAP_TRACKER_KEY = 'tracker:release';
 
 // run every 10 minutes. update usually comes out around minute 5. make sure we can catch it with in 4 minutes.
-export const mapTracker = new Cron('8 * * * *', async () => {
+export const mapTracker = new Cron('8,18,28,38,48,58 * * * *', async () => {
 	const data = (await maps.fetch()).result;
 	if (!data) return;
 
