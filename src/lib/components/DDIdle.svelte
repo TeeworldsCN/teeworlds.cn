@@ -137,7 +137,6 @@
 		const saveInterval = setInterval(saveGame, 1000);
 
 		return () => {
-			console.log('HIIIII!!!');
 			clearInterval(interval);
 			clearInterval(saveInterval);
 			saveGame();
