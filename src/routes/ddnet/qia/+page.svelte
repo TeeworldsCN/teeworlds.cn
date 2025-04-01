@@ -41,7 +41,7 @@
 			<Fa icon={faGamepad} class="mr-2 text-4xl text-blue-400" />
 			<h1 class="text-4xl font-bold text-slate-100">恰分工具</h1>
 		</div>
-		<p class="text-slate-300">2025年国服特供活动</p>
+		<p class="text-slate-300">2025年愚人节活动</p>
 	</div>
 
 	<div class="w-full max-w-md rounded-lg bg-slate-700 p-6 shadow-lg">
