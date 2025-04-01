@@ -109,6 +109,10 @@
 				points = state.p || 0;
 				levels = state.l ?? levels;
 				discovered = state.d ?? discovered;
+				// update costs
+				Object.keys(upgrades).forEach((key) => {
+					upgrades[key].cost = upgrades[key].getCost(levels[key]);
+				});
 			}
 		}
 
