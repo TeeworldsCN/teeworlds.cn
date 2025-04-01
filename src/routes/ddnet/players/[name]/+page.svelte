@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+	import DdIdle from '$lib/components/DDIdle.svelte';
 	import MapLink from '$lib/components/ddnet/MapLink.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
@@ -28,6 +30,10 @@
 	let searchMap = $state('');
 	let filterType = $state('all');
 	let sortType = $state('finish');
+
+	// april fools
+	let qiaPoints = $state(0);
+	let hasQia = page.url.searchParams.get('tool') === 'true';
 
 	let filteredMaps = $derived(() => {
 		if (!searchMap) {
@@ -166,6 +172,20 @@
 			chart.update();
 		}
 	});
+
+	const fakePoints = $derived(Math.floor((data.ranks[0].rank.points || 0) + qiaPoints));
+	const fakeRank = $derived(() => {
+		const currentPoints = data.ranks[0].rank.points || 0;
+		const totalPoints = data.player.points.total || currentPoints;
+		const points = currentPoints + qiaPoints;
+
+		// Linear interpolation: rank = 1 + (maxRank - 1) * (1 - (points - minPoints) / (maxPoints - minPoints))
+		const maxRank = data.ranks[0].rank.rank || 1;
+		return Math.max(
+			1,
+			Math.round(1 + (maxRank - 1) * (1 - (points - currentPoints) / (totalPoints - currentPoints)))
+		);
+	});
 </script>
 
 <Breadcrumbs
@@ -250,10 +270,11 @@
 							{rank.name}
 						{/if}
 					</h3>
-					{#if rank.rank.rank}
+					{#if i == 0 && rank.rank.rank}
 						<p class="text-md">
-							<span class="text-sm">No.</span>{rank.rank.rank} - {rank.rank
-								.points}pts{#if i == 0 && (rank.rank.pending || data.player.pending_unknown)}<span
+							<span class="text-sm">No.</span>{fakeRank()} - {fakePoints}pts
+							{#if rank.rank.pending || data.player.pending_unknown}
+								<span
 									class="cursor-pointer font-semibold text-blue-300 hover:text-blue-400"
 									use:tippy={{
 										content: `根据最近过图记录，有${data.player.pending_unknown ? '至少' : ''}${
@@ -265,7 +286,12 @@
 										}`
 									}}
 									>{' '}+{rank.rank.pending}{#if data.player.pending_unknown}?{/if}</span
-								>{/if}
+								>
+							{/if}
+						</p>
+					{:else if rank.rank.rank}
+						<p class="text-md">
+							<span class="text-sm">No.</span>{rank.rank.rank} - {rank.rank.points}pts
 						</p>
 					{:else if rank.icon == 'SV'}
 						<p class="text-md">未进前 500 名</p>
@@ -459,6 +485,16 @@
 		</div>
 	</div>
 </div>
+
+{#if hasQia}
+	<DdIdle
+		url={data.skin.n}
+		body={data.skin.b}
+		feet={data.skin.f}
+		bind:points={qiaPoints}
+		name={data.player.player}
+	></DdIdle>
+{/if}
 
 <Modal bind:show={pointModal}>
 	<PointCalculation></PointCalculation>
