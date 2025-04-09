@@ -6,6 +6,7 @@ import { maps } from '$lib/server/fetches/maps';
 import { uaIsStrict } from '$lib/helpers';
 import { getSkin } from '$lib/server/ddtracker';
 import { skins } from '$lib/server/fetches/skins';
+import { getPlayer } from '$lib/server/players';
 
 interface PlayerRank {
 	points?: number;
@@ -113,6 +114,11 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 	]);
 
 	if (!playerData || !playerData.player) {
+		// get player from player cache, if exists then it is a upstream error
+		const player = await getPlayer(name);
+		if (player) {
+			return error(500);
+		}
 		return error(404);
 	}
 
