@@ -33,3 +33,6 @@ rust/target
 
 # Data
 sensitive-lexicon.txt
+
+# Env
+.direnv
