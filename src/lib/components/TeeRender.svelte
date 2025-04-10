@@ -15,7 +15,7 @@
 	import { skinQueue } from '$lib/skin-queue';
 	import { onDestroy, onMount } from 'svelte';
 	import { ddnetColorToRgb } from '$lib/ddnet/helpers';
-	import { rgbToFilter } from '$lib/rgbToFilter';
+	import { rgbToSvgFilter } from '$lib/rgbToSvgFilter';
 	import { getSkinUrl } from '$lib/stores/skins';
 
 	const {
@@ -53,8 +53,10 @@
 
 	let skin = $state(X_SPEC_SKIN);
 	let loadingSkin = $state(null) as string | null;
-	let bodyFilter = $state(null) as string | null;
-	let feetFilter = $state(null) as string | null;
+	let bodyFilter = $state(null) as { id: string; filterDef: string } | null;
+	let feetFilter = $state(null) as { id: string; filterDef: string } | null;
+	// Generate unique IDs for filters
+	const uniqueId = Math.random().toString(36).substring(2, 9);
 
 	let abortController: AbortController | null = null;
 	let intersectionObserver: IntersectionObserver | null = null;
@@ -111,7 +113,7 @@
 				loadingSkin = 'default';
 			}
 		} else {
-			skin = X_SPEC_SKIN;
+			skin = useDefault ? DEFAULT_SKIN : X_SPEC_SKIN;
 			loadingSkin = 'cancelled';
 		}
 	};
@@ -152,8 +154,10 @@
 	});
 
 	$effect(() => {
-		bodyFilter = body != null ? rgbToFilter(ddnetColorToRgb(body), maxLossIter).color : null;
-		feetFilter = feet != null ? rgbToFilter(ddnetColorToRgb(feet), maxLossIter).color : null;
+		bodyFilter =
+			body != null ? rgbToSvgFilter(ddnetColorToRgb(body), `body-filter-${uniqueId}`) : null;
+		feetFilter =
+			feet != null ? rgbToSvgFilter(ddnetColorToRgb(feet), `feet-filter-${uniqueId}`) : null;
 	});
 
 	$effect(() => {
@@ -163,6 +167,17 @@
 	});
 </script>
 
+<svg width="0" height="0" style="position: absolute; overflow: hidden;">
+	<defs>
+		{#if bodyFilter}
+			{@html bodyFilter.filterDef}
+		{/if}
+		{#if feetFilter}
+			{@html feetFilter.filterDef}
+		{/if}
+	</defs>
+</svg>
+
 <div
 	bind:this={root}
 	class="tee-render {className}"
@@ -170,119 +185,54 @@
 	style="background-image: url({skin}); {pose ? `transform: rotate(${pose.bodyRotation}deg)` : ''}"
 >
 	{#if bodyFilter && feetFilter}
-		<div class="tee-render-pass" style="filter: grayscale(1);">
+		<div class="tee-render-pass">
 			<div
 				class="tee-foot-outline back"
 				style={pose
-					? `transform: translate(${pose.backFootPosition}) rotate(${pose.backFootRotation}deg)`
-					: ''}
+					? `transform: translate(${pose.backFootPosition}) rotate(${pose.backFootRotation}deg); filter: url(#${feetFilter.id})`
+					: `filter: url(#${feetFilter.id})`}
 			></div>
 		</div>
-		<div
-			class="tee-render-pass"
-			style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {feetFilter};"
-		>
-			<div
-				class="tee-foot-outline back"
-				style={pose
-					? `transform: translate(${pose.backFootPosition}) rotate(${pose.backFootRotation}deg)`
-					: ''}
-			></div>
+		<div class="tee-render-pass">
+			<div class="tee-body-outline" style={`filter: url(#${bodyFilter.id})`}></div>
 		</div>
-		<div class="tee-render-pass" style="filter: grayscale(1);">
-			<div class="tee-body-outline"></div>
-		</div>
-		<div
-			class="tee-render-pass"
-			style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {bodyFilter};"
-		>
-			<div class="tee-body-outline"></div>
-		</div>
-		<div class="tee-render-pass" style="filter: grayscale(1);">
+		<div class="tee-render-pass">
 			<div
 				class="tee-foot-outline front"
 				style={pose
-					? `transform: translate(${pose.frontFootPosition}) rotate(${pose.frontFootRotation}deg)`
-					: ''}
-			></div>
-		</div>
-		<div
-			class="tee-render-pass"
-			style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {feetFilter};"
-		>
-			<div
-				class="tee-foot-outline front"
-				style={pose
-					? `transform: translate(${pose.frontFootPosition}) rotate(${pose.frontFootRotation}deg)`
-					: ''}
+					? `transform: translate(${pose.frontFootPosition}) rotate(${pose.frontFootRotation}deg); filter: url(#${feetFilter.id})`
+					: `filter: url(#${feetFilter.id})`}
 			></div>
 		</div>
 
-		<div class="tee-render-pass" style="filter: grayscale(1);">
+		<div class="tee-render-pass">
 			<div
 				class="tee-foot back"
 				style={pose
-					? `transform: translate(${pose.backFootPosition}) rotate(${pose.backFootRotation}deg)`
-					: ''}
-			></div>
-		</div>
-		<div
-			class="tee-render-pass"
-			style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {feetFilter};"
-		>
-			<div
-				class="tee-foot back"
-				style={pose
-					? `transform: translate(${pose.backFootPosition}) rotate(${pose.backFootRotation}deg)`
-					: ''}
+					? `transform: translate(${pose.backFootPosition}) rotate(${pose.backFootRotation}deg); filter: url(#${feetFilter.id})`
+					: `filter: url(#${feetFilter.id})`}
 			></div>
 		</div>
 
-		<div class="tee-render-pass" style="filter: grayscale(1)">
-			<div class="tee-body"></div>
+		<div class="tee-render-pass">
+			<div class="tee-body" style={`filter: url(#${bodyFilter.id})`}></div>
 			<div
 				class="tee-eyes"
 				style={pose
-					? `transform: translate(${pose.eyesPosition}) rotate(${pose.eyesRotation}deg)`
-					: ''}
-			>
-				<div class="tee-eye-left"></div>
-				<div class="tee-eye-right"></div>
-			</div>
-		</div>
-		<div
-			class="tee-render-pass"
-			style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {bodyFilter}"
-		>
-			<div class="tee-body"></div>
-			<div
-				class="tee-eyes"
-				style={pose
-					? `transform: translate(${pose.eyesPosition}) rotate(${pose.eyesRotation}deg)`
-					: ''}
+					? `transform: translate(${pose.eyesPosition}) rotate(${pose.eyesRotation}deg); filter: url(#${bodyFilter.id})`
+					: `filter: url(#${bodyFilter.id})`}
 			>
 				<div class="tee-eye-left"></div>
 				<div class="tee-eye-right"></div>
 			</div>
 		</div>
 
-		<div class="tee-render-pass" style="filter: grayscale(1);">
+		<div class="tee-render-pass">
 			<div
 				class="tee-foot front"
 				style={pose
-					? `transform: translate(${pose.frontFootPosition}) rotate(${pose.frontFootRotation}deg)`
-					: ''}
-			></div>
-		</div>
-		<div
-			class="tee-render-pass"
-			style="mix-blend-mode: multiply; filter: brightness(0) saturate(100%) {feetFilter};"
-		>
-			<div
-				class="tee-foot front"
-				style={pose
-					? `transform: translate(${pose.frontFootPosition}) rotate(${pose.frontFootRotation}deg)`
-					: ''}
+					? `transform: translate(${pose.frontFootPosition}) rotate(${pose.frontFootRotation}deg); filter: url(#${feetFilter.id})`
+					: `filter: url(#${feetFilter.id})`}
 			></div>
 		</div>
 	{:else}
