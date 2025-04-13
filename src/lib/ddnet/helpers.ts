@@ -173,7 +173,8 @@ const REGION_MAP: { [key: string]: string } = {
 	af: '非洲'
 };
 
-export const region = (region: string) => {
+export const region = (region?: string) => {
+	if (!region) return '未知';
 	return REGION_MAP[region] || REGION_MAP[region.split(':')[0]] || region;
 };
 

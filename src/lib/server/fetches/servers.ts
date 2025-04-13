@@ -3,7 +3,7 @@ import { convert } from '../imgproxy';
 
 export type ServerInfo = {
 	addresses: string[];
-	location: string;
+	location?: string;
 	info: {
 		max_clients: number;
 		max_players: number;

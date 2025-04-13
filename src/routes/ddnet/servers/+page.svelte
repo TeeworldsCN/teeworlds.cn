@@ -110,7 +110,8 @@
 		loading = false;
 	};
 
-	const regionLevel = (location: string) => {
+	const regionLevel = (location?: string) => {
+		if (!location) return 3;
 		if (location == 'as:cn') return 0;
 		if (location.startsWith('as')) return 1;
 		return 2;

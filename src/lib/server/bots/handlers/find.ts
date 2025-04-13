@@ -3,7 +3,8 @@ import { addrToBase64 } from '$lib/helpers';
 import { servers } from '$lib/server/fetches/servers';
 import type { Handler } from '../protocol/types';
 
-const regionLevel = (location: string) => {
+const regionLevel = (location?: string) => {
+	if (!location) return 3;
 	if (location == 'as:cn') return 0;
 	if (location.startsWith('as')) return 1;
 	return 2;
