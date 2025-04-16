@@ -1,3 +1,3 @@
 import { MultiAsyncQueue } from './async-queue';
 
-export const skinQueue = new MultiAsyncQueue(32);
+export const skinQueue = new MultiAsyncQueue(8);
