@@ -8,7 +8,7 @@ declare module 'svelte-virtual-scroll-list' {
 		{
 			data: T[];
 			keeps?: number | undefined;
-			key?: string | undefined;
+			key?: keyof T | undefined;
 			estimateSize?: number | undefined;
 			isHorizontal?: boolean | undefined;
 			start?: number | undefined;

@@ -36,7 +36,7 @@
 					</span>
 				{/if}
 				{#if i < breadcrumbs.length - 1}
-					<span class="mx-2 text-slate-400">></span>
+					<span class="mx-2 text-slate-400">&gt;</span>
 				{/if}
 			{/each}
 		</div>

@@ -6,7 +6,7 @@ export type SkinInfo = {
 		name: string;
 		type: string;
 		hd: {
-			uhd: false;
+			uhd: boolean;
 		};
 		creator: string;
 		license: string;

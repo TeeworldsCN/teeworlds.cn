@@ -26,6 +26,11 @@
 </div>
 
 <div class="mt-8">
+	<ToolboxButton href="/ddnet/skins">皮肤列表</ToolboxButton>
+	<div class="text-semibold text-2xl">浏览和复制 DDNet 皮肤</div>
+</div>
+
+<div class="mt-8">
 	<ToolboxButton href="/link/?ref={encodeURIComponent('https://wiki.ddnet.org/wiki/Main_Page/zh')}"
 		>中文 Wiki</ToolboxButton
 	>

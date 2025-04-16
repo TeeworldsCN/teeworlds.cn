@@ -31,8 +31,7 @@
 		useDefault = false,
 		/** extra classes */
 		className = '',
-		/** Whether to always start fetching the skin even if it is not visible */
-		alwaysFetch = false,
+		emote = 0 as number,
 		/**
 		 * Color matching iteration count, default to 3.
 		 * This is because we use a weird color to filter converter using a guessimation algorithm.
@@ -59,7 +58,6 @@
 	const uniqueId = Math.random().toString(36).substring(2, 9);
 
 	let abortController: AbortController | null = null;
-	let intersectionObserver: IntersectionObserver | null = null;
 
 	let root = $state(null) as Element | null;
 
@@ -78,7 +76,7 @@
 		}
 
 		loadingSkin = thisLoadingSkin;
-		skin = X_SPEC_SKIN;
+		skin = useDefault ? DEFAULT_SKIN : X_SPEC_SKIN;
 
 		if (!thisName && !thisUrl) {
 			skin = useDefault ? DEFAULT_SKIN : X_SPEC_SKIN;
@@ -123,34 +121,10 @@
 			abortController.abort();
 			abortController = null;
 		}
-
-		if (intersectionObserver && root) {
-			intersectionObserver.disconnect();
-			intersectionObserver = null;
-		}
 	});
 
 	onMount(async () => {
-		if (alwaysFetch) {
-			updateSkin();
-		}
-
-		intersectionObserver = new IntersectionObserver((entries) => {
-			for (const entry of entries) {
-				if (entry.isIntersecting) {
-					updateSkin();
-				} else {
-					if (abortController && !alwaysFetch) {
-						abortController.abort();
-						abortController = null;
-					}
-				}
-			}
-		});
-
-		if (root) {
-			intersectionObserver.observe(root);
-		}
+		updateSkin();
 	});
 
 	$effect(() => {
@@ -222,8 +196,14 @@
 					? `transform: translate(${pose.eyesPosition}) rotate(${pose.eyesRotation}deg); filter: url(#${bodyFilter.id})`
 					: `filter: url(#${bodyFilter.id})`}
 			>
-				<div class="tee-eye-left"></div>
-				<div class="tee-eye-right"></div>
+				<div
+					class="tee-eye-left"
+					style="background-position: calc({2 + emote} / (8 - 1) * 100%) calc(3 / (4 - 1) * 100%);"
+				></div>
+				<div
+					class="tee-eye-right"
+					style="background-position: calc({2 + emote} / (8 - 1) * 100%) calc(3 / (4 - 1) * 100%);"
+				></div>
 			</div>
 		</div>
 
@@ -269,8 +249,14 @@
 					? `transform: translate(${pose.eyesPosition}) rotate(${pose.eyesRotation}deg)`
 					: ''}
 			>
-				<div class="tee-eye-left"></div>
-				<div class="tee-eye-right"></div>
+				<div
+					class="tee-eye-left"
+					style="background-position: calc({2 + emote} / (8 - 1) * 100%) calc(3 / (4 - 1) * 100%);"
+				></div>
+				<div
+					class="tee-eye-right"
+					style="background-position: calc({2 + emote} / (8 - 1) * 100%) calc(3 / (4 - 1) * 100%);"
+				></div>
 			</div>
 		</div>
 	{/if}
@@ -386,7 +372,6 @@
 		background-image: inherit;
 		background-size: calc(8 * 100% / 1) calc(4 * 100% / 1);
 		background-repeat: no-repeat;
-		background-position: calc(2 / (8 - 1) * 100%) calc(3 / (4 - 1) * 100%);
 	}
 
 	.tee-eyes > .tee-eye-right {
@@ -398,6 +383,5 @@
 		background-image: inherit;
 		background-size: calc(8 * 100%) calc(4 * 100%);
 		background-repeat: no-repeat;
-		background-position: calc(2 / (8 - 1) * 100%) calc(3 / (4 - 1) * 100%);
 	}
 </style>
