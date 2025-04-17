@@ -1464,6 +1464,16 @@
 	});
 </script>
 
+<svelte:head>
+	<meta property="og:title" content="DDNet 年度总结 - TeeworldsCN" />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://teeworlds.cn/ddnet/yearly" />
+	<meta property="og:description" content="{data.name ? `${data.name}的${data.year}年度总结` : `查看你的 DDraceNetwork ${data.year} 年度游戏数据总结`}" />
+	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
+	<meta name="title" content="DDNet 年度总结 - TeeworldsCN" />
+	<meta name="description" content="{data.name ? `${data.name}的${data.year}年度总结` : `查看你的 DDraceNetwork ${data.year} 年度游戏数据总结`}" />
+</svelte:head>
+
 <svelte:window on:resize={onResize} />
 
 {#snippet cardSnippet(id: number, card: CardData, format: Snippet<[number, CardData]>)}

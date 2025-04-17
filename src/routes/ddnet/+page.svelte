@@ -3,6 +3,16 @@
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
 </script>
 
+<svelte:head>
+	<meta property="og:title" content="DDNet 工具箱 - TeeworldsCN" />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://teeworlds.cn/ddnet" />
+	<meta property="og:description" content="DDraceNetwork 信息查询工具，包括玩家排名、地图、服务器和皮肤" />
+	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
+	<meta name="title" content="DDNet 工具箱 - TeeworldsCN" />
+	<meta name="description" content="DDraceNetwork 信息查询工具，包括玩家排名、地图、服务器和皮肤" />
+</svelte:head>
+
 <Breadcrumbs
 	breadcrumbs={[
 		{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },

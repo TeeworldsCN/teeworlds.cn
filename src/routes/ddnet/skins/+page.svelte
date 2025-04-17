@@ -101,6 +101,16 @@
 	});
 </script>
 
+<svelte:head>
+	<meta property="og:title" content="DDNet 皮肤列表 - TeeworldsCN" />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://teeworlds.cn/ddnet/skins" />
+	<meta property="og:description" content="浏览和复制 DDraceNetwork 皮肤，包括官方皮肤和社区皮肤" />
+	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
+	<meta name="title" content="DDNet 皮肤列表 - TeeworldsCN" />
+	<meta name="description" content="浏览和复制 DDraceNetwork 皮肤，包括官方皮肤和社区皮肤" />
+</svelte:head>
+
 <Breadcrumbs
 	breadcrumbs={[
 		{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },

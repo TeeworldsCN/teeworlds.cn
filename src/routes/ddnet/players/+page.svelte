@@ -136,6 +136,16 @@
 	};
 </script>
 
+<svelte:head>
+	<meta property="og:title" content="DDNet 玩家排名 - TeeworldsCN" />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://teeworlds.cn/ddnet/players" />
+	<meta property="og:description" content="查询 DDraceNetwork 玩家排名和分数，包括总分、团队分、个人分和时间段分数" />
+	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
+	<meta name="title" content="DDNet 玩家排名 - TeeworldsCN" />
+	<meta name="description" content="查询 DDraceNetwork 玩家排名和分数，包括总分、团队分、个人分和时间段分数" />
+</svelte:head>
+
 <Breadcrumbs
 	breadcrumbs={[
 		{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },

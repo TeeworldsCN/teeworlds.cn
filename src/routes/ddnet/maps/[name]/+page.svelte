@@ -17,15 +17,29 @@
 		data.map.mapper == 'Unknown Mapper' || !data.map.mapper ? '不详' : data.map.mapper
 	);
 
+	const mapDescription = $derived(
+		`${mapType(data.map.type)} ${numberToStars(data.map.difficulty)} (${data.map.points}pt) 作者：${mapperTransformed()}${data.map.median_time ? ` 均时：${secondsToTime(data.map.median_time)}` : ''}`
+	);
+
 	afterNavigate(() => {
 		share({
 			icon: new URL(data.map.icon, window.location.href).href,
 			link: `https://teeworlds.cn/goto#m${encodeAsciiURIComponent(data.map.name)}`,
 			title: `${data.map.name}`,
-			desc: `${mapType(data.map.type)} ${numberToStars(data.map.difficulty)} (${data.map.points}pt) 作者：${mapperTransformed()}${data.map.median_time ? ` 均时：${secondsToTime(data.map.median_time)}` : ''}`
+			desc: mapDescription
 		});
 	});
 </script>
+
+<svelte:head>
+	<meta property="og:title" content="{data.map.name} - DDNet 地图" />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://teeworlds.cn/ddnet/maps/{encodeAsciiURIComponent(data.map.name)}" />
+	<meta property="og:description" content={mapDescription} />
+	<meta property="og:image" content={data.map.thumbnail} />
+	<meta name="title" content="{data.map.name} - DDNet 地图" />
+	<meta name="description" content={mapDescription} />
+</svelte:head>
 
 <Breadcrumbs
 	breadcrumbs={[

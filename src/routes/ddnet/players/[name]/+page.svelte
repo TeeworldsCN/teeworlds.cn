@@ -92,12 +92,14 @@
 		return `hsl(${h}deg, ${s}%, ${l}%, ${a})`;
 	};
 
+	const playerDescription = $derived(`玩家信息：${data.player.points.points}pts`);
+
 	afterNavigate(() => {
 		share({
 			icon: `${window.location.origin}/shareicon.png`,
 			link: `https://teeworlds.cn/goto#p${encodeAsciiURIComponent(data.player.player)}`,
 			title: data.player.player,
-			desc: `玩家信息：${data.player.points.points}pts`
+			desc: playerDescription
 		});
 
 		filterType = 'all';
@@ -187,6 +189,16 @@
 		);
 	});
 </script>
+
+<svelte:head>
+	<meta property="og:title" content="{data.player.player} - DDNet 玩家" />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://teeworlds.cn/ddnet/players/{encodeAsciiURIComponent(data.player.player)}" />
+	<meta property="og:description" content={playerDescription} />
+	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
+	<meta name="title" content="{data.player.player} - DDNet 玩家" />
+	<meta name="description" content={playerDescription} />
+</svelte:head>
 
 <Breadcrumbs
 	breadcrumbs={[

@@ -219,6 +219,16 @@
 	});
 </script>
 
+<svelte:head>
+	<meta property="og:title" content="DDNet 服务器列表 - TeeworldsCN" />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://teeworlds.cn/ddnet/servers" />
+	<meta property="og:description" content="查看当前在线的 DDraceNetwork 服务器，包括玩家数量、地图和游戏模式" />
+	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
+	<meta name="title" content="DDNet 服务器列表 - TeeworldsCN" />
+	<meta name="description" content="查看当前在线的 DDraceNetwork 服务器，包括玩家数量、地图和游戏模式" />
+</svelte:head>
+
 <svelte:window
 	on:hashchange={() => {
 		processHashQuery(page.url.hash);

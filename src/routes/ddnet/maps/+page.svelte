@@ -215,6 +215,16 @@
 	};
 </script>
 
+<svelte:head>
+	<meta property="og:title" content="DDNet 地图列表 - TeeworldsCN" />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://teeworlds.cn/ddnet/maps" />
+	<meta property="og:description" content="查询和浏览 DDraceNetwork 官方地图，按类型、难度和作者过滤" />
+	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
+	<meta name="title" content="DDNet 地图列表 - TeeworldsCN" />
+	<meta name="description" content="查询和浏览 DDraceNetwork 官方地图，按类型、难度和作者过滤" />
+</svelte:head>
+
 <svelte:window
 	on:hashchange={() => {
 		processHashQuery(page.url.hash);
