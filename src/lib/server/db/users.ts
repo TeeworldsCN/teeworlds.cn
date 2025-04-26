@@ -1,7 +1,6 @@
 import { PERMISSIONS } from '$lib/types';
 import { volatile } from '../keyv';
 import { sqlite } from '../sqlite';
-import nodeCrypto from 'crypto';
 
 // user table
 sqlite

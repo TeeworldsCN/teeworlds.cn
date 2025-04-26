@@ -263,7 +263,7 @@ export class QQBot {
 
 	private async request<T>(
 		url: URL,
-		method: 'GET' | 'POST' | 'PUT' = 'GET',
+		method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
 		body?: any
 	): Promise<QQRequestResult<T>> {
 		const token = await this.getAccessToken();
@@ -326,6 +326,52 @@ export class QQBot {
 	async publishThread(channelId: string, title: string, content: QQRichText) {
 		const url = new URL(`/channels/${channelId}/threads`, END_POINT);
 		return this.request<any>(url, 'PUT', { title, content: JSON.stringify(content), format: 4 });
+	}
+
+	async getRoles(guildId: string): Promise<QQRequestResult<GuildRolesResponse>> {
+		const url = new URL(`/guilds/${guildId}/roles`, END_POINT);
+		return this.request<GuildRolesResponse>(url);
+	}
+
+	async createRole(
+		guildId: string,
+		name?: string,
+		color?: number,
+		hoist?: number
+	): Promise<QQRequestResult<CreateRoleResponse>> {
+		const url = new URL(`/guilds/${guildId}/roles`, END_POINT);
+		const body: Record<string, any> = {};
+
+		if (name !== undefined) body.name = name;
+		if (color !== undefined) body.color = color;
+		if (hoist !== undefined) body.hoist = hoist;
+
+		return this.request<CreateRoleResponse>(url, 'POST', body);
+	}
+
+	async updateRole(
+		guildId: string,
+		roleId: string,
+		name?: string,
+		color?: number,
+		hoist?: number
+	): Promise<QQRequestResult<UpdateRoleResponse>> {
+		const url = new URL(`/guilds/${guildId}/roles/${roleId}`, END_POINT);
+		const body: Record<string, any> = {};
+
+		if (name !== undefined) body.name = name;
+		if (color !== undefined) body.color = color;
+		if (hoist !== undefined) body.hoist = hoist;
+
+		return this.request<UpdateRoleResponse>(url, 'PATCH', body);
+	}
+
+	async deleteRole(
+		guildId: string,
+		roleId: string
+	): Promise<QQRequestResult<void>> {
+		const url = new URL(`/guilds/${guildId}/roles/${roleId}`, END_POINT);
+		return this.request<void>(url, 'DELETE');
 	}
 }
 
@@ -564,4 +610,30 @@ export interface QQRichTextParagraph {
 	props?: {
 		alignment?: QQRichTextAlignment;
 	};
+}
+
+export interface Role {
+	id: string;
+	name: string;
+	color: number;
+	hoist: number;
+	number: number;
+	member_limit: number;
+}
+
+export interface GuildRolesResponse {
+	guild_id: string;
+	roles: Role[];
+	role_num_limit: string;
+}
+
+export interface CreateRoleResponse {
+	role_id: string;
+	role: Role;
+}
+
+export interface UpdateRoleResponse {
+	guild_id: string;
+	role_id: string;
+	role: Role;
 }
