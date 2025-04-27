@@ -42,16 +42,21 @@ type QQBotMessageHandler = (
 ) => Promise<QQRequestError | any>;
 
 export class QQBotProtocol {
+	private appId: string;
 	private secret: string;
+	private secretKey: string;
 
 	private privateKey: CryptoKey | null;
 	private publicKey: CryptoKey | null;
 	private callbacks: (() => void)[] | null = [];
 
-	constructor(secret: string) {
+	constructor(appId: string, secret: string) {
+		this.appId = appId;
 		this.secret = secret;
-		while (this.secret.length < 32) {
-			this.secret += this.secret.slice(0, 32 - this.secret.length);
+
+		this.secretKey = secret;
+		while (this.secretKey.length < 32) {
+			this.secretKey += this.secretKey.slice(0, 32 - this.secretKey.length);
 		}
 		this.privateKey = null;
 		this.publicKey = null;
@@ -67,7 +72,7 @@ export class QQBotProtocol {
 		}
 
 		const jwk = {
-			d: Buffer.from(this.secret).toString('base64url'),
+			d: Buffer.from(this.secretKey).toString('base64url'),
 			key_ops: ['sign'],
 			crv: 'Ed25519',
 			ext: true,
@@ -124,8 +129,8 @@ export class QQBotProtocol {
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
-				appId: env.QQ_APPID,
-				clientSecret: env.QQ_SECRET
+				appId: this.appId,
+				clientSecret: this.secret
 			})
 		});
 
@@ -366,10 +371,7 @@ export class QQBotProtocol {
 		return this.request<UpdateRoleResponse>(url, 'PATCH', body);
 	}
 
-	async deleteRole(
-		guildId: string,
-		roleId: string
-	): Promise<QQRequestResult<void>> {
+	async deleteRole(guildId: string, roleId: string): Promise<QQRequestResult<void>> {
 		const url = new URL(`/guilds/${guildId}/roles/${roleId}`, END_POINT);
 		return this.request<void>(url, 'DELETE');
 	}
@@ -381,7 +383,7 @@ if (!env.QQ_SECRET || !env.QQ_APPID) {
 	QQBot = null;
 } else {
 	console.log(`QQBot is activated`);
-	QQBot = new QQBotProtocol(env.QQ_SECRET);
+	QQBot = new QQBotProtocol(env.QQ_APPID, env.QQ_SECRET);
 }
 
 // Webhook
