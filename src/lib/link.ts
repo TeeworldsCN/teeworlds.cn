@@ -9,7 +9,7 @@ export const fetchDDNetAsync = async (url: string) => {
 };
 
 const URL_ALLOWED_CHARS = new Set(
-	`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~*()`
+	`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.~*()`
 );
 const isURLAllowed = (char: string) => URL_ALLOWED_CHARS.has(char);
 
@@ -39,13 +39,13 @@ export const encodeAsciiURIComponent = (str: string, stamped = false) => {
 			result += char;
 		} else if (char == ' ') {
 			commit();
-			result += '+';
+			result += '-';
 		} else {
 			segment += char;
 		}
 	}
 	commit();
-	return encodeURIComponent(result).replace(/%2B/g, '+');
+	return result;
 };
 
 export const decodeAsciiURIComponent = (str: string) => {
@@ -71,6 +71,8 @@ export const decodeAsciiURIComponent = (str: string) => {
 			}
 		} else if (segment) {
 			segment += char;
+		} else if (char == '-') {
+			result += ' ';
 		} else if (char == '+') {
 			result += ' ';
 		} else {
