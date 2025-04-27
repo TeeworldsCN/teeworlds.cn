@@ -117,7 +117,7 @@ export class QQBotProtocol {
 	}
 
 	async getAccessToken() {
-		const accessToken = await volatile.get<string>('qqbot:accessToken');
+		const accessToken = await volatile.get<string>('qqbot:token');
 		if (accessToken) {
 			return accessToken;
 		}
@@ -147,7 +147,7 @@ export class QQBotProtocol {
 		}
 
 		await volatile.set<string>(
-			'qqbot:accessToken',
+			'qqbot:token',
 			json.access_token,
 			(parseInt(json.expires_in) - 30) * 1000
 		);

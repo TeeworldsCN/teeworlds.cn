@@ -9,7 +9,8 @@ import {
 	adminCheckPermission,
 	adminPermissionAdd,
 	adminPermissionRemove,
-	adminRateLimit
+	adminRateLimit,
+	adminWeChatAccessToken
 } from './handlers/admin';
 import { handleBind } from './handlers/bind';
 import { handleDeleteUser, handleRegister, handleResetPassword } from './handlers/register';
@@ -65,6 +66,9 @@ commands
 	.add('register', handleRegister, ['REGISTER'])
 	.add('reset-pw', handleResetPassword, ['REGISTER'])
 	.add('delete-user', handleDeleteUser, ['REGISTER'])
+
+	// wechat
+	.add('wechat-token', adminWeChatAccessToken, ['SUPER'])
 
 	// catch all unknown command
 	.fallback(handleFallback);

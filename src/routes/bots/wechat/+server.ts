@@ -28,7 +28,7 @@ export const GET = async ({ url }) => {
 		return new Response('Bad Request', { status: 400, headers: { 'content-type': 'text/plain' } });
 	}
 
-	if (!WeChat.verify(echostr, signature, timestamp, nonce)) {
+	if (!WeChat.verify(signature, timestamp, nonce)) {
 		return new Response('Forbidden', { status: 403, headers: { 'content-type': 'text/plain' } });
 	}
 
@@ -54,11 +54,11 @@ export const POST = async ({ request, url, fetch }) => {
 
 	if (encrypt === 'aes') {
 		const result = WeChat.parse<WeChatEncryptedMessage>(body);
-		if (!WeChat.verify(result.Encrypt._cdata, signature, timestamp, nonce)) {
+		if (!WeChat.verify(signature, timestamp, nonce, result.Encrypt)) {
 			return new Response('Forbidden', { status: 403, headers: { 'content-type': 'text/plain' } });
 		}
 
-		body = WeChat.decrypt(result.Encrypt._cdata);
+		body = WeChat.decrypt(result.Encrypt);
 	}
 
 	const data = WeChat.parse<WeChatIncomingMessage>(body);
@@ -68,12 +68,14 @@ export const POST = async ({ request, url, fetch }) => {
 		const user = data.FromUserName;
 		const receiver = data.ToUserName;
 
-		if (await volatile.get(`wechat:${data.MsgId}`)) {
+		const dedupKey = `wechat:dedup:${data.MsgId}`;
+
+		if (await volatile.get(dedupKey)) {
 			// dedup, ignore resend
 			return new Response('success', { status: 200, headers: { 'content-type': 'text/plain' } });
 		}
 
-		await volatile.set(`wechat:${data.MsgId}`, true, 60000);
+		await volatile.set(dedupKey, true, 60000);
 
 		if (!message || !user) {
 			return new Response('Bad Request', {
@@ -89,61 +91,67 @@ export const POST = async ({ request, url, fetch }) => {
 			'wechat',
 			{
 				text: (msg) => {
-					return (reply = {
+					reply = {
 						ToUserName: cdata(user),
 						FromUserName: cdata(receiver),
 						CreateTime: Math.floor(Date.now() / 1000),
 						MsgType: cdata('text'),
 						Content: cdata(msg)
-					});
+					};
+					return reply;
 				},
 				link: (link) => {
-					return (reply = {
+					reply = {
 						ToUserName: cdata(user),
 						FromUserName: cdata(receiver),
 						CreateTime: Math.floor(Date.now() / 1000),
 						MsgType: cdata('text'),
 						Content: cdata(`${link.prefix}${link.url}`)
-					});
+					};
+					return reply;
 				},
 				textLink: (msg, link) => {
-					return (reply = {
+					reply = {
 						ToUserName: cdata(user),
 						FromUserName: cdata(receiver),
 						CreateTime: Math.floor(Date.now() / 1000),
 						MsgType: cdata('text'),
 						Content: cdata(`${msg}\n${link.prefix}${link.url}`)
-					});
+					};
+					return reply;
 				},
 				image: (url) => {
 					return { success: false };
 				},
 				imageText: (msg, url) => {
-					return (reply = {
+					reply = {
 						ToUserName: cdata(user),
 						FromUserName: cdata(receiver),
 						CreateTime: Math.floor(Date.now() / 1000),
 						MsgType: cdata('text'),
 						Content: cdata(msg)
-					});
+					};
+					return reply;
 				},
 				imageTextLink: (msg, url, link) => {
-					return (reply = {
+					reply = {
 						ToUserName: cdata(user),
 						FromUserName: cdata(receiver),
 						CreateTime: Math.floor(Date.now() / 1000),
 						MsgType: cdata('text'),
 						Content: cdata(`${msg}\n${link.prefix}${link.url}`)
-					});
+					};
+					return reply;
 				},
 				custom: (body) => {
-					return (reply = {
+					reply = {
 						ToUserName: cdata(user),
 						FromUserName: cdata(receiver),
 						CreateTime: Math.floor(Date.now() / 1000),
 						MsgType: cdata('text'),
 						Content: cdata(body)
-					});
+					};
+					return reply;
 				}
 			},
 			user,
@@ -154,8 +162,15 @@ export const POST = async ({ request, url, fetch }) => {
 			false
 		);
 
+    console.log(reply);
+
 		if (!reply) {
 			return new Response('success', { status: 200, headers: { 'content-type': 'text/plain' } });
+		} else {
+			return new Response(WeChat.build<WeChatOutgoingMessage>(reply), {
+				status: 200,
+				headers: { 'content-type': 'text/xml' }
+			});
 		}
 	}
 

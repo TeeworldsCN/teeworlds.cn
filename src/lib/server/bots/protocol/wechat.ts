@@ -1,6 +1,9 @@
 import { env } from '$env/dynamic/private';
+import { volatile } from '$lib/server/keyv';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import nodeCrypto from 'node:crypto';
+
+const END_POINT = 'https://api.weixin.qq.com/cgi-bin/';
 
 const parser = new XMLParser({
 	isArray: (name) => name === 'item'
@@ -14,15 +17,19 @@ const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
 export class WeChatProtocol {
+	private secret: string;
 	private token: string;
-	private appId: Uint8Array;
+	private appId: string;
+	private appIdData: Uint8Array;
 	private key: Uint8Array;
 	private iv: Uint8Array;
 	private hasher: Bun.CryptoHasher;
 
-	constructor(token: string, appId: string, aesKey: string) {
+	constructor(token: string, appId: string, aesKey: string, secret: string) {
+		this.secret = secret;
 		this.token = token;
-		this.appId = textEncoder.encode(appId);
+		this.appId = appId;
+		this.appIdData = textEncoder.encode(appId);
 		this.key = Uint8Array.fromBase64(aesKey);
 		this.iv = this.key.slice(0, 16);
 		this.hasher = new Bun.CryptoHasher('sha1');
@@ -33,13 +40,13 @@ export class WeChatProtocol {
 		const msgData = textEncoder.encode(msg);
 
 		const blockSize = 32;
-		const dataLength = 20 + msgData.length + this.appId.length;
+		const dataLength = 20 + msgData.length + this.appIdData.length;
 		const amountToPad = blockSize - (dataLength % blockSize);
 		const buffer = Buffer.alloc(dataLength + amountToPad);
 		buffer.set(random, 0);
 		buffer.writeUInt32BE(msgData.length, 16);
 		buffer.set(msgData, 20);
-		buffer.set(this.appId, 20 + msgData.length);
+		buffer.set(this.appIdData, 20 + msgData.length);
 		buffer.fill(amountToPad, dataLength);
 
 		const cipher = nodeCrypto.createCipheriv('aes-256-cbc', this.key, this.iv);
@@ -60,7 +67,7 @@ export class WeChatProtocol {
 		return this.hasher.update(payload).digest('hex');
 	}
 
-	verify(encrypt: string, signature: string, timestamp: string, nonce: string): boolean {
+	verify(signature: string, timestamp: string, nonce: string, encrypt?: string): boolean {
 		return this.sign(timestamp, nonce, encrypt) === signature;
 	}
 
@@ -89,14 +96,58 @@ export class WeChatProtocol {
 	build<T>(obj: T): string {
 		return builder.build({ xml: obj });
 	}
+
+	async getAccessToken() {
+		const accessToken = await volatile.get<string>('wechat:token');
+		if (accessToken) {
+			return accessToken;
+		}
+
+		const url = new URL(
+			`token?grant_type=client_credential&appid=${this.appId}&secret=${this.secret}`,
+			END_POINT
+		);
+
+		const res = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json'
+			}
+		});
+
+		if (res.status != 200) {
+			console.error(res.status, res.statusText);
+			return '';
+		}
+
+		const json = await res.json();
+
+		if (!json.access_token || !json.expires_in) {
+			console.error(json);
+			return '';
+		}
+
+		await volatile.set<string>(
+			'wechat:token',
+			json.access_token,
+			(parseInt(json.expires_in) - 30) * 1000
+		);
+
+		return json.access_token;
+	}
 }
 
 // Create Bot
 export let WeChat: WeChatProtocol | null = null;
-if (!env.WECHAT_TOKEN || !env.WECHAT_APPID || !env.WECHAT_AES_KEY) {
+if (!env.WECHAT_TOKEN || !env.WECHAT_APPID || !env.WECHAT_AES_KEY || !env.WECHAT_SECRET) {
 	WeChat = null;
 } else {
-	WeChat = new WeChatProtocol(env.WECHAT_TOKEN, env.WECHAT_APPID, env.WECHAT_AES_KEY);
+	WeChat = new WeChatProtocol(
+		env.WECHAT_TOKEN,
+		env.WECHAT_APPID,
+		env.WECHAT_AES_KEY,
+		env.WECHAT_SECRET
+	);
 	console.log(`WeChat Protocol is activated`);
 }
 
@@ -105,8 +156,8 @@ export type CData<T extends string = string> = {
 };
 
 export type WeChatEncryptedMessage = {
-	Encrypt: CData;
-	ToUserName: CData;
+	Encrypt: string;
+	ToUserName: string;
 };
 
 type MaybeCData<T, K extends string = string> = T extends CData ? CData<K> : K;

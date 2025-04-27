@@ -6,6 +6,7 @@ import {
 	updateUserData
 } from '$lib/server/db/users';
 import { type Handler } from '../protocol/types';
+import { WeChat } from '../protocol/wechat';
 import { ArgParser } from '../utils/arg-parser';
 
 export const adminPermissionAdd: Handler = async ({ reply, args }) => {
@@ -146,4 +147,17 @@ export const adminRateLimit: Handler = async ({ platform, group, reply, args, mo
 	} else {
 		return await reply.text(`已取消限制群组中机器人的查询频率`);
 	}
+};
+
+export const adminWeChatAccessToken: Handler = async ({ reply, mode }) => {
+	if (mode != 'DIRECT') {
+		return;
+	}
+
+	if (!WeChat) {
+		return await reply.text('WeChat 协议未启用');
+	}
+
+	const accessToken = await WeChat.getAccessToken();
+	return await reply.text(`WeChat Access Token: ${accessToken}`);
 };
