@@ -1,5 +1,4 @@
 import type { SendReply, SendResult } from './protocol/types';
-import { AsyncQueue } from '$lib/async-queue';
 import { commands } from '.';
 import { getUserByUsername, hasPermission, type UserPermissions } from '../db/users';
 import { persistent } from '../db/kv';
@@ -55,7 +54,6 @@ export const registerCustom = (body: any) => {
 	};
 };
 
-const queue = new AsyncQueue();
 const limiter = new RateLimiter('bot', {
 	threshold: 3,
 	interval: 60,
@@ -209,5 +207,5 @@ export const handlePing = async (
 		return await handleMessage(args);
 	}
 
-	return await queue.push(() => handle(args));
+	return await handle(args);
 };
