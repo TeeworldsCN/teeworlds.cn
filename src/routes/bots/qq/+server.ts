@@ -1,13 +1,13 @@
 import { handlePing } from '$lib/server/bots/bot';
-import { BOT, type QQMessage, type QQPayload } from '$lib/server/bots/protocol/qq';
+import { QQBot, type QQMessage, type QQPayload } from '$lib/server/bots/protocol/qq';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ fetch, request }) => {
-	if (!BOT) {
+	if (!QQBot) {
 		return new Response('Not Found', { status: 404, headers: { 'content-type': 'text/plain' } });
 	}
 
-	const bot = BOT;
+	const bot = QQBot;
 	const headers = request.headers;
 	if (headers.get('user-agent') !== 'QQBot-Callback') {
 		return new Response('Forbidden', { status: 403, headers: { 'content-type': 'text/plain' } });

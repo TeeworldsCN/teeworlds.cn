@@ -1,5 +1,5 @@
 import { hasPermission } from '$lib/server/db/users';
-import { BOT } from '$lib/server/bots/protocol/qq';
+import { QQBot } from '$lib/server/bots/protocol/qq';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -13,11 +13,11 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		return error(400, 'Missing guild_id parameter');
 	}
 
-	if (!BOT) {
+	if (!QQBot) {
 		return error(404, 'Bot not found');
 	}
 
-	const result = await BOT.getRoles(guildId);
+	const result = await QQBot.getRoles(guildId);
 	if (result.error) {
 		return error(result.code, result.message);
 	}
@@ -36,11 +36,11 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		return error(400, 'Missing guild_id parameter');
 	}
 
-	if (!BOT) {
+	if (!QQBot) {
 		return error(404, 'Bot not found');
 	}
 
-	const result = await BOT.createRole(
+	const result = await QQBot.createRole(
 		body.guild_id,
 		body.name,
 		body.color,
@@ -65,11 +65,11 @@ export const PATCH: RequestHandler = async ({ locals, request }) => {
 		return error(400, 'Missing guild_id or role_id parameter');
 	}
 
-	if (!BOT) {
+	if (!QQBot) {
 		return error(404, 'Bot not found');
 	}
 
-	const result = await BOT.updateRole(
+	const result = await QQBot.updateRole(
 		body.guild_id,
 		body.role_id,
 		body.name,
@@ -95,11 +95,11 @@ export const DELETE: RequestHandler = async ({ locals, request }) => {
 		return error(400, 'Missing guild_id or role_id parameter');
 	}
 
-	if (!BOT) {
+	if (!QQBot) {
 		return error(404, 'Bot not found');
 	}
 
-	const result = await BOT.deleteRole(body.guild_id, body.role_id);
+	const result = await QQBot.deleteRole(body.guild_id, body.role_id);
 
 	// If result.code is 204, the operation succeeded despite result.error being true
 	if (result.error && result.code !== 204) {

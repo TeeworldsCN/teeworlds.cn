@@ -2,13 +2,13 @@ import { Cron } from 'croner';
 import { maps, type MapList } from '../fetches/maps';
 import { persistent } from '../db/kv';
 import { getSubscriptions } from '../db/subs';
-import { BOT, QQRichTextType } from '../bots/protocol/qq';
+import { QQBot, QQRichTextType } from '../bots/protocol/qq';
 import { mapType, numberToStars } from '$lib/ddnet/helpers';
 import { encodeAsciiURIComponent } from '$lib/link';
 
 const publishMap = async (map: MapList[0]) => {
 	if (!map) return;
-	if (!BOT) return;
+	if (!QQBot) return;
 
 	console.log(`Publishing map ${map.name}`);
 
@@ -16,7 +16,7 @@ const publishMap = async (map: MapList[0]) => {
 	for (const target of targets) {
 		if (target.startsWith('channel:')) {
 			const channelId = target.split(':')[1];
-			const result = await BOT.publishThread(channelId, `【新图发布】${map.name}`, {
+			const result = await QQBot.publishThread(channelId, `【新图发布】${map.name}`, {
 				paragraphs: [
 					{
 						elems: [

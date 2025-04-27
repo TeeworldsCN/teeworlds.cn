@@ -3,7 +3,7 @@ import { hasPermission } from '$lib/server/db/users';
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { triggerMapRelease } from '$lib/server/tasks/map-tracker';
-import { BOT } from '$lib/server/bots/protocol/qq';
+import { QQBot } from '$lib/server/bots/protocol/qq';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!hasPermission(locals.user, 'SUPER')) {
@@ -34,8 +34,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	if (body.op == 'download-thread') {
 		// download thread
 		console.log('Downloading');
-		if (!BOT) return error(500, 'QQBot is not initialized');
-		const threads = await BOT.listThreads(body.channel);
+		if (!QQBot) return error(500, 'QQBot is not initialized');
+		const threads = await QQBot.listThreads(body.channel);
 		console.log(threads);
 		if (threads.error) {
 			return error(500, threads.body || threads.message);
@@ -45,7 +45,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			return error(404, 'Thread not found');
 		}
 
-		const threadDetail = await BOT.getThread(body.channel, thread.thread_info.thread_id);
+		const threadDetail = await QQBot.getThread(body.channel, thread.thread_info.thread_id);
 		return new Response(JSON.stringify(threadDetail), {
 			headers: {
 				'content-type': 'text/plain'

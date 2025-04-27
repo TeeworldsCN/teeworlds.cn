@@ -41,7 +41,7 @@ type QQBotMessageHandler = (
 	options?: QQBotSendOptions
 ) => Promise<QQRequestError | any>;
 
-export class QQBot {
+export class QQBotProtocol {
 	private secret: string;
 
 	private privateKey: CryptoKey | null;
@@ -376,12 +376,12 @@ export class QQBot {
 }
 
 // Create Bot
-export let BOT: QQBot | null = null;
+export let QQBot: QQBotProtocol | null = null;
 if (!env.QQ_SECRET || !env.QQ_APPID) {
-	BOT = null;
+	QQBot = null;
 } else {
 	console.log(`QQBot is activated`);
-	BOT = new QQBot(env.QQ_SECRET);
+	QQBot = new QQBotProtocol(env.QQ_SECRET);
 }
 
 // Webhook

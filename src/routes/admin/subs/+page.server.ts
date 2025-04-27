@@ -1,4 +1,4 @@
-import { BOT, type QQChannel, type QQGuild } from '$lib/server/bots/protocol/qq';
+import { QQBot, type QQChannel, type QQGuild } from '$lib/server/bots/protocol/qq';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { listSubscriptions } from '$lib/server/db/subs';
@@ -9,11 +9,11 @@ export const load = (async ({ locals, parent }) => {
 		return error(404, 'Not Found');
 	}
 
-	if (!BOT) {
+	if (!QQBot) {
 		return error(404);
 	}
 
-	let guilds = await BOT.getGuilds();
+	let guilds = await QQBot.getGuilds();
 	if (guilds.error) {
 		return error(500, guilds.body || guilds.message);
 	}
@@ -23,7 +23,7 @@ export const load = (async ({ locals, parent }) => {
 	for (const guild of guilds.data) {
 		const data: QQGuild & { channels?: QQChannel[] } = { ...guild };
 		result.push(data);
-		const channels = await BOT.getChannels(guild.id);
+		const channels = await QQBot.getChannels(guild.id);
 		if (channels.error) {
 			continue;
 		}

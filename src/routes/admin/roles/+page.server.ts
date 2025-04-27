@@ -1,4 +1,4 @@
-import { BOT } from '$lib/server/bots/protocol/qq';
+import { QQBot } from '$lib/server/bots/protocol/qq';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { hasPermission } from '$lib/server/db/users';
@@ -8,11 +8,11 @@ export const load = (async ({ locals, parent }) => {
 		return error(404, 'Not Found');
 	}
 
-	if (!BOT) {
+	if (!QQBot) {
 		return error(404);
 	}
 
-	let guilds = await BOT.getGuilds();
+	let guilds = await QQBot.getGuilds();
 	if (guilds.error) {
 		return error(500, guilds.body || guilds.message);
 	}
