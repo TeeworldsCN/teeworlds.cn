@@ -14,7 +14,11 @@ export const load = (async ({ locals }) => {
 
 	// Get current menu configuration
 	const menuResult = await WeChat.getMenu();
-	
+
+	if (menuResult.errcode !== undefined) {
+		return error(400, menuResult.errmsg || 'Failed to get menu');
+	}
+
 	return {
 		menu: menuResult
 	};

@@ -26,27 +26,22 @@
 	// Process menu data from API response
 	let initialMenu: Menu = { button: [] };
 
-	if (data.menu?.selfmenu_info) {
-		// Format from get_current_selfmenu_info API
-		initialMenu = {
-			button: data.menu.selfmenu_info.button.map((btn: any) => {
-				// Convert sub_button.list to sub_button array format
-				if (btn.sub_button && btn.sub_button.list) {
-					return {
-						...btn,
-						sub_button: btn.sub_button.list
-					};
-				}
+	// Format from get_current_selfmenu_info API
+	initialMenu = {
+		button: data.menu.selfmenu_info.button.map((btn: any) => {
+			// Convert sub_button.list to sub_button array format
+			if (btn.sub_button && btn.sub_button.list) {
 				return {
 					...btn,
-					sub_button: btn.sub_button || []
+					sub_button: btn.sub_button.list
 				};
-			})
-		};
-	} else if (data.menu?.menu) {
-		// Format from menu/get API (fallback)
-		initialMenu = data.menu.menu;
-	}
+			}
+			return {
+				...btn,
+				sub_button: btn.sub_button || []
+			};
+		})
+	};
 
 	let menu = $state<Menu>(initialMenu);
 
@@ -412,7 +407,11 @@
 							</div>
 
 							<!-- Button properties snippet -->
-							{#snippet buttonProperties(button: MenuButton, parentIndex: number, subIndex?: number)}
+							{#snippet buttonProperties(
+								button: MenuButton,
+								parentIndex: number,
+								subIndex?: number
+							)}
 								<div class="mb-4">
 									<div class="mb-1 block text-sm font-medium text-slate-300">菜单类型</div>
 									<select
@@ -421,7 +420,10 @@
 										onchange={(e) => {
 											const newType = e.currentTarget.value;
 											if (subIndex !== undefined) {
-												menu.button[parentIndex].sub_button[subIndex] = handleTypeChange(button, newType);
+												menu.button[parentIndex].sub_button[subIndex] = handleTypeChange(
+													button,
+													newType
+												);
 											} else {
 												menu.button[parentIndex] = handleTypeChange(button, newType);
 											}

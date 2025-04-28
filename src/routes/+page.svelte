@@ -25,6 +25,6 @@
 {/if}
 
 <div class="mt-8">
-	<ToolboxButton href="https://pd.qq.com/s/h52kbyrkr?businessType=9" newTab>QQ频道</ToolboxButton>
+	<ToolboxButton href="https://chat.teeworlds.cn" newTab>加入社区</ToolboxButton>
 	<div class="text-semibold text-2xl">加入社区获取游戏动态与活动消息</div>
 </div>

@@ -28,6 +28,11 @@
 		<ToolboxButton href="/admin/wechat-menu">微信菜单管理</ToolboxButton>
 		<div class="text-semibold text-2xl">管理微信公众号的自定义菜单</div>
 	</div>
+
+	<div class="mt-8">
+		<ToolboxButton href="/admin/wechat-materials">微信素材管理</ToolboxButton>
+		<div class="text-semibold text-2xl">管理微信公众号的永久素材</div>
+	</div>
 {/if}
 
 {#if hasPermission('CHANNEL_SETTINGS')}

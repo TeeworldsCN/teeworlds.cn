@@ -13,6 +13,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 	}
 
 	const result = await WeChat.getMenu();
+	if (result.errcode !== undefined) {
+		return error(400, result.errmsg || 'Failed to get menu');
+	}
+
 	return json(result);
 };
 
@@ -25,10 +29,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		return error(404, 'WeChat protocol is not activated');
 	}
 
-	const body = await request.json() as WeChatMenu;
+	const body = (await request.json()) as WeChatMenu;
 	const result = await WeChat.createMenu(body);
 
-	if (result.errcode !== 0) {
+	if (result.errcode !== undefined) {
 		return error(400, result.errmsg || 'Failed to create menu');
 	}
 
@@ -45,8 +49,8 @@ export const DELETE: RequestHandler = async ({ locals }) => {
 	}
 
 	const result = await WeChat.deleteMenu();
-	
-	if (result.errcode !== 0) {
+
+	if (result.errcode !== undefined) {
 		return error(400, result.errmsg || 'Failed to delete menu');
 	}
 
