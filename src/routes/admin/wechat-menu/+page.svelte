@@ -307,6 +307,11 @@
 <div class="mx-auto mt-5 max-w-4xl">
 	<h1 class="text-center text-2xl font-bold text-slate-300">微信自定义菜单管理</h1>
 
+	<!-- Warning banner for unverified accounts -->
+	<div class="mt-4 rounded-md bg-amber-800 p-3 text-white">
+		<p class="font-medium">⚠️ 未认证的订阅号并不能编辑菜单，本界面仅做参考</p>
+	</div>
+
 	{#if error}
 		<div class="mt-4 rounded-md bg-red-900 p-3 text-white">
 			<p>{error}</p>
@@ -406,101 +411,177 @@
 								</p>
 							</div>
 
-							<!-- Parent button type and properties -->
-							<div class="mb-4">
-								<div class="mb-1 block text-sm font-medium text-slate-300">菜单类型</div>
-								<select
-									class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
-									bind:value={parentButton.type}
-									onchange={(e) => {
-										const newType = e.currentTarget.value;
-										menu.button[parentIndex] = handleTypeChange(parentButton, newType);
-									}}
-								>
-									<option value="">请选择类型</option>
-									{#each buttonTypes as type}
-										<option value={type.value}>{type.label}</option>
-									{/each}
-								</select>
-							</div>
+							<!-- Button properties snippet -->
+							{#snippet buttonProperties(button: MenuButton, parentIndex: number, subIndex?: number)}
+								<div class="mb-4">
+									<div class="mb-1 block text-sm font-medium text-slate-300">菜单类型</div>
+									<select
+										class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
+										bind:value={button.type}
+										onchange={(e) => {
+											const newType = e.currentTarget.value;
+											if (subIndex !== undefined) {
+												menu.button[parentIndex].sub_button[subIndex] = handleTypeChange(button, newType);
+											} else {
+												menu.button[parentIndex] = handleTypeChange(button, newType);
+											}
+										}}
+									>
+										<option value="">请选择类型</option>
+										{#each buttonTypes as type}
+											<option value={type.value}>{type.label}</option>
+										{/each}
+									</select>
+								</div>
 
-							{#if typeof parentButton.key !== 'undefined'}
-								<div class="mb-4">
-									<div class="mb-1 block text-sm font-medium text-slate-300">菜单KEY值</div>
-									<input
-										type="text"
-										class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
-										bind:value={parentButton.key}
-										placeholder="用于消息接口推送"
-									/>
+								{#if typeof button.key !== 'undefined'}
+									<div class="mb-4">
+										<div class="mb-1 block text-sm font-medium text-slate-300">菜单KEY值</div>
+										<input
+											type="text"
+											class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
+											bind:value={button.key}
+											placeholder="用于消息接口推送"
+										/>
+									</div>
+								{/if}
+								{#if typeof button.value !== 'undefined'}
+									<div class="mb-4">
+										<div class="mb-1 block text-sm font-medium text-slate-300">菜单KEY值</div>
+										<input
+											type="text"
+											class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
+											bind:value={button.value}
+											placeholder="用于消息接口推送"
+										/>
+									</div>
+								{/if}
+								{#if typeof button.url !== 'undefined'}
+									<div class="mb-4">
+										<div class="mb-1 block text-sm font-medium text-slate-300">跳转URL</div>
+										<input
+											type="text"
+											class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
+											bind:value={button.url}
+											placeholder="https://"
+										/>
+									</div>
+								{/if}
+								{#if typeof button.appid !== 'undefined'}
+									<div class="mb-4">
+										<div class="mb-1 block text-sm font-medium text-slate-300">小程序AppID</div>
+										<input
+											type="text"
+											class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
+											bind:value={button.appid}
+											placeholder="小程序的appid"
+										/>
+									</div>
+								{/if}
+								{#if typeof button.pagepath !== 'undefined'}
+									<div class="mb-4">
+										<div class="mb-1 block text-sm font-medium text-slate-300">小程序页面路径</div>
+										<input
+											type="text"
+											class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
+											bind:value={button.pagepath}
+											placeholder="pages/index/index"
+										/>
+									</div>
+								{/if}
+								{#if typeof button.media_id !== 'undefined'}
+									<div class="mb-4">
+										<div class="mb-1 block text-sm font-medium text-slate-300">媒体ID</div>
+										<input
+											type="text"
+											class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
+											bind:value={button.media_id}
+											placeholder="永久素材media_id"
+										/>
+									</div>
+								{/if}
+								{#if typeof button.article_id !== 'undefined'}
+									<div class="mb-4">
+										<div class="mb-1 block text-sm font-medium text-slate-300">文章ID</div>
+										<input
+											type="text"
+											class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
+											bind:value={button.article_id}
+											placeholder="发布后的图文消息article_id"
+										/>
+									</div>
+								{/if}
+							{/snippet}
+
+							<!-- Parent button properties -->
+							{@render buttonProperties(parentButton, parentIndex)}
+
+							<!-- Sub-buttons section -->
+							<div class="mt-4 border-t border-zinc-700 pt-4">
+								<div class="mb-4 flex items-center justify-between">
+									<h4 class="text-md font-medium text-slate-300">子菜单</h4>
+									<button
+										class="rounded bg-sky-700 px-2 py-1 text-sm text-white hover:bg-sky-600"
+										onclick={() => addSubButton(parentIndex)}
+										disabled={parentButton.sub_button.length >= 5}
+									>
+										添加子菜单
+									</button>
 								</div>
-							{/if}
-							{#if typeof parentButton.value !== 'undefined'}
-								<div class="mb-4">
-									<div class="mb-1 block text-sm font-medium text-slate-300">菜单KEY值</div>
-									<input
-										type="text"
-										class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
-										bind:value={parentButton.value}
-										placeholder="用于消息接口推送"
-									/>
-								</div>
-							{/if}
-							{#if typeof parentButton.url !== 'undefined'}
-								<div class="mb-4">
-									<div class="mb-1 block text-sm font-medium text-slate-300">跳转URL</div>
-									<input
-										type="text"
-										class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
-										bind:value={parentButton.url}
-										placeholder="https://"
-									/>
-								</div>
-							{/if}
-							{#if typeof parentButton.appid !== 'undefined'}
-								<div class="mb-4">
-									<div class="mb-1 block text-sm font-medium text-slate-300">小程序AppID</div>
-									<input
-										type="text"
-										class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
-										bind:value={parentButton.appid}
-										placeholder="小程序的appid"
-									/>
-								</div>
-							{/if}
-							{#if typeof parentButton.pagepath !== 'undefined'}
-								<div class="mb-4">
-									<div class="mb-1 block text-sm font-medium text-slate-300">小程序页面路径</div>
-									<input
-										type="text"
-										class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
-										bind:value={parentButton.pagepath}
-										placeholder="pages/index/index"
-									/>
-								</div>
-							{/if}
-							{#if typeof parentButton.media_id !== 'undefined'}
-								<div class="mb-4">
-									<div class="mb-1 block text-sm font-medium text-slate-300">媒体ID</div>
-									<input
-										type="text"
-										class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
-										bind:value={parentButton.media_id}
-										placeholder="永久素材media_id"
-									/>
-								</div>
-							{/if}
-							{#if typeof parentButton.article_id !== 'undefined'}
-								<div class="mb-4">
-									<div class="mb-1 block text-sm font-medium text-slate-300">文章ID</div>
-									<input
-										type="text"
-										class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
-										bind:value={parentButton.article_id}
-										placeholder="发布后的图文消息article_id"
-									/>
-								</div>
-							{/if}
+
+								{#if parentButton.sub_button.length === 0}
+									<div class="rounded-lg bg-zinc-700 p-3 text-center text-slate-400">
+										<p>暂无子菜单</p>
+									</div>
+								{:else}
+									{#each parentButton.sub_button as subButton, subIndex}
+										<div class="mb-4 rounded-lg bg-zinc-700 p-3">
+											<div class="mb-3 flex items-center justify-between">
+												<h5 class="text-sm font-medium text-slate-300">子菜单 #{subIndex + 1}</h5>
+												<div>
+													<button
+														class="mr-1 rounded bg-zinc-600 px-2 py-1 text-xs text-white hover:bg-zinc-500"
+														onclick={() => moveUp(parentIndex, subIndex)}
+														disabled={subIndex === 0}
+													>
+														上移
+													</button>
+													<button
+														class="mr-1 rounded bg-zinc-600 px-2 py-1 text-xs text-white hover:bg-zinc-500"
+														onclick={() => moveDown(parentIndex, subIndex)}
+														disabled={subIndex === parentButton.sub_button.length - 1}
+													>
+														下移
+													</button>
+													<button
+														class="rounded bg-red-700 px-2 py-1 text-xs text-white hover:bg-red-600"
+														onclick={() => removeButton(parentIndex, subIndex)}
+													>
+														删除
+													</button>
+												</div>
+											</div>
+
+											<div class="mb-3">
+												<div class="mb-1 block text-sm font-medium text-slate-300">菜单名称</div>
+												<input
+													type="text"
+													class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
+													bind:value={subButton.name}
+													maxlength="8"
+													placeholder="最多8个汉字"
+												/>
+												<p class="mt-1 text-xs text-slate-400">
+													{subButton.name ? subButton.name.length : 0}/8 个字符
+												</p>
+											</div>
+
+											<!-- Sub-button properties -->
+											{@render buttonProperties(subButton, parentIndex, subIndex)}
+										</div>
+									{/each}
+								{/if}
+							</div>
 						</div>
 					{/each}
 				{/if}
