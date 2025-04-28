@@ -135,6 +135,95 @@ export class WeChatProtocol {
 
 		return json.access_token;
 	}
+
+	/**
+	 * Create a custom menu for the WeChat public account
+	 * @param menu The menu configuration to create
+	 * @returns Result of the operation
+	 */
+	async createMenu(menu: WeChatMenu) {
+		const token = await this.getAccessToken();
+		if (!token) {
+			return { errcode: -1, errmsg: 'Failed to get access token' };
+		}
+
+		const url = new URL(`menu/create?access_token=${token}`, END_POINT);
+
+		const res = await fetch(url, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(menu)
+		});
+
+		if (res.status !== 200) {
+			return {
+				errcode: res.status,
+				errmsg: `HTTP error: ${res.statusText}`
+			};
+		}
+
+		return await res.json();
+	}
+
+	/**
+	 * Get the current custom menu configuration
+	 * @returns The current menu configuration
+	 */
+	async getMenu() {
+		const token = await this.getAccessToken();
+		if (!token) {
+			return { errcode: -1, errmsg: 'Failed to get access token' };
+		}
+
+		const url = new URL(`get_current_selfmenu_info?access_token=${token}`, END_POINT);
+
+		const res = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json'
+			}
+		});
+
+		if (res.status !== 200) {
+			return {
+				errcode: res.status,
+				errmsg: `HTTP error: ${res.statusText}`
+			};
+		}
+
+		return await res.json();
+	}
+
+	/**
+	 * Delete the current custom menu
+	 * @returns Result of the operation
+	 */
+	async deleteMenu() {
+		const token = await this.getAccessToken();
+		if (!token) {
+			return { errcode: -1, errmsg: 'Failed to get access token' };
+		}
+
+		const url = new URL(`menu/delete?access_token=${token}`, END_POINT);
+
+		const res = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json'
+			}
+		});
+
+		if (res.status !== 200) {
+			return {
+				errcode: res.status,
+				errmsg: `HTTP error: ${res.statusText}`
+			};
+		}
+
+		return await res.json();
+	}
 }
 
 // Create Bot
@@ -207,3 +296,78 @@ export type WeChatReceived<T> = {
 	MsgId: string;
 	CreateTime: number;
 } & T;
+
+// WeChat Menu Types
+export type WeChatMenuButtonBase = {
+	name: string;
+};
+
+export type WeChatMenuButtonWithValue = WeChatMenuButtonBase & {
+	type: 'text' | 'img' | 'voice' | 'video';
+	value: string;
+};
+
+export type WeChatMenuButtonWithKey = WeChatMenuButtonBase & {
+	type:
+		| 'click'
+		| 'scancode_push'
+		| 'scancode_waitmsg'
+		| 'pic_sysphoto'
+		| 'pic_photo_or_album'
+		| 'pic_weixin'
+		| 'location_select';
+	key: string;
+};
+
+export type WeChatMenuButtonWithUrl = WeChatMenuButtonBase & {
+	type: 'view';
+	url: string;
+};
+
+export type WeChatMenuButtonMiniprogram = WeChatMenuButtonBase & {
+	type: 'miniprogram';
+	url: string;
+	appid: string;
+	pagepath: string;
+};
+
+export type WeChatMenuButtonMedia = WeChatMenuButtonBase & {
+	type: 'media_id' | 'view_limited';
+	media_id: string;
+};
+
+export type WeChatMenuButtonArticle = WeChatMenuButtonBase & {
+	type: 'article_id' | 'article_view_limited';
+	article_id: string;
+};
+
+export type WeChatMenuButtonNews = WeChatMenuButtonBase & {
+	type: 'news';
+	value: string;
+	news_info: {
+		list: {
+			title: string;
+			digest: string;
+			show_cover: number;
+			cover_url: string;
+			content_url: string;
+			source_url: string;
+		}[];
+	};
+};
+
+export type WeChatMenuButton =
+	| WeChatMenuButtonWithKey
+	| WeChatMenuButtonWithValue
+	| WeChatMenuButtonWithUrl
+	| WeChatMenuButtonMiniprogram
+	| WeChatMenuButtonMedia
+	| WeChatMenuButtonArticle
+	| WeChatMenuButtonNews
+	| (WeChatMenuButtonBase & {
+			sub_button: WeChatMenuButton[];
+	  });
+
+export type WeChatMenu = {
+	button: WeChatMenuButton[];
+};
