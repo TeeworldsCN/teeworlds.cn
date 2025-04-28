@@ -1,5 +1,5 @@
 import { hasPermission } from '$lib/server/db/users';
-import { WeChat, type WeChatUploadType } from '$lib/server/bots/protocol/wechat';
+import { WeChat, type WeChatMaterialType } from '$lib/server/bots/protocol/wechat';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -35,7 +35,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	}
 
 	const formData = await request.formData();
-	const type = formData.get('type') as WeChatUploadType;
+	const type = formData.get('type') as WeChatMaterialType;
 	const media = formData.get('media') as File;
 
 	if (!type || !media) {
@@ -44,23 +44,18 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 	let result;
 
-	// Handle article image upload separately
-	if (type === 'article_image') {
-		result = await WeChat.uploadArticleImage(media);
-	} else {
-		// For video, we need title and introduction
-		if (type === 'video') {
-			const title = formData.get('title') as string;
-			const introduction = formData.get('introduction') as string;
+	// For video, we need title and introduction
+	if (type === 'video') {
+		const title = formData.get('title') as string;
+		const introduction = formData.get('introduction') as string;
 
-			if (!title || !introduction) {
-				return error(400, 'Video requires title and introduction');
-			}
-
-			result = await WeChat.addMaterial(type, media, { title, introduction });
-		} else {
-			result = await WeChat.addMaterial(type as 'image' | 'voice' | 'thumb', media);
+		if (!title || !introduction) {
+			return error(400, 'Video requires title and introduction');
 		}
+
+		result = await WeChat.addMaterial(type, media, { title, introduction });
+	} else {
+		result = await WeChat.addMaterial(type as 'image' | 'voice' | 'thumb', media);
 	}
 
 	if (result.errcode !== undefined) {

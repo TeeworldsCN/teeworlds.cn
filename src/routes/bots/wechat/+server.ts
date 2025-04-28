@@ -162,8 +162,6 @@ export const POST = async ({ request, url, fetch }) => {
 			false
 		);
 
-    console.log(reply);
-
 		if (!reply) {
 			return new Response('success', { status: 200, headers: { 'content-type': 'text/plain' } });
 		} else {

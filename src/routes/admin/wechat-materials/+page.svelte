@@ -27,7 +27,7 @@
 	let error = $state('');
 	let success = $state('');
 	let loading = $state(false);
-	let uploadType = $state<'image' | 'voice' | 'video' | 'thumb' | 'article_image'>('image');
+	let uploadType = $state<'image' | 'voice' | 'video' | 'thumb'>('image');
 	let showUploadModal = $state(false);
 	let mediaFile = $state<File | null>(null);
 	let videoTitle = $state('');
@@ -179,6 +179,52 @@
 		goto(`/admin/wechat-materials?type=${data.type}&offset=${offset}`);
 	}
 
+	// Process images in preview modal when it's shown
+	$effect(() => {
+		if (showPreviewModal && previewItem && previewItem.type === 'news') {
+			// Use setTimeout to ensure the DOM is updated with the content
+			setTimeout(() => {
+				const previewContainer = document.querySelector('.preview-modal-content');
+				if (previewContainer) {
+					const images = previewContainer.querySelectorAll('img[data-src]');
+					images.forEach((img) => {
+						const dataSrc = img.getAttribute('data-src');
+						if (dataSrc) {
+							// Set src attribute using the proxy endpoint
+							img.setAttribute(
+								'src',
+								`/admin/wechat-materials?target=${encodeURIComponent(dataSrc)}`
+							);
+
+							// Copy other data attributes to appropriate HTML attributes
+							const dataRatio = img.getAttribute('data-ratio');
+							const dataWidth = img.getAttribute('data-w');
+
+							if (dataRatio) {
+								// Set aspect ratio if available
+								const ratio = parseFloat(dataRatio);
+								if (!isNaN(ratio)) {
+									(img as HTMLImageElement).style.aspectRatio = `1 / ${ratio}`;
+								}
+							}
+
+							if (dataWidth) {
+								// Set max-width if available
+								const width = parseInt(dataWidth);
+								if (!isNaN(width)) {
+									(img as HTMLImageElement).style.width = `${width}px`;
+								}
+							}
+
+							// Add loading="lazy" for better performance
+							img.setAttribute('loading', 'lazy');
+						}
+					});
+				}
+			}, 100); // Small delay to ensure content is rendered
+		}
+	});
+
 	// Clean up object URLs when preview modal is closed
 	$effect(() => {
 		if (!showPreviewModal && previewItem) {
@@ -200,11 +246,6 @@
 
 <div class="mx-auto mt-5 max-w-6xl">
 	<h1 class="text-center text-2xl font-bold text-slate-300">微信素材管理</h1>
-
-	<!-- Warning banner for unverified accounts -->
-	<div class="mt-4 rounded-md bg-amber-800 p-3 text-white">
-		<p class="font-medium">⚠️ 未认证的订阅号素材数量有限，请谨慎使用</p>
-	</div>
 
 	{#if error}
 		<div class="mt-4 rounded-md bg-red-900 p-3 text-white">
@@ -276,7 +317,7 @@
 				}}
 				disabled={loading}
 			>
-				<Fa icon={faUpload} class="mr-2" />
+				<Fa icon={faUpload} class="mr-2 inline-block" />
 				上传素材
 			</button>
 		</div>
@@ -354,14 +395,16 @@
 						{:else if data.type === 'news'}
 							{@const data = item as WeChatMaterialNewsItem}
 							<div
-								class="mb-3 flex aspect-video items-center justify-center rounded bg-zinc-900 text-slate-500"
+								class="mb-3 flex aspect-video items-center justify-center rounded bg-white text-gray-500"
 							>
 								{#if data.content.news_item[0]}
 									<div class="h-full w-full overflow-hidden">
-										<div class="p-3 text-white">
-											<h3 class="text-lg font-bold">{data.content.news_item[0].title}</h3>
+										<div class="p-3">
+											<h3 class="text-lg font-bold text-gray-800">
+												{data.content.news_item[0].title}
+											</h3>
 											{#if data.content.news_item[0].digest}
-												<p class="mt-1 text-sm text-slate-300">
+												<p class="mt-1 text-sm text-gray-600">
 													{data.content.news_item[0].digest}
 												</p>
 											{/if}
@@ -442,7 +485,6 @@
 				<option value="voice">语音</option>
 				<option value="video">视频</option>
 				<option value="thumb">缩略图</option>
-				<option value="article_image">文章内图片</option>
 			</select>
 			<p class="mt-1 text-xs text-slate-400">
 				{#if uploadType === 'image'}
@@ -453,8 +495,6 @@
 					视频: 10M以内，支持MP4格式
 				{:else if uploadType === 'thumb'}
 					缩略图: 64KB以内，支持JPG格式
-				{:else if uploadType === 'article_image'}
-					文章内图片: 1M以内，仅支持jpg/png格式
 				{/if}
 			</p>
 		</div>
@@ -467,7 +507,7 @@
 				type="file"
 				class="w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-white"
 				onchange={handleFileChange}
-				accept={uploadType === 'image' || uploadType === 'article_image'
+				accept={uploadType === 'image'
 					? 'image/jpeg,image/png,image/gif,image/bmp'
 					: uploadType === 'voice'
 						? 'audio/mp3,audio/wma,audio/wav,audio/amr'
@@ -530,37 +570,18 @@
 >
 	<div class="w-[800px] max-w-full rounded-b-lg bg-zinc-800 p-4">
 		{#if previewItem}
-			{#if previewItem.type === 'image'}
-				<div class="flex justify-center">
-					<img
-						src={previewItem.url}
-						alt="素材预览"
-						class="max-h-[600px] max-w-full object-contain"
-					/>
-				</div>
-			{:else if previewItem.type === 'video'}
-				<div class="flex justify-center">
-					<video src={previewItem.url} controls class="max-h-[600px] max-w-full">
-						<track kind="captions" src="" label="中文" />
-						您的浏览器不支持视频播放
-					</video>
-				</div>
-			{:else if previewItem.type === 'audio'}
-				<div class="flex justify-center p-8">
-					<audio src={previewItem.url} controls class="w-full"></audio>
-				</div>
-			{:else if previewItem.type === 'news' && previewItem.content?.news_item}
-				<div class="max-h-[600px] overflow-y-auto">
+			{#if previewItem.type === 'news' && previewItem.content?.news_item}
+				<div class="preview-modal-content max-h-[calc(100svh-20rem)] overflow-y-auto rounded-md bg-white">
 					{#each previewItem.content.news_item as article}
-						<div class="mb-6 border-b border-zinc-700 pb-6 last:border-0 last:pb-0">
-							<h3 class="mb-2 text-xl font-bold text-white">{article.title}</h3>
+						<div class="mb-6 border-b border-gray-200 px-6 pb-6 pt-6 last:border-0 last:pb-0">
+							<h3 class="mb-2 text-xl font-bold text-gray-800">{article.title}</h3>
 							{#if article.author}
-								<div class="mb-2 text-sm text-slate-400">作者: {article.author}</div>
+								<div class="mb-2 text-sm text-gray-500">作者: {article.author}</div>
 							{/if}
 							{#if article.digest}
-								<div class="mb-4 text-slate-300">{article.digest}</div>
+								<div class="mb-4 text-gray-600">{article.digest}</div>
 							{/if}
-							<div class="prose prose-invert max-w-none">
+							<div class="prose max-w-none">
 								{@html article.content}
 							</div>
 							{#if article.content_source_url}
@@ -569,7 +590,7 @@
 										href={article.content_source_url}
 										target="_blank"
 										rel="noopener noreferrer"
-										class="text-sky-400 hover:underline"
+										class="text-blue-600 hover:underline"
 									>
 										阅读原文
 									</a>

@@ -14,7 +14,6 @@ export const load = (async ({ locals, url }) => {
 
 	// Get material counts
 	const countResult = await WeChat.getMaterialCount();
-	console.log(countResult);
 	if (countResult.errcode !== undefined) {
 		return error(400, countResult.errmsg || 'Failed to get material count');
 	}

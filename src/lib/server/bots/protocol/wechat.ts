@@ -99,7 +99,6 @@ export class WeChatProtocol {
 
 	async getAccessToken(): Promise<string> {
 		const accessToken = await volatile.get<string>('wechat:token');
-		console.log(accessToken);
 		if (accessToken) {
 			return accessToken;
 		}
@@ -546,7 +545,6 @@ export type WeChatDraftArticle = WeChatDraftNewsArticle | WeChatDraftNewsPicArti
 
 // Material Types
 export type WeChatMaterialType = 'image' | 'voice' | 'video' | 'thumb' | 'news';
-export type WeChatUploadType = WeChatMaterialType | 'article_image';
 
 export type WeChatMaterialCount = {
 	voice_count: number;
