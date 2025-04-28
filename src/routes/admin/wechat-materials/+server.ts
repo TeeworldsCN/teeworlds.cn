@@ -83,7 +83,7 @@ export const DELETE: RequestHandler = async ({ locals, request }) => {
 
 	const result = await WeChat.deleteMaterial(mediaId);
 
-	if (result.errcode !== undefined) {
+	if (result.errcode) {
 		return error(400, result.errmsg || 'Failed to delete material');
 	}
 
