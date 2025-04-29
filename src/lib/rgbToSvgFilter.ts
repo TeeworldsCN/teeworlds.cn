@@ -9,21 +9,20 @@ type RGB = { r: number; g: number; b: number };
  */
 export const rgbToSvgFilter = (color: RGB, id: string) => {
 	// Normalize RGB values to 0-1 range
-	const r = color.r / 255;
-	const g = color.g / 255;
-	const b = color.b / 255;
+	const r = Math.round(color.r) / 255;
+	const g = Math.round(color.g) / 255;
+	const b = Math.round(color.b) / 255;
 
 	// Create the SVG filter definition
 	const filterDef = `
-    <filter id="${id}">
-      <feColorMatrix type="saturate" values="0" />
-      <feComponentTransfer>
-        <feFuncR type="table" tableValues="0 ${r}" />
-        <feFuncG type="table" tableValues="0 ${g}" />
-        <feFuncB type="table" tableValues="0 ${b}" />
-      </feComponentTransfer>
-    </filter>
-  `;
+		<filter id="${id}">
+		  <feComponentTransfer color-interpolation-filters="sRGB">
+			<feFuncR type="linear" slope="${r}" />
+			<feFuncG type="linear" slope="${g}" />
+			<feFuncB type="linear" slope="${b}" />
+		  </feComponentTransfer>
+		</filter>
+	  `;
 
 	return {
 		id,

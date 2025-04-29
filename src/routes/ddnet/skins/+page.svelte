@@ -175,7 +175,7 @@
 							>
 								<div class="relative h-16 w-16">
 									<TeeRender
-										url={skin.url}
+										name={skin.name}
 										className="w-full h-full"
 										emote={copiedSkin === skin.name ? EMOTE.hurt : EMOTE.normal}
 									/>

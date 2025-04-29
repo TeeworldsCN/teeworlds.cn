@@ -30,10 +30,46 @@
 	let searchMap = $state('');
 	let filterType = $state('all');
 	let sortType = $state('finish');
+	let copiedSkin = $state<string | null>(null);
 
 	// april fools
 	let qiaPoints = $state(0);
 	let hasQia = page.url.searchParams.get('tool') === 'true';
+
+	// Copy skin name to clipboard
+	async function copySkinName(skinName: string) {
+		try {
+			await navigator.clipboard.writeText(skinName);
+			copiedSkin = skinName;
+
+			// Reset copied state after 2 seconds
+			setTimeout(() => {
+				if (copiedSkin === skinName) {
+					copiedSkin = null;
+				}
+			}, 2000);
+
+			return true;
+		} catch (err) {
+			console.error('Failed to copy skin name:', err);
+			return false;
+		}
+	}
+
+	// Get tooltip content based on copy state
+	function getSkinTooltipContent(skinName: string) {
+		return copiedSkin === skinName
+			? `皮肤：${skinName} 已复制！`
+			: `皮肤：${skinName}` || 'default';
+	}
+
+	// Update tippy content when copy state changes
+	$effect(() => {
+		const skinButton = document.querySelector('button[data-skin-name]');
+		if (skinButton && (skinButton as any)._tippy) {
+			(skinButton as any)._tippy.setContent(getSkinTooltipContent(data.skin.n || ''));
+		}
+	});
 
 	let filteredMaps = $derived(() => {
 		if (!searchMap) {
@@ -193,7 +229,10 @@
 <svelte:head>
 	<meta property="og:title" content="{data.player.player} - DDNet 玩家" />
 	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://teeworlds.cn/ddnet/players/{encodeAsciiURIComponent(data.player.player)}" />
+	<meta
+		property="og:url"
+		content="https://teeworlds.cn/ddnet/players/{encodeAsciiURIComponent(data.player.player)}"
+	/>
 	<meta property="og:description" content={playerDescription} />
 	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
 	<meta name="title" content="{data.player.player} - DDNet 玩家" />
@@ -213,15 +252,24 @@
 	<div class="flex w-full flex-col items-center justify-between gap-2 sm:flex-row">
 		<div>
 			<div class="flex flex-row items-center">
-				<!-- increased max loss iter to make the color more accurate at least in player page -->
-				<TeeRender
-					url={data.skin.n}
-					body={data.skin.b}
-					feet={data.skin.f}
-					useDefault
-					className="w-16 h-16 -mb-1 -mt-1 mr-2"
-					maxLossIter={10}
-				></TeeRender>
+				<button
+					class="-mb-1 -mt-1 mr-2 h-16 w-16 cursor-pointer"
+					data-skin-name={data.skin.n}
+					use:tippy={{
+						content: getSkinTooltipContent(data.skin.n || ''),
+						placement: 'right',
+						hideOnClick: false
+					}}
+					onclick={() => copySkinName(data.skin.n || 'default')}
+				>
+					<TeeRender
+						name={data.skin.n}
+						body={data.skin.b}
+						feet={data.skin.f}
+						useDefault
+						className="w-full h-full"
+					></TeeRender>
+				</button>
 				<div class="text-2xl font-bold">{data.player.player}</div>
 			</div>
 			<div class="text-md font-bold">
@@ -500,7 +548,7 @@
 
 {#if hasQia}
 	<DdIdle
-		url={data.skin.n}
+		skin={data.skin.n}
 		body={data.skin.b}
 		feet={data.skin.f}
 		bind:points={qiaPoints}

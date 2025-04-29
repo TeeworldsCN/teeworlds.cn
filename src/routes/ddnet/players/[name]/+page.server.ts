@@ -53,7 +53,7 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 	const fetchSkins = skins.fetch();
 	const fetchRanks = ranks.fetch();
 
-	const [playerData, mapData, skinData, rankData] = await Promise.all([
+	const [playerData, mapData, rankData] = await Promise.all([
 		(async () => {
 			let data: {
 				player: string;
@@ -198,10 +198,6 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 		b?: number;
 		f?: number;
 	};
-
-	if (skin.n) {
-		skin.n = skinData.result.map[skin.n];
-	}
 
 	// always check the rank page for update time
 	player.data_update_time = rankData.result.update_time;

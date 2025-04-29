@@ -1,5 +1,4 @@
 import { FetchCache } from '../fetch-cache';
-import { convert } from '../imgproxy';
 
 export type SkinInfo = {
 	skins: {
@@ -29,17 +28,14 @@ export const skins = new FetchCache<SkinInfo>(
 			result.skins.map(async (skin) => {
 				skin.url = (
 					skin.type == 'normal'
-						? await convert(
-								`https://ddnet.org/skins/skin/${encodeURIComponent(skin.name)}.${skin.imgtype}`
-							)
-						: await convert(
-								`https://ddnet.org/skins/skin/${encodeURIComponent(skin.type)}/${encodeURIComponent(skin.name)}.${skin.imgtype}`
-							)
+						? `/ddnet/skins/${encodeURIComponent(skin.name)}.${skin.imgtype}`
+						: `/ddnet/skins/${encodeURIComponent(skin.type)}/${encodeURIComponent(skin.name)}.${skin.imgtype}`
 				).toString();
 				map[skin.name] = skin.url;
 			})
 		);
 		result.map = map;
 		return result;
-	}
+	},
+	{ version: 2 }
 );

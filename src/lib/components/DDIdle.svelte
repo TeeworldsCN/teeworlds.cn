@@ -5,7 +5,7 @@
 	import TeeRender from './TeeRender.svelte';
 	import { browser } from '$app/environment';
 
-	let { points = $bindable(0), url, body, feet, name } = $props();
+	let { points = $bindable(0), skin, body, feet, name } = $props();
 
 	let show = $state(true);
 	let expanded = $state(true);
@@ -193,7 +193,7 @@
 					class="relative h-20 w-20 select-none rounded-lg bg-slate-700 transition-all hover:bg-slate-600 active:scale-95"
 					onclick={clickTee}
 				>
-					<TeeRender useDefault {url} {body} {feet} className="w-full h-full pointer-events-none" />
+					<TeeRender useDefault name={skin} {body} {feet} className="w-full h-full pointer-events-none" />
 				</button>
 			</div>
 
