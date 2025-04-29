@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { navigating } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import Link from '$lib/components/Link.svelte';
 	import { resetShare, share } from '$lib/share';
 	import '../app.css';
-	import { afterNavigate, beforeNavigate } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
 	import Fa from 'svelte-fa';
 	import { faGithub } from '@fortawesome/free-brands-svg-icons';
 	import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
@@ -24,9 +24,15 @@
 		);
 	});
 
+	let disabled = $state(page.route.id == '/');
+
 	beforeNavigate(() => {
 		resetShare();
 		if (timer) clearTimeout(timer);
+	});
+
+	afterNavigate(() => {
+		disabled = page.route.id == '/';
 	});
 
 	let timer: NodeJS.Timeout;
@@ -38,7 +44,7 @@
 
 		timer = setTimeout(() => {
 			if (window.location.href == href) {
-				window.close();
+				goto('/');
 			}
 		}, 250);
 	};
@@ -53,8 +59,10 @@
 	<header class="flex bg-slate-900 px-4 py-2 text-slate-300">
 		{#if uaNeedBackButton(data.ua)}
 			<button
-				class="fixed z-50 -ml-2 -mt-0.5 flex h-8 w-12 items-center justify-center rounded-md border border-slate-600 bg-sky-700 text-white shadow-md hover:bg-sky-600 active:bg-sky-800"
+				class="fixed z-50 -ml-2 -mt-0.5 flex h-8 w-12 items-center justify-center rounded-md border border-slate-600 bg-sky-700 text-white shadow-md
+				hover:bg-sky-600 active:bg-sky-800 disabled:bg-slate-800 disabled:opacity-50"
 				onclick={handleBack}
+				{disabled}
 			>
 				<Fa icon={faArrowLeft} />
 			</button>
