@@ -27,7 +27,7 @@
 			if (target) {
 				goto(target);
 			}
-		}, 1500);
+		}, 250);
 
 		if (!target) {
 			showLinks = true;
@@ -37,7 +37,7 @@
 					preloadData(target);
 					preloadCode(target);
 				}
-			}, 100);
+			}, 25);
 		}
 	});
 </script>
