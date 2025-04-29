@@ -12,9 +12,14 @@
 	import { checkMapName, checkMapper } from '$lib/ddnet/searches';
 	import RangeSlider from '$lib/components/RangeSlider.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import Modal from '$lib/components/Modal.svelte';
+	import Fa from 'svelte-fa';
+	import { faMapLocation } from '@fortawesome/free-solid-svg-icons';
 
 	let maps: MapList = $state([]);
 	let error = $state();
+	let previewMapName = $state<string | null>(null);
+	let showMapPreviewModal = $state(false);
 
 	const pageSize = 12;
 
@@ -219,7 +224,10 @@
 	<meta property="og:title" content="DDNet 地图列表 - TeeworldsCN" />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://teeworlds.cn/ddnet/maps" />
-	<meta property="og:description" content="查询和浏览 DDraceNetwork 官方地图，按类型、难度和作者过滤" />
+	<meta
+		property="og:description"
+		content="查询和浏览 DDraceNetwork 官方地图，按类型、难度和作者过滤"
+	/>
 	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
 	<meta name="title" content="DDNet 地图列表 - TeeworldsCN" />
 	<meta name="description" content="查询和浏览 DDraceNetwork 官方地图，按类型、难度和作者过滤" />
@@ -338,7 +346,7 @@
 		>
 	</div>
 {:else}
-	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 		{#each paginatedMaps as map (map.name)}
 			<div class="rounded border border-slate-700 bg-slate-700 p-4 pt-3 shadow">
 				<h3 class="scrollbar-hide h-8 overflow-x-auto text-nowrap text-lg font-bold">
@@ -363,29 +371,43 @@
 						发布于：远古
 					{/if}
 				</span>
-				<button
+				<div
 					class="relative mt-2 aspect-map h-auto w-full overflow-hidden rounded-md border border-slate-600 hover:border-blue-500 active:border-blue-300"
-					onmousedown={() => {
-						preloadData(`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`);
-					}}
-					onclick={() => {
-						goto(`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`);
-					}}
-					aria-label={map.name}
 				>
-					<img
-						src={map.thumbnail}
-						alt={map.name}
-						use:abortOnDestroy
-						class="absolute left-0 top-0 h-full w-full object-cover"
-					/>
+					<button
+						class="h-full w-full"
+						onmousedown={() => {
+							preloadData(`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`);
+						}}
+						onclick={() => {
+							goto(`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`);
+						}}
+						aria-label={map.name}
+					>
+						<img
+							src={map.thumbnail}
+							alt={map.name}
+							use:abortOnDestroy
+							class="absolute left-0 top-0 h-full w-full object-cover"
+						/>
+					</button>
 					<p
-						class="absolute bottom-0 right-0 rounded-tl-lg bg-slate-800 bg-opacity-70 px-3 py-1 text-sm backdrop-blur"
+						class="absolute bottom-0 right-0 rounded-tl-lg bg-slate-800 bg-opacity-70 py-1 pl-3 pr-9 text-sm backdrop-blur"
 					>
 						{mapType(map.type)}
 						{numberToStars(map.difficulty)} ({map.points} pts)
+						<button
+							class="absolute bottom-0 right-0 h-full bg-slate-800 px-2 hover:bg-slate-900 active:bg-slate-700"
+							onclick={(e) => {
+								previewMapName = map.name;
+								showMapPreviewModal = true;
+							}}
+							aria-label="预览地图"
+						>
+							<Fa icon={faMapLocation} />
+						</button>
 					</p>
-				</button>
+				</div>
 				<div
 					class="scrollbar-hide mt-1 h-8 cursor-grab overflow-x-auto whitespace-nowrap"
 					onpointerdown={startDragging}
@@ -460,3 +482,18 @@
 		>
 	</div>
 {/if}
+
+<Modal bind:show={showMapPreviewModal}>
+	<div
+		class="h-[calc(100vh-5rem)] w-[calc(100vw-3rem)] rounded-l-lg rounded-br-lg bg-slate-700 p-1 shadow-md sm:w-[calc(100vw-5rem)]"
+	>
+		{#if showMapPreviewModal && previewMapName}
+			<iframe
+				src={`https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(previewMapName)}.map`}
+				title="Map Preview"
+				class="h-full w-full rounded border-0 bg-black"
+				loading="lazy"
+			></iframe>
+		{/if}
+	</div>
+</Modal>

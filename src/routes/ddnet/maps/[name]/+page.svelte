@@ -10,8 +10,14 @@
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
 	import { tippy } from '$lib/tippy';
+	import Modal from '$lib/components/Modal.svelte';
+	import Fa from 'svelte-fa';
+	import { faMapLocation } from '@fortawesome/free-solid-svg-icons';
 
 	const { data } = $props();
+
+	// State for map preview modal
+	let showMapPreviewModal = $state(false);
 
 	const mapperTransformed = $derived(() =>
 		data.map.mapper == 'Unknown Mapper' || !data.map.mapper ? '不详' : data.map.mapper
@@ -34,7 +40,10 @@
 <svelte:head>
 	<meta property="og:title" content="{data.map.name} - DDNet 地图" />
 	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://teeworlds.cn/ddnet/maps/{encodeAsciiURIComponent(data.map.name)}" />
+	<meta
+		property="og:url"
+		content="https://teeworlds.cn/ddnet/maps/{encodeAsciiURIComponent(data.map.name)}"
+	/>
 	<meta property="og:description" content={mapDescription} />
 	<meta property="og:image" content={data.map.thumbnail} />
 	<meta name="title" content="{data.map.name} - DDNet 地图" />
@@ -96,10 +105,9 @@
 		</div>
 		<button
 			class="absolute bottom-4 right-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-			onclick={() =>
-				(window.location.href = `https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(data.map.name)}.map`)}
+			onclick={() => (showMapPreviewModal = true)}
 		>
-			查看地图
+			<Fa class="inline" icon={faMapLocation}></Fa> 查看地图
 		</button>
 	</div>
 	<div class="rounded-lg bg-slate-700 p-4 shadow-md">
@@ -237,3 +245,18 @@
 		</ul>
 	</div>
 </div>
+
+<Modal bind:show={showMapPreviewModal}>
+	<div
+		class="h-[calc(100vh-5rem)] w-[calc(100vw-3rem)] rounded-l-lg rounded-br-lg bg-slate-700 p-1 shadow-md sm:w-[calc(100vw-5rem)]"
+	>
+		{#if showMapPreviewModal}
+			<iframe
+				src={`https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(data.map.name)}.map`}
+				title="Map Preview"
+				class="h-full w-full rounded border-0 bg-black"
+				loading="lazy"
+			></iframe>
+		{/if}
+	</div>
+</Modal>
