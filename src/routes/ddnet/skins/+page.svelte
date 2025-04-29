@@ -153,7 +153,7 @@
 
 	<!-- Skins grid with virtual scrolling -->
 	<div
-		class="scrollbar-subtle grid h-[calc(100svh-16rem)] w-full sm:h-[calc(100svh-14rem)] md:h-[calc(100svh-17.5rem)]"
+		class="scrollbar-subtle grid h-[calc(100svh-16rem)] w-full sm:h-[calc(100svh-14rem)]"
 	>
 		<VirtualScroll keeps={20} data={filteredSkins} key="row" let:data>
 			<div class="h-20 w-full overflow-hidden">

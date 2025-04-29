@@ -338,7 +338,7 @@
 		</button>
 	</div>
 	<div
-		class="w-ful scrollbar-subtle h-[calc(100svh-16.5rem)] sm:h-[calc(100svh-14rem)] md:h-[calc(100svh-17rem)]"
+		class="w-ful scrollbar-subtle h-[calc(100svh-16.5rem)] sm:h-[calc(100svh-14rem)]"
 	>
 		<VirtualScroll keeps={75} data={servers()} key="key" estimateSize={32} let:data>
 			<button

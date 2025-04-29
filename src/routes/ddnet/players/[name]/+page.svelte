@@ -601,7 +601,7 @@
 				</select>
 			</div>
 			<div
-				class="scrollbar-subtle h-[calc(100svh-22rem)] overflow-hidden sm:h-[calc(100svh-20rem)] md:h-[calc(100svh-17rem)]"
+				class="scrollbar-subtle h-[calc(100svh-15rem)] overflow-hidden md:h-[calc(100svh-13rem)]"
 			>
 				<div class="hidden cursor-default text-nowrap rounded-t bg-slate-700 text-center sm:block">
 					<span class="inline-block w-32 overflow-hidden pl-2 text-left lg:w-48">地图</span>
