@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
+	import { faFaceSmile, faGamepad, faGlobe, faInfo, faInfoCircle, faMap, faRankingStar, faServer } from '@fortawesome/free-solid-svg-icons';
+	import Fa from 'svelte-fa';
 </script>
 
 <svelte:head>
@@ -20,36 +22,41 @@
 	]}
 />
 
-<div class="mt-8">
-	<ToolboxButton href="/ddnet/players">查看排名</ToolboxButton>
-	<div class="text-semibold text-2xl">查看 DDNet 排名与玩家分数</div>
+<div class="mt-6">
+	<ToolboxButton href="/ddnet/players"><Fa icon={faRankingStar} class="inline"></Fa> 排名查分</ToolboxButton>
+	<div class="text-semibold">DDNet 排名与玩家分数</div>
 </div>
 
-<div class="mt-8">
-	<ToolboxButton href="/ddnet/maps">查询地图</ToolboxButton>
-	<div class="text-semibold text-2xl">查找 DDNet 官方地图</div>
+<div class="mt-6">
+	<ToolboxButton href="/ddnet/maps"><Fa icon={faMap} class="inline"></Fa> 查找地图</ToolboxButton>
+	<div class="text-semibold">DDNet 官方地图列表</div>
 </div>
 
-<div class="mt-8">
-	<ToolboxButton href="/ddnet/servers">服务器列表</ToolboxButton>
-	<div class="text-semibold text-2xl">显示 DDNet 服务器列表</div>
+<div class="mt-6">
+	<ToolboxButton href="/ddnet/servers"><Fa icon={faServer} class="inline"></Fa> 服务器列表</ToolboxButton>
+	<div class="text-semibold">DDNet 服务器列表</div>
 </div>
 
-<div class="mt-8">
-	<ToolboxButton href="/ddnet/skins">皮肤列表</ToolboxButton>
-	<div class="text-semibold text-2xl">浏览和复制 DDNet 皮肤</div>
+<div class="mt-6">
+	<ToolboxButton href="/ddnet/skins"><Fa icon={faFaceSmile} class="inline"></Fa> 皮肤列表</ToolboxButton>
+	<div class="text-semibold">浏览和复制 DDNet 皮肤</div>
 </div>
 
-<div class="mt-8">
+<div class="mt-6">
+	<ToolboxButton href="/ddnet/nouis"><Fa icon={faGamepad} class="inline"></Fa> 合成超大Tee</ToolboxButton>
+	<div class="text-semibold">游玩搞怪小游戏</div>
+</div>
+
+<div class="mt-6">
 	<ToolboxButton href="/link/?ref={encodeURIComponent('https://wiki.ddnet.org/wiki/Main_Page/zh')}"
-		>中文 Wiki</ToolboxButton
+		><Fa icon={faInfoCircle} class="inline"></Fa> 中文 Wiki</ToolboxButton
 	>
-	<div class="text-semibold text-2xl">详细教程与操作指南</div>
+	<div class="text-semibold">详细教程与操作指南</div>
 </div>
 
-<div class="mt-8">
+<div class="mt-6">
 	<ToolboxButton href="/link/?ref={encodeURIComponent('https://ddnet.org/')}"
-		>DDNet 官网</ToolboxButton
+		><Fa icon={faGlobe} class="inline"></Fa> DDNet 官网</ToolboxButton
 	>
-	<div class="text-semibold text-2xl">前往 DDraceNetwork 官方网站</div>
+	<div class="text-semibold">前往 DDraceNetwork 官方网站</div>
 </div>

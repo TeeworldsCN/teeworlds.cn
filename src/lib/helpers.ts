@@ -192,7 +192,12 @@ export const base64ToAddr = (base64: string) => {
 
 export const uaIsStrict = (ua: string | null) => {
 	if (!ua) return false;
-	return ua.includes('QQ/');
+	return /(QQ\/|micromessenger)/i.test(ua);
+};
+
+export const uaNeedBackButton = (ua: string | null) => {
+	if (!ua) return false;
+	return /(QQ\/)/i.test(ua);
 };
 
 export const uaIsMobile = (ua: string | null) => {

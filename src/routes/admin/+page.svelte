@@ -19,25 +19,25 @@
 />
 
 {#if hasPermission('SUPER')}
-	<div class="mt-8">
+	<div class="mt-6">
 		<ToolboxButton href="/admin/subs">订阅管理</ToolboxButton>
-		<div class="text-semibold text-2xl">管理机器人自动发布消息的订阅功能</div>
+		<div class="text-semibold">管理机器人自动发布消息的订阅功能</div>
 	</div>
 
-	<div class="mt-8">
+	<div class="mt-6">
 		<ToolboxButton href="/admin/wechat-menu">微信菜单管理</ToolboxButton>
-		<div class="text-semibold text-2xl">管理微信公众号的自定义菜单</div>
+		<div class="text-semibold">管理微信公众号的自定义菜单</div>
 	</div>
 
-	<div class="mt-8">
+	<div class="mt-6">
 		<ToolboxButton href="/admin/wechat-materials">微信素材管理</ToolboxButton>
-		<div class="text-semibold text-2xl">管理微信公众号的永久素材</div>
+		<div class="text-semibold">管理微信公众号的永久素材</div>
 	</div>
 {/if}
 
 {#if hasPermission('CHANNEL_SETTINGS')}
-	<div class="mt-8">
+	<div class="mt-6">
 		<ToolboxButton href="/admin/roles">角色管理</ToolboxButton>
-		<div class="text-semibold text-2xl">管理频道中的角色</div>
+		<div class="text-semibold">管理频道中的角色</div>
 	</div>
 {/if}

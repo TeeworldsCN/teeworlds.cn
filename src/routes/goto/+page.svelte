@@ -52,18 +52,18 @@
 		]}
 	/>
 
-	<div class="mt-8">
+	<div class="mt-6">
 		<ToolboxButton href="/ddnet/players">查看排名</ToolboxButton>
-		<div class="text-semibold text-2xl">查看 DDNet 排名与玩家分数</div>
+		<div class="text-semibold">查看 DDNet 排名与玩家分数</div>
 	</div>
 
-	<div class="mt-8">
+	<div class="mt-6">
 		<ToolboxButton href="/ddnet/maps">查询地图</ToolboxButton>
-		<div class="text-semibold text-2xl">查找 DDNet 官方地图</div>
+		<div class="text-semibold">查找 DDNet 官方地图</div>
 	</div>
 
-	<div class="mt-8">
+	<div class="mt-6">
 		<ToolboxButton href="/ddnet/servers">服务器列表</ToolboxButton>
-		<div class="text-semibold text-2xl">显示 DDNet 服务器列表</div>
+		<div class="text-semibold">显示 DDNet 服务器列表</div>
 	</div>
 {/if}

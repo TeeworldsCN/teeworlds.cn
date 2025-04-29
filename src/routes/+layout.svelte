@@ -7,6 +7,8 @@
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import Fa from 'svelte-fa';
 	import { faGithub } from '@fortawesome/free-brands-svg-icons';
+	import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+	import { uaNeedBackButton } from '$lib/helpers';
 
 	let { children, data } = $props();
 
@@ -24,7 +26,22 @@
 
 	beforeNavigate(() => {
 		resetShare();
+		if (timer) clearTimeout(timer);
 	});
+
+	let timer: NodeJS.Timeout;
+
+	const handleBack = () => {
+		history.back();
+
+		const href = window.location.href;
+
+		timer = setTimeout(() => {
+			if (window.location.href == href) {
+				window.close();
+			}
+		}, 250);
+	};
 </script>
 
 <div
@@ -34,6 +51,15 @@
 	style={navigating.to ? 'transition: opacity 0.1s ease-in-out 0.1s;' : ''}
 >
 	<header class="flex bg-slate-900 px-4 py-2 text-slate-300">
+		{#if uaNeedBackButton(data.ua)}
+			<button
+				class="fixed z-50 -ml-2 -mt-0.5 flex h-8 w-12 items-center justify-center rounded-md border border-slate-600 bg-sky-700 text-white shadow-md hover:bg-sky-600 active:bg-sky-800"
+				onclick={handleBack}
+			>
+				<Fa icon={faArrowLeft} />
+			</button>
+			<div class="w-20"></div>
+		{/if}
 		<div class="container mx-auto">
 			<div class="flex w-full">
 				<div class="flex-grow">
