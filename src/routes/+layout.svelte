@@ -87,14 +87,16 @@
 		</div>
 	</header>
 
-	<main class="flex flex-grow bg-slate-800 p-2 text-slate-300 md:p-4">
+	<main class="flex flex-grow bg-slate-800 p-2 text-slate-300">
 		<div class="container relative mx-auto flex-grow">
 			{@render children()}
 		</div>
 	</main>
 
-	<footer class="flex flex-row items-center bg-slate-900 px-4 py-1 text-slate-300">
-		<div class="text-sm md:text-base">
+	<footer
+		class="flex h-8 flex-row flex-nowrap items-center text-nowrap bg-slate-900 px-4 py-1 text-slate-300"
+	>
+		<div class="text-xs sm:text-base">
 			<Link href="https://beian.miit.gov.cn/" type="subtle" className="font-bold"
 				>冀ICP备2021002466号</Link
 			>
