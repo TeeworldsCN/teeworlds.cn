@@ -170,6 +170,22 @@ export const POST = async ({ request, url, fetch }) => {
 				headers: { 'content-type': 'text/xml' }
 			});
 		}
+	} else if (data.MsgType === 'event') {
+		if (data.Event === 'subscribe') {
+			return new Response(
+				WeChat.build<WeChatOutgoingMessage>({
+					ToUserName: cdata(data.FromUserName),
+					FromUserName: cdata(data.ToUserName),
+					CreateTime: Math.floor(Date.now() / 1000),
+					MsgType: cdata('text'),
+					Content: cdata('欢迎关注豆豆！给我发送 ？ 可以了解豆豆的查询功能')
+				}),
+				{
+					status: 200,
+					headers: { 'content-type': 'text/xml' }
+				}
+			);
+		}
 	}
 
 	return new Response('success', { status: 200, headers: { 'content-type': 'text/plain' } });

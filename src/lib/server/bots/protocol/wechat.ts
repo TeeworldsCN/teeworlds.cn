@@ -375,7 +375,8 @@ type MaybeCData<T, K extends string = string> = T extends CData ? CData<K> : K;
 type WeChatMessage<T extends CData | string> =
 	| WeChatTextMessage<T>
 	| WeChatImageMessage<T>
-	| WeChatArticleMessage<T>;
+	| WeChatArticleMessage<T>
+	| WeChatEventMessage<T>;
 
 export type WeChatIncomingMessage = WeChatReceived<WeChatMessage<string>>;
 export type WeChatOutgoingMessage = WeChatMessage<CData>;
@@ -388,30 +389,38 @@ export type WeChatTextMessage<T extends CData | string> = {
 	Content: T;
 };
 
-export type WeChatImageMessage<T> = {
-	ToUserName: CData;
-	FromUserName: CData;
+export type WeChatImageMessage<T extends CData | string> = {
+	ToUserName: T;
+	FromUserName: T;
 	CreateTime: number;
 	MsgType: MaybeCData<T, 'image'>;
 	Image: {
-		MediaId: CData;
+		MediaId: T;
 	};
 };
 
-export type WeChatArticleMessage<T> = {
-	ToUserName: CData;
-	FromUserName: CData;
+export type WeChatArticleMessage<T extends CData | string> = {
+	ToUserName: T;
+	FromUserName: T;
 	CreateTime: number;
 	MsgType: MaybeCData<T, 'news'>;
 	ArticleCount: number;
 	Articles: {
 		item: {
-			Title: CData;
-			Description: CData;
-			PicUrl: CData;
-			Url: CData;
+			Title: T;
+			Description: T;
+			PicUrl: T;
+			Url: T;
 		}[];
 	};
+};
+
+export type WeChatEventMessage<T extends CData | string> = {
+	ToUserName: T;
+	FromUserName: T;
+	CreateTime: number;
+	MsgType: MaybeCData<T, 'event'>;
+	Event: T;
 };
 
 export type WeChatReceived<T> = {
