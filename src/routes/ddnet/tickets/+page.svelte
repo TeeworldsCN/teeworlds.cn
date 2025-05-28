@@ -4,6 +4,7 @@
 	import type { TicketImageUrl } from '$lib/components/ChatTimeline.svelte';
 	import TicketPanel from '$lib/components/TicketPanel.svelte';
 	import { primaryAddress } from '$lib/ddnet/helpers.js';
+	import { uaIsStrict } from '$lib/helpers.js';
 	import type { ButtonData, TicketMessage } from '$lib/server/db/tickets.js';
 	import { onMount, tick } from 'svelte';
 	import tippy from 'tippy.js';
@@ -185,9 +186,17 @@
 
 	const verifyFlow = async () => {
 		await wait(125);
-		sendMessage(
-			'这好像是你第一次提交反馈，首先豆豆需要知道你是谁。需要使用QQ或微信认证。请问哪个更方便呢？'
-		);
+		if (uaIsStrict(data.ua)) {
+			sendMessage(
+				'这好像是你第一次提交反馈，但是豆豆暂时不可以直接从手机页面提交。\n\n请在QQ或微信公众号私聊豆豆，使用”举报“指令获取举报链接。'
+			);
+			return;
+		} else {
+			sendMessage(
+				'这好像是你第一次提交反馈，首先豆豆需要知道你是谁。需要使用QQ或微信认证。请问哪个更方便呢？'
+			);
+		}
+
 		await wait(125);
 		const selected = await buttonPrompt('豆豆邀请你选择认证方式', [
 			{

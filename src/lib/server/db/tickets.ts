@@ -445,8 +445,7 @@ const deleteTicketAttachmentQuery = sqlite.prepare<unknown, string>(
 );
 
 const insertTicketSubscriptionQuery = sqlite.prepare<unknown, [string, string, number]>(
-	`INSERT INTO ticket_subscriptions (ticket_uuid, user_uuid, subscribed_at)
-	 VALUES (?, ?, ?)`
+	`INSERT INTO ticket_subscriptions (ticket_uuid, user_uuid, subscribed_at) VALUES (?, ?, ?)`
 );
 
 const deleteTicketSubscriptionQuery = sqlite.prepare<unknown, [string, string]>(

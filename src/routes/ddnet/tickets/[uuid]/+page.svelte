@@ -32,6 +32,7 @@
 		try {
 			audioCache = new Audio('/audio/msg.ogg');
 			audioCache.preload = 'auto';
+			audioCache.load();
 		} catch (error) {
 			console.error('Error initializing audio:', error);
 		}

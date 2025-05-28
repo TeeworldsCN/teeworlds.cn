@@ -1,4 +1,4 @@
-import adapter from 'svelte-adapter-bun';
+import adapter from '@eslym/sveltekit-adapter-bun';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 const forceRunesMode = (filename) => {
@@ -6,7 +6,7 @@ const forceRunesMode = (filename) => {
 		return false;
 	}
 	return true;
-}
+};
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {

@@ -188,6 +188,9 @@
 			// Preload the audio files
 			audioCache.new.preload = 'auto';
 			audioCache.message.preload = 'auto';
+
+			audioCache.new.load();
+			audioCache.message.load();
 		} catch (error) {
 			console.error('Error initializing audio:', error);
 		}

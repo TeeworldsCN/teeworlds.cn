@@ -344,7 +344,10 @@ export const POST: RequestHandler = async ({ getClientAddress, locals, request, 
 			};
 
 			if (isAdmin && locals.user?.uuid && ticket.status !== 'closed') {
-				subscribeToTicket(ticket_uuid, locals.user.uuid, author_name);
+				// Check if already subscribed before subscribing
+				if (!isUserSubscribed(ticket_uuid, locals.user.uuid)) {
+					subscribeToTicket(ticket_uuid, locals.user.uuid, author_name);
+				}
 			}
 
 			const result = addTicketMessage(messageData);
