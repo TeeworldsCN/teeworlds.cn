@@ -177,18 +177,35 @@
 		}
 	};
 
+	// Preload audio files to avoid repeated HTTP requests
+	let audioCache: { [key: string]: HTMLAudioElement } = {};
+
+	const initializeAudio = () => {
+		try {
+			audioCache.new = new Audio('/audio/new.ogg');
+			audioCache.message = new Audio('/audio/msg.ogg');
+
+			// Preload the audio files
+			audioCache.new.preload = 'auto';
+			audioCache.message.preload = 'auto';
+		} catch (error) {
+			console.error('Error initializing audio:', error);
+		}
+	};
+
 	const playNotificationSound = (soundType: 'new' | 'message') => {
-		if (
-			'Notification' in window &&
-			Notification.permission === 'granted' &&
-			notificationVolume > 0
-		) {
+		if (notificationVolume > 0) {
 			try {
-				const audio = new Audio(`/audio/${soundType === 'new' ? 'new.ogg' : 'msg.ogg'}`);
-				audio.volume = notificationVolume;
-				audio.play().catch(() => {});
+				const audio = audioCache[soundType];
+				if (audio) {
+					audio.volume = notificationVolume;
+					audio.currentTime = 0; // Reset to beginning
+					audio.play().catch((e) => {
+						console.error('Error playing audio:', e);
+					});
+				}
 			} catch (error) {
-				console.error('Error creating audio element:', error);
+				console.error('Error playing audio:', error);
 			}
 		}
 	};
@@ -720,6 +737,7 @@
 		loadReadStatus();
 		setupSSE();
 		requestNotificationPermission();
+		initializeAudio();
 		hydrated = true;
 	});
 

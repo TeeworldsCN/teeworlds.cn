@@ -25,15 +25,27 @@
 	let isSSEClosedByUser = $state(false);
 	let readonly = $state(false);
 
+	// Preload audio files to avoid repeated HTTP requests
+	let audioCache: HTMLAudioElement | null = null;
+
+	const initializeAudio = () => {
+		try {
+			audioCache = new Audio('/audio/msg.ogg');
+			audioCache.preload = 'auto';
+		} catch (error) {
+			console.error('Error initializing audio:', error);
+		}
+	};
+
 	const playNotificationSound = () => {
-		if ('Notification' in window && Notification.permission === 'granted') {
-			try {
-				const audio = new Audio('/audio/msg.ogg');
-				audio.volume = 1.0;
-				audio.play().catch(() => {});
-			} catch (error) {
-				console.error('Error creating audio element:', error);
+		try {
+			if (audioCache) {
+				audioCache.volume = 1.0;
+				audioCache.currentTime = 0; // Reset to beginning
+				audioCache.play().catch(() => {});
 			}
+		} catch (error) {
+			console.error('Error playing audio:', error);
 		}
 	};
 
@@ -205,6 +217,7 @@
 		// Add beforeunload event listener to prevent closing tab/window
 		window.addEventListener('beforeunload', handleBeforeUnload);
 
+		initializeAudio();
 		scrollToBottom();
 
 		// Return cleanup function
