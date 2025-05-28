@@ -2,7 +2,7 @@
 	import type { TicketMessage, TicketAttachmentClient } from '$lib/server/db/tickets';
 	import SystemMessage from './SystemMessage.svelte';
 	import ImagePreview from './ImagePreview.svelte';
-	import { onMount, tick } from 'svelte';
+	import { onMount, tick, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { afterNavigate } from '$app/navigation';
 
@@ -191,16 +191,61 @@
 	};
 
 	let delayedAppearance = $state(false);
+	let containerElement: HTMLDivElement;
+	let resizeObserver: ResizeObserver | null = null;
+	let lastScrollHeight = 0;
+	let lastClientHeight = 0;
+
+	const handleResize = () => {
+		if (!containerElement) return;
+
+		const { scrollHeight, scrollTop, clientHeight } = containerElement;
+
+		// Calculate how much the content or container size changed
+		const bottomDistance = lastScrollHeight - scrollTop - lastClientHeight;
+
+		if (scrollHeight === lastScrollHeight && clientHeight === lastClientHeight) return;
+
+		if (clientHeight < lastClientHeight) {
+			containerElement.scrollTop = scrollHeight - clientHeight - bottomDistance;
+		}
+
+		lastScrollHeight = scrollHeight;
+		lastClientHeight = clientHeight;
+	};
 
 	onMount(() => {
 		setTimeout(async () => {
 			await tick();
 			delayedAppearance = true;
 		}, 100);
+
+		// Initialize bottom-anchored scroll
+		if (containerElement) {
+			// Set up ResizeObserver to handle container resize
+			resizeObserver = new ResizeObserver(() => {
+				handleResize();
+			});
+			resizeObserver.observe(containerElement);
+
+			// Initialize measurements
+			lastScrollHeight = containerElement.scrollHeight;
+			lastClientHeight = containerElement.clientHeight;
+
+			// Scroll to bottom initially
+			containerElement.scrollTop = containerElement.scrollHeight;
+		}
+
+		return () => {
+			if (resizeObserver) {
+				resizeObserver.disconnect();
+			}
+		};
 	});
 </script>
 
 <div
+	bind:this={containerElement}
 	id={containerId}
 	class="scrollbar-subtle h-full max-h-full space-y-2 overflow-y-auto p-4 transition-opacity"
 	class:opacity-0={!delayedAppearance}
@@ -238,7 +283,7 @@
 													href={part.content}
 													target="_blank"
 													rel="noopener noreferrer"
-													class="text-blue-100 underline hover:text-blue-200 transition-colors"
+													class="text-blue-100 underline transition-colors hover:text-blue-200"
 												>
 													{part.content}
 												</a>
