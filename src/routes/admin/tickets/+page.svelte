@@ -215,8 +215,8 @@
 			try {
 				new Notification(title, {
 					body,
-					icon: '/favicon.ico',
-					badge: '/favicon.ico'
+					icon: '/favicon.png',
+					badge: '/favicon.png'
 				});
 			} catch (error) {
 				console.error('Error showing notification:', error);
