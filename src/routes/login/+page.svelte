@@ -22,7 +22,7 @@
 	});
 </script>
 
-<div class="mx-auto w-96 p-4">
+<div class="mx-auto max-w-96">
 	<div class="h-[4rem]">
 		{#if data.registered}
 			<div class="mb-4 flex items-center justify-between rounded-lg bg-slate-600 px-4 py-2">

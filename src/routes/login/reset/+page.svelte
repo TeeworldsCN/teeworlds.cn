@@ -7,7 +7,7 @@
 	let password = $state('');
 </script>
 
-<div class="mx-auto w-96 p-4">
+<div class="mx-auto max-w-96">
 	{#if data.error}
 		<div class="mb-4 flex items-center justify-between rounded-lg bg-orange-900 px-4 py-2">
 			<p>修改失败：{data.error}</p>

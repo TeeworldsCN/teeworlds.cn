@@ -7,7 +7,7 @@
 	let password = $state('');
 </script>
 
-<div class="mx-auto w-96 p-4">
+<div class="mx-auto max-w-96">
 	{#if data.error}
 		<div class="mb-4 flex items-center justify-between rounded-lg bg-orange-900 px-4 py-2">
 			<p>注册失败：{data.error}</p>
@@ -67,8 +67,9 @@
 				</div>
 			</form>
 
-            <div class="mt-2 flex items-center justify-center space-x-4">
-				<a href="/login" class="text-sm font-semibold text-blue-300 hover:text-blue-400">返回登录</a>
+			<div class="mt-2 flex items-center justify-center space-x-4">
+				<a href="/login" class="text-sm font-semibold text-blue-300 hover:text-blue-400">返回登录</a
+				>
 			</div>
 		</div>
 	</div>
