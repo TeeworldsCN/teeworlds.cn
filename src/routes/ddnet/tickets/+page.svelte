@@ -188,7 +188,7 @@
 		await wait(125);
 		if (uaIsQQ(data.ua)) {
 			sendMessage(
-				'这好像是你第一次提交反馈，但是豆豆暂时不支持直接从手机页面提交。\n\n请长按下面的二维码扫描，添加 DDNet 豆豆为好友，私聊使用”举报“指令获取举报链接。'
+				'这好像是你第一次提交反馈，但是豆豆暂时不支持直接从手机页面提交。\n\n请长按下面的二维码扫描，私聊 DDNet豆豆 使用”举报“指令获取举报链接。'
 			);
 			await wait(125);
 			sendImage('/qrcodes/ddbot-qq.png');
@@ -227,7 +227,7 @@
 		await wait(500);
 		if (selected === 'qq') {
 			await wait(125);
-			sendMessage('请使用手机QQ扫描二维码添加“DDNet豆豆”，并私聊豆豆“验证”获取验证码');
+			sendMessage('请使用手机QQ扫描二维码，然后私聊 DDNet豆豆 使用”举报“指令获取举报链接。');
 			await wait(125);
 			sendImage('/qrcodes/ddbot-qq.png');
 		} else if (selected === 'wechat') {
