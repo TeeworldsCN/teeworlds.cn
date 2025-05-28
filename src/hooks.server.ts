@@ -1,3 +1,4 @@
+import { env } from '$env/dynamic/private';
 import { tokenToUser } from '$lib/server/db/users';
 import { volatile } from '$lib/server/keyv';
 import { mapTracker } from '$lib/server/tasks/map-tracker';
@@ -22,10 +23,41 @@ export const init: ServerInit = async () => {
 	);
 };
 
+const address_header = env.ADDRESS_HEADER?.toLowerCase();
+const xff_depth = Number(env.XFF_DEPTH) || 1;
+
 export const handle = async ({ event, resolve }) => {
 	try {
-		event.locals.ip = event.getClientAddress();
-	} catch {
+		const req = event.request;
+		if (address_header) {
+			const value = req.headers.get(address_header);
+			if (!value) {
+				throw new Error(
+					`Address header was specified with ${'ADDRESS_HEADER'}=${address_header} but is absent from request`
+				);
+			}
+
+			if (address_header === 'x-forwarded-for') {
+				const addresses = value.split(',');
+
+				if (xff_depth < 1) {
+					throw new Error(`XFF_DEPTH must be a positive integer`);
+				}
+
+				if (xff_depth > addresses.length) {
+					throw new Error(
+						`XFF_DEPTH is ${xff_depth}, but only found ${addresses.length} addresses`
+					);
+				}
+				event.locals.ip = addresses[addresses.length - xff_depth].trim();
+			} else {
+				event.locals.ip = value;
+			}
+		} else {
+			event.locals.ip = event.getClientAddress();
+		}
+	} catch (e) {
+		console.log(e);
 		event.locals.ip = 'unknown';
 	}
 

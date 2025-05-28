@@ -64,7 +64,7 @@ const checkServerCommunity = async (ip: string) => {
 	return serverType;
 };
 
-export const POST: RequestHandler = async ({ getClientAddress, locals, request, cookies }) => {
+export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 	const body = await request.json();
 
 	if (!body || !body.action) {
@@ -178,7 +178,7 @@ export const POST: RequestHandler = async ({ getClientAddress, locals, request, 
 						});
 
 						try {
-							const requestIP = getClientAddress();
+							const requestIP = locals.ip;
 							if (requestIP) {
 								messages.push({
 									message: `提交设备IP地址：${requestIP}`,
