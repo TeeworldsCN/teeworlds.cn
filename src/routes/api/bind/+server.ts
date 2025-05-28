@@ -1,4 +1,4 @@
-import { SECRET } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { verify } from 'jsonwebtoken';
 import type { RequestHandler } from './$types';
 import { createUser, getUserByUsername } from '$lib/server/db/users';
@@ -17,7 +17,7 @@ export const POST: RequestHandler = async ({ request, url, cookies }) => {
 	}
 
 	try {
-		const payload = verify(jwt, SECRET) as { platform: string; uid: string };
+		const payload = verify(jwt, env.SECRET) as { platform: string; uid: string };
 		const user = getUserByUsername(payload.uid);
 		if (!user) {
 			const result = await createUser(payload.uid, { name: name });

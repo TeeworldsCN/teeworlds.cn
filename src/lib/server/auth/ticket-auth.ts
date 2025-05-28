@@ -1,4 +1,4 @@
-import { SECRET } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { verify } from 'jsonwebtoken';
 import { getUserByUsername } from '$lib/server/db/users';
 
@@ -20,7 +20,7 @@ export const getTicketUserInfo = (cookies: any): TicketUserInfo | null => {
 			return null;
 		}
 
-		const payload = verify(jwt, SECRET) as { platform: string; uid: string };
+		const payload = verify(jwt, env.SECRET) as { platform: string; uid: string };
 		const user = getUserByUsername(payload.uid);
 		const playerName = user?.data.name;
 

@@ -1,4 +1,4 @@
-import { SECRET } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { volatile } from '$lib/server/keyv';
 import { getConnectionStats } from '$lib/server/realtime/tickets';
 import { redirect } from '@sveltejs/kit';
@@ -35,7 +35,7 @@ export const load = (async ({ cookies, url }) => {
 			`ticket-token:${token}`
 		);
 		if (info && info.valid_until > Date.now()) {
-			const jwt = sign({ platform: info.platform, uid: info.uid }, SECRET, {});
+			const jwt = sign({ platform: info.platform, uid: info.uid }, env.SECRET, {});
 			cookies.set('ticket-token', jwt, { path: '/', maxAge: ONE_YEAR });
 			hasToken = true;
 		}
@@ -45,7 +45,7 @@ export const load = (async ({ cookies, url }) => {
 		const jwt = cookies.get('ticket-token');
 		if (jwt) {
 			try {
-				const payload = verify(jwt, SECRET) as { platform: string; uid: string };
+				const payload = verify(jwt, env.SECRET) as { platform: string; uid: string };
 				hasToken = true;
 				// renew the token
 				cookies.set('ticket-token', jwt, { path: '/', maxAge: ONE_YEAR });
