@@ -4,7 +4,7 @@
 	import type { TicketImageUrl } from '$lib/components/ChatTimeline.svelte';
 	import TicketPanel from '$lib/components/TicketPanel.svelte';
 	import { primaryAddress } from '$lib/ddnet/helpers.js';
-	import { uaIsStrict } from '$lib/helpers.js';
+	import { uaIsQQ, uaIsWechat } from '$lib/helpers.js';
 	import type { ButtonData, TicketMessage } from '$lib/server/db/tickets.js';
 	import { onMount, tick } from 'svelte';
 	import tippy from 'tippy.js';
@@ -186,10 +186,19 @@
 
 	const verifyFlow = async () => {
 		await wait(125);
-		if (uaIsStrict(data.ua)) {
+		if (uaIsQQ(data.ua)) {
 			sendMessage(
-				'这好像是你第一次提交反馈，但是豆豆暂时不可以直接从手机页面提交。\n\n请在QQ或微信公众号私聊豆豆，使用”举报“指令获取举报链接。'
+				'这好像是你第一次提交反馈，但是豆豆暂时不支持直接从手机页面提交。\n\n请长按下面的二维码扫描，添加 DDNet 豆豆为好友，私聊使用”举报“指令获取举报链接。'
 			);
+			await wait(125);
+			sendImage('/qrcodes/ddbot-qq.png');
+			return;
+		} else if (uaIsWechat(data.ua)) {
+			sendMessage(
+				'这好像是你第一次提交反馈，但是豆豆暂时不支持直接从手机页面提交。\n\n请长按下面的二维码关注公众号，向公众号内发送“举报”获取举报链接。'
+			);
+			await wait(125);
+			sendImage('/qrcodes/ddbot-wx.png');
 			return;
 		} else {
 			sendMessage(

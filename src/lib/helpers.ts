@@ -195,6 +195,16 @@ export const uaIsStrict = (ua: string | null) => {
 	return /(QQ\/|micromessenger)/i.test(ua);
 };
 
+export const uaIsQQ = (ua: string | null) => {
+	if (!ua) return false;
+	return /(QQ\/)/i.test(ua);
+};
+
+export const uaIsWechat = (ua: string | null) => {
+	if (!ua) return false;
+	return /micromessenger/i.test(ua);
+};
+
 export const uaNeedBackButton = (ua: string | null) => {
 	if (!ua) return false;
 	return /(QQ\/)/i.test(ua);

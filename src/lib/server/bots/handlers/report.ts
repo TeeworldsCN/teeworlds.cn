@@ -15,9 +15,9 @@ export const handleReport: Handler = async ({ reply, platform, uid, mode }) => {
 	}
 
 	if (mode != 'DIRECT') {
-		return await reply.textLink('请添加豆豆为好友，并私聊向豆豆发送 “举报” 指令进入举报系统', {
-			label: '🔗 或用电脑点此',
-			prefix: '也可以用电脑直接打开举报系统 ->',
+		return await reply.link({
+			label: '🔗 举报系统',
+			prefix: '举报系统 ->',
 			url: 'https://teeworlds.cn/ddnet/tickets'
 		});
 	}
