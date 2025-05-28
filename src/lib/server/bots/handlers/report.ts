@@ -15,7 +15,11 @@ export const handleReport: Handler = async ({ reply, platform, uid, mode }) => {
 	}
 
 	if (mode != 'DIRECT') {
-		return await reply.text('请点豆豆头像，向我发送 “举报” 指令进入举报系统');
+		return await reply.textLink('请添加豆豆为好友，并私聊向豆豆发送 “举报” 指令进入举报系统', {
+			label: '🔗 或用电脑点此',
+			prefix: '也可以用电脑直接打开举报系统 ->',
+			url: 'https://teeworlds.cn/ddnet/tickets'
+		});
 	}
 
 	const bytes = crypto.randomBytes(20);
@@ -40,7 +44,7 @@ export const handleVerify: Handler = async ({ reply, platform, uid, mode }) => {
 	if (platform === 'web') return await reply.text('？？？');
 
 	if (mode != 'DIRECT') {
-		return await reply.text('账户验证只能在私聊中进行，请点豆豆头像，向我发送 “验证” 进行验证');
+		return await reply.text('账户验证只能在私聊中进行，请加豆豆好友，私聊豆豆 “验证” 指令进行验证');
 	}
 
 	const code = crypto.randomInt(0, 100000000).toString().padStart(8, '0');
