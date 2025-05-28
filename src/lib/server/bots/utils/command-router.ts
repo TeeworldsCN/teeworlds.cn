@@ -38,7 +38,7 @@ export class CommandRouter {
 
 		const firstSpace = msg.indexOf(' ');
 		if (firstSpace >= 0) {
-			command = msg.slice(0, firstSpace);
+			command = msg.slice(0, firstSpace).toLowerCase();
 			args = msg.slice(firstSpace + 1).trim();
 		}
 

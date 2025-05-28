@@ -8,5 +8,6 @@ export const PERMISSIONS = [
 	'SUPER',
 	'GROUP_SETTINGS',
 	'REGISTER',
-	'CHANNEL_SETTINGS'
+	'CHANNEL_SETTINGS',
+	'TICKETS'
 ] as const;

@@ -33,6 +33,11 @@
 		<ToolboxButton href="/admin/wechat-materials">微信素材管理</ToolboxButton>
 		<div class="text-semibold">管理微信公众号的永久素材</div>
 	</div>
+
+	<div class="mt-6">
+		<ToolboxButton href="/admin/tickets">反馈和举报管理</ToolboxButton>
+		<div class="text-semibold">管理反馈和举报</div>
+	</div>
 {/if}
 
 {#if hasPermission('CHANNEL_SETTINGS')}

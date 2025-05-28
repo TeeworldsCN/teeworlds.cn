@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto, preloadCode, preloadData } from '$app/navigation';
+	import { preloadCode, preloadData, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
@@ -21,11 +21,12 @@
 			else if (hash.startsWith('m')) target = `/ddnet/maps/${hash.slice(1)}`;
 			else if (hash.startsWith('p')) target = `/ddnet/players/${hash.slice(1)}`;
 			else if (hash.startsWith('s')) target = `/ddnet/servers#${hash.slice(1)}`;
+			else if (hash.startsWith('r')) target = `/ddnet/tickets?token=${hash.slice(1)}`;
 		}
 
 		setTimeout(() => {
 			if (target) {
-				goto(target);
+				goto(target, { replaceState: true });
 			}
 		}, 250);
 

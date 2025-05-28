@@ -31,7 +31,7 @@ export const actions = {
 			return redirect(302, `/login?error=${encodeURIComponent('用户名或密码错误')}`);
 		}
 
-		cookies.set('token', await generateToken(user), { path: '/' });
+		cookies.set('token', await generateToken(user), { path: '/', maxAge: 30 * 24 * 60 * 60 });
 		const ref = url.searchParams.get('ref') || '/';
 		return redirect(302, ref);
 	}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
-	import { faFaceSmile, faGamepad, faGlobe, faInfo, faInfoCircle, faMap, faRankingStar, faServer } from '@fortawesome/free-solid-svg-icons';
+	import { faFaceSmile, faGamepad, faGlobe, faInfoCircle, faMap, faRankingStar, faServer, faTicket } from '@fortawesome/free-solid-svg-icons';
 	import Fa from 'svelte-fa';
 </script>
 
@@ -18,7 +18,7 @@
 <Breadcrumbs
 	breadcrumbs={[
 		{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },
-		{ text: 'DDNet', title: 'DDNet 工具箱' }
+		{ text: 'DDNet 工具箱', title: 'DDNet 工具箱' }
 	]}
 />
 
@@ -45,6 +45,11 @@
 <div class="mt-6">
 	<ToolboxButton href="/ddnet/nouis"><Fa icon={faGamepad} class="inline"></Fa> 合成超大Tee</ToolboxButton>
 	<div class="text-semibold">游玩搞怪小游戏</div>
+</div>
+
+<div class="mt-6">
+	<ToolboxButton href="/ddnet/tickets"><Fa icon={faTicket} class="inline"></Fa> 反馈和举报</ToolboxButton>
+	<div class="text-semibold">提交反馈和举报</div>
 </div>
 
 <div class="mt-6">

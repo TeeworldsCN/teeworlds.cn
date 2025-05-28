@@ -39,7 +39,7 @@ export const handle = async ({ event, resolve }) => {
 
 				if (userToken.token != token) {
 					// refresh token
-					event.cookies.set('token', userToken.token, { path: '/' });
+					event.cookies.set('token', userToken.token, { path: '/', maxAge: 30 * 24 * 60 * 60 });
 				}
 			}
 		}

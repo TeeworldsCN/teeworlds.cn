@@ -304,6 +304,10 @@ const binarySearchExact = (target: Uint8Array) => {
 export const getPlayer = async (name: string) => {
 	await updateData();
 	if (!buf) return null;
+	// if the data is more than 14 days old returns null
+	if (Date.now() - lastUpdate > 14 * 24 * 60 * 60 * 1000) {
+		return null;
+	}
 	let index = binarySearchExact(
 		Uint8Array.prototype.slice.call(Buffer.from(name.toLowerCase(), 'utf-8'))
 	);
@@ -328,6 +332,11 @@ export const getPlayer = async (name: string) => {
 export const queryPlayerPrefix = async (prefix: string) => {
 	await updateData();
 	if (!buf) return null;
+
+	// if the data is more than 14 days old returns null
+	if (Date.now() - lastUpdate > 14 * 24 * 60 * 60 * 1000) {
+		return null;
+	}
 
 	const top10: { name: string; points: number }[] = [];
 	let exactMatch = -1;

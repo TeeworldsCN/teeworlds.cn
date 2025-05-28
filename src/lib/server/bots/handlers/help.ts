@@ -11,6 +11,7 @@ export const handleHelp: Handler = async ({ reply, platform }) => {
 			`  ${prefix}找人 <玩家名> - 查询玩家在线状态`,
 			`  ${prefix}状态 - 查询服务器运行状态`,
 			`  ${prefix}绑定 <玩家名> - 绑定玩家名`,
+			`  ${prefix}举报 - 发起举报（仅私聊）`,
 			'更多功能请使用工具箱'
 		].join('\n'),
 		{

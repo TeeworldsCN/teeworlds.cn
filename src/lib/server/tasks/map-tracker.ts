@@ -73,12 +73,18 @@ const publishMap = async (map: MapList[0]) => {
 	}
 };
 
-const MAP_TRACKER_KEY = 'tracker:release';
-
-// run every 10 minutes. update usually comes out around minute 5. make sure we can catch it with in 4 minutes.
-export const mapTracker = new Cron('8,18,28,38,48,58 * * * *', async () => {
+export const triggerMapReleaseForQQ = async () => {
 	const data = (await maps.fetch()).result;
 	if (!data) return;
+
+	const lastestMap = data[0];
+	if (!lastestMap) return;
+
+	await publishMap(lastestMap);
+};
+
+const trackerTaskForQQ = async (data: MapList) => {
+	const MAP_TRACKER_KEY = 'tracker:release';
 
 	const knownReleaseMap = persistent.get<string>(MAP_TRACKER_KEY);
 
@@ -111,14 +117,12 @@ export const mapTracker = new Cron('8,18,28,38,48,58 * * * *', async () => {
 	persistent.set(MAP_TRACKER_KEY, lastestMap.name);
 	console.log(`Setting map tracker to ${lastestMap.name}`);
 	await publishMap(lastestMap);
-});
+};
 
-export const triggerMapRelease = async () => {
+// run every 10 minutes. update usually comes out around minute 5. make sure we can catch it with in 4 minutes.
+export const mapTracker = new Cron('7,17,27,37,47,57 * * * *', async () => {
 	const data = (await maps.fetch()).result;
 	if (!data) return;
 
-	const lastestMap = data[0];
-	if (!lastestMap) return;
-
-	await publishMap(lastestMap);
-};
+	await trackerTaskForQQ(data);
+});

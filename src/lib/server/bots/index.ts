@@ -1,7 +1,7 @@
 import { CommandRouter } from './utils/command-router';
 import { handleFallback } from './handlers/fallback';
 import { handleHelp } from './handlers/help';
-import { handleReport, handleShowGid, handleShowUid, handleToolbox } from './handlers/info';
+import { handleShowGid, handleShowUid, handleToolbox } from './handlers/info';
 import { handleMaps } from './handlers/maps';
 import { handlePoints } from './handlers/points';
 import {
@@ -16,6 +16,7 @@ import { handleBind } from './handlers/bind';
 import { handleDeleteUser, handleRegister, handleResetPassword } from './handlers/register';
 import { handleStats } from './handlers/stats';
 import { handleFind } from './handlers/find';
+import { handleReport, handleVerify } from './handlers/report';
 
 export const commands = new CommandRouter();
 commands
@@ -43,6 +44,11 @@ commands
 	.add('举报', handleReport)
 	.add('report', handleReport)
 	.add('举报游戏行为', handleReport)
+
+	.add('验证', handleVerify)
+	.add('yz', handleVerify)
+	.add('yanzheng', handleVerify)
+	.add('获取验证码', handleVerify)
 
 	.add('找人', handleFind)
 	.add('find', handleFind)

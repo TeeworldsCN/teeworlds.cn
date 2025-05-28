@@ -2,7 +2,7 @@ import { addSubscription, removeSubscription, type SubscriptionKey } from '$lib/
 import { hasPermission } from '$lib/server/db/users';
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { triggerMapRelease } from '$lib/server/tasks/map-tracker';
+import { triggerMapReleaseForQQ } from '$lib/server/tasks/map-tracker';
 import { QQBot } from '$lib/server/bots/protocol/qq';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
@@ -25,7 +25,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 	if (body.op == 'trigger-map') {
 		// force trigger a map release for testing
-		await triggerMapRelease();
+		await triggerMapReleaseForQQ();
 		return new Response(JSON.stringify({ success: true }), {
 			headers: { 'content-type': 'application/json' }
 		});
