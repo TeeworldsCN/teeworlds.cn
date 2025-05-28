@@ -3,9 +3,8 @@
 	import FileUpload from './FileUpload.svelte';
 	import CameraCapture from './CameraCapture.svelte';
 	import ChatTimeline, { type TicketImageUrl } from './ChatTimeline.svelte';
-	import { onMount, tick, type Snippet } from 'svelte';
+	import { tick, type Snippet } from 'svelte';
 	import tippy from 'tippy.js';
-	import { afterNavigate } from '$app/navigation';
 	import { fade } from 'svelte/transition';
 
 	interface Props {
