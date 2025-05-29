@@ -323,7 +323,7 @@
 									<img
 										src={`/api/tickets/download/${attachment.uuid}`}
 										alt={attachment.original_filename}
-										class="max-h-36 max-w-36 object-cover"
+										class="h-36 w-36 object-contain"
 									/>
 									<div
 										class="absolute inset-0 flex items-center justify-center rounded transition-colors group-hover:bg-black/50"
@@ -333,12 +333,12 @@
 											icon={faSearchPlus}
 											size="lg"
 										/>
-										<div class="absolute top-0 right-0 rounded-tr rounded-bl bg-slate-600 px-2">
+										<div class="absolute right-0 top-0 rounded-bl rounded-tr bg-slate-600 px-2">
 											<p class="text-xs text-white">
 												{attachment.uploaded_by}
 											</p>
 										</div>
-										<div class="absolute bottom-0 left-0 rounded-tr rounded-bl bg-slate-600 px-2">
+										<div class="absolute bottom-0 left-0 rounded-bl rounded-tr bg-slate-600 px-2">
 											<p class="text-xs text-white">
 												{formatFileSize(attachment.file_size)}
 											</p>
