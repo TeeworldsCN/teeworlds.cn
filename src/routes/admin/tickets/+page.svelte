@@ -6,7 +6,7 @@
 	import type { TicketEvent } from '$lib/server/realtime/tickets';
 	import { source } from 'sveltekit-sse';
 	import { customSource } from '$lib/controlable-sse.js';
-	import { afterNavigate, goto, replaceState } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, goto, replaceState } from '$app/navigation';
 	import Fa from 'svelte-fa';
 	import { faXmark, faVolumeHigh, faVolumeLow } from '@fortawesome/free-solid-svg-icons';
 	import { browser } from '$app/environment';
@@ -464,12 +464,46 @@
 			if (Notification.permission === 'default') {
 				const permission = await Notification.requestPermission();
 				notificationPermission = permission;
-				if (permission === 'granted') {
-					showNotification('通知已启用', '您将收到新反馈和回复的实时通知');
-				}
 			} else {
 				notificationPermission = Notification.permission;
 			}
+		}
+	};
+
+	let notificationListenerCleanup: (() => void) | null = null;
+
+	// Listen for permission changes
+	const setupPermissionListener = () => {
+		if ('Notification' in window && 'permissions' in navigator) {
+			navigator.permissions
+				.query({ name: 'notifications' })
+				.then((permissionStatus) => {
+					// Update initial state
+					notificationPermission =
+						permissionStatus.state === 'prompt' ? 'default' : permissionStatus.state;
+
+					const handler = () => {
+						notificationPermission =
+							permissionStatus.state === 'prompt' ? 'default' : permissionStatus.state;
+						console.log('Notification permission changed to:', permissionStatus.state);
+					};
+
+					// Listen for changes
+					permissionStatus.addEventListener('change', handler);
+					notificationListenerCleanup = () => {
+						permissionStatus.removeEventListener('change', handler);
+					};
+				})
+				.catch((error) => {
+					console.warn('Could not set up permission listener:', error);
+					// Fallback: just set initial state
+					if ('Notification' in window) {
+						notificationPermission = Notification.permission;
+					}
+				});
+		} else if ('Notification' in window) {
+			// Fallback for browsers that don't support permissions API
+			notificationPermission = Notification.permission;
 		}
 	};
 
@@ -735,12 +769,16 @@
 	onMount(() => {
 		loadReadStatus();
 		setupSSE();
+		setupPermissionListener();
 		requestNotificationPermission();
 		initializeAudio();
 		hydrated = true;
 	});
 
 	onDestroy(() => {
+		if (notificationListenerCleanup) {
+			notificationListenerCleanup();
+		}
 		if (connection) {
 			connection.close();
 		}
