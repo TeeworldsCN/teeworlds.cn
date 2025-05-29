@@ -961,6 +961,7 @@
 		{messages}
 		{images}
 		uploadUrl="/api/tickets/upload"
+		uploadAs="visitor"
 		onButtonClick={handleButtonClick}
 		onMessageSubmit={handleMessageSubmit}
 		readonlyInput={!acceptingMessage}

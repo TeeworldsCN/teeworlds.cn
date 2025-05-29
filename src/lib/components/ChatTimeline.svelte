@@ -2,9 +2,10 @@
 	import type { TicketMessage, TicketAttachmentClient } from '$lib/server/db/tickets';
 	import SystemMessage from './SystemMessage.svelte';
 	import ImagePreview from './ImagePreview.svelte';
-	import { onMount, tick, onDestroy } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { afterNavigate } from '$app/navigation';
+	import Fa from 'svelte-fa';
+	import { faSearchPlus } from '@fortawesome/free-solid-svg-icons';
 
 	export type TicketImageUrl = {
 		uuid: string;
@@ -314,43 +315,42 @@
 				<div class="flex justify-center">
 					{#if isImage(attachment.mime_type)}
 						<!-- Full image display -->
-						<div class="max-w-64 rounded-lg border border-slate-600 bg-slate-800 p-2">
-							<button onclick={() => previewImage(attachment)} class="group relative block w-full">
+						<div class="rounded-lg border border-slate-600 bg-slate-800 px-4 py-1">
+							<button onclick={() => previewImage(attachment)} class="group relative block">
 								<div
-									class="mx-auto h-40 w-40 overflow-hidden rounded border border-slate-600 transition-colors group-hover:border-slate-500"
+									class="mx-auto overflow-hidden rounded border border-slate-600 transition-colors group-hover:border-slate-500"
 								>
 									<img
 										src={`/api/tickets/download/${attachment.uuid}`}
 										alt={attachment.original_filename}
-										class="h-full w-full object-cover"
+										class="max-h-36 max-w-36 object-cover"
 									/>
 									<div
-										class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 transition-all group-hover:bg-opacity-20"
+										class="absolute inset-0 flex items-center justify-center rounded transition-colors group-hover:bg-black/50"
 									>
-										<svg
+										<Fa
 											class="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-											></path>
-										</svg>
+											icon={faSearchPlus}
+											size="lg"
+										/>
+										<div class="absolute top-0 right-0 rounded-tr rounded-bl bg-slate-600 px-2">
+											<p class="text-xs text-white">
+												{attachment.uploaded_by}
+											</p>
+										</div>
+										<div class="absolute bottom-0 left-0 rounded-tr rounded-bl bg-slate-600 px-2">
+											<p class="text-xs text-white">
+												{formatFileSize(attachment.file_size)}
+											</p>
+										</div>
 									</div>
 								</div>
 							</button>
-							<div class="mt-2 text-center">
-								<p class="truncate text-sm font-medium text-slate-200">
+							<div class="text-center">
+								<p class="max-w-36 truncate text-sm font-medium text-slate-200">
 									{attachment.original_filename}
 								</p>
-								<span class="text-xs text-slate-500">{formatFileSize(attachment.file_size)}</span>
-								<div class="flex items-center justify-center text-xs text-slate-500">
-									<span>{attachment.uploaded_by}</span>
-									<span>•</span>
+								<div class="max-w-36 truncate text-xs text-slate-500">
 									<span>{formatDate(attachment.uploaded_at)}</span>
 								</div>
 							</div>

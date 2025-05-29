@@ -8,12 +8,7 @@
 	import { customSource } from '$lib/controlable-sse.js';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import Fa from 'svelte-fa';
-	import {
-		faXmark,
-		faVolumeHigh,
-		faVolumeLow,
-		faVolumeXmark
-	} from '@fortawesome/free-solid-svg-icons';
+	import { faXmark, faVolumeHigh, faVolumeLow } from '@fortawesome/free-solid-svg-icons';
 	import { browser } from '$app/environment';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { page } from '$app/state';
@@ -49,7 +44,7 @@
 	let ticketReadStatus = $state<{ [ticketUuid: string]: number }>({});
 
 	// Volume setting for notification sounds
-	let notificationVolume = $state(0.5);
+	let notificationVolume = $state(1.0);
 
 	// Animation state for ticket cards
 	let animatingTickets = $state<SvelteSet<string>>(new SvelteSet());
@@ -138,7 +133,8 @@
 				},
 				body: JSON.stringify({
 					action: 'close_ticket',
-					ticket_uuid: ticketUuid
+					ticket_uuid: ticketUuid,
+					as: 'admin'
 				})
 			});
 
@@ -582,7 +578,7 @@
 				action: 'add_message',
 				ticket_uuid: selectedTicket.uuid,
 				message: message,
-				author_name: data.user?.username || 'Admin'
+				as: 'admin'
 			})
 		});
 
@@ -782,8 +778,8 @@
 	]}
 />
 
-<div class="flex h-[calc(100vh-9rem)] gap-6">
-	<div class="flex w-full flex-col gap-2 lg:w-1/3">
+<div id="admin-tickets-page" class="flex h-[calc(100vh-9rem)] gap-2">
+	<div class="flex w-full flex-col gap-2 lg:w-1/3 lg:max-w-[360px]">
 		<div class="flex h-8 items-center gap-2 rounded-lg bg-slate-900 px-2">
 			{#if notificationPermission === 'denied'}
 				<span class="text-sm text-red-400">通知已禁用</span>
@@ -809,32 +805,19 @@
 
 			<button
 				onclick={() => {
-					if (notificationVolume === 0) {
+					if (notificationVolume > 0.5) {
 						notificationVolume = 0.3; // Low volume
-					} else if (notificationVolume <= 0.3) {
-						notificationVolume = 1.0; // High volume
 					} else {
-						notificationVolume = 0; // Mute
+						notificationVolume = 1.0; // High volume
 					}
 				}}
-				class="w-4 transition-colors"
-				class:text-red-400={notificationVolume === 0}
-				class:hover:text-red-300={notificationVolume === 0}
-				class:text-slate-400={notificationVolume > 0}
-				class:hover:text-slate-200={notificationVolume > 0}
+				class="w-4 text-slate-400 hover:text-slate-200"
 			>
-				<Fa
-					icon={notificationVolume === 0
-						? faVolumeXmark
-						: notificationVolume <= 0.3
-							? faVolumeLow
-							: faVolumeHigh}
-					size="sm"
-				/>
+				<Fa icon={notificationVolume <= 0.3 ? faVolumeLow : faVolumeHigh} size="sm" />
 			</button>
 		</div>
 		<div class="flex items-center justify-between">
-			<div class="block text-sm text-slate-400 lg:hidden xl:block">
+			<div class="text-xs text-slate-400">
 				显示 {offset + 1} - {Math.min(offset + data.limit, totalCount)} 条，共 {totalCount}
 				条
 			</div>
@@ -863,7 +846,7 @@
 				</button>
 			</div>
 		</div>
-		<div class="scrollbar-subtle flex-1 overflow-scroll">
+		<div class="scrollbar-subtle flex-1 overflow-auto">
 			<div class="space-y-1">
 				{#each tickets as ticket}
 					{#key ticket.uuid}
@@ -931,6 +914,7 @@
 	</div>
 
 	<div
+		id="ticket-panel"
 		class="fixed bottom-10 left-0 right-0 top-14 flex-1 lg:static lg:block"
 		class:hidden={!selectedTicket}
 	>
@@ -942,6 +926,7 @@
 					bind:messages={selectedTicketMessages}
 					bind:attachments={selectedTicketAttachments}
 					uploadUrl="/api/tickets/upload"
+					uploadAs="admin"
 					onAttachmentAdded={handleAttachmentAdded}
 					onMessageSubmit={handleMessageSubmit}
 					onSubscribe={handleSubscribe}
@@ -1039,6 +1024,7 @@
 <!-- Welcome Screen -->
 {#if showWelcomeScreen}
 	<button
+		id="welcome-screen"
 		class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black opacity-80"
 		onclick={dismissWelcomeScreen}
 		disabled={!hydrated}

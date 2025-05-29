@@ -32,6 +32,7 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 		const formData = await request.formData();
 		const file = formData.get('file') as File;
 		const ticketUuid = formData.get('ticket_uuid') as string;
+		const as = formData.get('as') as string;
 
 		if (!file) {
 			return json({ success: false, error: 'No file provided' }, { status: 400 });
@@ -41,18 +42,34 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 			return json({ success: false, error: 'Ticket UUID is required' }, { status: 400 });
 		}
 
+		if (!as || (as !== 'admin' && as !== 'visitor')) {
+			return json(
+				{ success: false, error: 'Invalid or missing "as" parameter. Must be "admin" or "visitor"' },
+				{ status: 400 }
+			);
+		}
+
 		// Verify ticket exists
 		const ticket = getTicket(ticketUuid);
 		if (!ticket) {
 			return json({ success: false, error: 'Ticket not found' }, { status: 404 });
 		}
 
-		// Check if user is admin
-		const isAdmin = hasPermission(locals.user, 'TICKETS');
-
+		// Determine authentication and author info based on 'as' parameter
+		let isAdmin: boolean;
 		let uploadedBy: string;
 
-		if (!isAdmin) {
+		if (as === 'admin') {
+			// Use admin authentication (locals.user)
+			isAdmin = hasPermission(locals.user, 'TICKETS');
+			if (!isAdmin) {
+				return json({ success: false, error: 'Forbidden' }, { status: 403 });
+			}
+			uploadedBy = locals.user?.username || '管理';
+		} else {
+			// Use visitor authentication (cookie JWT)
+			isAdmin = false;
+
 			if (ticket.status === 'closed') {
 				return json(
 					{
@@ -82,8 +99,6 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 			}
 
 			uploadedBy = userInfo.playerName || '访客';
-		} else {
-			uploadedBy = locals.user?.username || '管理';
 		}
 
 		// Check attachment limits

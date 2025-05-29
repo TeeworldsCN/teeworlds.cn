@@ -189,7 +189,7 @@
 			<img
 				src={`/api/tickets/download/${attachment.uuid}`}
 				alt={attachment.original_filename}
-				class="object-contain transition-transform duration-100 ease-out {isVertical()
+				class="object-contain {isVertical()
 					? 'max-h-[100vw] max-w-[100vh]'
 					: 'max-h-full max-w-full'} {isDragging ? 'cursor-grabbing' : 'cursor-grab'}"
 				style="transform: translate({translateX}px, {translateY}px) scale({scale}) rotate({rotation}deg)"

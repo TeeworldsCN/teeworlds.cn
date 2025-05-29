@@ -166,7 +166,7 @@
 				action: 'add_message',
 				ticket_uuid: ticket.uuid,
 				message: message,
-				author_name: '访客'
+				as: 'visitor'
 			})
 		});
 
@@ -195,7 +195,8 @@
 			},
 			body: JSON.stringify({
 				action: 'close_ticket',
-				ticket_uuid: ticket.uuid
+				ticket_uuid: ticket.uuid,
+				as: 'visitor'
 			})
 		});
 
@@ -344,6 +345,7 @@
 		bind:messages
 		bind:attachments
 		uploadUrl="/api/tickets/upload"
+		uploadAs="visitor"
 		readonlyInput={!data.canSendMessage || readonly}
 		onMessageSubmit={handleVisitorMessageSubmit}
 		onAttachmentAdded={handleAttachmentAdded}

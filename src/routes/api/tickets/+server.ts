@@ -292,10 +292,14 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 		}
 
 		case 'add_message': {
-			const { ticket_uuid, message } = body;
+			const { ticket_uuid, message, as } = body;
 
 			if (!ticket_uuid || !message) {
 				return error(400, 'Bad Request');
+			}
+
+			if (!as || (as !== 'admin' && as !== 'visitor')) {
+				return error(400, 'Invalid or missing "as" parameter. Must be "admin" or "visitor"');
 			}
 
 			// Validate message length (4096 characters max)
@@ -309,12 +313,22 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 				return error(404, 'Not found');
 			}
 
-			// Determine author type
-			const isAdmin = hasPermission(locals.user, 'TICKETS');
-			const author_type = isAdmin ? 'admin' : 'visitor';
+			// Determine authentication and author info based on 'as' parameter
+			let isAdmin: boolean;
 			let author_name: string;
+			const author_type = as;
 
-			if (!isAdmin) {
+			if (as === 'admin') {
+				// Use admin authentication (locals.user)
+				isAdmin = hasPermission(locals.user, 'TICKETS');
+				if (!isAdmin) {
+					return error(403, 'Forbidden');
+				}
+				author_name = locals.user?.username || '管理';
+			} else {
+				// Use visitor authentication (cookie JWT)
+				isAdmin = false;
+
 				// can't reply to closed tickets after one day
 				if (ticket.status === 'closed' && Date.now() - ticket.updated_at > TICKET_EXPIRE_TIME) {
 					return error(403, 'Forbidden');
@@ -332,8 +346,6 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 				}
 
 				author_name = userInfo.playerName || '访客';
-			} else {
-				author_name = locals.user?.username || '管理';
 			}
 
 			const messageData: AddMessageData = {
@@ -433,10 +445,14 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 
 		case 'close_ticket': {
 			// Anyone can close a ticket (visitors can close their own tickets)
-			const { ticket_uuid } = body;
+			const { ticket_uuid, as } = body;
 
 			if (!ticket_uuid) {
 				return error(400, 'Ticket UUID is required');
+			}
+
+			if (!as || (as !== 'admin' && as !== 'visitor')) {
+				return error(400, 'Invalid or missing "as" parameter. Must be "admin" or "visitor"');
 			}
 
 			// Get current ticket to check status
@@ -450,10 +466,21 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 				return json({ success: true, message: 'Ticket already closed' });
 			}
 
-			const isAdmin = hasPermission(locals.user, 'TICKETS');
+			// Determine authentication and author info based on 'as' parameter
+			let isAdmin: boolean;
 			let authorName: string;
 
-			if (!isAdmin) {
+			if (as === 'admin') {
+				// Use admin authentication (locals.user)
+				isAdmin = hasPermission(locals.user, 'TICKETS');
+				if (!isAdmin) {
+					return error(403, 'Forbidden');
+				}
+				authorName = locals.user?.username || '管理';
+			} else {
+				// Use visitor authentication (cookie JWT)
+				isAdmin = false;
+
 				// Check authentication via ticket JWT token for visitors
 				const userInfo = getTicketUserInfo(cookies);
 				if (!userInfo || ticket.author_uid !== userInfo.uid) {
@@ -466,8 +493,6 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 				}
 
 				authorName = userInfo.playerName || '访客';
-			} else {
-				authorName = locals.user?.username || '管理';
 			}
 
 			const success = updateTicketStatus(ticket_uuid, 'closed', authorName, isAdmin);

@@ -5,6 +5,7 @@
 	interface Props {
 		ticketUuid: string;
 		uploadUrl: string;
+		as: 'admin' | 'visitor'; // Authentication type
 		onUploadComplete?: (attachment: TicketAttachmentClient) => void;
 		onUploadError?: (error: string, filename: string, errorType?: string) => void;
 		disabled?: boolean;
@@ -14,6 +15,7 @@
 	let {
 		ticketUuid,
 		uploadUrl,
+		as,
 		onUploadComplete,
 		onUploadError,
 		disabled = false,
@@ -183,6 +185,7 @@
 			const formData = new FormData();
 			formData.append('file', processedFile);
 			formData.append('ticket_uuid', ticketUuid);
+			formData.append('as', as);
 
 			const xhr = new XMLHttpRequest();
 

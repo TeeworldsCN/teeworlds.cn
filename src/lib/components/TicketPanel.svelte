@@ -13,6 +13,7 @@
 		attachments?: TicketAttachmentClient[];
 		images?: TicketImageUrl[];
 		uploadUrl?: string; // URL for file uploads
+		uploadAs?: 'admin' | 'visitor'; // Authentication type for uploads
 		onAttachmentAdded?: (attachment: TicketAttachmentClient) => void;
 		onMessageSubmit?: (message: string) => Promise<void> | void;
 		onSubscribe?: (ticketUuid: string) => Promise<void> | void;
@@ -35,6 +36,7 @@
 		attachments = $bindable([]),
 		images = $bindable([]),
 		uploadUrl = '/api/tickets/upload',
+		uploadAs = 'visitor',
 		onAttachmentAdded,
 		onMessageSubmit,
 		onSubscribe,
@@ -414,6 +416,7 @@
 								disabled={readonlyInput}
 								ticketUuid={ticket.uuid}
 								{uploadUrl}
+								as={uploadAs}
 								onUploadComplete={handleAttachmentUpload}
 								onUploadError={handleUploadError}
 								multiple={true}
