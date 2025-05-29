@@ -39,7 +39,6 @@ export const load = (async ({ cookies, url }) => {
 			cookies.set('ticket-token', jwt, { path: '/', maxAge: ONE_YEAR });
 			hasToken = true;
 		}
-
 		return redirect(302, '/ddnet/tickets');
 	} else {
 		const jwt = cookies.get('ticket-token');

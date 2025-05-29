@@ -33,11 +33,14 @@ export const handleReport: Handler = async ({ reply, platform, uid, mode }) => {
 		},
 		10 * 60 * 1000
 	);
-	return await reply.textLink(`为你生成了举报连接，请点开提供详细信息`, {
-		label: '🔗 举报链接',
-		prefix: '举报链接：',
-		url: `https://teeworlds.cn/goto#r${encodeURIComponent(token)}`
-	});
+	return await reply.textLink(
+		`为你生成了举报连接，请点开提供详细信息。有效期 10 分钟。`,
+		{
+			label: '🔗 举报链接',
+			prefix: '举报链接：',
+			url: `https://teeworlds.cn/goto#r${encodeURIComponent(token)}`
+		}
+	);
 };
 
 export const handleVerify: Handler = async ({ reply, platform, uid, mode }) => {
