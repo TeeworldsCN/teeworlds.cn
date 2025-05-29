@@ -188,14 +188,14 @@
 		await wait(125);
 		if (uaIsQQ(data.ua)) {
 			sendMessage(
-				'这好像是你第一次提交反馈，但是豆豆暂时不支持直接从手机页面提交。\n\n请长按下面的二维码扫描，私聊 DDNet豆豆 使用”举报“指令获取举报链接。'
+				'这好像是你第一次提交反馈，需要经过 QQ 机器人指令提交。\n\n请长按下面的二维码扫描，私聊 DDNet豆豆 使用”举报“指令获取举报链接。'
 			);
 			await wait(125);
 			sendImage('/qrcodes/ddbot-qq.png');
 			return;
 		} else if (uaIsWechat(data.ua)) {
 			sendMessage(
-				'这好像是你第一次提交反馈，但是豆豆暂时不支持直接从手机页面提交。\n\n请长按下面的二维码关注公众号，向公众号内发送“举报”获取举报链接。'
+				'这好像是你第一次提交反馈，需要经过微信公众号口令提交。\n\n请长按下面的二维码关注公众号，向公众号内发送“举报”获取举报链接。'
 			);
 			await wait(125);
 			sendImage('/qrcodes/ddbot-wx.png');
