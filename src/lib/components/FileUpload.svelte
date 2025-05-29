@@ -63,8 +63,113 @@
 		return null;
 	};
 
+	const compressImage = async (file: File): Promise<File> => {
+		// Only compress images larger than 1MB
+		const isImage = file.type.startsWith('image/');
+		const isLargeFile = file.size > 1024 * 1024; // 1MB
+		const isGif = file.type === 'image/gif';
+
+		// Don't compress GIF files to preserve animation
+		if (!isImage || !isLargeFile || isGif) {
+			return file;
+		}
+
+		try {
+			// Create an image element to load the file
+			const img = new Image();
+			const canvas = document.createElement('canvas');
+			const ctx = canvas.getContext('2d');
+
+			if (!ctx) {
+				throw new Error('Could not get canvas context');
+			}
+
+			// Load the image
+			await new Promise<void>((resolve, reject) => {
+				img.onload = () => resolve();
+				img.onerror = () => reject(new Error('Failed to load image'));
+				img.src = URL.createObjectURL(file);
+			});
+
+			// Calculate new dimensions to reduce file size
+			// Target around 800KB by reducing dimensions if needed
+			const targetSize = 800 * 1024; // 800KB
+			const compressionRatio = Math.sqrt(targetSize / file.size);
+
+			let newWidth = img.width;
+			let newHeight = img.height;
+
+			if (compressionRatio < 1) {
+				newWidth = Math.floor(img.width * compressionRatio);
+				newHeight = Math.floor(img.height * compressionRatio);
+
+				// Ensure minimum dimensions
+				newWidth = Math.max(newWidth, 200);
+				newHeight = Math.max(newHeight, 200);
+			}
+
+			// Set canvas dimensions
+			canvas.width = newWidth;
+			canvas.height = newHeight;
+
+			// Draw the resized image
+			ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+			// Clean up the object URL
+			URL.revokeObjectURL(img.src);
+
+			// Convert canvas to blob with compression
+			const blob = await new Promise<Blob>((resolve, reject) => {
+				let outputType = file.type;
+				let quality = 0.85; // 85% quality
+
+				// For GIF, convert to JPEG for better compression
+				if (file.type === 'image/gif') {
+					outputType = 'image/jpeg';
+				}
+
+				// PNG doesn't support quality parameter, so convert large PNGs to JPEG
+				if (file.type === 'image/png' && file.size > 2 * 1024 * 1024) {
+					outputType = 'image/jpeg';
+				}
+
+				canvas.toBlob(
+					(result) => {
+						if (result) {
+							resolve(result);
+						} else {
+							reject(new Error('Failed to compress image'));
+						}
+					},
+					outputType,
+					quality
+				);
+			});
+
+			// Create new file with compressed data
+			const compressedFile = new File([blob], file.name, {
+				type: blob.type,
+				lastModified: file.lastModified
+			});
+
+			return compressedFile;
+		} catch (error) {
+			console.warn('Image compression failed, using original file:', error);
+			return file;
+		}
+	};
+
 	const uploadFile = async (file: File) => {
-		const validationError = validateFile(file);
+		// First compress the image if it's large
+		let processedFile: File;
+		try {
+			processedFile = await compressImage(file);
+		} catch (error) {
+			console.warn('Image compression failed:', error);
+			processedFile = file;
+		}
+
+		const validationError = validateFile(processedFile);
 		if (validationError) {
 			// Call the error callback for validation errors
 			onUploadError?.(validationError, file.name, 'validation_error');
@@ -76,7 +181,7 @@
 
 		try {
 			const formData = new FormData();
-			formData.append('file', file);
+			formData.append('file', processedFile);
 			formData.append('ticket_uuid', ticketUuid);
 
 			const xhr = new XMLHttpRequest();
