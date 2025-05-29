@@ -26,13 +26,17 @@ export const actions = {
 			return error(400, { message: 'Bad Request' });
 		}
 
+		const ref = url.searchParams.get('ref') || '/';
+
 		const user = await authenticateByUsername(username, password);
 		if (!user) {
-			return redirect(302, `/login?error=${encodeURIComponent('用户名或密码错误')}`);
+			return redirect(
+				302,
+				`/login?error=${encodeURIComponent('用户名或密码错误')}&ref=${encodeURIComponent(ref)}`
+			);
 		}
 
 		cookies.set('token', await generateToken(user), { path: '/', maxAge: 30 * 24 * 60 * 60 });
-		const ref = url.searchParams.get('ref') || '/';
 		return redirect(302, ref);
 	}
 } satisfies Actions;
