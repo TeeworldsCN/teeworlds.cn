@@ -817,7 +817,7 @@
 />
 
 <div id="admin-tickets-page" class="flex h-[calc(100vh-9rem)] gap-2">
-	<div class="flex w-full flex-col gap-2 lg:w-1/3 lg:max-w-[360px]">
+	<div class="flex w-full flex-col gap-2 sm:w-[48%] sm:max-w-[360px]">
 		<div class="flex h-8 items-center gap-2 rounded-lg bg-slate-900 px-2">
 			{#if notificationPermission === 'denied'}
 				<span class="text-sm text-red-400">通知已禁用</span>
@@ -953,7 +953,7 @@
 
 	<div
 		id="ticket-panel"
-		class="fixed bottom-10 left-0 right-0 top-14 flex-1 lg:static lg:block"
+		class="fixed bottom-10 left-0 right-0 top-14 flex-1 sm:static sm:block"
 		class:hidden={!selectedTicket}
 	>
 		{#if selectedTicket}
@@ -1006,7 +1006,7 @@
 
 		<button
 			onclick={closeTicketPanel}
-			class="fixed right-2 top-16 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 p-2 text-slate-400 hover:bg-slate-700 hover:text-slate-200 lg:hidden"
+			class="fixed right-2 top-16 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 p-2 text-slate-400 hover:bg-slate-700 hover:text-slate-200 sm:hidden"
 			aria-label="关闭面板"
 		>
 			<Fa icon={faXmark} />
