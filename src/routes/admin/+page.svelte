@@ -20,6 +20,11 @@
 
 {#if hasPermission('SUPER')}
 	<div class="mt-6">
+		<ToolboxButton href="/admin/users">用户管理</ToolboxButton>
+		<div class="text-semibold">管理用户和权限</div>
+	</div>
+
+	<div class="mt-6">
 		<ToolboxButton href="/admin/subs">订阅管理</ToolboxButton>
 		<div class="text-semibold">管理机器人自动发布消息的订阅功能</div>
 	</div>

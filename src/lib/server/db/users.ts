@@ -216,6 +216,21 @@ export const changePassword = async (uuid: UserUUID, password: string) => {
 	return result.changes > 0;
 };
 
+export const renameUser = (uuid: UserUUID, newUsername: string) => {
+	try {
+		const result = sqlite
+			.query('UPDATE user SET (username, version) = (?, COALESCE(version + 1, 0)) WHERE uuid = ?')
+			.run(newUsername, uuid);
+		return { success: result.changes > 0, error: null };
+	} catch (e) {
+		const error = e as any;
+		if (error?.code == 'SQLITE_CONSTRAINT_UNIQUE') {
+			return { success: false, error: '用户名已被占用' };
+		}
+		return { success: false, error: `未知错误 (${error.message || error})` };
+	}
+};
+
 export const deleteToken = async (token: string) => {
 	await volatile.delete(`user:token:${token}`);
 };
@@ -225,4 +240,174 @@ export const hasPermission = (user: User | null, permission: Permission) => {
 	if (!user.data.permissions) return false;
 	if (user.data.permissions.includes('SUPER')) return true;
 	return user.data.permissions.includes(permission);
+};
+
+// Prepared statements for user searching
+const searchUsersQuery = sqlite.query<
+	{
+		uuid: UserUUID;
+		username: string;
+		version: number;
+		data: string;
+	},
+	[string, number, number]
+>('SELECT uuid, username, version, data FROM user WHERE username GLOB ? ORDER BY username LIMIT ? OFFSET ?');
+
+const searchUserCountQuery = sqlite.query<{ count: number }, [string]>(
+	'SELECT COUNT(*) as count FROM user WHERE username GLOB ?'
+);
+
+export const searchUsers = (searchTerm: string, limit: number = 50, offset: number = 0): User[] => {
+	try {
+		const searchPattern = `*${searchTerm}*`;
+		const users = searchUsersQuery.all(searchPattern, limit, offset);
+		return users.map(user => {
+			let userdata: UserData;
+			try {
+				userdata = JSON.parse(user.data);
+			} catch {
+				userdata = {};
+			}
+			return { uuid: user.uuid, username: user.username, version: user.version, data: userdata };
+		});
+	} catch (error) {
+		console.error('Error searching users:', error);
+		return [];
+	}
+};
+
+export const getUserCountBySearch = (searchTerm: string): number => {
+	try {
+		const searchPattern = `*${searchTerm}*`;
+		const result = searchUserCountQuery.get(searchPattern);
+		return result?.count || 0;
+	} catch (error) {
+		console.error('Error getting search user count:', error);
+		return 0;
+	}
+};
+
+// Prepared statements for users with passwords (admin users)
+const getUsersWithPasswordQuery = sqlite.query<
+	{
+		uuid: UserUUID;
+		username: string;
+		version: number;
+		data: string;
+	},
+	[number, number]
+>('SELECT uuid, username, version, data FROM user WHERE hash IS NOT NULL ORDER BY username LIMIT ? OFFSET ?');
+
+const getUsersWithPasswordCountQuery = sqlite.query<{ count: number }, []>(
+	'SELECT COUNT(*) as count FROM user WHERE hash IS NOT NULL'
+);
+
+// Prepared statements for users without passwords (regular users)
+const getUsersWithoutPasswordQuery = sqlite.query<
+	{
+		uuid: UserUUID;
+		username: string;
+		version: number;
+		data: string;
+	},
+	[number, number]
+>('SELECT uuid, username, version, data FROM user WHERE hash IS NULL ORDER BY username LIMIT ? OFFSET ?');
+
+const getUsersWithoutPasswordCountQuery = sqlite.query<{ count: number }, []>(
+	'SELECT COUNT(*) as count FROM user WHERE hash IS NULL'
+);
+
+// Prepared statements for users without passwords with platform filtering
+const getUsersWithoutPasswordByPlatformQuery = sqlite.query<
+	{
+		uuid: UserUUID;
+		username: string;
+		version: number;
+		data: string;
+	},
+	[string, number, number]
+>('SELECT uuid, username, version, data FROM user WHERE hash IS NULL AND username GLOB ? ORDER BY username LIMIT ? OFFSET ?');
+
+const getUsersWithoutPasswordByPlatformCountQuery = sqlite.query<{ count: number }, [string]>(
+	'SELECT COUNT(*) as count FROM user WHERE hash IS NULL AND username GLOB ?'
+);
+
+// Helper function to map database results to User objects
+const mapUserResults = (users: Array<{ uuid: UserUUID; username: string; version: number; data: string }>): User[] => {
+	return users.map(user => {
+		let userdata: UserData;
+		try {
+			userdata = JSON.parse(user.data);
+		} catch {
+			userdata = {};
+		}
+		return { uuid: user.uuid, username: user.username, version: user.version, data: userdata };
+	});
+};
+
+// Functions for users with passwords (admin users)
+export const getUsersWithPassword = (limit: number = 50, offset: number = 0): User[] => {
+	try {
+		const users = getUsersWithPasswordQuery.all(limit, offset);
+		return mapUserResults(users);
+	} catch (error) {
+		console.error('Error getting users with password:', error);
+		return [];
+	}
+};
+
+export const getUsersWithPasswordCount = (): number => {
+	try {
+		const result = getUsersWithPasswordCountQuery.get();
+		return result?.count || 0;
+	} catch (error) {
+		console.error('Error getting users with password count:', error);
+		return 0;
+	}
+};
+
+// Functions for users without passwords (regular users)
+export const getUsersWithoutPassword = (limit: number = 50, offset: number = 0): User[] => {
+	try {
+		const users = getUsersWithoutPasswordQuery.all(limit, offset);
+		return mapUserResults(users);
+	} catch (error) {
+		console.error('Error getting users without password:', error);
+		return [];
+	}
+};
+
+export const getUsersWithoutPasswordCount = (): number => {
+	try {
+		const result = getUsersWithoutPasswordCountQuery.get();
+		return result?.count || 0;
+	} catch (error) {
+		console.error('Error getting users without password count:', error);
+		return 0;
+	}
+};
+
+// Functions for users without passwords with platform filtering
+export const getUsersWithoutPasswordByPlatform = (platform: string, limit: number = 50, offset: number = 0): User[] => {
+	try {
+		// Users with specific platform prefix - use GLOB for index efficiency
+		const platformPattern = `${platform}:*`;
+		const users = getUsersWithoutPasswordByPlatformQuery.all(platformPattern, limit, offset);
+		return mapUserResults(users);
+	} catch (error) {
+		console.error('Error getting users without password by platform:', error);
+		return [];
+	}
+};
+
+export const getUsersWithoutPasswordByPlatformCount = (platform: string): number => {
+	try {
+		// Use GLOB for index efficiency
+		const platformPattern = `${platform}:*`;
+		const result = getUsersWithoutPasswordByPlatformCountQuery.get(platformPattern);
+		return result?.count || 0;
+	} catch (error) {
+		console.error('Error getting users without password by platform count:', error);
+		return 0;
+	}
 };

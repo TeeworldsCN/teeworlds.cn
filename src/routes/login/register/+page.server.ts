@@ -40,10 +40,10 @@ export const actions = {
 			return error(400, { message: 'Bad Request' });
 		}
 
-		if (username.length < 3) {
+		if (username.length < 2) {
 			return redirect(
 				302,
-				`/login/register?token=${encodeURIComponent(registerToken)}&error=${encodeURIComponent('用户名长度至少为3个字符')}`
+				`/login/register?token=${encodeURIComponent(registerToken)}&error=${encodeURIComponent('用户名长度至少为2个字符')}`
 			);
 		}
 
