@@ -209,13 +209,14 @@
 		}
 	};
 
-	const showNotification = (title: string, body: string) => {
+	const showNotification = (title: string, body: string, tag?: string) => {
 		if ('Notification' in window && Notification.permission === 'granted') {
 			try {
 				new Notification(title, {
 					body,
 					icon: '/favicon.png',
-					badge: '/favicon.png'
+					badge: '/favicon.png',
+					tag: tag // Group notifications by tag (ticket UUID)
 				});
 			} catch (error) {
 				console.error('Error showing notification:', error);
@@ -297,7 +298,8 @@
 							playNotificationSound('new');
 							showNotification(
 								`${ticketEvent.data.ticket.visitor_name} 提交了工单`,
-								ticketEvent.data.ticket.title
+								ticketEvent.data.ticket.title,
+								ticketEvent.data.ticket.uuid
 							);
 						}
 						break;
@@ -348,11 +350,13 @@
 										playNotificationSound('message');
 										showNotification(
 											`${ticket.title} #${ticket.uuid.slice(0, 8)}`,
-											`${ticketEvent.data.message.author_name}: ${ticketEvent.data.message.message}`
+											`${ticketEvent.data.message.author_name}: ${ticketEvent.data.message.message}`,
+											ticket.uuid
 										);
 									} else if (
 										selectedTicket &&
-										selectedTicket.uuid === ticketEvent.data.message.ticket_uuid
+										selectedTicket.uuid === ticketEvent.data.message.ticket_uuid &&
+										document.visibilityState !== 'hidden'
 									) {
 										playNotificationSound('message');
 									}
@@ -385,7 +389,8 @@
 										playNotificationSound('message');
 										showNotification(
 											`${ticket.title} #${ticket.uuid.slice(0, 8)}`,
-											`${ticketEvent.data.attachment.uploaded_by} 上传了附件`
+											`${ticketEvent.data.attachment.uploaded_by} 上传了附件`,
+											ticket.uuid
 										);
 									} else if (
 										selectedTicket &&
