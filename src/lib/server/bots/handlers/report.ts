@@ -2,6 +2,13 @@ import { persistent } from '$lib/server/db/kv';
 import { volatile } from '$lib/server/keyv';
 import type { Handler } from '../protocol/types';
 import crypto from 'node:crypto';
+import { RateLimiter } from '../utils/rate-limiter';
+
+const reportLimiter = new RateLimiter('report', {
+	threshold: 5,
+	interval: 10 * 60,
+	cooldown: 10 * 60
+});
 
 export const handleReport: (type: string) => Handler =
 	(type) =>
@@ -32,6 +39,11 @@ export const handleReport: (type: string) => Handler =
 			}
 		}
 
+		const { limited, triggered } = await reportLimiter.isLimited(uid);
+		if (triggered || limited) {
+			return await reply.text(`你请求得太频繁了！请10分钟后再试。`);
+		}
+
 		const bytes = crypto.randomBytes(20);
 		const token = bytes.toString('hex');
 		await volatile.set(
@@ -55,6 +67,11 @@ export const handleVerify: Handler = async ({ reply, platform, uid, mode }) => {
 
 	if (mode != 'DIRECT') {
 		return await reply.text('账户验证只能在私聊中进行，请加豆豆好友，私聊豆豆 “验证” 指令进行验证');
+	}
+
+	const { limited, triggered } = await reportLimiter.isLimited(uid);
+	if (triggered || limited) {
+		return await reply.text(`你请求得太频繁了！请10分钟后再试。`);
 	}
 
 	const code = crypto.randomInt(0, 100000000).toString().padStart(8, '0');

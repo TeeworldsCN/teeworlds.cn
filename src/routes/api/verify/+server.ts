@@ -1,10 +1,24 @@
 import { json } from '@sveltejs/kit';
 import { volatile } from '$lib/server/keyv';
 import crypto from 'node:crypto';
+import { RateLimiter } from '$lib/server/bots/utils/rate-limiter';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request }) => {
+// Rate limiter: 12 attempts per 3 hours, with 3 hour cooldown
+const verifyLimiter = new RateLimiter('verify', {
+	threshold: 12,
+	interval: 3 * 60 * 60,
+	cooldown: 3 * 60 * 60
+});
+
+export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
+		// Check rate limiting first
+		const { limited } = await verifyLimiter.isLimited(locals.ip);
+		if (limited) {
+			return json({ success: false, error: '验证尝试过于频繁，请3小时后再试' }, { status: 429 });
+		}
+
 		const { code } = await request.json();
 
 		if (!code) {
