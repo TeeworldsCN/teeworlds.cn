@@ -21,7 +21,6 @@
 
 	const { data } = $props();
 
-	let adminConnectionCount = $state(data.adminConnectionCount);
 	let connectedAdmins = $state(data.connectedAdmins || []);
 	let isAdminListCollapsed = $state(true);
 	let userSubscribedTickets = $state(data.userSubscribedTickets);
@@ -318,11 +317,6 @@
 								ticketEvent.data.ticket.title,
 								ticketEvent.data.ticket.uuid
 							);
-						}
-						break;
-					case 'admin_connection_count_updated':
-						if (ticketEvent.data.adminConnectionCount !== undefined) {
-							adminConnectionCount = ticketEvent.data.adminConnectionCount;
 						}
 						break;
 					case 'admin_list_updated':
@@ -814,7 +808,6 @@
 	afterNavigate(() => {
 		tickets = data.tickets;
 		userSubscribedTickets = data.userSubscribedTickets;
-		adminConnectionCount = data.adminConnectionCount;
 		connectedAdmins = data.connectedAdmins || [];
 		offset = data.offset;
 		totalCount = data.totalCount;
@@ -866,7 +859,7 @@
 						onclick={() => (isAdminListCollapsed = !isAdminListCollapsed)}
 						class="flex items-center gap-1 transition-colors hover:text-slate-200"
 					>
-						<span>管理: {adminConnectionCount}</span>
+						<span>管理: {connectedAdmins.length}</span>
 						<Fa icon={isAdminListCollapsed ? faChevronRight : faChevronDown} size="xs" />
 					</button>
 					{#if unreadCount() > 0}

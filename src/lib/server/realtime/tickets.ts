@@ -290,6 +290,44 @@ export const broadcastToTicket = (ticketUuid: string, event: TicketEvent) => {
 	}
 };
 
+export const broadcastToTickets = (event: TicketEvent) => {
+	const eventData = JSON.stringify(event);
+
+	// Track tickets that need cleanup
+	const ticketsToCleanup: string[] = [];
+
+	// Iterate through all ticket connections directly
+	for (const [ticketUuid, connections] of ticketConnections) {
+		let deletingKeys: EmitFunction[] | undefined;
+
+		// Send to all connections for this ticket
+		for (const emit of connections) {
+			const result = emit('message', eventData);
+			if (result.error) {
+				deletingKeys ??= [];
+				deletingKeys.push(emit);
+			}
+		}
+
+		// Clean up failed connections
+		if (deletingKeys) {
+			for (const key of deletingKeys) {
+				connections.delete(key);
+			}
+		}
+
+		// Mark empty connection sets for cleanup
+		if (connections.size === 0) {
+			ticketsToCleanup.push(ticketUuid);
+		}
+	}
+
+	// Clean up empty connection sets
+	for (const ticketUuid of ticketsToCleanup) {
+		ticketConnections.delete(ticketUuid);
+	}
+};
+
 export const notifyTicketCreated = (ticket: Ticket) => {
 	const event: TicketEvent = {
 		type: 'ticket_created',
@@ -388,8 +426,8 @@ export const notifyAdminConnectionCountUpdated = () => {
 		data: { adminConnectionCount: new Set(Array.from(adminConnections.values())).size }
 	};
 
-	// Notify all admins about connection count update
-	broadcastToAdmins(event);
+	// Also notify all ticket connections (visitors) about admin count update
+	broadcastToTickets(event);
 };
 
 export const notifyAdminListUpdated = () => {

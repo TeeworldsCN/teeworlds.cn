@@ -28,6 +28,7 @@
 		readonlyInput?: boolean;
 		onButtonClick?: (buttonId: string) => void; // Callback for button clicks in system messages
 		children?: Snippet; // For passing in custom content
+		adminCount?: number; // For displaying admin count in visitor view
 	}
 
 	let {
@@ -50,7 +51,8 @@
 		isVisitorView = false,
 		readonlyInput = false,
 		onButtonClick,
-		children
+		children,
+		adminCount
 	}: Props = $props();
 
 	let newMessage = $state('');
@@ -317,6 +319,11 @@
 					{/if}
 				</div>
 			</div>
+			{#if isVisitorView && adminCount !== undefined}
+				<div class="text-xs text-slate-400">
+					在线管理: {adminCount}
+				</div>
+			{/if}
 		</div>
 		<div class="flex items-center justify-between">
 			<div class="flex items-center space-x-2">

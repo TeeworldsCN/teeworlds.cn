@@ -15,6 +15,7 @@
 	let messages = $state<TicketMessage[]>(data.messages);
 	let attachments = $state<TicketAttachmentClient[]>(data.attachments || []);
 	let hasShownUnloadWarning = $state(false);
+	let adminCount = $state<number>(data.adminConnectionCount);
 
 	// Setup SSE connection using customSource
 	let connection: ReturnType<typeof customSource> | null = null;
@@ -126,6 +127,11 @@
 							ticket.status = ticketEvent.data.new_status;
 						}
 						break;
+					case 'admin_connection_count_updated':
+						if (ticketEvent.data.adminConnectionCount !== undefined) {
+							adminCount = ticketEvent.data.adminConnectionCount;
+						}
+						break;
 				}
 			} catch (err) {
 				console.error('Error parsing SSE event:', err);
@@ -235,6 +241,7 @@
 		messages = data.messages;
 		attachments = data.attachments || [];
 		hasShownUnloadWarning = false;
+		adminCount = data.adminConnectionCount;
 	});
 
 	onDestroy(() => {
@@ -351,6 +358,7 @@
 		onAttachmentAdded={handleAttachmentAdded}
 		onCloseTicket={ticket.status !== 'closed' && !isSSEClosed ? handleCloseTicket : undefined}
 		isVisitorView={true}
+		{adminCount}
 	/>
 </div>
 

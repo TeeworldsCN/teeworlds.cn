@@ -4,6 +4,7 @@ import {
 	getTicketAttachments,
 	TICKET_EXPIRE_TIME
 } from '$lib/server/db/tickets';
+import { getConnectionStats } from '$lib/server/realtime/tickets';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getTicketUserInfo } from '$lib/server/auth/ticket-auth';
@@ -29,6 +30,7 @@ export const load = (async ({ params, cookies, setHeaders }) => {
 	const attachments = getTicketAttachments(uuid);
 	const canSendMessage =
 		ticket.status !== 'closed' || Date.now() - ticket.updated_at <= TICKET_EXPIRE_TIME;
+	const connectionStats = getConnectionStats();
 
 	setHeaders({
 		'cache-control': 'private, no-store'
@@ -39,6 +41,7 @@ export const load = (async ({ params, cookies, setHeaders }) => {
 		ticket,
 		messages,
 		attachments,
-		visitorName: userInfo.playerName || '访客'
+		visitorName: userInfo.playerName || '访客',
+		adminConnectionCount: connectionStats.adminCount
 	};
 }) satisfies PageServerLoad;
