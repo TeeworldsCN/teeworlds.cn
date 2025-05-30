@@ -426,6 +426,7 @@ export type QQDirectMessageCreatePayload = CallbackPayload<
 			bot: boolean;
 			id: string;
 			username: string;
+			union_openid: string;
 		};
 		channel_id: string;
 		content: string;
@@ -447,6 +448,7 @@ export type QQMessageCreatePayload = CallbackPayload<
 			bot: boolean;
 			id: string;
 			username: string;
+			union_openid: string;
 		};
 		channel_id: string;
 		content: string;
@@ -468,6 +470,7 @@ export type QQAtMessageCreatePayload = CallbackPayload<
 			bot: boolean;
 			id: string;
 			username: string;
+			union_openid: string;
 		};
 		channel_id: string;
 		content: string;

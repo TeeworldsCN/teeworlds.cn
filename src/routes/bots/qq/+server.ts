@@ -1,5 +1,6 @@
 import { handlePing } from '$lib/server/bots/bot';
 import { QQBot, type QQMessage, type QQPayload } from '$lib/server/bots/protocol/qq';
+import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ fetch, request }) => {
@@ -46,7 +47,12 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 		let replyMethod = null;
 		let mode: 'GROUP' | 'DIRECT' = 'GROUP';
 		let message: string = payload.d.content;
-		let uid = payload.d.author.id;
+		let uid = payload.d.author.union_openid;
+
+		if (!uid) {
+			return error(400, 'Bad Request');
+		}
+
 		let group = 'DIRECT';
 		let channel = false;
 
