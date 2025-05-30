@@ -188,14 +188,14 @@
 		await wait(125);
 		if (uaIsQQ(data.ua)) {
 			sendMessage(
-				'这好像是你第一次提交反馈，需要经过 QQ 机器人指令提交。\n\n请长按下面的二维码扫描，私聊 DDNet豆豆 使用”举报“指令获取举报链接。'
+				'这好像是你第一次提交反馈，需要经过 QQ 机器人指令提交。\n\n请长按下面的二维码扫描，私聊 DDNet豆豆 使用 “举报” 指令获取举报链接。'
 			);
 			await wait(125);
 			sendImage('/qrcodes/ddbot-qq.png');
 			return;
 		} else if (uaIsWechat(data.ua)) {
 			sendMessage(
-				'这好像是你第一次提交反馈，需要经过微信公众号口令提交。\n\n请长按下面的二维码关注公众号，向公众号内发送“举报”获取举报链接。'
+				'这好像是你第一次提交反馈，需要经过微信公众号口令提交。\n\n请长按下面的二维码关注公众号，向公众号内发送 “举报” 获取举报链接。'
 			);
 			await wait(125);
 			sendImage('/qrcodes/ddbot-wx.png');
@@ -227,12 +227,12 @@
 		await wait(500);
 		if (selected === 'qq') {
 			await wait(125);
-			sendMessage('请使用手机QQ扫描二维码，然后私聊 DDNet豆豆 使用”举报“指令获取举报链接。');
+			sendMessage('请使用手机QQ扫描二维码，然后私聊 DDNet豆豆 使用 “验证” 指令获取验证码。');
 			await wait(125);
 			sendImage('/qrcodes/ddbot-qq.png');
 		} else if (selected === 'wechat') {
 			await wait(125);
-			sendMessage('请用微信二维码关注“Teeworlds豆豆”，并向公众号内发送“验证”获取验证码');
+			sendMessage('请用微信二维码关注“Teeworlds豆豆”，并向公众号内发送 “验证” 获取验证码。');
 			await wait(125);
 			sendImage('/qrcodes/ddbot-wx.png');
 		} else {

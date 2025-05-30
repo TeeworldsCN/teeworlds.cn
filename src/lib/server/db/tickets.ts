@@ -211,7 +211,8 @@ export type SystemMessageData =
 	| SystemMessageVisitorDisconnected
 	| SystemMessageUploadError
 	| SystemMessageSendError
-	| SystemMessageButtonGroup;
+	| SystemMessageButtonGroup
+	| SystemMessageCopyable;
 
 export interface SystemMessageStatusChange {
 	type: 'status_change';
@@ -289,6 +290,14 @@ export interface SystemMessageButtonGroup {
 	data: {
 		message: string;
 		buttons: ButtonData[];
+	};
+}
+
+export interface SystemMessageCopyable {
+	type: 'copyable_message';
+	data: {
+		message: string;
+		copy_content?: string; // Optional different content to copy (defaults to message)
 	};
 }
 
@@ -1141,6 +1150,34 @@ export const addTicketMessage = (data: {
 			visibility: MESSAGE_VISIBILITY.ALL
 		},
 		true
+	);
+};
+
+// Helper function to create copyable system messages
+export const addCopyableMessage = (data: {
+	ticket_uuid: string;
+	message: string;
+	copy_content?: string;
+	author_name: string;
+	visibility?: number;
+}): AddMessageResult => {
+	const systemMessage: SystemMessageCopyable = {
+		type: 'copyable_message',
+		data: {
+			message: data.message,
+			copy_content: data.copy_content
+		}
+	};
+
+	return insertTicketMessage(
+		{
+			ticket_uuid: data.ticket_uuid,
+			message: JSON.stringify(systemMessage),
+			author_type: 'system',
+			author_name: data.author_name,
+			visibility: data.visibility ?? MESSAGE_VISIBILITY.ALL
+		},
+		false
 	);
 };
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { SystemMessageData, SystemMessageButtonGroup } from '$lib/server/db/tickets';
+	import type { SystemMessageData, SystemMessageButtonGroup, SystemMessageCopyable } from '$lib/server/db/tickets';
 
 	interface Props {
 		type: 'system' | 'sys';
@@ -10,6 +10,9 @@
 	}
 
 	let { type, message, timestamp, visibility = 0, onButtonClick }: Props = $props();
+
+	// State for copy feedback
+	let copySuccess = $state(false);
 
 	const parseSystemMessage = (messageStr: string): string => {
 		try {
@@ -61,6 +64,9 @@
 				case 'button_group':
 					return systemMessage.data.message || '';
 
+				case 'copyable_message':
+					return systemMessage.data.message || '';
+
 				default:
 					return messageStr; // Fallback to original message
 			}
@@ -101,6 +107,7 @@
 	const isConnectionEvent = $derived(() => messageType() === 'visitor_connected');
 	const isDisconnectionEvent = $derived(() => messageType() === 'visitor_disconnected');
 	const isButtonGroup = $derived(() => messageType() === 'button_group');
+	const isCopyableMessage = $derived(() => messageType() === 'copyable_message');
 
 	// Check if message should show visibility notice
 	const shouldShowVisibilityNotice = $derived(() => {
@@ -165,6 +172,7 @@
 		if (isDisconnectionEvent()) return 'text-red-400';
 		if (isConnectionEvent()) return 'text-green-400';
 		if (isButtonGroup()) return 'text-slate-400';
+		if (isCopyableMessage()) return 'text-blue-300';
 		return 'text-orange-300';
 	};
 
@@ -174,16 +182,75 @@
 		if (isDisconnectionEvent()) return `border-red-600/50 bg-red-900/30`;
 		if (isConnectionEvent()) return `border-green-600/50 bg-green-900/30`;
 		if (isButtonGroup()) return 'border-zinc-600/50 bg-zinc-900/30';
+		if (isCopyableMessage()) return 'border-blue-600/50 bg-blue-900/30';
 		return `border-amber-600/50 bg-amber-900/30`;
 	};
 
 	const formatDate = (timestamp: number): string => {
 		return new Date(timestamp).toLocaleString('zh-CN');
 	};
+
+	// Get the content to copy (for copyable messages, use copy_content if available)
+	const getCopyContent = () => {
+		if (isCopyableMessage()) {
+			try {
+				const systemMessage: SystemMessageCopyable = JSON.parse(message);
+				return systemMessage.data.copy_content || systemMessage.data.message;
+			} catch {
+				return displayMessage;
+			}
+		}
+		return displayMessage;
+	};
+
+	// Copy message content to clipboard
+	const copyToClipboard = async () => {
+		try {
+			await navigator.clipboard.writeText(getCopyContent());
+			copySuccess = true;
+			// Reset the success state after a brief moment
+			setTimeout(() => {
+				copySuccess = false;
+			}, 1000);
+		} catch (error) {
+			console.error('Failed to copy to clipboard:', error);
+		}
+	};
 </script>
 
-<div class="max-w-md rounded-xl border px-4 py-1 {getContainerClasses()}">
-	{#if !isButtonGroup()}
+{#if isCopyableMessage()}
+	<!-- Copyable message with click-to-copy functionality -->
+	<button
+		onclick={copyToClipboard}
+		class="max-w-md rounded-xl border px-4 py-1 cursor-pointer transition-all duration-200 {getContainerClasses()} {copySuccess ? 'ring-2 ring-green-500/50 bg-green-900/40' : 'hover:bg-opacity-60'}"
+		title="点击复制消息内容"
+	>
+		{#if type == 'sys'}
+			<div class="flex items-center justify-center gap-2 text-xs {getMessageTextColor()}">
+				<span class="opacity-70">{formatDate(timestamp)}</span>
+				<span>{displayMessage.replace(/\n/g, ' ')}</span>
+				{#if shouldShowVisibilityNotice()}
+					<span class="opacity-70">只有你可以看到</span>
+				{/if}
+			</div>
+		{:else}
+			<div class="text-center text-sm {getMessageTextColor()}">
+				{#each displayMessage.split('\n') as line, index}
+					{#if index > 0}<br />{/if}{line}
+				{/each}
+				{#if shouldShowVisibilityNotice()}
+					<div class="mt-1 text-xs opacity-70">这条消息只有你可以看到</div>
+				{/if}
+			</div>
+
+			<div class="mt-1 text-center text-xs {getMessageTextColor()}/70">
+				{formatDate(timestamp)}
+			</div>
+		{/if}
+	</button>
+{:else if !isButtonGroup()}
+	<!-- Regular system message (non-clickable) -->
+	<div class="max-w-md rounded-xl border px-4 py-1 {getContainerClasses()}">
 		{#if type == 'sys'}
 			<div class="flex items-center justify-center gap-2 text-xs {getMessageTextColor()}">
 				<span class="opacity-70">{formatDate(timestamp)}</span>
@@ -206,9 +273,11 @@
 				{formatDate(timestamp)}
 			</div>
 		{/if}
-	{:else}
+	</div>
+{:else}
+	<!-- Button group message -->
+	<div class="max-w-md rounded-xl border px-4 py-1 {getContainerClasses()}">
 		<div class="text-center text-sm {getMessageTextColor()}">
-			<!-- Button group message -->
 			<div class="py-2">
 				{#if displayMessage}
 					<div class="mb-3 text-slate-300">
@@ -275,5 +344,5 @@
 				{formatDate(timestamp)}
 			</div>
 		</div>
-	{/if}
-</div>
+	</div>
+{/if}

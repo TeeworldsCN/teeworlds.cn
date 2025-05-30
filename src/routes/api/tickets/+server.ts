@@ -14,6 +14,7 @@ import {
 	MESSAGE_VISIBILITY,
 	addAdminOnlyMessage,
 	addVisitorOnlyMessage,
+	addCopyableMessage,
 	TICKET_EXPIRE_TIME,
 	banUserFromTickets,
 	getUserActiveBan,
@@ -96,6 +97,13 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 				visibility: number;
 			}[] = [];
 
+			let copyableMessages: {
+				message: string;
+				copy_content: string;
+				author_name: string;
+				visibility: number;
+			}[] = [];
+
 			switch (body.type) {
 				case 'report':
 					{
@@ -123,18 +131,18 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 							try {
 								const result = await checkServerCommunity(body.args.server);
 								if (result) {
-									messages.push({
-										message: `豆豆检测到服务器地址 ${body.args.server} 为\n${result}`,
-										author_type: 'bot',
-										author_name: '豆豆',
-										visibility: MESSAGE_VISIBILITY.ALL
+									copyableMessages.push({
+										message: `豆豆检测到服务器地址 ${body.args.server} 为\n${result}\n（点击复制IP）`,
+										copy_content: body.args.server,
+										author_name: 'System',
+										visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
 									});
 								} else {
 									messages.push({
 										message: `豆豆检测到服务器地址 ${body.args.server} 不属于任何服务器社区`,
 										author_type: 'system',
 										author_name: 'System',
-										visibility: MESSAGE_VISIBILITY.ALL
+										visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
 									});
 								}
 							} catch {}
@@ -180,10 +188,10 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 						try {
 							const requestIP = locals.ip;
 							if (requestIP) {
-								messages.push({
-									message: `提交设备IP地址：${requestIP}`,
-									author_type: 'bot',
-									author_name: '豆豆',
+								copyableMessages.push({
+									message: `申诉玩家的设备IP：${requestIP}\n（点击复制IP）`,
+									copy_content: requestIP,
+									author_name: 'System',
 									visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
 								});
 							} else {
@@ -192,8 +200,8 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 						} catch (e) {
 							messages.push({
 								message: `豆豆没能获取到申诉玩家的设备IP`,
-								author_type: 'bot',
-								author_name: '豆豆',
+								author_type: 'system',
+								author_name: 'System',
 								visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
 							});
 						}
@@ -259,33 +267,43 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 
 			const result = createTicket(ticketData);
 
-			if (!result.success) {
+			if (!result.success || !result.ticket) {
 				return error(400, result.error || 'Failed to create ticket');
 			}
 
 			for (const message of messages) {
 				if (message.visibility === MESSAGE_VISIBILITY.ALL) {
 					addTicketMessage({
-						ticket_uuid: result.ticket!.uuid,
+						ticket_uuid: result.ticket.uuid,
 						message: message.message,
 						author_type: message.author_type,
 						author_name: message.author_name
 					});
 				} else if (message.visibility === MESSAGE_VISIBILITY.ADMIN_ONLY) {
 					addAdminOnlyMessage({
-						ticket_uuid: result.ticket!.uuid,
+						ticket_uuid: result.ticket.uuid,
 						message: message.message,
 						author_type: message.author_type,
 						author_name: message.author_name
 					});
 				} else if (message.visibility === MESSAGE_VISIBILITY.VISITOR_ONLY) {
 					addVisitorOnlyMessage({
-						ticket_uuid: result.ticket!.uuid,
+						ticket_uuid: result.ticket.uuid,
 						message: message.message,
 						author_type: message.author_type,
 						author_name: message.author_name
 					});
 				}
+			}
+
+			for (const message of copyableMessages) {
+				addCopyableMessage({
+					ticket_uuid: result.ticket.uuid,
+					message: message.message,
+					copy_content: message.copy_content,
+					author_name: message.author_name,
+					visibility: message.visibility
+				});
 			}
 
 			return json({ success: true, ticket: result.ticket });
@@ -379,18 +397,19 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 				try {
 					const serverType = await checkServerCommunity(ipPort);
 					if (serverType) {
-						addTicketMessage({
+						addCopyableMessage({
 							ticket_uuid,
-							message: `豆豆检测到服务器地址 ${ipPort} 为\n${serverType}`,
-							author_type: 'bot',
-							author_name: '豆豆'
+							message: `豆豆检测到服务器地址 ${ipPort} 为\n${serverType}\n（点击复制IP）`,
+							copy_content: ipPort,
+							author_name: 'System',
+							visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
 						});
 					} else {
-						addTicketMessage({
+						addAdminOnlyMessage({
 							ticket_uuid,
 							message: `豆豆检测到服务器地址 ${ipPort} 不属于任何已知的服务器社区`,
-							author_type: 'bot',
-							author_name: '豆豆'
+							author_type: 'system',
+							author_name: 'System'
 						});
 					}
 				} catch {}

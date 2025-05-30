@@ -3,45 +3,52 @@ import { volatile } from '$lib/server/keyv';
 import type { Handler } from '../protocol/types';
 import crypto from 'node:crypto';
 
-export const handleReport: Handler = async ({ reply, platform, uid, mode }) => {
-	if (platform === 'web') return await reply.text('？？？');
+export const handleReport: (type: string) => Handler =
+	(type) =>
+	async ({ reply, platform, uid, mode }) => {
+		if (platform === 'web') return await reply.text('？？？');
 
-	const allow = persistent.get<boolean>(`bot:allow-link:${platform}:DIRECT`);
+		const allow = persistent.get<boolean>(`bot:allow-link:${platform}:DIRECT`);
 
-	if (!allow) {
-		return await reply.text(
-			'豆豆暂时不能处理举报，请手动前往 DDNet 工具箱 中寻找举报方式，或直接联系群管理员。'
-		);
-	}
-
-	if (mode != 'DIRECT') {
-		return await reply.link({
-			label: '🔗 举报系统',
-			prefix: '举报系统 ->',
-			url: 'https://teeworlds.cn/ddnet/tickets'
-		});
-	}
-
-	const bytes = crypto.randomBytes(20);
-	const token = bytes.toString('hex');
-	await volatile.set(
-		`ticket-token:${token}`,
-		{
-			platform,
-			uid,
-			valid_until: Date.now() + 10 * 60 * 1000
-		},
-		10 * 60 * 1000
-	);
-	return await reply.textLink(
-		`为你生成了举报连接，请点开提供详细信息。有效期 10 分钟。`,
-		{
-			label: '🔗 举报链接',
-			prefix: '举报链接：',
-			url: `https://teeworlds.cn/goto#r${encodeURIComponent(token)}`
+		if (!allow) {
+			return await reply.text(
+				`豆豆暂时不能处理${type}，请手动前往 DDNet 工具箱 中寻找举报方式，或直接联系群管理员。`
+			);
 		}
-	);
-};
+
+		if (mode != 'DIRECT') {
+			if (type === '举报') {
+				return await reply.link({
+					label: '🔗 举报系统',
+					prefix: '举报系统 ->',
+					url: 'https://teeworlds.cn/ddnet/tickets'
+				});
+			} else {
+				return await reply.link({
+					label: '🔗 反馈系统',
+					prefix: '反馈系统 ->',
+					url: 'https://teeworlds.cn/ddnet/tickets'
+				});
+			}
+		}
+
+		const bytes = crypto.randomBytes(20);
+		const token = bytes.toString('hex');
+		await volatile.set(
+			`ticket-token:${token}`,
+			{
+				platform,
+				uid,
+				valid_until: Date.now() + 10 * 60 * 1000
+			},
+			10 * 60 * 1000
+		);
+		return await reply.textLink(`为你生成了${type}连接，请点开提供详细信息。有效期 10 分钟。`, {
+			label: `🔗 ${type}链接`,
+			prefix: `${type}链接：`,
+			url: `https://teeworlds.cn/goto#r${encodeURIComponent(token)}`
+		});
+	};
 
 export const handleVerify: Handler = async ({ reply, platform, uid, mode }) => {
 	if (platform === 'web') return await reply.text('？？？');

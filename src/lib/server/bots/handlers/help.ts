@@ -11,7 +11,9 @@ export const handleHelp: Handler = async ({ reply, platform }) => {
 			`  ${prefix}找人 <玩家名> - 查询玩家在线状态`,
 			`  ${prefix}状态 - 查询服务器运行状态`,
 			`  ${prefix}绑定 <玩家名> - 绑定玩家名`,
-			`  ${prefix}举报 - 发起举报（仅私聊）`,
+			`  ${prefix}举报 - 举报游戏内玩家`,
+			`  ${prefix}申诉 - 申请解封游戏服务器封禁`,
+			`  ${prefix}改名 - 提交改名转分申请`,
 			'更多功能请使用工具箱'
 		].join('\n'),
 		{
