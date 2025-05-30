@@ -6,9 +6,15 @@
 	import type { TicketEvent } from '$lib/server/realtime/tickets';
 	import { source } from 'sveltekit-sse';
 	import { customSource } from '$lib/controlable-sse.js';
-	import { afterNavigate, beforeNavigate, goto, replaceState } from '$app/navigation';
+	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import Fa from 'svelte-fa';
-	import { faXmark, faVolumeHigh, faVolumeLow } from '@fortawesome/free-solid-svg-icons';
+	import {
+		faXmark,
+		faVolumeHigh,
+		faVolumeLow,
+		faChevronDown,
+		faChevronRight
+	} from '@fortawesome/free-solid-svg-icons';
 	import { browser } from '$app/environment';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { page } from '$app/state';
@@ -16,6 +22,8 @@
 	const { data } = $props();
 
 	let adminConnectionCount = $state(data.adminConnectionCount);
+	let connectedAdmins = $state(data.connectedAdmins || []);
+	let isAdminListCollapsed = $state(true);
 	let userSubscribedTickets = $state(data.userSubscribedTickets);
 	let tickets: (Ticket & { isNew?: boolean })[] = $state(data.tickets);
 
@@ -76,6 +84,13 @@
 	const saveReadStatus = () => {
 		if (!browser) return;
 		try {
+			// clear out tickets that are 14 days old or known to be closed
+			for (const ticketUuid in ticketReadStatus) {
+				const ticket = tickets.find((t) => t.uuid === ticketUuid);
+				if (!ticket || Date.now() - ticket.updated_at > 14 * 24 * 60 * 60 * 1000) {
+					delete ticketReadStatus[ticketUuid];
+				}
+			}
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(ticketReadStatus));
 		} catch (error) {
 			console.error('Error saving ticket read status:', error);
@@ -91,6 +106,8 @@
 
 	// Check if ticket has unread messages
 	const hasUnreadMessages = (ticket: Ticket): boolean => {
+		if (!browser) return false;
+
 		// Don't track unread for closed tickets
 		if (ticket.status === 'closed') return false;
 
@@ -306,6 +323,11 @@
 					case 'admin_connection_count_updated':
 						if (ticketEvent.data.adminConnectionCount !== undefined) {
 							adminConnectionCount = ticketEvent.data.adminConnectionCount;
+						}
+						break;
+					case 'admin_list_updated':
+						if (ticketEvent.data.connectedAdmins !== undefined) {
+							connectedAdmins = ticketEvent.data.connectedAdmins;
 						}
 						break;
 					case 'status_changed':
@@ -793,6 +815,7 @@
 		tickets = data.tickets;
 		userSubscribedTickets = data.userSubscribedTickets;
 		adminConnectionCount = data.adminConnectionCount;
+		connectedAdmins = data.connectedAdmins || [];
 		offset = data.offset;
 		totalCount = data.totalCount;
 
@@ -839,7 +862,13 @@
 
 			<div class="flex flex-1 flex-col items-end gap-1 text-sm text-slate-400">
 				<div class="flex items-center gap-3">
-					<span>管理: {adminConnectionCount}</span>
+					<button
+						onclick={() => (isAdminListCollapsed = !isAdminListCollapsed)}
+						class="flex items-center gap-1 transition-colors hover:text-slate-200"
+					>
+						<span>管理: {adminConnectionCount}</span>
+						<Fa icon={isAdminListCollapsed ? faChevronRight : faChevronDown} size="xs" />
+					</button>
 					{#if unreadCount() > 0}
 						<span class="text-red-400">未读: {unreadCount()}</span>
 					{/if}
@@ -859,6 +888,24 @@
 				<Fa icon={notificationVolume <= 0.3 ? faVolumeLow : faVolumeHigh} size="sm" />
 			</button>
 		</div>
+
+		<!-- Collapsible Admin List -->
+		{#if !isAdminListCollapsed && connectedAdmins.length > 0}
+			<div class="max-h-[25vh] overflow-y-auto rounded-lg bg-slate-900 px-2 py-2">
+				<div class="mb-1 text-xs text-slate-400">在线管理员:</div>
+				<div class="space-y-1">
+					{#each connectedAdmins as admin}
+						<div class="flex items-center gap-2 text-sm">
+							<div class="h-2 w-2 rounded-full bg-green-500"></div>
+							<span class="text-slate-300">{admin.username}</span>
+							{#if admin.uuid === data.user?.uuid}
+								<span class="text-xs text-slate-500">(你)</span>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
 		<div class="flex items-center justify-between">
 			<div class="text-xs text-slate-400">
 				显示 {offset + 1} - {Math.min(offset + data.limit, totalCount)} 条，共 {totalCount}

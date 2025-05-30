@@ -38,6 +38,8 @@ export const load = (async ({ locals, url, setHeaders }) => {
 		limit,
 		offset,
 		userSubscribedTickets,
-		adminConnectionCount: connectionStats.adminCount
+		adminConnectionCount: connectionStats.adminCount,
+		connectedAdmins: connectionStats.connectedAdmins,
+		user: locals.user
 	};
 }) satisfies PageServerLoad;

@@ -11,6 +11,7 @@ import {
 	getTicket,
 	MESSAGE_VISIBILITY
 } from '../db/tickets';
+import { getUserByUuid } from '../db/users';
 
 // Type for the emit function from sveltekit-sse
 type EmitFunction = (eventName: string, data: string) => { error?: false | Error };
@@ -38,6 +39,7 @@ export type TicketEvent =
 	| StatusChangedEvent
 	| AttachmentAddedEvent
 	| AdminConnectionCountUpdatedEvent
+	| AdminListUpdatedEvent
 	| AdminSubscriptionChangedEvent
 	| UserBannedEvent
 	| UserUnbannedEvent;
@@ -92,6 +94,13 @@ export interface AdminConnectionCountUpdatedEvent {
 	};
 }
 
+export interface AdminListUpdatedEvent {
+	type: 'admin_list_updated';
+	data: {
+		connectedAdmins: Array<{ uuid: string; username: string }>;
+	};
+}
+
 export interface AdminSubscriptionChangedEvent {
 	type: 'admin_subscription_changed';
 	data: {
@@ -122,14 +131,16 @@ export interface UserUnbannedEvent {
 export const addAdminConnection = (emit: EmitFunction, userUuid: string) => {
 	adminConnections.set(emit, userUuid);
 
-	// Notify about connection count update
+	// Notify about connection count and admin list update
 	notifyAdminConnectionCountUpdated();
+	notifyAdminListUpdated();
 
 	// Clean up when connection closes
 	const cleanup = () => {
 		adminConnections.delete(emit);
-		// Notify about connection count update after cleanup
+		// Notify about connection count and admin list update after cleanup
 		notifyAdminConnectionCountUpdated();
+		notifyAdminListUpdated();
 	};
 
 	return cleanup;
@@ -357,6 +368,20 @@ export const notifyAttachmentAdded = (attachment: TicketAttachment, ticket: Tick
 	broadcastToAdmins(event);
 };
 
+export const getConnectedAdmins = () => {
+	const uniqueAdminUuids = new Set(Array.from(adminConnections.values()));
+	const connectedAdmins: Array<{ uuid: string; username: string }> = [];
+
+	for (const uuid of uniqueAdminUuids) {
+		const user = getUserByUuid(uuid);
+		if (user) {
+			connectedAdmins.push({ uuid: user.uuid, username: user.username });
+		}
+	}
+
+	return connectedAdmins;
+};
+
 export const notifyAdminConnectionCountUpdated = () => {
 	const event: TicketEvent = {
 		type: 'admin_connection_count_updated',
@@ -364,6 +389,16 @@ export const notifyAdminConnectionCountUpdated = () => {
 	};
 
 	// Notify all admins about connection count update
+	broadcastToAdmins(event);
+};
+
+export const notifyAdminListUpdated = () => {
+	const event: TicketEvent = {
+		type: 'admin_list_updated',
+		data: { connectedAdmins: getConnectedAdmins() }
+	};
+
+	// Notify all admins about admin list update
 	broadcastToAdmins(event);
 };
 
@@ -606,6 +641,7 @@ export const getConnectionStats = () => {
 	return {
 		adminConnections: adminConnections.size,
 		adminCount: new Set(Array.from(adminConnections.values())).size,
+		connectedAdmins: getConnectedAdmins(),
 		ticketConnections: Array.from(ticketConnections.entries()).map(([uuid, connections]) => ({
 			uuid,
 			connections: connections.size

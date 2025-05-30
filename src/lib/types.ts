@@ -9,5 +9,6 @@ export const PERMISSIONS = [
 	'GROUP_SETTINGS',
 	'REGISTER',
 	'CHANNEL_SETTINGS',
-	'TICKETS'
+	'TICKETS',
+	'POSTING'
 ] as const;

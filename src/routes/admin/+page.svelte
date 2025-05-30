@@ -47,6 +47,13 @@
 	</div>
 {/if}
 
+{#if hasPermission('POSTING')}
+	<div class="mt-6">
+		<ToolboxButton href="/admin/qq-threads">QQ 机器人发帖</ToolboxButton>
+		<div class="text-semibold">使用机器人在 QQ 频道发布帖子</div>
+	</div>
+{/if}
+
 {#if hasPermission('CHANNEL_SETTINGS')}
 	<div class="mt-6">
 		<ToolboxButton href="/admin/roles">角色管理</ToolboxButton>

@@ -594,6 +594,8 @@
 										群组设置管理权限
 									{:else if permission === 'CHANNEL_SETTINGS'}
 										频道设置管理权限
+									{:else if permission === 'POSTING'}
+										QQ 机器人发帖权限
 									{:else}
 										{permission} 权限
 									{/if}
