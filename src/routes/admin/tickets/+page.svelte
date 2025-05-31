@@ -1147,14 +1147,15 @@
 		{/if}
 
 		<!-- Close Button for lg+ screens -->
-
-		<button
-			onclick={closeTicketPanel}
-			class="fixed right-2 top-16 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 p-2 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
-			aria-label="关闭面板"
-		>
-			<Fa icon={faXmark} />
-		</button>
+		{#if selectedTicket}
+			<button
+				onclick={closeTicketPanel}
+				class="absolute right-2 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 p-2 text-slate-400 hover:bg-slate-700 hover:text-slate-200 sm:top-11"
+				aria-label="关闭面板"
+			>
+				<Fa icon={faXmark} />
+			</button>
+		{/if}
 	</div>
 </div>
 
