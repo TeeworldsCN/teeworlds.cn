@@ -3,7 +3,7 @@ import { sqlite } from '../sqlite';
 // yearly table
 sqlite
 	.query(
-		'CREATE TABLE IF NOT EXISTS yearly (name VARCHAR(255) PRIMARY KEY, year INTEGER, data BLOB)'
+		'CREATE TABLE IF NOT EXISTS yearly (name TEXT PRIMARY KEY, year INTEGER, data BLOB)'
 	)
 	.run();
 

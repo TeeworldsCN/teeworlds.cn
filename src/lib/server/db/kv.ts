@@ -1,7 +1,7 @@
 import { sqlite } from '../sqlite';
 
 // kv
-sqlite.query('CREATE TABLE IF NOT EXISTS kv (key VARCHAR(255) PRIMARY KEY, value TEXT)').run();
+sqlite.query('CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT)').run();
 
 export const persistent = {
 	get: <T = any>(key: string) => {

@@ -72,7 +72,7 @@ export class KeyvSqlite extends EventEmitter implements KeyvStoreAdapter {
 
 		// Create table with expire_at column
 		const createTable = `CREATE TABLE IF NOT EXISTS ${this.opts.table}(
-			key VARCHAR(${Number(this.opts.keySize)}) PRIMARY KEY,
+			key TEXT PRIMARY KEY,
 			value TEXT,
 			expire_at INTEGER
 		)`;
@@ -219,7 +219,12 @@ export class KeyvSqlite extends EventEmitter implements KeyvStoreAdapter {
 			currentTime: number
 		): AsyncGenerator<[string, string], void, unknown> {
 			const select = `SELECT * FROM ${options.table!} WHERE key LIKE ? AND (expire_at IS NULL OR expire_at > ?) LIMIT ? OFFSET ?`;
-			const iterator = await query(select, [`${namespace ? namespace + ':' : ''}%`, currentTime, limit, offset]);
+			const iterator = await query(select, [
+				`${namespace ? namespace + ':' : ''}%`,
+				currentTime,
+				limit,
+				offset
+			]);
 			const entries = [...iterator];
 			if (entries.length === 0) {
 				return;

@@ -25,11 +25,11 @@ export const MAX_OPEN_TICKETS_PER_USER = 3;
 sqlite
 	.query(
 		`CREATE TABLE IF NOT EXISTS tickets (
-			uuid VARCHAR(36) PRIMARY KEY,
+			uuid TEXT PRIMARY KEY,
 			title TEXT NOT NULL,
-			status VARCHAR(20) DEFAULT 'open',
-			visitor_name VARCHAR(255),
-			author_uid VARCHAR(255),
+			status TEXT DEFAULT 'open',
+			visitor_name TEXT,
+			author_uid TEXT,
 			attachment_limit INTEGER DEFAULT 4,
 			created_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL
@@ -41,8 +41,8 @@ sqlite
 sqlite
 	.query(
 		`CREATE TABLE IF NOT EXISTS ticket_subscriptions (
-			ticket_uuid VARCHAR(36) NOT NULL,
-			user_uuid VARCHAR(36) NOT NULL,
+			ticket_uuid TEXT NOT NULL,
+			user_uuid TEXT NOT NULL,
 			subscribed_at INTEGER NOT NULL,
 			FOREIGN KEY (ticket_uuid) REFERENCES tickets (uuid) ON DELETE CASCADE,
 			FOREIGN KEY (user_uuid) REFERENCES user (uuid) ON DELETE CASCADE,
@@ -55,11 +55,11 @@ sqlite
 sqlite
 	.query(
 		`CREATE TABLE IF NOT EXISTS ticket_messages (
-			uuid VARCHAR(36) PRIMARY KEY,
-			ticket_uuid VARCHAR(36) NOT NULL,
+			uuid TEXT PRIMARY KEY,
+			ticket_uuid TEXT NOT NULL,
 			message TEXT NOT NULL,
-			author_type VARCHAR(20) NOT NULL,
-			author_name VARCHAR(255) NOT NULL,
+			author_type TEXT NOT NULL,
+			author_name TEXT NOT NULL,
 			visibility INTEGER DEFAULT 0,
 			created_at INTEGER NOT NULL,
 			FOREIGN KEY (ticket_uuid) REFERENCES tickets (uuid) ON DELETE CASCADE
@@ -78,14 +78,14 @@ try {
 sqlite
 	.query(
 		`CREATE TABLE IF NOT EXISTS ticket_attachments (
-			uuid VARCHAR(36) PRIMARY KEY,
-			ticket_uuid VARCHAR(36) NOT NULL,
-			filename VARCHAR(255) NOT NULL,
-			original_filename VARCHAR(255) NOT NULL,
+			uuid TEXT PRIMARY KEY,
+			ticket_uuid TEXT NOT NULL,
+			filename TEXT NOT NULL,
+			original_filename TEXT NOT NULL,
 			file_size INTEGER NOT NULL,
-			mime_type VARCHAR(100) NOT NULL,
+			mime_type TEXT NOT NULL,
 			file_data BLOB NOT NULL,
-			uploaded_by VARCHAR(255) NOT NULL,
+			uploaded_by TEXT NOT NULL,
 			uploaded_at INTEGER NOT NULL,
 			FOREIGN KEY (ticket_uuid) REFERENCES tickets (uuid) ON DELETE CASCADE
 		)`
@@ -96,9 +96,9 @@ sqlite
 sqlite
 	.query(
 		`CREATE TABLE IF NOT EXISTS ticket_bans (
-			uuid VARCHAR(36) PRIMARY KEY,
-			author_uid VARCHAR(255) NOT NULL,
-			banned_by VARCHAR(255) NOT NULL,
+			uuid TEXT PRIMARY KEY,
+			author_uid TEXT NOT NULL,
+			banned_by TEXT NOT NULL,
 			ban_duration_days INTEGER NOT NULL,
 			banned_at INTEGER NOT NULL,
 			expires_at INTEGER NOT NULL,

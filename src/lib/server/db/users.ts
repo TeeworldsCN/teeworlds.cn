@@ -5,7 +5,7 @@ import { sqlite } from '../sqlite';
 // user table
 sqlite
 	.query(
-		'CREATE TABLE IF NOT EXISTS user (uuid VARCHAR(36) PRIMARY KEY, username VARCHAR(255) UNIQUE, version INTEGER, hash TEXT, data TEXT, bind_name VARCHAR(255))'
+		'CREATE TABLE IF NOT EXISTS user (uuid TEXT PRIMARY KEY, username TEXT UNIQUE, version INTEGER, hash TEXT, data TEXT, bind_name TEXT)'
 	)
 	.run();
 
