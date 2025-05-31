@@ -5,7 +5,7 @@ import { createUser, getUserByUsername, updateUserBindName } from '$lib/server/d
 import { error } from '@sveltejs/kit';
 
 export const POST: RequestHandler = async ({ url, cookies }) => {
-	const name = url.searchParams.get('name');
+	const name = url.searchParams.get('name')?.slice(0, 16);
 	if (!name) {
 		return new Response('Bad Request', { status: 400 });
 	}

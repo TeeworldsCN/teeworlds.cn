@@ -2,7 +2,7 @@ import { createUser, updateUserBindName } from '$lib/server/db/users';
 import type { Handler } from '../protocol/types';
 
 export const handleBind: Handler = async ({ uid, user, reply, args }) => {
-	const playerName = args.trim();
+	const playerName = args.trim().slice(0, 16);
 
 	if (!playerName) {
 		if (user?.bind_name) {

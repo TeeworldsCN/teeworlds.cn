@@ -22,7 +22,7 @@
 	let images: TicketImageUrl[] = $state([]);
 	let currentName: string | null = $state(null);
 
-	const playerName = $derived(currentName || data.playerName);
+	const playerName = $derived((currentName || data.playerName).slice(0, 16));
 
 	const hideMessage = (messageId: string | number) => {
 		const selectionMessage = messages.find((m) => m.uuid == messageId);
