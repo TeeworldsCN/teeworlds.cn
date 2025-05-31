@@ -22,7 +22,7 @@
 	} from '@fortawesome/free-solid-svg-icons';
 	import { browser } from '$app/environment';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import { tippy } from '$lib/tippy';
 	import { fade } from 'svelte/transition';
 
@@ -839,6 +839,7 @@
 	};
 
 	const handleRefresh = () => {
+		tickets = [];
 		goto(`?offset=${offset}&limit=${data.limit}&show_expired=${showExpired}`, {
 			invalidateAll: true
 		});
@@ -1024,86 +1025,69 @@
 		</div>
 		<div class="scrollbar-subtle flex-1 overflow-auto">
 			<div class="space-y-1">
-				{#if tickets}
-					<div in:fade>
-						{#each tickets as ticket}
-							{#key ticket.uuid}
-								<div
-									class="rounded-lg border bg-slate-900 px-2 py-1 transition-all duration-300 motion-duration-500 hover:border-blue-400"
-									class:border-blue-500={ticket.uuid === selectedTicket?.uuid}
-									class:border-slate-700={ticket.uuid !== selectedTicket?.uuid}
-									class:ring-2={animatingTickets.has(ticket.uuid)}
-									class:ring-red-400={animatingTickets.has(ticket.uuid)}
-									class:scale-95={animatingTickets.has(ticket.uuid)}
-									class:-motion-translate-y-in-100={ticket.isNew}
-								>
-									<button onclick={() => openTicketPanel(ticket)} class="w-full text-left">
-										<div class="flex items-start justify-between gap-4">
-											<div class="min-w-0 flex-1">
-												<div class="mb-1 flex items-center gap-2">
-													<div class="flex items-center gap-1">
-														<h3 class="truncate text-sm font-medium text-slate-200">
-															{ticket.title}
-														</h3>
-														{#if hasUnreadMessages(ticket)}
-															<div class="h-2 w-2 flex-shrink-0 rounded-full bg-red-500"></div>
-														{/if}
-													</div>
-													<span class="flex-shrink-0 text-xs text-slate-500">
-														{ticket.visitor_name || '匿名用户'}
-													</span>
-												</div>
-												<div class="flex items-center gap-4 text-xs text-slate-400">
-													<span>ID: {ticket.uuid.slice(0, 8)}</span>
-													<span>{formatTimeAgo(ticket.updated_at)}</span>
-												</div>
-											</div>
-											<div class="flex-shrink-0">
-												{#snippet tag(name: string, classes: string)}
-													<span
-														class="inline-flex items-center rounded-lg px-2 py-1 text-xs font-medium {classes}"
-													>
-														{name}
-													</span>
-												{/snippet}
-												{#if isUserSubscribedToTicket(ticket.uuid) && ticket.status !== 'closed'}
-													{@render tag(
-														'已接单',
-														'border  border-green-700 bg-green-950 text-green-100'
-													)}
-												{:else if ticket.status === 'open'}
-													{@render tag(
-														'待处理',
-														'border border-yellow-600 bg-yellow-700 text-white'
-													)}
-												{:else if ticket.status === 'in_progress'}
-													{@render tag(
-														'处理中',
-														'border border-blue-600 bg-blue-950 text-blue-100'
-													)}
-												{:else if ticket.updated_at < Date.now() - 3 * 24 * 60 * 60 * 1000}
-													{@render tag(
-														'已过期',
-														'border border-slate-800 bg-slate-900 text-slate-700'
-													)}
-												{:else}
-													{@render tag(
-														'已关闭',
-														'border border-slate-800 bg-slate-900 text-slate-500'
-													)}
+				{#each tickets as ticket}
+					{#key ticket.uuid}
+						<div
+							class="rounded-lg border bg-slate-900 px-2 py-1 transition-all duration-300 motion-duration-500 hover:border-blue-400"
+							class:border-blue-500={ticket.uuid === selectedTicket?.uuid}
+							class:border-slate-700={ticket.uuid !== selectedTicket?.uuid}
+							class:ring-2={animatingTickets.has(ticket.uuid)}
+							class:ring-red-400={animatingTickets.has(ticket.uuid)}
+							class:scale-95={animatingTickets.has(ticket.uuid)}
+							class:-motion-translate-y-in-100={ticket.isNew}
+						>
+							<button onclick={() => openTicketPanel(ticket)} class="w-full text-left">
+								<div class="flex items-start justify-between gap-4">
+									<div class="min-w-0 flex-1">
+										<div class="mb-1 flex items-center gap-2">
+											<div class="flex items-center gap-1">
+												<h3 class="truncate text-sm font-medium text-slate-200">
+													{ticket.title}
+												</h3>
+												{#if hasUnreadMessages(ticket)}
+													<div class="h-2 w-2 flex-shrink-0 rounded-full bg-red-500"></div>
 												{/if}
 											</div>
+											<span class="flex-shrink-0 text-xs text-slate-500">
+												{ticket.visitor_name || '匿名用户'}
+											</span>
 										</div>
-									</button>
+										<div class="flex items-center gap-4 text-xs text-slate-400">
+											<span>ID: {ticket.uuid.slice(0, 8)}</span>
+											<span>{formatTimeAgo(ticket.updated_at)}</span>
+										</div>
+									</div>
+									<div class="flex-shrink-0">
+										{#snippet tag(name: string, classes: string)}
+											<span
+												class="inline-flex items-center rounded-lg px-2 py-1 text-xs font-medium {classes}"
+											>
+												{name}
+											</span>
+										{/snippet}
+										{#if isUserSubscribedToTicket(ticket.uuid) && ticket.status !== 'closed'}
+											{@render tag(
+												'已接单',
+												'border  border-green-700 bg-green-950 text-green-100'
+											)}
+										{:else if ticket.status === 'open'}
+											{@render tag('待处理', 'border border-yellow-600 bg-yellow-700 text-white')}
+										{:else if ticket.status === 'in_progress'}
+											{@render tag('处理中', 'border border-blue-600 bg-blue-950 text-blue-100')}
+										{:else if ticket.updated_at < Date.now() - 3 * 24 * 60 * 60 * 1000}
+											{@render tag('已过期', 'border border-slate-800 bg-slate-900 text-slate-700')}
+										{:else}
+											{@render tag('已关闭', 'border border-slate-800 bg-slate-900 text-slate-500')}
+										{/if}
+									</div>
 								</div>
-							{/key}
-						{/each}
-					</div>
-				{/if}
-
+							</button>
+						</div>
+					{/key}
+				{/each}
 				{#if tickets.length === 0}
 					<div class="py-12 text-center">
-						<p class="text-slate-400">暂无反馈</p>
+						<p class="text-slate-400">{navigating ? '加载中...' : '暂无反馈'}</p>
 					</div>
 				{/if}
 			</div>
