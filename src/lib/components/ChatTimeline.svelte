@@ -321,6 +321,7 @@
 									class="mx-auto overflow-hidden rounded border border-slate-600 transition-colors group-hover:border-slate-500"
 								>
 									<img
+										loading="lazy"
 										src={`/api/tickets/download/${attachment.uuid}`}
 										alt={attachment.original_filename}
 										class="h-36 w-36 object-contain"
