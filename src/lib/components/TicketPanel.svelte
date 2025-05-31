@@ -20,6 +20,7 @@
 		onUnsubscribe?: (ticketUuid: string) => Promise<void> | void;
 		onCloseTicket?: () => Promise<void> | void; // For closing tickets (both admin and visitor)
 		onReopenTicket?: () => Promise<void> | void; // For admins to reopen tickets
+		onDeleteTicket?: (ticketUuid: string) => Promise<void> | void; // For admins to delete tickets
 		onIncreaseAttachmentLimit?: (ticketUuid: string) => Promise<void> | void; // For admins to increase attachment limits
 		onBanUser?: (authorUid: string, duration: number, reason?: string) => Promise<void> | void; // For admins to ban users
 		onUnbanUser?: (authorUid: string) => Promise<void> | void; // For admins to unban users
@@ -44,6 +45,7 @@
 		onUnsubscribe,
 		onCloseTicket,
 		onReopenTicket,
+		onDeleteTicket,
 		onIncreaseAttachmentLimit,
 		onBanUser,
 		onUnbanUser,
@@ -235,21 +237,37 @@
 			banReason = '';
 		} catch (err) {
 			console.error('Failed to ban user:', err);
-			alert('封禁用户失败');
+			alert('拉黑用户失败');
 		}
 	};
 
 	const handleUnbanUser = async () => {
 		if (!onUnbanUser || !ticket.author_uid) return;
 
-		const shouldUnban = confirm('确定要解除此用户的封禁吗？');
+		const shouldUnban = confirm('确定要解除此用户的拉黑吗？');
 		if (!shouldUnban) return;
 
 		try {
 			await onUnbanUser(ticket.author_uid);
 		} catch (err) {
 			console.error('Failed to unban user:', err);
-			alert('解除封禁失败');
+			alert('解除拉黑失败');
+		}
+	};
+
+	const handleDeleteTicket = async () => {
+		if (!onDeleteTicket || !ticket.uuid) return;
+
+		const shouldDelete = confirm(
+			'确定要删除这个工单吗？\n\n删除后将无法恢复，所有相关的消息和附件都会被永久删除。'
+		);
+		if (!shouldDelete) return;
+
+		try {
+			await onDeleteTicket(ticket.uuid);
+		} catch (err) {
+			console.error('Failed to delete ticket:', err);
+			alert('删除工单失败');
 		}
 	};
 
@@ -351,7 +369,7 @@
 				{#if ticket.visitor_name}
 					<div>
 						{#if ticket.author_banned}
-							<span class="text-red-400" in:fade>(封禁中)</span>
+							<span class="text-red-400" in:fade>(拉黑中)</span>
 						{/if}
 						创建者: {ticket.visitor_name}
 					</div>
@@ -477,18 +495,27 @@
 								<button
 									onclick={() => (showBanDialog = true)}
 									class="rounded bg-red-900 px-2 py-1 text-xs text-white hover:bg-red-800"
-									use:tippy={{ content: '封禁用户创建反馈' }}
+									use:tippy={{ content: '被拉黑用户无法创建反馈和回复' }}
 								>
-									封禁
+									拉黑
 								</button>
 							{/if}
 							{#if onUnbanUser && ticket.author_uid && ticket.author_banned}
 								<button
 									onclick={handleUnbanUser}
 									class="rounded bg-green-900 px-2 py-1 text-xs text-white hover:bg-green-800"
-									use:tippy={{ content: '解除用户封禁' }}
+									use:tippy={{ content: '解除用户拉黑' }}
 								>
 									解封
+								</button>
+							{/if}
+							{#if onDeleteTicket}
+								<button
+									onclick={handleDeleteTicket}
+									class="rounded bg-red-950 px-2 py-1 text-xs text-white hover:bg-red-900"
+									use:tippy={{ content: '永久删除工单及所有相关数据' }}
+								>
+									删除
 								</button>
 							{/if}
 						</div>
@@ -503,11 +530,11 @@
 {#if showBanDialog}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
 		<div class="w-full max-w-md rounded-lg bg-slate-800 p-6">
-			<h3 class="mb-4 text-lg font-medium text-slate-200">封禁用户</h3>
+			<h3 class="mb-4 text-lg font-medium text-slate-200">拉黑用户</h3>
 			<div class="space-y-4">
 				<div>
 					<label for="ban-duration" class="block text-sm font-medium text-slate-300">
-						封禁时长 (天)
+						拉黑时长 (天)
 					</label>
 					<input
 						id="ban-duration"
@@ -521,12 +548,12 @@
 				</div>
 				<div>
 					<label for="ban-reason" class="block text-sm font-medium text-slate-300">
-						封禁原因 (可选)
+						拉黑原因 (可选)
 					</label>
 					<textarea
 						id="ban-reason"
 						bind:value={banReason}
-						placeholder="请输入封禁原因..."
+						placeholder="请输入拉黑原因..."
 						rows="3"
 						class="mt-1 block w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
 					></textarea>
@@ -543,7 +570,7 @@
 					onclick={handleBanUser}
 					class="rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-500"
 				>
-					确认封禁
+					确认拉黑
 				</button>
 			</div>
 		</div>

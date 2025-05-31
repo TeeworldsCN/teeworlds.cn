@@ -8,6 +8,7 @@ import {
 	unsubscribeFromTicket,
 	isUserSubscribed,
 	increaseAttachmentLimit,
+	deleteTicket,
 	type CreateTicketData,
 	type AddMessageData,
 	addTicketMessage,
@@ -336,6 +337,11 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 			let author_name: string;
 			const author_type = as;
 
+			// can't reply to closed tickets after one day
+			if (ticket.status === 'closed' && Date.now() - ticket.updated_at > TICKET_EXPIRE_TIME) {
+				return error(403, '工单已过期');
+			}
+
 			if (as === 'admin') {
 				// Use admin authentication (locals.user)
 				isAdmin = hasPermission(locals.user, 'TICKETS');
@@ -346,11 +352,6 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 			} else {
 				// Use visitor authentication (cookie JWT)
 				isAdmin = false;
-
-				// can't reply to closed tickets after one day
-				if (ticket.status === 'closed' && Date.now() - ticket.updated_at > TICKET_EXPIRE_TIME) {
-					return error(403, 'Forbidden');
-				}
 
 				// Check authentication via ticket JWT token
 				const userInfo = getTicketUserInfo(cookies);
@@ -449,7 +450,7 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 
 			// Skip if expired
 			if (oldStatus === 'closed' && Date.now() - ticket.updated_at > TICKET_EXPIRE_TIME) {
-				return error(401, 'Ticket expired');
+				return error(401, '工单已过期');
 			}
 
 			const adminName = locals.user?.username || '管理';
@@ -548,7 +549,7 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 
 			// Skip if expired
 			if (Date.now() - ticket.updated_at > TICKET_EXPIRE_TIME) {
-				return error(401, 'Ticket expired');
+				return error(401, '工单已过期');
 			}
 
 			const adminName = locals.user?.username || '管理';
@@ -668,6 +669,11 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 				return error(404, 'Ticket not found');
 			}
 
+			// Can't increase limit on expired tickets
+			if (ticket.status === 'closed' && Date.now() - ticket.updated_at > TICKET_EXPIRE_TIME) {
+				return error(401, '工单已过期');
+			}
+
 			const adminName = locals.user?.username || '管理';
 			const success = increaseAttachmentLimit(ticket_uuid, adminName);
 
@@ -761,6 +767,34 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 			const activeBan = getUserActiveBan(author_uid);
 
 			return json({ ban: activeBan });
+		}
+
+		case 'delete_ticket': {
+			// Only users with SUPER permission can delete tickets
+			if (!hasPermission(locals.user, 'SUPER')) {
+				return error(403, 'Forbidden');
+			}
+
+			const { ticket_uuid } = body;
+
+			if (!ticket_uuid) {
+				return error(400, 'Ticket UUID is required');
+			}
+
+			// Check if ticket exists
+			const ticket = getTicket(ticket_uuid);
+			if (!ticket) {
+				return error(404, 'Ticket not found');
+			}
+
+			const adminName = locals.user?.username || 'Admin';
+			const success = deleteTicket(ticket_uuid, adminName);
+
+			if (!success) {
+				return error(500, 'Failed to delete ticket');
+			}
+
+			return json({ success: true });
 		}
 
 		default:

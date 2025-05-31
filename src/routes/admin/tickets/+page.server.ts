@@ -1,6 +1,8 @@
 import {
 	getAvailableTickets,
 	getAvailableTicketCount,
+	getAllTickets,
+	getAllTicketCount,
 	getUserSubscribedTickets,
 	TICKET_EXPIRE_TIME
 } from '$lib/server/db/tickets';
@@ -20,11 +22,22 @@ export const load = (async ({ locals, url, setHeaders }) => {
 
 	const limit = parseInt(url.searchParams.get('limit') || '50');
 	const offset = parseInt(url.searchParams.get('offset') || '0');
+	const showExpired = url.searchParams.get('show_expired') === 'true';
 
-	const cutoffTime = Date.now() - TICKET_EXPIRE_TIME;
+	let tickets;
+	let totalCount;
 
-	const tickets = getAvailableTickets(cutoffTime, limit, offset);
-	const totalCount = getAvailableTicketCount(cutoffTime);
+	if (showExpired) {
+		// Show all tickets regardless of status or time
+		tickets = getAllTickets(limit, offset);
+		totalCount = getAllTicketCount();
+	} else {
+		// Show only available tickets (non-closed or recently updated)
+		const cutoffTime = Date.now() - TICKET_EXPIRE_TIME;
+		tickets = getAvailableTickets(cutoffTime, limit, offset);
+		totalCount = getAvailableTicketCount(cutoffTime);
+	}
+
 	const userSubscribedTickets = getUserSubscribedTickets(locals.user.uuid);
 	const connectionStats = getConnectionStats();
 
@@ -39,6 +52,7 @@ export const load = (async ({ locals, url, setHeaders }) => {
 		offset,
 		userSubscribedTickets,
 		connectedAdmins: connectionStats.connectedAdmins,
-		user: locals.user
+		user: locals.user,
+		showExpired
 	};
 }) satisfies PageServerLoad;

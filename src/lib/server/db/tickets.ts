@@ -1,6 +1,7 @@
 import { sqlite } from '../sqlite';
 import {
 	notifyTicketCreated,
+	notifyTicketDeleted,
 	notifyMessageAdded,
 	notifyStatusChanged,
 	notifyAttachmentAdded,
@@ -436,6 +437,15 @@ const getAvailableTicketCountQuery = sqlite.prepare<{ count: number }, [number]>
 	`SELECT COUNT(*) as count FROM tickets WHERE status != 'closed' OR updated_at > ?`
 );
 
+const getAllTicketsQuery = sqlite.prepare<Ticket, [number, number]>(
+	`SELECT uuid, title, status, visitor_name, author_uid, attachment_limit, created_at, updated_at
+	 FROM tickets ORDER BY created_at DESC LIMIT ? OFFSET ?`
+);
+
+const getAllTicketCountQuery = sqlite.prepare<{ count: number }, []>(
+	`SELECT COUNT(*) as count FROM tickets`
+);
+
 const insertTicketAttachmentQuery = sqlite.prepare<
 	unknown,
 	[string, string, string, string, number, string, Uint8Array, string, number]
@@ -451,6 +461,10 @@ const getTicketAttachmentsQuery = sqlite.prepare<TicketAttachmentClient, string>
 
 const deleteTicketAttachmentQuery = sqlite.prepare<unknown, string>(
 	`DELETE FROM ticket_attachments WHERE uuid = ?`
+);
+
+const deleteTicketQuery = sqlite.prepare<unknown, string>(
+	`DELETE FROM tickets WHERE uuid = ?`
 );
 
 const insertTicketSubscriptionQuery = sqlite.prepare<unknown, [string, string, number]>(
@@ -780,6 +794,26 @@ export const getAvailableTicketCount = (cutoffTime: number): number => {
 	}
 };
 
+export const getAllTickets = (limit: number, offset: number): Ticket[] => {
+	try {
+		const tickets = getAllTicketsQuery.all(limit, offset);
+		return tickets;
+	} catch (error) {
+		console.error('Error getting all tickets:', error);
+		return [];
+	}
+};
+
+export const getAllTicketCount = (): number => {
+	try {
+		const result = getAllTicketCountQuery.get();
+		return result?.count || 0;
+	} catch (error) {
+		console.error('Error getting all ticket count:', error);
+		return 0;
+	}
+};
+
 export const addTicketAttachment = (
 	attachment: Omit<TicketAttachment, 'uuid'>
 ): TicketAttachment | null => {
@@ -835,6 +869,29 @@ export const deleteTicketAttachment = (uuid: string): boolean => {
 		return result.changes > 0;
 	} catch (error) {
 		console.error('Error deleting ticket attachment:', error);
+		return false;
+	}
+};
+
+export const deleteTicket = (uuid: string, deletedBy: string): boolean => {
+	try {
+		// Get ticket info before deletion for notifications
+		const ticket = getTicket(uuid);
+		if (!ticket) {
+			return false;
+		}
+
+		const result = deleteTicketQuery.run(uuid);
+
+		if (result.changes > 0) {
+			// Notify about ticket deletion
+			notifyTicketDeleted(ticket, deletedBy);
+			return true;
+		}
+
+		return false;
+	} catch (error) {
+		console.error('Error deleting ticket:', error);
 		return false;
 	}
 };

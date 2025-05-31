@@ -34,6 +34,7 @@ const uidConnectionMap = new Map<string, Set<EmitFunction>>(); // uid -> set of 
 
 export type TicketEvent =
 	| TicketCreateEvent
+	| TicketDeletedEvent
 	| TicketUpdateEvent
 	| MessageAddedEvent
 	| StatusChangedEvent
@@ -48,6 +49,15 @@ export interface TicketCreateEvent {
 	type: 'ticket_created';
 	data: {
 		ticket: Ticket;
+	};
+}
+
+export interface TicketDeletedEvent {
+	type: 'ticket_deleted';
+	data: {
+		ticket_uuid: string;
+		ticket_title: string;
+		deleted_by: string;
 	};
 }
 
@@ -336,6 +346,23 @@ export const notifyTicketCreated = (ticket: Ticket) => {
 
 	// Notify all admins about new ticket
 	broadcastToAdmins(event);
+};
+
+export const notifyTicketDeleted = (ticket: Ticket, deletedBy: string) => {
+	const event: TicketEvent = {
+		type: 'ticket_deleted',
+		data: {
+			ticket_uuid: ticket.uuid,
+			ticket_title: ticket.title,
+			deleted_by: deletedBy
+		}
+	};
+
+	// Notify all admins about ticket deletion
+	broadcastToAdmins(event);
+
+	// Notify any visitors connected to this ticket
+	broadcastToTicket(ticket.uuid, event);
 };
 
 export const notifyMessageAdded = (message: TicketMessage, ticket: Ticket, updated: boolean) => {

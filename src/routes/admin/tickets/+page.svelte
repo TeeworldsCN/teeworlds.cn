@@ -13,11 +13,18 @@
 		faVolumeHigh,
 		faVolumeLow,
 		faChevronDown,
-		faChevronRight
+		faChevronRight,
+		faRefresh,
+		faChevronLeft,
+		faChevronRight as faChevronRightNav,
+		faEyeSlash,
+		faEye
 	} from '@fortawesome/free-solid-svg-icons';
 	import { browser } from '$app/environment';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { page } from '$app/state';
+	import { tippy } from '$lib/tippy';
+	import { fade } from 'svelte/transition';
 
 	const { data } = $props();
 
@@ -25,6 +32,12 @@
 	let isAdminListCollapsed = $state(true);
 	let userSubscribedTickets = $state(data.userSubscribedTickets);
 	let tickets: (Ticket & { isNew?: boolean })[] = $state(data.tickets);
+
+	// Check if current user has SUPER permission for delete functionality
+	const hasSuper = data.user?.data?.permissions?.includes('SUPER') || false;
+
+	// Track whether to show expired tickets
+	let showExpired = $state(data.showExpired);
 
 	let notificationPermission = $state<NotificationPermission>('default');
 	let selectedTicket = $state<Ticket | null>(null);
@@ -86,7 +99,7 @@
 			// clear out tickets that are 14 days old or known to be closed
 			for (const ticketUuid in ticketReadStatus) {
 				const ticket = tickets.find((t) => t.uuid === ticketUuid);
-				if (!ticket || Date.now() - ticket.updated_at > 14 * 24 * 60 * 60 * 1000) {
+				if (ticket && Date.now() - ticket.updated_at > 14 * 24 * 60 * 60 * 1000) {
 					delete ticketReadStatus[ticketUuid];
 				}
 			}
@@ -179,13 +192,14 @@
 			});
 
 			if (!response.ok) {
-				throw new Error('Failed to reopen ticket');
+				const errorMessage = await parseErrorResponse(response);
+				throw new Error(errorMessage);
 			}
 
 			// Status will be updated via SSE
 		} catch (error) {
 			console.error('Error reopening ticket:', error);
-			alertMessage('重开失败');
+			alertMessage(`重开失败: ${error instanceof Error ? error.message : '未知错误'}`);
 		}
 	};
 
@@ -473,6 +487,17 @@
 							);
 						}
 						break;
+					case 'ticket_deleted':
+						{
+							// Delete is prone to desync, so we simply reload the page
+							goto(location.href, { replaceState: true, invalidateAll: true });
+
+							// Close the ticket panel if the deleted ticket is currently selected
+							if (selectedTicket && selectedTicket.uuid === ticketEvent.data.ticket_uuid) {
+								closeTicketPanel();
+							}
+						}
+						break;
 				}
 			} catch (err) {
 				console.error('Error parsing SSE event:', err);
@@ -702,14 +727,15 @@
 			});
 
 			if (!response.ok) {
-				throw new Error('Failed to increase attachment limit');
+				const errorMessage = await parseErrorResponse(response);
+				throw new Error(errorMessage);
 			}
 
 			const result = await response.json();
 			console.log('Attachment limit increased to:', result.newLimit);
 		} catch (error) {
 			console.error('Failed to increase attachment limit:', error);
-			alertMessage('增加附件限制失败');
+			alertMessage('增加附件限制失败: ' + (error instanceof Error ? error.message : '未知错误'));
 		}
 	};
 
@@ -738,10 +764,10 @@
 				result.closedTicketCount > 0 ? `，已自动关闭 ${result.closedTicketCount} 个工单` : '';
 			const disconnectedMessage =
 				result.disconnectedCount > 0 ? `，已强制断开 ${result.disconnectedCount} 个连接` : '';
-			alertMessage(`用户已被封禁 ${duration} 天${closedTicketMessage}${disconnectedMessage}`);
+			alertMessage(`用户已被拉黑 ${duration} 天${closedTicketMessage}${disconnectedMessage}`);
 		} catch (error) {
 			console.error('Failed to ban user:', error);
-			alertMessage('封禁用户失败: ' + (error instanceof Error ? error.message : '未知错误'));
+			alertMessage('拉黑用户失败: ' + (error instanceof Error ? error.message : '未知错误'));
 		}
 	};
 
@@ -761,10 +787,33 @@
 				throw new Error(errorMessage);
 			}
 
-			alertMessage('用户封禁已解除');
+			alertMessage('用户拉黑已解除');
 		} catch (error) {
 			console.error('Failed to unban user:', error);
-			alertMessage('解除封禁失败: ' + (error instanceof Error ? error.message : '未知错误'));
+			alertMessage('解除拉黑失败: ' + (error instanceof Error ? error.message : '未知错误'));
+		}
+	};
+
+	const handleDeleteTicket = async (ticketUuid: string) => {
+		try {
+			const response = await fetch('/api/tickets', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'delete_ticket',
+					ticket_uuid: ticketUuid
+				})
+			});
+
+			if (!response.ok) {
+				const errorMessage = await parseErrorResponse(response);
+				throw new Error(errorMessage);
+			}
+
+			alertMessage('工单已删除');
+		} catch (error) {
+			console.error('Failed to delete ticket:', error);
+			alertMessage('删除工单失败: ' + (error instanceof Error ? error.message : '未知错误'));
 		}
 	};
 
@@ -777,12 +826,27 @@
 		if (newOffset === 0) {
 			offsetIncrementedByNewTicket = false;
 		}
-		goto(`?offset=${newOffset}&limit=${data.limit}`, { replaceState: true });
+		goto(`?offset=${newOffset}&limit=${data.limit}&show_expired=${showExpired}`, {
+			replaceState: true
+		});
 	};
 
 	const handleNextPage = () => {
 		const newOffset = offset + data.limit;
-		goto(`?offset=${newOffset}&limit=${data.limit}`, { replaceState: true });
+		goto(`?offset=${newOffset}&limit=${data.limit}&show_expired=${showExpired}`, {
+			replaceState: true
+		});
+	};
+
+	const handleRefresh = () => {
+		goto(`?offset=${offset}&limit=${data.limit}&show_expired=${showExpired}`, {
+			invalidateAll: true
+		});
+	};
+
+	const handleToggleExpired = () => {
+		showExpired = !showExpired;
+		goto(`?offset=0&limit=${data.limit}&show_expired=${showExpired}`, { replaceState: true });
 	};
 
 	let hydrated = $state(false);
@@ -810,7 +874,9 @@
 		userSubscribedTickets = data.userSubscribedTickets;
 		connectedAdmins = data.connectedAdmins || [];
 		offset = data.offset;
+		data.limit = data.limit;
 		totalCount = data.totalCount;
+		showExpired = data.showExpired;
 
 		// Reset highlight flag when navigating to offset 0
 		if (data.offset === 0) {
@@ -853,6 +919,10 @@
 				<span class="text-sm text-green-400">通知已启用</span>
 			{/if}
 
+			{#if unreadCount() > 0}
+				<span class="text-sm text-red-400">未读: {unreadCount()}</span>
+			{/if}
+
 			<div class="flex flex-1 flex-col items-end gap-1 text-sm text-slate-400">
 				<div class="flex items-center gap-3">
 					<button
@@ -862,9 +932,6 @@
 						<span>管理: {connectedAdmins.length}</span>
 						<Fa icon={isAdminListCollapsed ? faChevronRight : faChevronDown} size="xs" />
 					</button>
-					{#if unreadCount() > 0}
-						<span class="text-red-400">未读: {unreadCount()}</span>
-					{/if}
 				</div>
 			</div>
 
@@ -900,92 +967,139 @@
 			</div>
 		{/if}
 		<div class="flex items-center justify-between">
-			<div class="text-xs text-slate-400">
-				显示 {offset + 1} - {Math.min(offset + data.limit, totalCount)} 条，共 {totalCount}
-				条
+			<div class="flex items-center gap-3">
+				<div class="text-xs text-slate-400">
+					显示 {offset + 1} - {Math.min(offset + data.limit, totalCount)} 条，共 {totalCount}
+					条
+				</div>
 			</div>
 
 			<div class="flex space-x-2">
 				<button
+					onclick={handleToggleExpired}
+					class="flex h-6 w-8 items-center justify-center rounded-md px-2 py-1 text-xs transition-colors"
+					class:bg-blue-600={showExpired}
+					class:hover:bg-blue-700={showExpired}
+					class:text-white={showExpired}
+					class:bg-slate-700={!showExpired}
+					class:hover:bg-slate-600={!showExpired}
+					class:text-slate-200={!showExpired}
+					use:tippy={{
+						content: showExpired ? '点击隐藏已过期工单' : '点击显示已过期工单',
+						placement: 'top'
+					}}
+				>
+					<Fa icon={showExpired ? faEye : faEyeSlash} size="sm" />
+				</button>
+				<button
 					onclick={handlePreviousPage}
 					disabled={offset <= 0}
-					class="rounded-md px-2 py-1 text-sm transition-colors disabled:pointer-events-none disabled:opacity-50"
+					class="flex h-6 w-8 items-center justify-center rounded-md px-2 py-1 text-sm transition-colors disabled:pointer-events-none disabled:opacity-50"
 					class:bg-yellow-600={offsetIncrementedByNewTicket}
 					class:hover:bg-yellow-700={offsetIncrementedByNewTicket}
 					class:text-white={offsetIncrementedByNewTicket}
 					class:bg-slate-700={!offsetIncrementedByNewTicket}
 					class:hover:bg-slate-600={!offsetIncrementedByNewTicket}
 					class:text-slate-200={!offsetIncrementedByNewTicket}
+					title="上一页"
 				>
-					上一页
+					<Fa icon={faChevronLeft} size="sm" />
 				</button>
-
 				<button
 					onclick={handleNextPage}
 					disabled={offset + data.limit >= totalCount}
-					class="rounded-md bg-slate-700 px-2 py-1 text-sm text-slate-200 hover:bg-slate-600 disabled:pointer-events-none disabled:opacity-50"
+					class="flex h-6 w-8 items-center justify-center rounded-md bg-slate-700 px-2 py-1 text-sm text-slate-200 hover:bg-slate-600 disabled:pointer-events-none disabled:opacity-50"
+					title="下一页"
 				>
-					下一页
+					<Fa icon={faChevronRightNav} size="sm" />
+				</button>
+				<button
+					onclick={handleRefresh}
+					class="flex h-6 w-8 items-center justify-center rounded-md bg-slate-700 px-2 py-1 text-sm text-slate-200 *:rounded-md hover:bg-slate-600"
+					title="刷新当前页面数据"
+				>
+					<Fa icon={faRefresh} size="sm" />
 				</button>
 			</div>
 		</div>
 		<div class="scrollbar-subtle flex-1 overflow-auto">
 			<div class="space-y-1">
-				{#each tickets as ticket}
-					{#key ticket.uuid}
-						<div
-							class="rounded-lg border bg-slate-900 px-2 py-1 transition-all duration-300 motion-duration-500 hover:border-blue-400"
-							class:border-blue-500={ticket.uuid === selectedTicket?.uuid}
-							class:border-slate-700={ticket.uuid !== selectedTicket?.uuid}
-							class:ring-2={animatingTickets.has(ticket.uuid)}
-							class:ring-red-400={animatingTickets.has(ticket.uuid)}
-							class:scale-95={animatingTickets.has(ticket.uuid)}
-							class:-motion-translate-y-in-100={ticket.isNew}
-						>
-							<button onclick={() => openTicketPanel(ticket)} class="w-full text-left">
-								<div class="flex items-start justify-between gap-4">
-									<div class="min-w-0 flex-1">
-										<div class="mb-1 flex items-center gap-2">
-											<div class="flex items-center gap-1">
-												<h3 class="truncate text-sm font-medium text-slate-200">
-													{ticket.title}
-												</h3>
-												{#if hasUnreadMessages(ticket)}
-													<div class="h-2 w-2 flex-shrink-0 rounded-full bg-red-500"></div>
+				{#if tickets}
+					<div in:fade>
+						{#each tickets as ticket}
+							{#key ticket.uuid}
+								<div
+									class="rounded-lg border bg-slate-900 px-2 py-1 transition-all duration-300 motion-duration-500 hover:border-blue-400"
+									class:border-blue-500={ticket.uuid === selectedTicket?.uuid}
+									class:border-slate-700={ticket.uuid !== selectedTicket?.uuid}
+									class:ring-2={animatingTickets.has(ticket.uuid)}
+									class:ring-red-400={animatingTickets.has(ticket.uuid)}
+									class:scale-95={animatingTickets.has(ticket.uuid)}
+									class:-motion-translate-y-in-100={ticket.isNew}
+								>
+									<button onclick={() => openTicketPanel(ticket)} class="w-full text-left">
+										<div class="flex items-start justify-between gap-4">
+											<div class="min-w-0 flex-1">
+												<div class="mb-1 flex items-center gap-2">
+													<div class="flex items-center gap-1">
+														<h3 class="truncate text-sm font-medium text-slate-200">
+															{ticket.title}
+														</h3>
+														{#if hasUnreadMessages(ticket)}
+															<div class="h-2 w-2 flex-shrink-0 rounded-full bg-red-500"></div>
+														{/if}
+													</div>
+													<span class="flex-shrink-0 text-xs text-slate-500">
+														{ticket.visitor_name || '匿名用户'}
+													</span>
+												</div>
+												<div class="flex items-center gap-4 text-xs text-slate-400">
+													<span>ID: {ticket.uuid.slice(0, 8)}</span>
+													<span>{formatTimeAgo(ticket.updated_at)}</span>
+												</div>
+											</div>
+											<div class="flex-shrink-0">
+												{#snippet tag(name: string, classes: string)}
+													<span
+														class="inline-flex items-center rounded-lg px-2 py-1 text-xs font-medium {classes}"
+													>
+														{name}
+													</span>
+												{/snippet}
+												{#if isUserSubscribedToTicket(ticket.uuid) && ticket.status !== 'closed'}
+													{@render tag(
+														'已接单',
+														'border  border-green-700 bg-green-950 text-green-100'
+													)}
+												{:else if ticket.status === 'open'}
+													{@render tag(
+														'待处理',
+														'border border-yellow-600 bg-yellow-700 text-white'
+													)}
+												{:else if ticket.status === 'in_progress'}
+													{@render tag(
+														'处理中',
+														'border border-blue-600 bg-blue-950 text-blue-100'
+													)}
+												{:else if ticket.updated_at < Date.now() - 3 * 24 * 60 * 60 * 1000}
+													{@render tag(
+														'已过期',
+														'border border-slate-800 bg-slate-900 text-slate-700'
+													)}
+												{:else}
+													{@render tag(
+														'已关闭',
+														'border border-slate-800 bg-slate-900 text-slate-500'
+													)}
 												{/if}
 											</div>
-											<span class="flex-shrink-0 text-xs text-slate-500">
-												{ticket.visitor_name || '匿名用户'}
-											</span>
 										</div>
-										<div class="flex items-center gap-4 text-xs text-slate-400">
-											<span>ID: {ticket.uuid.slice(0, 8)}</span>
-											<span>{formatTimeAgo(ticket.updated_at)}</span>
-										</div>
-									</div>
-									<div class="flex-shrink-0">
-										{#snippet tag(name: string, classes: string)}
-											<span
-												class="inline-flex items-center rounded-lg px-2 py-1 text-xs font-medium text-white {classes}"
-											>
-												{name}
-											</span>
-										{/snippet}
-										{#if isUserSubscribedToTicket(ticket.uuid) && ticket.status !== 'closed'}
-											{@render tag('已接单', 'bg-green-700')}
-										{:else if ticket.status === 'open'}
-											{@render tag('待处理', 'bg-yellow-600')}
-										{:else if ticket.status === 'in_progress'}
-											{@render tag('处理中', 'bg-blue-600')}
-										{:else}
-											{@render tag('已关闭', 'bg-gray-600')}
-										{/if}
-									</div>
+									</button>
 								</div>
-							</button>
-						</div>
-					{/key}
-				{/each}
+							{/key}
+						{/each}
+					</div>
+				{/if}
 
 				{#if tickets.length === 0}
 					<div class="py-12 text-center">
@@ -1016,6 +1130,7 @@
 					onUnsubscribe={handleUnsubscribe}
 					onCloseTicket={selectedTicket?.status !== 'closed' ? handleAdminCloseTicket : undefined}
 					onReopenTicket={selectedTicket?.status === 'closed' ? handleAdminReopenTicket : undefined}
+					onDeleteTicket={hasSuper ? handleDeleteTicket : undefined}
 					onIncreaseAttachmentLimit={handleIncreaseAttachmentLimit}
 					onBanUser={handleBanUser}
 					onUnbanUser={handleUnbanUser}
@@ -1051,7 +1166,7 @@
 
 		<button
 			onclick={closeTicketPanel}
-			class="fixed right-2 top-16 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 p-2 text-slate-400 hover:bg-slate-700 hover:text-slate-200 sm:hidden"
+			class="fixed right-2 top-16 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 p-2 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
 			aria-label="关闭面板"
 		>
 			<Fa icon={faXmark} />

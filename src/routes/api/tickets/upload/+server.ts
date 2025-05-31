@@ -2,7 +2,8 @@ import {
 	addTicketAttachment,
 	getTicket,
 	canUploadAttachment,
-	isUserBanned
+	isUserBanned,
+	TICKET_EXPIRE_TIME
 } from '$lib/server/db/tickets';
 import { hasPermission } from '$lib/server/db/users';
 import { json } from '@sveltejs/kit';
@@ -44,7 +45,10 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 
 		if (!as || (as !== 'admin' && as !== 'visitor')) {
 			return json(
-				{ success: false, error: 'Invalid or missing "as" parameter. Must be "admin" or "visitor"' },
+				{
+					success: false,
+					error: 'Invalid or missing "as" parameter. Must be "admin" or "visitor"'
+				},
 				{ status: 400 }
 			);
 		}
@@ -53,6 +57,11 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 		const ticket = getTicket(ticketUuid);
 		if (!ticket) {
 			return json({ success: false, error: 'Ticket not found' }, { status: 404 });
+		}
+
+		// Can't upload to expired tickets
+		if (ticket.status === 'closed' && Date.now() - ticket.updated_at > TICKET_EXPIRE_TIME) {
+			return json({ success: false, error: '工单已过期' }, { status: 401 });
 		}
 
 		// Determine authentication and author info based on 'as' parameter
