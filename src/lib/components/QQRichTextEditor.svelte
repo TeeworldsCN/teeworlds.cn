@@ -23,7 +23,6 @@
 		faGripVertical,
 		faT
 	} from '@fortawesome/free-solid-svg-icons';
-	import { faThreads } from '@fortawesome/free-brands-svg-icons';
 
 	const { value, onchange, maxLength = 5000 } = $props();
 

@@ -12,7 +12,9 @@ const matcher = anymatch([
 	`!${__dirname}/static`,
 	`!${__dirname}/static/**`,
 	`!${__dirname}/.svelte-kit`,
-	`!${__dirname}/.svelte-kit/**`
+	`!${__dirname}/.svelte-kit/**`,
+	`!${__dirname}/assets`,
+	`!${__dirname}/assets/**`
 ]);
 
 export default defineConfig({
@@ -21,6 +23,11 @@ export default defineConfig({
 		watch: {
 			// vite has problem dealing with watched files, so we manually select files to watch
 			ignored: matcher
+		}
+	},
+	build: {
+		rollupOptions: {
+			external: ['sharp']
 		}
 	}
 });

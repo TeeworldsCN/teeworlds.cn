@@ -31,8 +31,14 @@ jobs:
       - name: Move rust scripts to build folder
         run: mv rust build
 
+      - name: Move assets to build folder
+        run: mv assets build
+
       - name: Bundle scripts
         run: bun run bundle
+
+      - name: Run bun install in build folder
+        run: cd build && bun install && cd ..
 
       - name: Archive Build Folder
         run: tar -czvf build.tar.gz -C build .
