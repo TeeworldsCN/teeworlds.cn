@@ -10,7 +10,7 @@ export const handlePoints: Handler = async ({ user, reply, args }) => {
 
 	// check binds
 	if (!playerName) {
-		playerName = user?.data?.name || '';
+		playerName = user?.bind_name || '';
 	}
 
 	if (!playerName) {
@@ -23,8 +23,8 @@ export const handlePoints: Handler = async ({ user, reply, args }) => {
 
 	const data = await getPlayer(playerName);
 	if (data == null) {
-		// no valid player data. just pretend this doesn't work
-		return { ignored: true, message: '玩家信息未加载，分数功能未启用' };
+		// no valid player data
+		return await reply.text('啊，豆豆的数据代码出问题了，快叫人来修复豆豆。');
 	}
 
 	const player = data as typeof data & {

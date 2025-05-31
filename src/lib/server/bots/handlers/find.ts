@@ -16,7 +16,7 @@ export const handleFind: Handler = async ({ user, reply, args }) => {
 
 	if (!name) {
 		findingSelf = true;
-		name = user?.data?.name || '';
+		name = user?.bind_name || '';
 	}
 
 	if (!name) {

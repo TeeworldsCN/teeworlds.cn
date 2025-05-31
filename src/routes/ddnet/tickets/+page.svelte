@@ -923,11 +923,7 @@
 			return true;
 		}
 
-		await wait(500);
-		sendMessage('好的，豆豆正在为你跳转到工单页面...');
-		await wait(1000);
 		goto(`/ddnet/tickets/${uuid}`, { invalidateAll: true });
-
 		return true;
 	};
 

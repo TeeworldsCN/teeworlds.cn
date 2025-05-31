@@ -49,7 +49,7 @@ export const load = (async ({ cookies, url }) => {
 				// renew the token
 				cookies.set('ticket-token', jwt, { path: '/', maxAge: ONE_YEAR });
 				const user = getUserByUsername(payload.uid);
-				playerName = user?.data.name || '';
+				playerName = user?.bind_name || '';
 
 				existingTickets = getUserLatestTicket(payload.uid, 3).filter(
 					(t) => t.status !== 'closed' || Date.now() - t.updated_at <= TICKET_EXPIRE_TIME

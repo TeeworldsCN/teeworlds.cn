@@ -19,7 +19,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 		const registerToken = nodeCrypto.randomBytes(12).toString('base64url');
 		await volatile.set(
 			`register:${registerToken}`,
-			locals.user.data.name || locals.user.uuid.toString() || '管理员',
+			locals.user.username || '管理员',
 			12 * 60 * 60 * 1000 // 12 hours
 		);
 

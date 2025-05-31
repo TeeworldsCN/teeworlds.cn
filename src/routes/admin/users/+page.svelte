@@ -517,7 +517,7 @@
 								</span>
 							</td>
 							<td class="px-4 py-3 text-sm text-slate-300">
-								{user.data.name || '未绑定'}
+								{user.bind_name || '未绑定'}
 							</td>
 							<td class="px-4 py-3 text-sm">
 								<button
@@ -572,38 +572,38 @@
 					<div class="text-sm font-medium text-slate-200">权限设置</div>
 					<div class="text-xs text-slate-400">选择要授予用户的权限：</div>
 
-				<div class="space-y-3">
-					{#each PERMISSIONS as permission}
-						<label class="flex cursor-pointer items-center gap-3">
-							<input
-								type="checkbox"
-								checked={editingPermissions.includes(permission)}
-								onchange={() => togglePermission(permission)}
-								class="rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
-							/>
-							<div class="flex-1">
-								<span class="font-medium text-slate-200">{permission}</span>
-								<div class="text-xs text-slate-400">
-									{#if permission === 'SUPER'}
-										超级管理员权限，拥有所有权限
-									{:else if permission === 'TICKETS'}
-										反馈和举报管理权限
-									{:else if permission === 'REGISTER'}
-										用户注册管理权限
-									{:else if permission === 'GROUP_SETTINGS'}
-										群组设置管理权限
-									{:else if permission === 'CHANNEL_SETTINGS'}
-										频道设置管理权限
-									{:else if permission === 'POSTING'}
-										QQ 机器人发帖权限
-									{:else}
-										{permission} 权限
-									{/if}
+					<div class="space-y-3">
+						{#each PERMISSIONS as permission}
+							<label class="flex cursor-pointer items-center gap-3">
+								<input
+									type="checkbox"
+									checked={editingPermissions.includes(permission)}
+									onchange={() => togglePermission(permission)}
+									class="rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
+								/>
+								<div class="flex-1">
+									<span class="font-medium text-slate-200">{permission}</span>
+									<div class="text-xs text-slate-400">
+										{#if permission === 'SUPER'}
+											超级管理员权限，拥有所有权限
+										{:else if permission === 'TICKETS'}
+											反馈和举报管理权限
+										{:else if permission === 'REGISTER'}
+											用户注册管理权限
+										{:else if permission === 'GROUP_SETTINGS'}
+											群组设置管理权限
+										{:else if permission === 'CHANNEL_SETTINGS'}
+											频道设置管理权限
+										{:else if permission === 'POSTING'}
+											QQ 机器人发帖权限
+										{:else}
+											{permission} 权限
+										{/if}
+									</div>
 								</div>
-							</div>
-						</label>
-					{/each}
-				</div>
+							</label>
+						{/each}
+					</div>
 				</div>
 
 				<!-- Rename User Section -->

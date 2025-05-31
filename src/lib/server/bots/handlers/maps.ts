@@ -81,8 +81,8 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 		const finishedList = new Set<string>();
 		let usingName = false;
 
-		if (user && user.data?.name) {
-			const playerName = user.data.name;
+		if (user && user.bind_name) {
+			const playerName = user.bind_name;
 			const response = await fetch(
 				`https://info.ddnet.org/info?name=${encodeURIComponent(playerName)}`
 			);
@@ -112,11 +112,11 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 		const finishingDesc = usingName
 			? unfinishedMaps.length > 0
 				? descriptor
-					? `随机找了一张 ${user?.data.name} 未完成的 ${descriptor} 图`
-					: `随机找了一张 ${user?.data.name} 未完成的图`
+					? `随机找了一张 ${user?.bind_name} 未完成的 ${descriptor} 图`
+					: `随机找了一张 ${user?.bind_name} 未完成的图`
 				: descriptor
-					? `没有找到 ${user?.data.name} 未完成的 ${descriptor} 图，随机从所有图中选了一张`
-					: `没有找到 ${user?.data.name} 未完成的图，随机从所有图中选了一张`
+					? `没有找到 ${user?.bind_name} 未完成的 ${descriptor} 图，随机从所有图中选了一张`
+					: `没有找到 ${user?.bind_name} 未完成的图，随机从所有图中选了一张`
 			: descriptor
 				? `随机找了一张 ${descriptor} 图`
 				: `随机找了一张图`;

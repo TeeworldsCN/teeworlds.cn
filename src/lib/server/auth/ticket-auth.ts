@@ -22,7 +22,7 @@ export const getTicketUserInfo = (cookies: any): TicketUserInfo | null => {
 
 		const payload = verify(jwt, env.SECRET) as { platform: string; uid: string };
 		const user = getUserByUsername(payload.uid);
-		const playerName = user?.data.name;
+		const playerName = user?.bind_name || undefined;
 
 		return {
 			uid: payload.uid,
