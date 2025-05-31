@@ -31,6 +31,9 @@ jobs:
       - name: Move rust scripts to build folder
         run: mv rust build
 
+      - name: Temporarily move node_modules to build
+        run: mv node_modules build
+
       - name: Bundle scripts
         run: bun run bundle
 
