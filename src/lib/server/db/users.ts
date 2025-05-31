@@ -9,53 +9,10 @@ sqlite
 	)
 	.run();
 
-// Add bind_name column if it doesn't exist (for existing databases)
-try {
-	sqlite.query('ALTER TABLE user ADD COLUMN bind_name VARCHAR(255)').run();
-} catch (error) {
-	// Column might already exist, ignore error
-}
-
 // indexes
 sqlite.query('CREATE INDEX IF NOT EXISTS user_username ON user (username);').run();
 sqlite.query('CREATE INDEX IF NOT EXISTS hash_username ON user (hash);').run();
 sqlite.query('CREATE INDEX IF NOT EXISTS user_bind_name ON user (bind_name);').run();
-
-// Migrate existing bind names from JSON data to bind_name column
-const migrateBindNames = () => {
-	try {
-		const usersToMigrate = sqlite
-			.query<
-				{ uuid: string; data: string },
-				[]
-			>('SELECT uuid, data FROM user WHERE bind_name IS NULL AND data IS NOT NULL')
-			.all();
-
-		for (const user of usersToMigrate) {
-			try {
-				const userData = JSON.parse(user.data);
-				if (userData.name && typeof userData.name === 'string') {
-					// Store the bind_name before deleting it
-					const bindName = userData.name;
-					// Update bind_name column and remove name from JSON data
-					delete userData.name;
-					sqlite
-						.query('UPDATE user SET bind_name = ?, data = ? WHERE uuid = ?')
-						.run(bindName, JSON.stringify(userData), user.uuid);
-				}
-			} catch (error) {
-				// Skip invalid JSON data
-				console.warn(`Failed to migrate bind_name for user ${user.uuid}:`, error);
-			}
-		}
-		console.log(`Migrated bind_name for ${usersToMigrate.length} users`);
-	} catch (error) {
-		console.error('Error during bind_name migration:', error);
-	}
-};
-
-// Run migration on startup
-migrateBindNames();
 
 export type UserPermissions = Permission[];
 export const PERMISSION_LIST = PERMISSIONS as any as string[];
