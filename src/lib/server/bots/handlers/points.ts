@@ -27,12 +27,6 @@ export const handlePoints: Handler = async ({ platform, user, reply, args }) => 
 		return await reply.text('啊，豆豆的数据代码出问题了，快叫人来修复豆豆。');
 	}
 
-	if (platform === 'qq') {
-		return await reply.image(
-			`https://teeworlds.cn/api/images/points/${encodeURIComponent(playerName)}`
-		);
-	}
-
 	const player = data as typeof data & {
 		chnRank?: {
 			points?: number;

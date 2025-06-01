@@ -31,9 +31,6 @@ jobs:
       - name: Move rust scripts to build folder
         run: mv rust build
 
-      - name: Move assets to build folder
-        run: mv assets build
-
       - name: Bundle scripts
         run: bun run bundle
 
