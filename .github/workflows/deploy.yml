@@ -26,7 +26,7 @@ jobs:
         run: mkdir -p cache
 
       - name: Build Project
-        run: bun run build
+        run: bun --bun run build
 
       - name: Move rust scripts to build folder
         run: mv rust build
