@@ -324,6 +324,7 @@ const server = Bun.serve({
 			handler(req, res, () => {});
 		});
 	},
+	idleTimeout: 60, 
 	error(error) {
 		console.error('Bun.serve error:', error);
 		return new Response('Internal Server Error', { status: 500 });

@@ -72,7 +72,7 @@ export const POST: RequestHandler = async ({ locals, url, cookies }) => {
 			}
 		},
 		{
-			ping: 6500,
+			ping: 45000,
 			stop: () => {
 				if (cleanup) {
 					cleanup();
