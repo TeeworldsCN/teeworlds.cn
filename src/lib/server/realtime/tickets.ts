@@ -147,7 +147,6 @@ export const addAdminConnection = (emit: EmitFunction, userUuid: string, lock: L
 
 	// Clean up when connection closes
 	const cleanup = () => {
-		console.log('Admin connection closed');
 		adminConnections.delete(emit);
 		// Notify about connection count and admin list update after cleanup
 		notifyAdminConnectionCountUpdated();
