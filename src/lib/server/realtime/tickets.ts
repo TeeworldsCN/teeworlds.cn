@@ -439,7 +439,6 @@ export const getConnectedAdmins = () => {
 	const connectedAdmins: Array<{ uuid: string; username: string }> = [];
 
 	for (const data of uniqueAdminUuids) {
-		console.log(data);
 		const user = getUserByUuid(data);
 		if (user) {
 			connectedAdmins.push({ uuid: user.uuid, username: user.username });
