@@ -8,6 +8,7 @@ import path from 'path';
  * This runs after SvelteKit build to ensure the build directory exists
  */
 
+const srcDir = 'src';
 const buildDir = 'build';
 
 try {
@@ -24,9 +25,9 @@ try {
 	const productionPackageJson = {
 		name: sourcePackageJson.name,
 		version: sourcePackageJson.version,
-		type: "module",
+		type: 'module',
 		private: sourcePackageJson.private,
-		main: "index.js",
+		main: 'index.js',
 		dependencies: sourcePackageJson.dependencies || {},
 		scripts: {
 			start: 'bun index.js'
@@ -41,6 +42,14 @@ try {
 	console.log(
 		`📦 Dependencies: ${Object.keys(productionPackageJson.dependencies).join(', ') || 'none'}`
 	);
+
+	// Build custom server into build directory
+	const customServerPath = path.join(srcDir, 'server', 'index.ts');
+	const transpiler = new Bun.Transpiler({ loader: 'ts' });
+	const customServerCode = transpiler.transformSync(fs.readFileSync(customServerPath, 'utf-8'));
+	fs.writeFileSync(path.join(buildDir, 'index.js'), customServerCode);
+	console.log(`✅ Generated custom server in ${buildDir}/`);
+	console.log(`🚀 To start the server, run 'bun ./${buildDir}/index.js'`);
 } catch (error) {
 	console.error('❌ Failed to generate package.json:', error);
 	process.exit(1);

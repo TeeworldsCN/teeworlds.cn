@@ -58,6 +58,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"bun-types": "^1.2.15",
 		"sharp": "^0.34.2"
 	}
 }
