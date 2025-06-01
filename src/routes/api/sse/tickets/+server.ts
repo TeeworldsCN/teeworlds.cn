@@ -44,6 +44,7 @@ export const POST: RequestHandler = async ({ locals, url, cookies }) => {
 	return produce(
 		({ emit, lock }) => {
 			if (close) {
+				emit('close', 'forbidden');
 				lock.set(false);
 				return;
 			}
@@ -56,12 +57,17 @@ export const POST: RequestHandler = async ({ locals, url, cookies }) => {
 				if (!userUuid) {
 					throw new Error('User not authenticated');
 				}
-				cleanup = addAdminConnection(emit, userUuid);
+				cleanup = addAdminConnection(emit, userUuid, lock);
 			} else if (mode === 'ticket' && ticketUuid) {
 				// Get ticket info to pass visitor name and uid (we already verified the ticket exists above)
 				const ticket = getTicket(ticketUuid);
-				const visitorName = ticket?.visitor_name;
-				const uid = ticket?.author_uid;
+				if (!ticket) {
+					emit('close', 'forbidden');
+					lock.set(false);
+					return;
+				}
+				const visitorName = ticket.visitor_name;
+				const uid = ticket.author_uid;
 				cleanup = addTicketConnection(ticketUuid, emit, visitorName, uid, lock);
 			}
 		},

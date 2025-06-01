@@ -313,6 +313,31 @@
 			messagesContainer.scrollTop = messagesContainer.scrollHeight;
 		}
 	};
+
+	const copyTicketId = async () => {
+		if (!ticket.uuid) return;
+
+		try {
+			await navigator.clipboard.writeText(ticket.uuid);
+			// Show a brief visual feedback
+			const element = document.getElementById('ticket-id-copy');
+			if (element) {
+				element.textContent = '已复制!';
+				setTimeout(() => {
+					element.textContent = `#${ticket.uuid!.slice(0, 8)}`;
+				}, 1000);
+			}
+		} catch (err) {
+			console.error('Failed to copy ticket ID:', err);
+			// Fallback for older browsers
+			const textArea = document.createElement('textarea');
+			textArea.value = ticket.uuid;
+			document.body.appendChild(textArea);
+			textArea.select();
+			document.execCommand('copy');
+			document.body.removeChild(textArea);
+		}
+	};
 </script>
 
 <div class="relative flex h-full flex-col rounded-lg bg-slate-900">
@@ -325,7 +350,16 @@
 			<div class="flex-1">
 				<div class="mb-1 flex items-center space-x-2">
 					<h3 class="font-sm text-slate-200">{ticket.title}</h3>
-					{#if ticket.uuid}<p class="text-sm text-slate-400">#{ticket.uuid.slice(0, 8)}</p>{/if}
+					{#if ticket.uuid}
+						<button
+							id="ticket-id-copy"
+							onclick={copyTicketId}
+							class="cursor-pointer text-sm text-slate-400 hover:text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500 focus:ring-offset-1 focus:ring-offset-slate-900"
+							use:tippy={{ content: '点击复制完整工单ID' }}
+						>
+							#{ticket.uuid.slice(0, 8)}
+						</button>
+					{/if}
 					{#if ticket.status}
 						<span
 							class="rounded px-2 py-1 text-xs font-medium text-white {getStatusColor(

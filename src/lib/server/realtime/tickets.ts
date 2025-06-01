@@ -20,13 +20,13 @@ type EmitFunction = (eventName: string, data: string) => { error?: false | Error
 type LockStore = { set: (value: boolean) => void };
 
 // Store active SSE connections
-const adminConnections = new Map<EmitFunction, string>();
+const adminConnections = new Map<EmitFunction, { uuid: string; lock: LockStore }>();
 const ticketConnections = new Map<string, Set<EmitFunction>>();
 
 // Store visitor connection mapping for tracking
 const visitorConnectionMap = new Map<
 	EmitFunction,
-	{ ticketUuid: string; visitorName?: string; uid?: string; lock?: LockStore }
+	{ ticketUuid: string; visitorName?: string; uid: string; lock: LockStore }
 >(); // emit -> ticket info
 
 // Store uid to connections mapping for forceful disconnection
@@ -138,8 +138,8 @@ export interface UserUnbannedEvent {
 	};
 }
 
-export const addAdminConnection = (emit: EmitFunction, userUuid: string) => {
-	adminConnections.set(emit, userUuid);
+export const addAdminConnection = (emit: EmitFunction, userUuid: string, lock: LockStore) => {
+	adminConnections.set(emit, { uuid: userUuid, lock });
 
 	// Notify about connection count and admin list update
 	notifyAdminConnectionCountUpdated();
@@ -159,9 +159,9 @@ export const addAdminConnection = (emit: EmitFunction, userUuid: string) => {
 export const addTicketConnection = (
 	ticketUuid: string,
 	emit: EmitFunction,
-	visitorName?: string,
-	uid?: string,
-	lock?: LockStore
+	visitorName: string | undefined,
+	uid: string,
+	lock: LockStore
 ) => {
 	if (!ticketConnections.has(ticketUuid)) {
 		ticketConnections.set(ticketUuid, new Set());
@@ -253,8 +253,8 @@ export const broadcastToSpecificAdmin = (userUuid: string, event: TicketEvent) =
 	// Send to all connections for this specific admin user
 	let deletingKeys: EmitFunction[] | undefined;
 
-	for (const [emit, uuid] of [...adminConnections]) {
-		if (uuid === userUuid) {
+	for (const [emit, data] of [...adminConnections]) {
+		if (data.uuid === userUuid) {
 			const result = emit('message', eventData);
 			if (result.error) {
 				deletingKeys ??= [];
@@ -437,8 +437,8 @@ export const getConnectedAdmins = () => {
 	const uniqueAdminUuids = new Set(Array.from(adminConnections.values()));
 	const connectedAdmins: Array<{ uuid: string; username: string }> = [];
 
-	for (const uuid of uniqueAdminUuids) {
-		const user = getUserByUuid(uuid);
+	for (const data of uniqueAdminUuids) {
+		const user = getUserByUuid(data.uuid);
 		if (user) {
 			connectedAdmins.push({ uuid: user.uuid, username: user.username });
 		}
@@ -540,12 +540,8 @@ export const disconnectConnectionsByUid = (uid: string): number => {
 			const visitorInfo = visitorConnectionMap.get(emit);
 			if (visitorInfo) {
 				// Use lock to forcefully close the connection if available
-				if (visitorInfo.lock) {
-					visitorInfo.lock.set(false);
-				} else {
-					// Fallback: Send a close event to trigger client-side cleanup
-					emit('close', JSON.stringify({ reason: 'force_disconnect', uid }));
-				}
+				emit('close', 'forbidden');
+				visitorInfo.lock.set(false);
 
 				// Remove from ticket connections
 				const ticketConnections_set = ticketConnections.get(visitorInfo.ticketUuid);
@@ -604,12 +600,8 @@ export const disconnectConnectionsByTicketUuid = (ticketUuid: string): number =>
 			const visitorInfo = visitorConnectionMap.get(emit);
 			if (visitorInfo) {
 				// Use lock to forcefully close the connection if available
-				if (visitorInfo.lock) {
-					visitorInfo.lock.set(false);
-				} else {
-					// Fallback: Send a close event to trigger client-side cleanup
-					emit('close', JSON.stringify({ reason: 'force_disconnect', ticketUuid }));
-				}
+				emit('close', 'forbidden');
+				visitorInfo.lock.set(false);
 
 				// Remove from visitor connection map
 				visitorConnectionMap.delete(emit);
@@ -718,3 +710,24 @@ export const getConnectionStats = () => {
 		}))
 	};
 };
+
+const realtimeShutdown = () => {
+	console.log('Shutting down realtime connections...');
+
+	for (const [emit, { lock }] of adminConnections.entries()) {
+		emit('close', 'shutdown');
+		lock.set(false);
+	}
+	for (const [emit, { lock }] of visitorConnectionMap.entries()) {
+		emit('close', 'shutdown');
+		lock.set(false);
+	}
+
+	adminConnections.clear();
+	visitorConnectionMap.clear();
+	uidConnectionMap.clear();
+	ticketConnections.clear();
+};
+
+process.on('SIGINT', realtimeShutdown);
+process.on('SIGTERM', realtimeShutdown);

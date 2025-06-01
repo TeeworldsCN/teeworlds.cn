@@ -273,10 +273,24 @@
 	const setupSSE = () => {
 		if (typeof window === 'undefined') return;
 
+		let disconnectReason: string | null = null;
+
 		connection = customSource('/api/sse/tickets?mode=admin', {
 			cache: false,
-			close() {
-				isSSEConnected = false;
+			close({ connect, isLocal }) {
+				if (isLocal) {
+					disconnectReason = null;
+					return;
+				}
+
+				console.log('SSE connection closed', disconnectReason);
+				if (disconnectReason === 'shutdown') {
+					isSSEConnected = false;
+					retryAttempts = 0;
+					// instantly reconnect when server is restarting
+					connect();
+				}
+				disconnectReason = null;
 			},
 			lost() {
 				isSSEConnected = false;
@@ -292,6 +306,11 @@
 				retryAttempts = attempts;
 				console.log('SSE retry attempt:', attempts);
 			}
+		});
+
+		const closeMessage = connection.select('close');
+		closeMessage.subscribe((reason) => {
+			disconnectReason = reason;
 		});
 
 		// Set connected status when connection is established

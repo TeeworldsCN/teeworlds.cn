@@ -177,7 +177,7 @@ export interface Ticket {
 	uuid: string;
 	title: string;
 	status: TicketStatus;
-	visitor_name: string;
+	visitor_name?: string;
 	author_uid: string;
 	attachment_limit: number;
 	created_at: number;
@@ -463,9 +463,7 @@ const deleteTicketAttachmentQuery = sqlite.prepare<unknown, string>(
 	`DELETE FROM ticket_attachments WHERE uuid = ?`
 );
 
-const deleteTicketQuery = sqlite.prepare<unknown, string>(
-	`DELETE FROM tickets WHERE uuid = ?`
-);
+const deleteTicketQuery = sqlite.prepare<unknown, string>(`DELETE FROM tickets WHERE uuid = ?`);
 
 const insertTicketSubscriptionQuery = sqlite.prepare<unknown, [string, string, number]>(
 	`INSERT INTO ticket_subscriptions (ticket_uuid, user_uuid, subscribed_at) VALUES (?, ?, ?)`
