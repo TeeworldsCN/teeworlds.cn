@@ -1,4 +1,4 @@
-import adapter from 'svelte-adapter-bun-next';
+import adapter from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 const forceRunesMode = (filename) => {

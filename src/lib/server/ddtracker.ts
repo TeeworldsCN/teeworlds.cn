@@ -20,6 +20,11 @@ if (!building) {
 	dbGetSkin = db.prepare<{ current_skin: string }, [string]>(
 		'SELECT current_skin FROM clients WHERE name = ? ORDER BY current_skin_time DESC LIMIT 1'
 	);
+
+	process.on('sveltekit:shutdown', async (reason) => {
+		console.log('Shutting down ddtracker...');
+		db?.close();
+	});
 }
 
 export type DDNetSkin = { n: string; b?: number; f?: number };

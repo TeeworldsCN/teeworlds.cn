@@ -14,3 +14,8 @@ if (env.VALKEY) {
 }
 
 export const volatile = new Keyv(volatileStore);
+
+process.on('sveltekit:shutdown', async (reason) => {
+	console.log('Shutting down volatile...');
+	await volatileStore?.disconnect();
+});

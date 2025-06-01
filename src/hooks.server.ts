@@ -1,16 +1,24 @@
-import { env } from '$env/dynamic/private';
 import { tokenToUser } from '$lib/server/db/users';
+import { DevReload } from '$lib/server/dev';
 import { volatile } from '$lib/server/keyv';
 import { mapTracker } from '$lib/server/tasks/map-tracker';
 import { type ServerInit } from '@sveltejs/kit';
 import type { Cron } from 'croner';
 
 const initTasks = (...tasks: Cron[]) => {
-	const { __croner_tasks }: { __croner_tasks: Cron[] } = globalThis as any;
-	for (const task of __croner_tasks || []) {
-		task.stop();
-	}
-	(globalThis as any).__croner_tasks = tasks;
+	new DevReload(import.meta.file, () => {
+		console.log('Cleaning up tasks...');
+		for (const task of tasks || []) {
+			task.stop();
+		}
+	});
+
+	process.on('sveltekit:shutdown', async (reason) => {
+		console.log('Shutting down tasks...');
+		for (const task of tasks || []) {
+			task.stop();
+		}
+	});
 };
 
 export const init: ServerInit = async () => {
@@ -23,39 +31,9 @@ export const init: ServerInit = async () => {
 	);
 };
 
-const address_header = env.ADDRESS_HEADER?.toLowerCase();
-const xff_depth = Number(env.XFF_DEPTH) || 1;
-
 export const handle = async ({ event, resolve }) => {
 	try {
-		const req = event.request;
-		if (address_header) {
-			const value = req.headers.get(address_header);
-			if (!value) {
-				throw new Error(
-					`Address header was specified with ${'ADDRESS_HEADER'}=${address_header} but is absent from request`
-				);
-			}
-
-			if (address_header === 'x-forwarded-for') {
-				const addresses = value.split(',');
-
-				if (xff_depth < 1) {
-					throw new Error(`XFF_DEPTH must be a positive integer`);
-				}
-
-				if (xff_depth > addresses.length) {
-					throw new Error(
-						`XFF_DEPTH is ${xff_depth}, but only found ${addresses.length} addresses`
-					);
-				}
-				event.locals.ip = addresses[addresses.length - xff_depth].trim();
-			} else {
-				event.locals.ip = value;
-			}
-		} else {
-			event.locals.ip = event.getClientAddress();
-		}
+		event.locals.ip = event.getClientAddress();
 	} catch (e) {
 		console.log(e);
 		event.locals.ip = 'unknown';

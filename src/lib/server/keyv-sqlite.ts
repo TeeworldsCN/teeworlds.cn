@@ -2,6 +2,7 @@ import EventEmitter from 'events';
 import Keyv, { type KeyvStoreAdapter, type StoredData } from 'keyv';
 import { Database } from 'bun:sqlite';
 import { Cron } from 'croner';
+import { DevReload } from './dev';
 
 // Type definitions
 interface KeyvSqliteOptions {
@@ -113,10 +114,16 @@ export class KeyvSqlite extends EventEmitter implements KeyvStoreAdapter {
 
 		// Start daily cleanup routine (runs at 2 AM every day)
 		this.cleanupCron = new Cron('0 2 * * *', () => {
+			console.log('Running Keyv cleanup...');
 			this.cleanup().catch((error: any) => {
 				console.error('Keyv cleanup error:', error);
 				this.emit('error', error);
 			});
+		});
+
+		new DevReload(import.meta.file, () => {
+			console.log('Cleaning up KeyvSqlite Cron...');
+			this.cleanupCron?.stop();
 		});
 	}
 
@@ -259,8 +266,5 @@ export class KeyvSqlite extends EventEmitter implements KeyvStoreAdapter {
 		await this.close();
 	}
 }
-
-export const createKeyv = (keyvOptions?: KeyvSqliteOptions | string) =>
-	new Keyv({ store: new KeyvSqlite(keyvOptions) });
 
 export default KeyvSqlite;

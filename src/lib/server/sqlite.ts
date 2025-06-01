@@ -6,3 +6,8 @@ console.log(`sqlite: persistent using ${sqlitePath}`);
 
 export const sqlite = new Database(sqlitePath);
 sqlite.query('PRAGMA journal_mode = WAL;').run();
+
+process.on('sveltekit:shutdown', async (reason) => {
+	console.log('Shutting down sqlite...');
+	sqlite.close();
+});
