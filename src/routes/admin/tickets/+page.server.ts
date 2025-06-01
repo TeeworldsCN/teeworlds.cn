@@ -6,7 +6,7 @@ import {
 	getUserSubscribedTickets,
 	TICKET_EXPIRE_TIME
 } from '$lib/server/db/tickets';
-import { getConnectionStats } from '$lib/server/realtime/tickets';
+import { getConnectedAdmins, getConnectionStats } from '$lib/server/realtime/tickets';
 import { hasPermission } from '$lib/server/db/users';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
@@ -39,7 +39,6 @@ export const load = (async ({ locals, url, setHeaders }) => {
 	}
 
 	const userSubscribedTickets = getUserSubscribedTickets(locals.user.uuid);
-	const connectionStats = getConnectionStats();
 
 	setHeaders({
 		'cache-control': 'private, no-store'
@@ -51,7 +50,7 @@ export const load = (async ({ locals, url, setHeaders }) => {
 		limit,
 		offset,
 		userSubscribedTickets,
-		connectedAdmins: connectionStats.connectedAdmins,
+		connectedAdmins: getConnectedAdmins(),
 		user: locals.user,
 		showExpired
 	};

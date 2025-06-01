@@ -147,6 +147,7 @@ export const addAdminConnection = (emit: EmitFunction, userUuid: string, lock: L
 
 	// Clean up when connection closes
 	const cleanup = () => {
+		console.log('Admin connection closed');
 		adminConnections.delete(emit);
 		// Notify about connection count and admin list update after cleanup
 		notifyAdminConnectionCountUpdated();
@@ -434,11 +435,12 @@ export const notifyAttachmentAdded = (attachment: TicketAttachment, ticket: Tick
 };
 
 export const getConnectedAdmins = () => {
-	const uniqueAdminUuids = new Set(Array.from(adminConnections.values()));
+	const uniqueAdminUuids = new Set(Array.from(adminConnections.values()).map((data) => data.uuid));
 	const connectedAdmins: Array<{ uuid: string; username: string }> = [];
 
 	for (const data of uniqueAdminUuids) {
-		const user = getUserByUuid(data.uuid);
+		console.log(data);
+		const user = getUserByUuid(data);
 		if (user) {
 			connectedAdmins.push({ uuid: user.uuid, username: user.username });
 		}
@@ -697,8 +699,7 @@ export const getConnectionsByTicketUuid = (ticketUuid: string) => {
 export const getConnectionStats = () => {
 	return {
 		adminConnections: adminConnections.size,
-		adminCount: new Set(Array.from(adminConnections.values())).size,
-		connectedAdmins: getConnectedAdmins(),
+		adminCount: new Set(Array.from(adminConnections.values()).map((data) => data.uuid)).size,
 		ticketConnections: Array.from(ticketConnections.entries()).map(([uuid, connections]) => ({
 			uuid,
 			connections: connections.size
