@@ -5,7 +5,7 @@ import { allowedText } from '$lib/server/filter';
 import { getPlayer } from '$lib/server/players';
 import type { Handler } from '../protocol/types';
 
-export const handlePoints: Handler = async ({ user, reply, args }) => {
+export const handlePoints: Handler = async ({ platform, user, reply, args }) => {
 	let playerName = args.trim();
 
 	// check binds
@@ -25,6 +25,10 @@ export const handlePoints: Handler = async ({ user, reply, args }) => {
 	if (data == null) {
 		// no valid player data
 		return await reply.text('啊，豆豆的数据代码出问题了，快叫人来修复豆豆。');
+	}
+
+	if (platform === 'qq') {
+		reply.image(`https://teeworlds.cn/api/images/points/${encodeAsciiURIComponent(playerName)}`);
 	}
 
 	const player = data as typeof data & {

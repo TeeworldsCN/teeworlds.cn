@@ -1,7 +1,9 @@
 import sharp from 'sharp';
 import { getSkinImageByName } from '../skin-cache';
 import { ddnetColorToRgb } from '$lib/ddnet/helpers';
-import { faGlobe, type IconDefinition } from '@fortawesome/free-solid-svg-icons';
+import { type IconDefinition } from '@fortawesome/free-solid-svg-icons';
+import * as qrcode from 'qrcode';
+import { encodeAsciiURIComponent } from '$lib/link';
 
 export const renderTee = async (
 	skin: string,
@@ -153,44 +155,51 @@ export const renderTee = async (
 
 export const generatePointsImage = async (
 	name: string,
-	skin: { n: string; b: number; f: number },
+	skin: { n: string; b?: number; f?: number },
 	ranks: {
 		icon: IconDefinition;
+		iconColor: string;
 		name: string;
-		rank: { points?: number; rank?: number | null; pending?: number };
+		rank?: { points?: number; rank?: number };
+		fallback: string;
 	}[]
 ) => {
 	console.time('generatePointsImage');
 
 	// Render the Tee character with the player's skin and colors
-	const tee = await renderTee(skin.n, skin.b, skin.f, 2);
+	const [tee, code] = await Promise.all([
+		renderTee(skin.n, skin.b, skin.f, 1),
+		qrcode.toBuffer(`https://teeworlds.cn/goto#p${encodeAsciiURIComponent(name)}`, {
+			width: 128,
+			errorCorrectionLevel: 'L'
+		})
+	]);
 	const teeInfo = tee ? await tee.raw().toBuffer({ resolveWithObject: true }) : null;
 
-	// Filter ranks to show only the most important ones (first 4)
-	const displayRanks = ranks.slice(0, 4);
+	const displayRanks = ranks.slice(0, 6);
 
 	// Create rank cards SVG
 	let rankCardsHtml = '';
-	const cardWidth = 420;
-	const cardHeight = 140;
-	const cardsPerRow = 2;
-	const cardSpacing = 30;
-	const startX = 40;
-	const startY = 140;
+	const cardWidth = 224;
+	const cardHeight = 101;
+	const cardsPerCol = 2;
+	const cardSpacing = 10;
+	const startX = 14;
+	const startY = 158;
 
 	displayRanks.forEach((rank, index) => {
-		const row = Math.floor(index / cardsPerRow);
-		const col = index % cardsPerRow;
+		const row = index % cardsPerCol;
+		const col = Math.floor(index / cardsPerCol);
+
 		const x = startX + col * (cardWidth + cardSpacing);
 		const y = startY + row * (cardHeight + cardSpacing);
 
-		const hasRank = rank.rank.rank && rank.rank.points;
+		const hasRank = rank.rank && rank.rank.rank;
 		const opacity = hasRank ? 1 : 0.5;
 
 		// Format points and rank display
-		const pointsText = rank.rank.points ? `${rank.rank.points}pts` : '0pts';
-		const rankText = rank.rank.rank ? `No.${rank.rank.rank}` : '未获得';
-		const pendingText = rank.rank.pending ? ` +${rank.rank.pending}` : '';
+		const pointsText = rank.rank && rank.rank.rank ? `${rank.rank.points}` : '';
+		const rankText = rank.rank && rank.rank.rank ? `#${rank.rank.rank}` : '';
 
 		rankCardsHtml += `
 			<g opacity="${opacity}">
@@ -199,40 +208,48 @@ export const generatePointsImage = async (
 					  rx="12" fill="#475569" stroke="none"/>
 
 				<!-- Icon and title -->
-				<svg x="${x + 10}" y="${y + 10}" width="32" height="32" viewBox="0 0 ${faGlobe.icon[0]} ${faGlobe.icon[1]}">
-					<path d="${faGlobe.icon[4]}" fill="#f1f5f9" />
+				<svg x="${x + 10}" y="${y + 8}" width="26" height="26" viewBox="0 0 ${rank.icon.icon[0]} ${rank.icon.icon[1]}">
+					<path d="${rank.icon.icon[4]}" fill="${rank.iconColor}" />
 				</svg>
-				<text x="${x + 48}" y="${y + 35}" font-family="Noto Sans CJK SC"
-					  font-weight="600" font-size="22" fill="#f1f5f9">
+				<text x="${x + 112}" y="${y + 32}" font-family="Noto Sans CJK SC"
+					  font-weight="400" font-size="28" fill="#cbd5e1" text-anchor="middle">
 					${rank.name}
 				</text>
 
-				<!-- Rank and points -->
-				<text x="${x + 20}" y="${y + 70}" font-family="Noto Sans CJK SC"
-					  font-weight="400" font-size="18" fill="#cbd5e1">
-					${rankText}
+				<!-- Points and Rank -->
+				<text x="${x + 112}" y="${y + 76}" font-family="Noto Sans CJK SC"
+					  font-weight="700" font-size="${pointsText ? '42' : '24'}" fill="#ffffff" text-anchor="middle">
+					${pointsText || rank.fallback}
 				</text>
-
-				<text x="${x + 20}" y="${y + 100}" font-family="Noto Sans CJK SC"
-					  font-weight="400" font-size="18" fill="#cbd5e1">
-					${pointsText}${pendingText}
+				<text x="${x + 215}" y="${y + 95}" font-family="Noto Sans CJK SC"
+					  font-weight="400" font-size="18" fill="#cbd5e1" text-anchor="end">
+					${rankText}
 				</text>
 			</g>
 		`;
 	});
 
 	const svgText = `
-		<svg width="960" height="512" xmlns="http://www.w3.org/2000/svg">
+		<svg width="720" height="380" xmlns="http://www.w3.org/2000/svg">
 			<!-- Background -->
-			<rect width="960" height="512" fill="#1e293b"/>
+			<rect width="720" height="380" fill="#1e293b"/>
+
+			<!-- Tee rect -->
+			<rect x="32" y="48" width="64" height="64" rx="12" fill="#475569"/>
 
 			<!-- Player name -->
-			<text x="200" y="80" font-family="Noto Sans CJK SC" font-weight="600"
-				  font-size="48" fill="#f1f5f9">${name}</text>
-
-			<!-- Subtitle -->
-			<text x="200" y="110" font-family="Noto Sans CJK SC" font-weight="400"
-				  font-size="20" fill="#94a3b8">DDNet 玩家信息</text>
+			<text x="110" y="90" font-family="Noto Sans CJK SC" font-weight="600"
+				  font-size="34" fill="#f1f5f9">${name}</text>
+			
+			<!-- Info name -->
+			<path d="M0 10 h116 a12 12 0 0 1 12 12 v0 a12 12 0 0 1 -12 12 h-116 v-24" fill="#e17100"/>
+			<text x="12" y="30" font-family="Noto Sans CJK SC" font-weight="600"
+				  font-size="20" fill="#ffffff">DDNet 分数</text>
+			
+			<!-- Qr code Background -->
+			<rect x="580" y="5" width="128" height="140" rx="12" fill="#62748e"/>
+			<text x="644" y="24" font-family="Noto Sans CJK SC" font-weight="500"
+				  font-size="16" fill="#1d293d" text-anchor="middle">扫码查看详情</text>
 
 			<!-- Rank cards -->
 			${rankCardsHtml}
@@ -244,10 +261,16 @@ export const generatePointsImage = async (
 	// Add the Tee character if available
 	if (teeInfo) {
 		composite.push({
+			input: code,
+			left: 580,
+			top: 18,
+			blend: 'multiply'
+		});
+		composite.push({
 			input: teeInfo.data,
 			raw: { ...teeInfo.info, premultiplied: false },
-			left: 40,
-			top: 20,
+			left: 24,
+			top: 48,
 			blend: 'over'
 		});
 	}

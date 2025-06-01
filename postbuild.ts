@@ -24,8 +24,9 @@ try {
 	const productionPackageJson = {
 		name: sourcePackageJson.name,
 		version: sourcePackageJson.version,
-		type: sourcePackageJson.type,
+		type: "module",
 		private: sourcePackageJson.private,
+		main: "index.js",
 		dependencies: sourcePackageJson.dependencies || {},
 		scripts: {
 			start: 'bun index.js'

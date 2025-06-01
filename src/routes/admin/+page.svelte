@@ -1,11 +1,7 @@
 <script lang="ts">
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
-	import TeeRender from '$lib/components/TeeRender.svelte';
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
-	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { type PERMISSIONS } from '$lib/types.js';
-	import qrcode from 'qrcode';
-	import { onMount } from 'svelte';
 
 	const { data } = $props();
 
@@ -13,17 +9,6 @@
 		(data.user?.data?.permissions || []).some(
 			(permission) => permission == perm || permission == 'SUPER'
 		);
-
-	let qrCode = $state('');
-
-	async function generateQRCode() {
-		qrCode = await qrcode.toDataURL(
-			`https://teeworlds.cn/goto#p${encodeAsciiURIComponent('1人2人3人4人')}`,
-			{ scale: 4, errorCorrectionLevel: 'L' }
-		);
-	}
-
-	onMount(generateQRCode);
 </script>
 
 <Breadcrumbs
@@ -75,12 +60,3 @@
 		<div class="text-semibold">管理频道中的角色</div>
 	</div>
 {/if}
-
-<div class="relative inline-block">
-	<TeeRender name="ahl_WarfoxOrangeGlow" body={11730831} feet={11927397} className="h-[64px] w-[64px] absolute inline-block" />
-	<img
-		class="-left-[6px] top-0 inline-block align-bottom"
-		src={'/api/images/points'}
-		alt="QR Code"
-	/>
-</div>
