@@ -28,7 +28,9 @@ export const handlePoints: Handler = async ({ platform, user, reply, args }) => 
 	}
 
 	if (platform === 'qq') {
-		reply.image(`https://teeworlds.cn/api/images/points/${encodeAsciiURIComponent(playerName)}`);
+		return await reply.image(
+			`https://teeworlds.cn/api/images/points/${encodeURIComponent(playerName)}`
+		);
 	}
 
 	const player = data as typeof data & {
