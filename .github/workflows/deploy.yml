@@ -25,8 +25,8 @@ jobs:
       - name: Create cache directory
         run: mkdir -p cache
 
-      - name: Build with Vite
-        run: bun --bun run vite build
+      - name: Build Project
+        run: bun run build
 
       - name: Move rust scripts to build folder
         run: mv rust build

@@ -450,7 +450,10 @@ export const getConnectedAdmins = () => {
 export const notifyAdminConnectionCountUpdated = () => {
 	const event: TicketEvent = {
 		type: 'admin_connection_count_updated',
-		data: { adminConnectionCount: new Set(Array.from(adminConnections.values())).size }
+		data: {
+			adminConnectionCount: new Set(Array.from(adminConnections.values().map((data) => data.uuid)))
+				.size
+		}
 	};
 
 	// Also notify all ticket connections (visitors) about admin count update
