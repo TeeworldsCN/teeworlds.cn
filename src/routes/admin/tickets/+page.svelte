@@ -135,22 +135,8 @@
 		return userSubscribedTickets.includes(ticketUuid);
 	};
 
-	const formatTimeAgo = (timestamp: number) => {
-		const now = Date.now();
-		const diff = now - timestamp;
-		const minutes = Math.floor(diff / 60000);
-		const hours = Math.floor(diff / 3600000);
-		const days = Math.floor(diff / 86400000);
-
-		if (minutes < 1) return '刚刚';
-		if (minutes < 60) return `${minutes}分钟前`;
-		if (hours < 24) return `${hours}小时前`;
-		if (days < 7) return `${days}天前`;
-
-		return new Date(timestamp).toLocaleDateString('zh-CN', {
-			month: 'short',
-			day: 'numeric'
-		});
+	const formatTime = (timestamp: number) => {
+		return new Date(timestamp).toLocaleString('zh-CN');
 	};
 
 	const handleCloseTicket = async (ticketUuid: string) => {
@@ -1073,7 +1059,7 @@
 										</div>
 										<div class="flex items-center gap-4 text-xs text-slate-400">
 											<span>ID: {ticket.uuid.slice(0, 8)}</span>
-											<span>{formatTimeAgo(ticket.updated_at)}</span>
+											<span>{formatTime(ticket.updated_at)}</span>
 										</div>
 									</div>
 									<div class="flex-shrink-0">

@@ -23,7 +23,6 @@
 	let retryAttempts = $state(0);
 
 	let isSSEClosed = $state(false);
-	let isSSEClosedByUser = $state(false);
 	let readonly = $state(false);
 
 	// Preload audio files to avoid repeated HTTP requests
@@ -245,7 +244,6 @@
 
 		// Return cleanup function
 		return () => {
-			isSSEClosedByUser = true;
 			connection?.close();
 			window.removeEventListener('beforeunload', handleBeforeUnload);
 		};

@@ -446,6 +446,7 @@
 						<input
 							id="message-input"
 							bind:value={newMessage}
+							autocomplete="off"
 							placeholder={readonlyInput
 								? '发送消息不可用'
 								: onSubscribe && !isCurrentUserSubscribed && ticket.status !== 'closed'
