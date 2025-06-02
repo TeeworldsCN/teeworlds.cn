@@ -15,19 +15,19 @@ export const load = (async ({ parent, url, setHeaders }) => {
 			const fetch = await regionalRanks(region);
 			if (!fetch) return error(404);
 
-			const result = (await fetch.fetchCache()).result;
+			const result = await fetch.fetchCache();
 			setHeaders({
-				'last-modified': new Date(result.update_time).toUTCString()
+				'last-modified': new Date(result.timestamp).toUTCString()
 			});
-			return { ...result, region: region.toUpperCase(), ...(await parent()) };
+			return { ...result.result, region: region.toUpperCase(), ...(await parent()) };
 		}
 
 		// otherwise just fetch global ranks
-		const result = (await ranks.fetchCache()).result;
+		const result = await ranks.fetchCache();
 		setHeaders({
-			'last-modified': new Date(result.update_time).toUTCString()
+			'last-modified': new Date(result.timestamp).toUTCString()
 		});
-		return { ...result, region: 'GLOBAL', ...(await parent()) };
+		return { ...result.result, region: 'GLOBAL', ...(await parent()) };
 	} catch {
 		return error(500);
 	}
