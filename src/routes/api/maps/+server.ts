@@ -4,11 +4,13 @@ import { maps } from '$lib/server/fetches/maps';
 
 export const GET: RequestHandler = async () => {
 	try {
-		const data = (await maps.fetchAsString()).result;
-		return new Response(data, {
+		const mapsCache = await maps.fetchAsString();
+		return new Response(mapsCache.result, {
 			headers: {
 				'content-type': 'application/json',
-				'cache-control': 'public, max-age=600'
+				'cache-control': 'public, max-age=600',
+				'x-twcn-cache-hit': mapsCache.hit ? 'hit' : 'miss',
+				'last-modified': new Date(mapsCache.timestamp).toUTCString()
 			}
 		});
 	} catch {

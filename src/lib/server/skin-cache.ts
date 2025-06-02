@@ -7,7 +7,7 @@ export const getSkinImageByName = async (
 	grayscale: boolean,
 	def?: string
 ): Promise<{ result: Uint8Array | null; hit: boolean }> => {
-	const skinMap = (await skins.fetch()).result.map;
+	const skinMap = (await skins.fetchCache()).result.map;
 	const skinPath = skinMap[name] || (def ? skinMap[def] : null);
 	if (!skinPath) {
 		return { result: null, hit: false };

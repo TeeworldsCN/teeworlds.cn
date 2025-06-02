@@ -123,6 +123,6 @@ export const maps = new FetchCache<MapList>(
 		return result;
 	},
 	{
-		version: 2
+		version: 3
 	}
 );

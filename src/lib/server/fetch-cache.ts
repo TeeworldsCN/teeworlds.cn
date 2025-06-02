@@ -14,6 +14,7 @@ interface FetchCacheOptions {
 type CachedData = {
 	tag: string;
 	data: string;
+	timestamp: number;
 	v: number;
 };
 
@@ -28,12 +29,16 @@ export class FetchCache<T> {
 	private callbacks:
 		| (
 				| {
-						cb: (result: { result: string; hit: boolean }) => void;
+						cb: (result: { result: string; hit: boolean; timestamp: number }) => void;
 						keepObject: false;
 						error: (error: any) => void;
 				  }
 				| {
-						cb: (result: { result: string; hit: boolean } | { data: T; hit: boolean }) => void;
+						cb: (
+							result:
+								| { result: string; hit: boolean; timestamp: number }
+								| { data: T; hit: boolean; timestamp: number }
+						) => void;
 						keepObject: true;
 						error: (error: any) => void;
 				  }
@@ -73,35 +78,40 @@ export class FetchCache<T> {
 	 * This might be useful for directly sending the response to the client without parsing the cached data
 	 * @param cached true - use cache whenever possible, false - automatically determine whether to use cache or not, defaults to false
 	 */
-	async fetchAsString(cached?: boolean): Promise<{ result: string; hit: boolean; string: true }>;
+	async fetchAsString(
+		cached?: boolean
+	): Promise<{ result: string; hit: boolean; string: true; timestamp: number }>;
 	async fetchAsString(
 		cached: boolean,
 		keepObject: true
 	): Promise<
-		{ result: string; hit: boolean; string: true } | { data: T; hit: boolean; string: false }
+		| { result: string; hit: boolean; string: true; timestamp: number }
+		| { data: T; hit: boolean; string: false; timestamp: number }
 	>;
 	async fetchAsString(
 		cached?: boolean,
 		keepObject: boolean = false
 	): Promise<
-		{ result: string; hit: boolean; string: true } | { data: T; hit: boolean; string: false }
+		| { result: string; hit: boolean; string: true; timestamp: number }
+		| { data: T; hit: boolean; string: false; timestamp: number }
 	> {
 		if (this.callbacks) {
 			const lcbs = this.callbacks;
-			return new Promise<{ result: string; hit: boolean; string: true }>((resolve, reject) =>
-				lcbs.push({
-					cb: (result: any) => resolve(result),
-					error: (error: any) => reject(error),
-					keepObject
-				})
+			return new Promise<{ result: string; hit: boolean; string: true; timestamp: number }>(
+				(resolve, reject) =>
+					lcbs.push({
+						cb: (result: any) => resolve(result),
+						error: (error: any) => reject(error),
+						keepObject
+					})
 			);
 		}
 
 		this.callbacks = [];
 		try {
 			const result:
-				| { result: string; hit: boolean; string: true }
-				| { data: T; hit: boolean; string: false } = await (async () => {
+				| { result: string; hit: boolean; string: true; timestamp: number }
+				| { data: T; hit: boolean; string: false; timestamp: number } = await (async () => {
 				const now = Date.now() / (this.minQueryInterval * 1000);
 				const key = `dd:cache:${this.url}`;
 				let cache = await volatile.get<CachedData>(key);
@@ -113,7 +123,8 @@ export class FetchCache<T> {
 					return {
 						result: cache.data,
 						hit: true,
-						string: true
+						string: true,
+						timestamp: cache.timestamp
 					};
 				}
 
@@ -130,7 +141,8 @@ export class FetchCache<T> {
 					return {
 						result: cache.data,
 						hit: true,
-						string: true as const
+						string: true as const,
+						timestamp: cache.timestamp
 					};
 				}
 
@@ -176,16 +188,19 @@ export class FetchCache<T> {
 								return {
 									result: cache.data,
 									hit: true,
-									string: true as const
+									string: true as const,
+									timestamp: cache.timestamp
 								};
 							}
 							data = await this.transformer(result);
+							const now = Date.now();
 							let stringData;
 							if (tag) {
 								// only cache if the tag is valid
 								stringData = JSON.stringify(data);
 								await volatile.set<CachedData>(key, {
 									tag,
+									timestamp: now,
 									data: stringData,
 									v: this.version
 								});
@@ -193,7 +208,8 @@ export class FetchCache<T> {
 							return {
 								data,
 								hit: false,
-								string: false as const
+								string: false as const,
+								timestamp: now
 							};
 						}
 					} catch {}
@@ -204,7 +220,8 @@ export class FetchCache<T> {
 					return {
 						result: cache.data,
 						hit: true,
-						string: true as const
+						string: true as const,
+						timestamp: cache.timestamp
 					};
 				}
 
@@ -221,13 +238,15 @@ export class FetchCache<T> {
 				}
 			})();
 
-			let stringData: { result: string; hit: boolean; string: true } | null = null;
+			let stringData: { result: string; hit: boolean; string: true; timestamp: number } | null =
+				null;
 			const getStringData = () => {
 				if (!stringData) {
 					stringData = {
 						result: result.string ? result.result : JSON.stringify(result.data),
 						hit: result.hit,
-						string: true
+						string: true,
+						timestamp: result.timestamp
 					};
 				}
 				return stringData;
@@ -260,11 +279,18 @@ export class FetchCache<T> {
 	 * Fetch the data
 	 * @param cached true - use cache whenever possible, false - automatically determine whether to use cache or not, defaults to false.
 	 */
-	async fetch(cached: boolean = false): Promise<{ result: T; hit: boolean; string: false }> {
+	async fetchCache(
+		cached: boolean = false
+	): Promise<{ result: T; hit: boolean; string: false; timestamp: number }> {
 		const result = await this.fetchAsString(cached, true);
 		if (result.string) {
-			return { result: JSON.parse(result.result), hit: result.hit, string: false };
+			return {
+				result: JSON.parse(result.result),
+				hit: result.hit,
+				string: false,
+				timestamp: result.timestamp
+			};
 		}
-		return { result: result.data, hit: result.hit, string: false };
+		return { result: result.data, hit: result.hit, string: false, timestamp: result.timestamp };
 	}
 }

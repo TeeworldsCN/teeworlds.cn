@@ -75,7 +75,7 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 		}
 	}
 
-	const mapData = (await maps.fetch()).result;
+	const mapData = (await maps.fetchCache()).result;
 
 	if (!mapName) {
 		const finishedList = new Set<string>();

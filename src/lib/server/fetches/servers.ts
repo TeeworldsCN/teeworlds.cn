@@ -70,6 +70,7 @@ export const servers = new FetchCache<{ servers: ServerInfo }>(
 	'https://master1.ddnet.org/ddnet/15/servers.json',
 	async (response) => await response.json(),
 	{
+		version: 2,
 		minQueryInterval: 2,
 		skipHead: true
 	}
@@ -87,6 +88,7 @@ export const gameInfo = new FetchCache<GameInfo>(
 		return result;
 	},
 	{
+		version: 2,
 		minQueryInterval: 1800,
 		skipHead: true
 	}

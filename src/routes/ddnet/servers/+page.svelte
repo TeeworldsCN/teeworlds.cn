@@ -106,7 +106,7 @@
 		}
 
 		loading = true;
-		await invalidate('/ddnet/servers');
+		await invalidate('/api/servers');
 		loading = false;
 	};
 

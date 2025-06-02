@@ -4,7 +4,7 @@ import { error, json } from '@sveltejs/kit';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const name = url.searchParams.get('name');
-	const list = (await servers.fetch()).result;
+	const list = (await servers.fetchCache()).result;
 
 	const playerServers = list.servers.filter((server) =>
 		server.info.clients.some((client) => client.name == name)

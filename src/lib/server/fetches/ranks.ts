@@ -152,6 +152,7 @@ export const ranks = new FetchCache<RankInfo>(
 		return ranks;
 	},
 	{
+		version: 2,
 		minQueryInterval: 1800
 	}
 );
@@ -209,6 +210,7 @@ export const regionalRanks = async (region: string) => {
 			return ranks;
 		},
 		{
+			version: 2,
 			minQueryInterval: 1800
 		}
 	);

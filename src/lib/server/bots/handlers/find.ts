@@ -27,7 +27,7 @@ export const handleFind: Handler = async ({ user, reply, args }) => {
 		});
 	}
 
-	const serverList = (await servers.fetch()).result;
+	const serverList = (await servers.fetchCache()).result;
 	const playerServers = serverList.servers.filter((server) =>
 		server.info.clients.some((client) => client.name == name)
 	);

@@ -5,7 +5,6 @@ import { ranks, regionalRanks } from '$lib/server/fetches/ranks';
 import { maps } from '$lib/server/fetches/maps';
 import { uaIsStrict } from '$lib/helpers';
 import { getSkin } from '$lib/server/ddtracker';
-import { skins } from '$lib/server/fetches/skins';
 import { getPlayer } from '$lib/server/players';
 
 interface PlayerRank {
@@ -49,9 +48,8 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 
 	const name = decodeAsciiURIComponent(param);
 	const fetchPlayer = fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`);
-	const fetchMaps = maps.fetch();
-	const fetchSkins = skins.fetch();
-	const fetchRanks = ranks.fetch();
+	const fetchMaps = maps.fetchCache();
+	const fetchRanks = ranks.fetchCache();
 
 	const [playerData, mapData, rankData] = await Promise.all([
 		(async () => {
@@ -109,7 +107,6 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 			return data;
 		})(),
 		fetchMaps,
-		fetchSkins,
 		fetchRanks
 	]);
 
@@ -182,7 +179,7 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 	const serverCache = await regionalRanks(favoriteServer.server);
 	if (serverCache) {
 		try {
-			const serverRanks = await serverCache.fetch();
+			const serverRanks = await serverCache.fetchCache();
 			player.server_points = serverRanks.result.ranks.points.find(
 				(rank) => rank.name == player.player
 			);

@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { ranks, regionalRanks } from '$lib/server/fetches/ranks';
 
-export const load = (async ({ parent, url }) => {
+export const load = (async ({ parent, url, setHeaders }) => {
 	const region = url.searchParams.get('server');
 
 	if (region && region.toLowerCase() != region) {
@@ -15,12 +15,18 @@ export const load = (async ({ parent, url }) => {
 			const fetch = await regionalRanks(region);
 			if (!fetch) return error(404);
 
-			const result = (await fetch.fetch()).result;
+			const result = (await fetch.fetchCache()).result;
+			setHeaders({
+				'last-modified': new Date(result.update_time).toUTCString()
+			});
 			return { ...result, region: region.toUpperCase(), ...(await parent()) };
 		}
 
 		// otherwise just fetch global ranks
-		const result = (await ranks.fetch()).result;
+		const result = (await ranks.fetchCache()).result;
+		setHeaders({
+			'last-modified': new Date(result.update_time).toUTCString()
+		});
 		return { ...result, region: 'GLOBAL', ...(await parent()) };
 	} catch {
 		return error(500);

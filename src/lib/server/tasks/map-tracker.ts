@@ -74,7 +74,7 @@ const publishMap = async (map: MapList[0]) => {
 };
 
 export const triggerMapReleaseForQQ = async () => {
-	const data = (await maps.fetch()).result;
+	const data = (await maps.fetchCache()).result;
 	if (!data) return;
 
 	const lastestMap = data[0];
@@ -121,7 +121,7 @@ const trackerTaskForQQ = async (data: MapList) => {
 
 // run every 10 minutes. update usually comes out around minute 5. make sure we can catch it with in 4 minutes.
 export const mapTracker = new Cron('7,17,27,37,47,57 * * * *', async () => {
-	const data = (await maps.fetch()).result;
+	const data = (await maps.fetchCache()).result;
 	if (!data) return;
 
 	await trackerTaskForQQ(data);

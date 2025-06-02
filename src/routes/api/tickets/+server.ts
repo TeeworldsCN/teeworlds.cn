@@ -30,7 +30,7 @@ import { getTicketUserInfo } from '$lib/server/auth/ticket-auth';
 import { gameInfo } from '$lib/server/fetches/servers';
 
 const checkServerCommunity = async (ip: string) => {
-	const list = (await gameInfo.fetch()).result;
+	const list = (await gameInfo.fetchCache()).result;
 
 	let serverType = '';
 

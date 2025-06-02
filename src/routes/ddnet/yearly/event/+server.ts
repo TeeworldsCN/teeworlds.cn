@@ -386,7 +386,7 @@ export const POST: RequestHandler = async ({ url }) => {
 				const nearestReleaseRecord = await findNearestReleaseRecord(tz, name, start, end);
 				if (updateProgress()) return;
 				d.nrr = nearestReleaseRecord[0];
-				const mapList = (await maps.fetch()).result;
+				const mapList = (await maps.fetchCache()).result;
 				if (updateProgress()) return;
 				const mapperMaps = mapList
 					.filter((map) => {

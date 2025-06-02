@@ -3,10 +3,13 @@ import { skins } from '$lib/server/fetches/skins';
 
 export const GET: RequestHandler = async () => {
 	try {
-		return new Response(JSON.stringify((await skins.fetch()).result), {
+		const skinsCache = await skins.fetchAsString();
+		return new Response(skinsCache.result, {
 			headers: {
 				'content-type': 'application/json',
-				'cache-control': 'public, max-age=1200'
+				'cache-control': 'public, max-age=1200',
+				'x-twcn-cache-hit': skinsCache.hit ? 'hit' : 'miss',
+				'last-modified': new Date(skinsCache.timestamp).toUTCString()
 			}
 		});
 	} catch {
