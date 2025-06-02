@@ -5,6 +5,9 @@ import { error } from '@sveltejs/kit';
 import { produce } from 'sveltekit-sse';
 import type { RequestHandler } from './$types';
 import { getTicketUserInfo } from '$lib/server/auth/ticket-auth';
+import { env } from '$env/dynamic/private';
+
+const pingTime = parseInt(env.PING_TIME || '30') * 1000;
 
 export const POST: RequestHandler = async ({ locals, url, cookies }) => {
 	const mode = url.searchParams.get('mode'); // 'admin' or 'ticket'
@@ -72,7 +75,7 @@ export const POST: RequestHandler = async ({ locals, url, cookies }) => {
 			}
 		},
 		{
-			ping: 45000,
+			ping: pingTime,
 			stop: () => {
 				if (cleanup) {
 					cleanup();
