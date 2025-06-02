@@ -561,6 +561,8 @@
 	const openTicketPanel = async (ticket: Ticket) => {
 		isLoadingTicket = true;
 		selectedTicket = ticket;
+		selectedTicketMessages = [];
+		selectedTicketAttachments = [];
 
 		try {
 			// Fetch ticket details and messages
