@@ -9,7 +9,7 @@
 	let query = $state('');
 
 	const sendOp = async (body: any) => {
-		return await fetch('/admin/subs', {
+		return await fetch('/admin/api/subs', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -44,7 +44,7 @@
 	};
 
 	const downloadOp = async (body: any) => {
-		const result = await fetch('/admin/subs', {
+		const result = await fetch('/admin/api/subs', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'

@@ -53,7 +53,7 @@
 		publishResult = null;
 
 		try {
-			const response = await fetch('/admin/qq-threads', {
+			const response = await fetch('/admin/api/qq-threads', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'

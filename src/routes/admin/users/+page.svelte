@@ -168,7 +168,7 @@
 
 		savingPermissions = true;
 		try {
-			const response = await fetch(`/admin/users/${editingUser.uuid}/permissions`, {
+			const response = await fetch(`/admin/api/users/${editingUser.uuid}/permissions`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json'
@@ -210,7 +210,7 @@
 
 		generatingRegisterLink = true;
 		try {
-			const response = await fetch('/admin/users/register-link', {
+			const response = await fetch('/admin/api/users/register-link', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -248,7 +248,7 @@
 
 		generatingResetLink = true;
 		try {
-			const response = await fetch(`/admin/users/${editingUser.uuid}/reset-password-link`, {
+			const response = await fetch(`/admin/api/users/${editingUser.uuid}/reset-password-link`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -311,7 +311,7 @@
 
 		renamingUser = true;
 		try {
-			const response = await fetch(`/admin/users/${editingUser.uuid}/rename`, {
+			const response = await fetch(`/admin/api/users/${editingUser.uuid}/rename`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json'

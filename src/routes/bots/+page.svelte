@@ -11,7 +11,7 @@
 	let groupMode = $state(false);
 
 	async function sendCommand(command: string, args: string) {
-		const url = new URL('/bots/', window.location.href);
+		const url = new URL('/bots/web/', window.location.href);
 		url.searchParams.set('mode', command);
 		const token = new URL(window.location.href).hash.slice(1);
 		const result = await fetch(url, {
@@ -53,7 +53,7 @@
 			}
 		}
 
-		const target = groupMode ? '/bots?mode=group' : '/bots';
+		const target = groupMode ? '/bots/web?mode=group' : '/bots/web';
 		const token = new URL(window.location.href).hash.slice(1);
 		const msg = await fetch(target, {
 			method: 'POST',

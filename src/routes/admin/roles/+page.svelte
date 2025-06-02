@@ -70,7 +70,7 @@
 		error = '';
 
 		try {
-			const response = await fetch(`/admin/roles?guild_id=${selectedGuildId}`);
+			const response = await fetch(`/admin/api/roles?guild_id=${selectedGuildId}`);
 			if (!response.ok) {
 				throw new Error(`Error: ${response.status}`);
 			}
@@ -92,7 +92,7 @@
 		error = '';
 
 		try {
-			const response = await fetch('/admin/roles', {
+			const response = await fetch('/admin/api/roles', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -132,7 +132,7 @@
 		error = '';
 
 		try {
-			const response = await fetch('/admin/roles', {
+			const response = await fetch('/admin/api/roles', {
 				method: 'PATCH',
 				headers: {
 					'Content-Type': 'application/json'
@@ -178,7 +178,7 @@
 		error = '';
 
 		try {
-			const response = await fetch('/admin/roles', {
+			const response = await fetch('/admin/api/roles', {
 				method: 'DELETE',
 				headers: {
 					'Content-Type': 'application/json'

@@ -153,7 +153,7 @@
 	const loadMaps = async () => {
 		error = void 0;
 		processHashQuery(page.url.hash);
-		const response = await fetch('/ddnet/maps');
+		const response = await fetch('/api/maps');
 		if (response.ok) {
 			maps = await response.json();
 		} else {

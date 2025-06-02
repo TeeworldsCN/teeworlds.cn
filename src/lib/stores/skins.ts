@@ -26,7 +26,7 @@ const loadSkinInfo = async () => {
 	loading = true;
 
 	try {
-		const response = await fetch('/ddnet/skins');
+		const response = await fetch('/api/skins');
 		if (!response.ok) {
 			throw new Error('Failed to fetch skins data');
 		}

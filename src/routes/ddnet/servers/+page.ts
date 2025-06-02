@@ -12,13 +12,13 @@ export const load = (async ({ fetch, parent, url }) => {
 		name = decodeAsciiURIComponent(name);
 	}
 
-	const data = (await (await fetch('/ddnet/servers')).json()) as {
+	const data = (await (await fetch('/api/servers')).json()) as {
 		servers: ServerInfo;
 		gameInfo: GameInfo;
 	};
 
 	const maps = name
-		? await (await fetch(`/ddnet/servers/info?name=${encodeURIComponent(name)}`)).json()
+		? await (await fetch(`/api/info?name=${encodeURIComponent(name)}`)).json()
 		: null;
 
 	const ddnet = data.gameInfo.communities.find((community) => community.id == 'ddnet');

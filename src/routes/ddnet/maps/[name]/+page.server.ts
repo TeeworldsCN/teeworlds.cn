@@ -44,7 +44,7 @@ export const load = (async ({ url, parent, params }) => {
 	if (data.thumbnail) {
 		const filename = basename(data.thumbnail);
 		data.thumbnail = (await convert(data.thumbnail)).toString();
-		data.icon = `../icons/${filename}`;
+		data.icon = `/api/mapicons/${filename}`;
 	}
 
 	const map = data as {

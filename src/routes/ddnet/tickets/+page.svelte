@@ -298,7 +298,7 @@
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), 5000);
 		try {
-			const response = await fetch(`/api/server?name=${encodeURIComponent(name)}`, {
+			const response = await fetch(`/api/find?name=${encodeURIComponent(name)}`, {
 				signal: controller.signal
 			});
 			if (response.status === 400) {

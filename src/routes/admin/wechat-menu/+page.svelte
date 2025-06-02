@@ -175,7 +175,7 @@
 				}
 			}
 
-			const response = await fetch('/admin/wechat-menu', {
+			const response = await fetch('/admin/api/wechat-menu', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -209,7 +209,7 @@
 		loading = true;
 
 		try {
-			const response = await fetch('/admin/wechat-menu', {
+			const response = await fetch('/admin/api/wechat-menu', {
 				method: 'DELETE'
 			});
 

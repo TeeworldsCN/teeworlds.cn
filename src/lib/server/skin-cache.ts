@@ -12,8 +12,8 @@ export const getSkinImageByName = async (
 	if (!skinPath) {
 		return { result: null, hit: false };
 	}
-	if (skinPath.startsWith('/ddnet/skins/')) {
-		return await getSkinImageByPath(skinPath.slice(13), grayscale);
+	if (skinPath.startsWith('/api/skins/')) {
+		return await getSkinImageByPath(skinPath.slice(11), grayscale);
 	}
 	return { result: null, hit: false };
 };

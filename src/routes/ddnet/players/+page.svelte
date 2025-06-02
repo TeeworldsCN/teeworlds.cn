@@ -102,7 +102,7 @@
 			queryList = { player: null, top10: [] };
 			queryListName = null;
 		} else {
-			queryList = await (await fetch(`?query=${encodeURIComponent(queryingName)}`)).json();
+			queryList = await (await fetch(`/api/players?query=${encodeURIComponent(queryingName)}`)).json();
 			queryListName = queryingName;
 		}
 		querying = false;

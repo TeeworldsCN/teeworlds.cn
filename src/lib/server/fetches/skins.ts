@@ -28,8 +28,8 @@ export const skins = new FetchCache<SkinInfo>(
 			result.skins.map(async (skin) => {
 				skin.url = (
 					skin.type == 'normal'
-						? `/ddnet/skins/${encodeURIComponent(skin.name)}.${skin.imgtype}`
-						: `/ddnet/skins/${encodeURIComponent(skin.type)}/${encodeURIComponent(skin.name)}.${skin.imgtype}`
+						? `/api/skins/${encodeURIComponent(skin.name)}.${skin.imgtype}`
+						: `/api/skins/${encodeURIComponent(skin.type)}/${encodeURIComponent(skin.name)}.${skin.imgtype}`
 				).toString();
 				map[skin.name] = skin.url;
 			})
@@ -37,5 +37,5 @@ export const skins = new FetchCache<SkinInfo>(
 		result.map = map;
 		return result;
 	},
-	{ version: 2 }
+	{ version: 3 }
 );

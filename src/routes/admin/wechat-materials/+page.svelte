@@ -72,7 +72,7 @@
 				formData.append('introduction', videoIntroduction);
 			}
 
-			const response = await fetch('/admin/wechat-materials', {
+			const response = await fetch('/admin/api/wechat-materials', {
 				method: 'POST',
 				body: formData
 			});
@@ -111,7 +111,7 @@
 		success = '';
 
 		try {
-			const response = await fetch('/admin/wechat-materials', {
+			const response = await fetch('/admin/api/wechat-materials', {
 				method: 'DELETE',
 				headers: {
 					'Content-Type': 'application/json'
@@ -171,12 +171,12 @@
 
 	// Change material type
 	function changeType(type: 'image' | 'video' | 'voice' | 'news') {
-		goto(`/admin/wechat-materials?type=${type}`);
+		goto(`/admin/api/wechat-materials?type=${type}`);
 	}
 
 	// Pagination
 	function goToPage(offset: number) {
-		goto(`/admin/wechat-materials?type=${data.type}&offset=${offset}`);
+		goto(`/admin/api/wechat-materials?type=${data.type}&offset=${offset}`);
 	}
 
 	// Process images in preview modal when it's shown
@@ -193,7 +193,7 @@
 							// Set src attribute using the proxy endpoint
 							img.setAttribute(
 								'src',
-								`/admin/wechat-materials?target=${encodeURIComponent(dataSrc)}`
+								`/admin/api/wechat-materials?target=${encodeURIComponent(dataSrc)}`
 							);
 
 							// Copy other data attributes to appropriate HTML attributes
@@ -363,7 +363,7 @@
 							{@const data = item as WeChatMaterialItem}
 							<div class="mb-3 aspect-video overflow-hidden rounded bg-zinc-900">
 								<img
-									src={`/admin/wechat-materials?target=${encodeURIComponent(data.url)}`}
+									src={`/admin/api/wechat-materials?target=${encodeURIComponent(data.url)}`}
 									alt={data.name || '图片'}
 									class="h-full w-full object-contain"
 									loading="lazy"

@@ -6,13 +6,13 @@ import sharp from 'sharp';
 export const GET = async ({ request, url }) => {
 	const path = url.pathname;
 
-	if (!path.startsWith('/ddnet/skins/')) {
+	if (!path.startsWith('/api/skins/')) {
 		return error(500);
 	}
 
 	const time = Date.now();
 
-	const name = path.slice(13);
+	const name = path.slice(11);
 	const grayscale = url.searchParams.get('grayscale') == '1';
 
 	const elapsed = () => Math.ceil(Date.now() - time);

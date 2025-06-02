@@ -250,7 +250,7 @@
 		loadingProgress = 0;
 		try {
 			if (!maps) {
-				maps = await (await fetch('/ddnet/maps')).json();
+				maps = await (await fetch('/api/maps')).json();
 			}
 			loadingProgress = 0.01;
 
@@ -1021,12 +1021,12 @@
 				try {
 					leftTeeSkin = await (
 						await fetch(
-							`/ddnet/playerskin?name=${encodeURIComponent(d.mpt[0][0])}&region=${encodeURIComponent('as:cn')}&fallback=true`
+							`/api/playerskin?name=${encodeURIComponent(d.mpt[0][0])}&region=${encodeURIComponent('as:cn')}&fallback=true`
 						)
 					).json();
 					rightTeeSkin = await (
 						await fetch(
-							`/ddnet/playerskin?name=${encodeURIComponent(d.mpt[1][0])}&region=${encodeURIComponent('as:cn')}&fallback=true`
+							`/api/playerskin?name=${encodeURIComponent(d.mpt[1][0])}&region=${encodeURIComponent('as:cn')}&fallback=true`
 						)
 					).json();
 				} catch {}
@@ -1081,7 +1081,7 @@
 				try {
 					rightTeeSkin = await (
 						await fetch(
-							`/ddnet/playerskin?name=${encodeURIComponent(d.mpt[0][0])}&region=${encodeURIComponent('as:cn')}&fallback=true`
+							`/api/playerskin?name=${encodeURIComponent(d.mpt[0][0])}&region=${encodeURIComponent('as:cn')}&fallback=true`
 						)
 					).json();
 				} catch {}
