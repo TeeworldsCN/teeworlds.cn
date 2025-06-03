@@ -352,7 +352,7 @@
 	const rememberNameFlow = async () => {
 		if (playerName !== data.playerName) {
 			await wait(125);
-			const button = await buttonPrompt(`需要豆豆帮你绑定 ${playerName} 这个游戏名吗？`, [
+			const button = await buttonPrompt(`需要豆豆帮你绑定 ${playerName} 这个游戏名吗？\n下次提交会自动使用这个游戏名`, [
 				{
 					text: '绑定',
 					id: 'remember',
