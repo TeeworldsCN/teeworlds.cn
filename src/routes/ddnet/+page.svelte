@@ -33,6 +33,9 @@
 		{ text: 'DDNet 工具箱', title: 'DDNet 工具箱' }
 	]}
 />
+<div class="mt-4">
+	<img src="/logos/ddnet.svg" alt="DDNet" class="h-14" />
+</div>
 
 <div class="mt-6">
 	<ToolboxButton href="/ddnet/players"
