@@ -27,23 +27,7 @@
 	let uploadProgress = $state(0);
 	let dragOver = $state(false);
 
-	const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-	const ALLOWED_TYPES = [
-		'image/jpeg',
-		'image/png',
-		'image/gif',
-		'image/webp',
-		'application/pdf',
-		'text/plain',
-		'application/msword',
-		'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-		'application/vnd.ms-excel',
-		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-		'application/zip',
-		'application/x-zip-compressed',
-		'application/octet-stream', // For .demo files and other binary files
-		'text/x-log' // For .log files
-	];
+	const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 	const formatFileSize = (bytes: number): string => {
 		if (bytes === 0) return '0 Bytes';
@@ -57,11 +41,6 @@
 		if (file.size > MAX_FILE_SIZE) {
 			return `文件大小超过 ${formatFileSize(MAX_FILE_SIZE)} 限制`;
 		}
-
-		if (!ALLOWED_TYPES.includes(file.type)) {
-			return '不支持的文件类型\n可以打包为 zip 文件上传（大小限制10MB）';
-		}
-
 		return null;
 	};
 

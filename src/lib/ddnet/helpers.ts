@@ -270,3 +270,27 @@ export const TILES = [
 	'WEAPON_RIFLE',
 	'WEAPON_SHOTGUN'
 ];
+
+export const parseDemoName = (name: string) => {
+	if (!name.endsWith('.demo')) {
+		return null;
+	}
+	name = name.slice(0, -5);
+	const parts = name.split('_');
+	for (let i = 1; i < parts.length - 1; i++) {
+		const part = parts[i];
+		if (part[part.length - 4] === '.') {
+			const time = parseFloat(part);
+			if (isNaN(time)) {
+				continue;
+			}
+			return {
+				map: parts.slice(0, i).join('_'),
+				time,
+				name: parts.slice(i + 1).join('_')
+			};
+		}
+	}
+
+	return null;
+};

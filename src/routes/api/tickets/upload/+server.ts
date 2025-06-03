@@ -3,14 +3,17 @@ import {
 	getTicket,
 	canUploadAttachment,
 	isUserBanned,
-	TICKET_EXPIRE_TIME
+	TICKET_EXPIRE_TIME,
+	addAdminOnlyMessage
 } from '$lib/server/db/tickets';
 import { hasPermission } from '$lib/server/db/users';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getTicketUserInfo } from '$lib/server/auth/ticket-auth';
+import { parseDemoName } from '$lib/ddnet/helpers';
+import sqlstring from 'sqlstring-sqlite';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const ALLOWED_TYPES = [
 	'image/jpeg',
 	'image/png',
@@ -27,6 +30,58 @@ const ALLOWED_TYPES = [
 	'application/octet-stream', // For .demo files and other binary files
 	'text/x-log' // For .log files
 ];
+
+const checkDemoName = async (ticketUuid: string, name: string) => {
+	try {
+		// Check demo record
+		const parsed = parseDemoName(name);
+		if (!parsed) {
+			return;
+		}
+
+		const sql = `select unixepoch(Timestamp) from race where Map = ${sqlstring.escape(
+			parsed.map
+		)} AND Name = ${sqlstring.escape(parsed.name)} AND Time = ${sqlstring.escape(parsed.time)} order by Timestamp ASC limit 1;`;
+
+		const result = await fetch(`https://db.ddstats.org/ddnet.json?sql=${encodeURIComponent(sql)}`);
+
+		if (!result.ok) {
+			addAdminOnlyMessage({
+				ticket_uuid: ticketUuid,
+				message: `豆豆尝试识别 demo 时发生了错误：${result.status} ${result.statusText}`,
+				author_type: 'system',
+				author_name: 'System'
+			});
+			return;
+		}
+
+		const data = await result.json();
+		if (!data.rows || data.rows.length === 0) {
+			addAdminOnlyMessage({
+				ticket_uuid: ticketUuid,
+				message: `豆豆没有找到 ${parsed.map} - ${parsed.time} - ${parsed.name} 的游玩记录`,
+				author_type: 'system',
+				author_name: 'System'
+			});
+			return;
+		}
+
+		const row = data.rows[0];
+		addAdminOnlyMessage({
+			ticket_uuid: ticketUuid,
+			message: `豆豆找到了 ${parsed.map} - ${parsed.time} - ${parsed.name} 的游玩记录\n完成时间：${new Date(row[0] * 1000).toLocaleString()}`,
+			author_type: 'system',
+			author_name: 'System'
+		});
+	} catch (err: any) {
+		addAdminOnlyMessage({
+			ticket_uuid: ticketUuid,
+			message: `豆豆尝试识别 demo 时发生了错误：${err.message || err}`,
+			author_type: 'system',
+			author_name: 'System'
+		});
+	}
+};
 
 export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 	try {
@@ -130,7 +185,7 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 			return json(
 				{
 					success: false,
-					error: `文件大小超过 10MB 限制`,
+					error: `文件大小超过 50MB 限制`,
 					errorType: 'file_too_large',
 					fileSize: file.size,
 					maxSize: MAX_FILE_SIZE
@@ -139,12 +194,12 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 			);
 		}
 
-		// Validate file type
-		if (!ALLOWED_TYPES.includes(file.type)) {
+		if (!ALLOWED_TYPES.includes(file.type) && !file.name.endsWith('.demo')) {
 			return json(
 				{
 					success: false,
-					error: '不支持的文件类型',
+					error:
+						'不支持的文件类型（仅支持图片、txt、zip、demo、log。需要上传其他文件可以打包为 zip 文件上传）',
 					errorType: 'invalid_file_type',
 					fileType: file.type
 				},
@@ -157,6 +212,10 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 		const randomSuffix = Math.random().toString(36).substring(2, 8);
 		const fileExtension = file.name.split('.').pop() || '';
 		const filename = `${timestamp}_${randomSuffix}${fileExtension ? '.' + fileExtension : ''}`;
+
+		if (fileExtension === 'demo') {
+			checkDemoName(ticketUuid, file.name);
+		}
 
 		// Get file data
 		const arrayBuffer = await file.arrayBuffer();

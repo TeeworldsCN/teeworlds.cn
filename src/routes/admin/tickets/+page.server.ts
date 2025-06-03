@@ -6,7 +6,7 @@ import {
 	getUserSubscribedTickets,
 	TICKET_EXPIRE_TIME
 } from '$lib/server/db/tickets';
-import { getConnectedAdmins, getConnectionStats } from '$lib/server/realtime/tickets';
+import { getConnectedAdmins } from '$lib/server/realtime/tickets';
 import { hasPermission } from '$lib/server/db/users';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
