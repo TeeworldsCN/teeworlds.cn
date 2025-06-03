@@ -1,5 +1,5 @@
 <div
-	class="scrollbar-subtle container grid max-h-[calc(100svh-5rem)] grid-cols-1 gap-4 overflow-y-auto rounded-l-lg rounded-br-lg bg-slate-700 p-3 text-left shadow-lg md:grid-cols-2 lg:grid-cols-3"
+	class="scrollbar-subtle container grid max-h-[calc(100svh-8rem)] grid-cols-1 gap-4 overflow-y-auto rounded-l-lg rounded-br-lg bg-slate-700 p-3 text-left shadow-lg md:grid-cols-2 lg:grid-cols-3"
 >
 	<div>
 		<h3 class="mb-2 rounded-lg bg-slate-600 px-2 text-xl font-bold">🌎 通过分</h3>
