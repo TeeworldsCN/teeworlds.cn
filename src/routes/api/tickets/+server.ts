@@ -28,6 +28,8 @@ import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getTicketUserInfo } from '$lib/server/auth/ticket-auth';
 import { gameInfo } from '$lib/server/fetches/servers';
+import { getDDNetBanList } from '$lib/server/bans';
+import { ipToNumber, numberToIp } from '$lib/helpers';
 
 const checkServerCommunity = async (ip: string) => {
 	const list = (await gameInfo.fetchCache()).result;
@@ -64,6 +66,66 @@ const checkServerCommunity = async (ip: string) => {
 	}
 
 	return serverType;
+};
+
+const addDDNetBanMessage = async (
+	ip: string,
+	copyableMessages: {
+		message: string;
+		copy_content: string;
+		author_name: string;
+		visibility: number;
+	}[]
+) => {
+	try {
+		const activeBan = await getDDNetBanList();
+		if (!activeBan) {
+			return;
+		}
+
+		const ipNum = ipToNumber(ip);
+		let found = false;
+		for (const ban of activeBan) {
+			if (ban.type == 'ban') {
+				if (ban.ip == ipNum) {
+					found = true;
+					copyableMessages.push({
+						message: `豆豆检测DDNet封禁条目（点击复制解封指令）\nIP: ${numberToIp(ban.ip)}\n原因：${ban.reason}\n管理：${ban.by}\n解封：${new Date(ban.expires * 1000).toLocaleString('zh-CN')}`,
+						copy_content: `!unban ${numberToIp(ban.ip)}`,
+						author_name: 'System',
+						visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
+					});
+				}
+			} else if (ban.type == 'ban_range') {
+				if (ban.start <= ipNum && ban.end >= ipNum) {
+					found = true;
+					copyableMessages.push({
+						message: `豆豆检测DDNet范围封禁条目（点击复制解封指令）\nIP: ${numberToIp(ban.start)}-${numberToIp(ban.end)}\n原因：${ban.reason}\n管理：${ban.by}\n解封：${new Date(ban.expires * 1000).toLocaleString('zh-CN')}`,
+						copy_content: `!unban ${numberToIp(ban.start)}-${numberToIp(ban.end)}`,
+						author_name: 'System',
+						visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
+					});
+				}
+			}
+		}
+
+		if (!found) {
+			copyableMessages.push({
+				message: `豆豆没有发现相关的封禁记录\n申诉玩家的设备IP：${ip}\n（点击复制IP）`,
+				copy_content: ip,
+				author_name: 'System',
+				visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
+			});
+		}
+	} catch (err: any) {
+		console.error('Failed to check DDNet bans:', err);
+		copyableMessages.push({
+			message: `豆豆在检查封禁记录时遇到了问题\n申诉玩家的设备IP：${ip}\n（点击复制IP）`,
+			copy_content: ip,
+			author_name: 'System',
+			visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
+		});
+	}
 };
 
 export const POST: RequestHandler = async ({ locals, request, cookies }) => {
@@ -189,12 +251,7 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 						try {
 							const requestIP = locals.ip;
 							if (requestIP) {
-								copyableMessages.push({
-									message: `申诉玩家的设备IP：${requestIP}\n（点击复制IP）`,
-									copy_content: requestIP,
-									author_name: 'System',
-									visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
-								});
+								await addDDNetBanMessage(requestIP, copyableMessages);
 							} else {
 								throw new Error('Failed to get client address');
 							}

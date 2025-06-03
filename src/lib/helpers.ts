@@ -182,6 +182,21 @@ export const addrToBase64 = (address: string) => {
 	return encodeBase64Url(addr);
 };
 
+export const ipToNumber = (ip: string) => {
+	const parts = ip.split('.');
+	return (
+		((parseInt(parts[0]) << 24) |
+			(parseInt(parts[1]) << 16) |
+			(parseInt(parts[2]) << 8) |
+			parseInt(parts[3])) >>>
+		0
+	);
+};
+
+export const numberToIp = (num: number) => {
+	return `${(num >> 24) & 0xff}.${(num >> 16) & 0xff}.${(num >> 8) & 0xff}.${num & 0xff}`;
+};
+
 export const base64ToAddr = (base64: string) => {
 	const addr = decodeBase64Url(base64, { buffer: true });
 	if (addr.length != 6) {

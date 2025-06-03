@@ -1,11 +1,11 @@
 <script lang="ts">
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
-	import { type PERMISSIONS } from '$lib/types.js';
+	import { type Permission } from '$lib/types.js';
 
 	const { data } = $props();
 
-	const hasPermission = (perm: (typeof PERMISSIONS)[number]) =>
+	const hasPermission = (perm: Permission) =>
 		(data.user?.data?.permissions || []).some(
 			(permission) => permission == perm || permission == 'SUPER'
 		);

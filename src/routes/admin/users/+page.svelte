@@ -3,7 +3,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { User } from '$lib/server/db/users';
-	import { PERMISSIONS } from '$lib/types';
+	import { PERMISSIONS_SETTINGS } from '$lib/types';
 
 	const { data } = $props();
 
@@ -555,25 +555,20 @@
 {/if}
 
 <!-- User Management Modal -->
-<Modal
-	bind:show={showUserModal}
-	header={() => {
-		return `<div class="rounded-t-lg bg-slate-800 p-4">
-			<h2 class="text-xl font-bold text-white">用户管理</h2>
-			${editingUser ? `<p class="text-sm text-slate-300 mt-1">用户: ${editingUser.username}</p>` : ''}
-		</div>`;
-	}}
->
-	<div class="w-96 max-w-[calc(100vw-3rem)] rounded-b-lg bg-slate-800 p-6">
+<Modal bind:show={showUserModal}>
+	<div
+		class="scrollbar-subtle max-h-[calc(100vh-8rem)] w-96 max-w-[calc(100vw-5rem)] overflow-y-auto rounded-b-lg bg-slate-800 p-6"
+	>
 		{#if editingUser}
-			<div class="space-y-6">
+			<h2 class="mb-2 text-xl font-bold text-white">用户管理 {editingUser.username}</h2>
+			<div class="space-y-6 border-t border-slate-600 pt-4">
 				<!-- Permission Editing Section -->
 				<div class="space-y-4">
 					<div class="text-sm font-medium text-slate-200">权限设置</div>
 					<div class="text-xs text-slate-400">选择要授予用户的权限：</div>
 
 					<div class="space-y-3">
-						{#each PERMISSIONS as permission}
+						{#each PERMISSIONS_SETTINGS as [permission, description]}
 							<label class="flex cursor-pointer items-center gap-3">
 								<input
 									type="checkbox"
@@ -584,26 +579,20 @@
 								<div class="flex-1">
 									<span class="font-medium text-slate-200">{permission}</span>
 									<div class="text-xs text-slate-400">
-										{#if permission === 'SUPER'}
-											超级管理员权限，拥有所有权限
-										{:else if permission === 'TICKETS'}
-											反馈和举报管理权限
-										{:else if permission === 'REGISTER'}
-											用户注册管理权限
-										{:else if permission === 'GROUP_SETTINGS'}
-											群组设置管理权限
-										{:else if permission === 'CHANNEL_SETTINGS'}
-											频道设置管理权限
-										{:else if permission === 'POSTING'}
-											QQ 机器人发帖权限
-										{:else}
-											{permission} 权限
-										{/if}
+										{description}
 									</div>
 								</div>
 							</label>
 						{/each}
 					</div>
+
+					<button
+						onclick={savePermissions}
+						disabled={savingPermissions}
+						class="w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+					>
+						{savingPermissions ? '保存中...' : '保存权限'}
+					</button>
 				</div>
 
 				<!-- Rename User Section -->
@@ -641,24 +630,6 @@
 						</button>
 					</div>
 				{/if}
-
-				<!-- Action Buttons -->
-				<div class="flex justify-end gap-3 border-t border-slate-600 pt-4">
-					<button
-						onclick={cancelEditingUser}
-						disabled={savingPermissions}
-						class="rounded bg-slate-600 px-4 py-2 text-white hover:bg-slate-700 disabled:opacity-50"
-					>
-						取消
-					</button>
-					<button
-						onclick={savePermissions}
-						disabled={savingPermissions}
-						class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-					>
-						{savingPermissions ? '保存中...' : '保存权限'}
-					</button>
-				</div>
 			</div>
 		{/if}
 	</div>

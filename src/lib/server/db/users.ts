@@ -1,4 +1,4 @@
-import { PERMISSIONS } from '$lib/types';
+import { PERMISSIONS, type Permission } from '$lib/types';
 import { volatile } from '../keyv';
 import { sqlite } from '../sqlite';
 
@@ -16,7 +16,6 @@ sqlite.query('CREATE INDEX IF NOT EXISTS user_bind_name ON user (bind_name);').r
 
 export type UserPermissions = Permission[];
 export const PERMISSION_LIST = PERMISSIONS as any as string[];
-type Permission = (typeof PERMISSION_LIST)[number];
 
 export interface UserData {
 	permissions?: UserPermissions;
