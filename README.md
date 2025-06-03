@@ -27,13 +27,13 @@ bun install
 启动开发服务端
 
 ```bash
-bun --bun dev
+bun --bun run dev
 ```
 
 ## 构建
 
 ```bash
-bun --bun run vite build
+bun --bun run build
 ```
 
 ## Development Notice

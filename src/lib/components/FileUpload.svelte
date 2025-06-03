@@ -59,7 +59,7 @@
 		}
 
 		if (!ALLOWED_TYPES.includes(file.type)) {
-			return '不支持的文件类型';
+			return '不支持的文件类型\n可以打包为 zip 文件上传（大小限制10MB）';
 		}
 
 		return null;
