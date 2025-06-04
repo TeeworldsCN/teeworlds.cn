@@ -664,18 +664,18 @@
 
 		<!-- Loading State -->
 		{#if loading}
-			<div class="h-[calc(100svh-21rem)] py-8 text-center">
+			<div class="h-[calc(100svh-25rem)] py-8 text-center">
 				<div class="text-slate-400">加载中...</div>
 			</div>
 		{:else if filteredBans().length === 0}
-			<div class="h-[calc(100svh-21rem)] py-8 text-center">
+			<div class="h-[calc(100svh-25rem)] py-8 text-center">
 				<div class="text-slate-400">
 					{searchQuery ? '没有找到匹配的封禁记录' : '暂无封禁记录'}
 				</div>
 			</div>
 		{:else}
 			<!-- Ban List -->
-			<div class="h-[calc(100svh-21rem)]">
+			<div class="h-[calc(100svh-25rem)]">
 				<!-- Virtual Scrolled Ban List -->
 				<div class="h-full border border-slate-500">
 					<VirtualScroll
