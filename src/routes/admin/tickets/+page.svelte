@@ -25,6 +25,9 @@
 	import { navigating, page } from '$app/state';
 	import { tippy } from '$lib/tippy';
 	import { fade } from 'svelte/transition';
+	import type { Permission } from '$lib/types.js';
+	import Modal from '$lib/components/Modal.svelte';
+	import DdNetMod from '$lib/components/admin/DDNetMod.svelte';
 
 	const { data } = $props();
 
@@ -77,6 +80,11 @@
 			animatingTickets.delete(ticketUuid);
 		}, 300); // Match motion duration
 	};
+
+	const hasPermission = (perm: Permission) =>
+		(data.user?.data?.permissions || []).some(
+			(permission) => permission == perm || permission == 'SUPER'
+		);
 
 	// Load read status from localStorage
 	const loadReadStatus = () => {
@@ -866,6 +874,11 @@
 		requestNotificationPermission();
 		initializeAudio();
 		hydrated = true;
+
+		// Add keyboard shortcut listener
+		if (typeof window !== 'undefined') {
+			window.addEventListener('keydown', handleKeydown);
+		}
 	});
 
 	onDestroy(() => {
@@ -874,6 +887,11 @@
 		}
 		if (connection) {
 			connection.close();
+		}
+
+		// Remove keyboard shortcut listener
+		if (typeof window !== 'undefined') {
+			window.removeEventListener('keydown', handleKeydown);
 		}
 	});
 
@@ -896,6 +914,20 @@
 			selectedTicket = data.tickets.find((t) => t.uuid === uuid) || null;
 		}
 	});
+
+	// MODs
+	let ddnetMod = $state(false);
+
+	// Keyboard shortcuts
+	const handleKeydown = (event: KeyboardEvent) => {
+		// Ctrl+E to toggle DDNet MOD modal
+		if (event.ctrlKey && event.key === 'e') {
+			event.preventDefault();
+			if (hasPermission('DDNET_MOD')) {
+				ddnetMod = !ddnetMod;
+			}
+		}
+	};
 </script>
 
 <svelte:head>
@@ -956,7 +988,6 @@
 				<Fa icon={notificationVolume <= 0.3 ? faVolumeLow : faVolumeHigh} size="sm" />
 			</button>
 		</div>
-
 		<!-- Collapsible Admin List -->
 		{#if !isAdminListCollapsed && connectedAdmins.length > 0}
 			<div class="max-h-[25vh] overflow-y-auto rounded-lg bg-slate-900 px-2 py-2">
@@ -1099,6 +1130,18 @@
 				{/if}
 			</div>
 		</div>
+		<div class="flex h-8 items-center gap-2 rounded-lg bg-slate-900 px-2">
+			{#if hasPermission('DDNET_MOD')}
+				<button
+					onclick={() => {
+						ddnetMod = true;
+					}}
+					class="flex h-6 items-center justify-center rounded-md bg-blue-700 px-2 py-1 text-sm text-slate-200 hover:bg-blue-600"
+				>
+					DDNet MOD
+				</button>
+			{/if}
+		</div>
 	</div>
 
 	<div
@@ -1222,4 +1265,10 @@
 		<h1 class="mb-8 text-4xl font-bold text-slate-200">欢迎使用反馈管理系统</h1>
 		<p class:opacity-0={!hydrated}>点击任意位置开始使用</p>
 	</button>
+{/if}
+
+{#if hasPermission('DDNET_MOD')}
+	<Modal bind:show={ddnetMod}>
+		<DdNetMod show={ddnetMod}></DdNetMod>
+	</Modal>
 {/if}
