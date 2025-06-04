@@ -160,8 +160,8 @@
 			console.error('Failed to load bans:', err);
 			error = err instanceof Error ? err.message : String(err);
 		} finally {
-            loading = false;
-        }
+			loading = false;
+		}
 	};
 
 	$effect(() => {
@@ -419,7 +419,7 @@
 				reason: '',
 				duration: '10'
 			};
-            loading = true;
+			loading = true;
 			loadBans();
 		}
 	});
@@ -487,7 +487,10 @@
 					添加封禁
 				</button>
 				<button
-					onclick={loadBans}
+					onclick={() => {
+						loading = true;
+						loadBans();
+					}}
 					disabled={loading}
 					class="flex items-center gap-2 rounded bg-blue-600 px-3 py-1 text-white hover:bg-blue-700 disabled:opacity-50"
 				>
@@ -661,18 +664,18 @@
 
 		<!-- Loading State -->
 		{#if loading}
-			<div class="h-[calc(100svh-30rem)] py-8 text-center">
+			<div class="h-[calc(100svh-21rem)] py-8 text-center">
 				<div class="text-slate-400">加载中...</div>
 			</div>
 		{:else if filteredBans().length === 0}
-			<div class="h-[calc(100svh-30rem)] py-8 text-center">
+			<div class="h-[calc(100svh-21rem)] py-8 text-center">
 				<div class="text-slate-400">
 					{searchQuery ? '没有找到匹配的封禁记录' : '暂无封禁记录'}
 				</div>
 			</div>
 		{:else}
 			<!-- Ban List -->
-			<div class="h-[calc(100svh-30rem)]">
+			<div class="h-[calc(100svh-21rem)]">
 				<!-- Virtual Scrolled Ban List -->
 				<div class="h-full border border-slate-500">
 					<VirtualScroll
