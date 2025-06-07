@@ -24,7 +24,6 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import { navigating, page } from '$app/state';
 	import { tippy } from '$lib/tippy';
-	import { fade } from 'svelte/transition';
 	import type { Permission } from '$lib/types.js';
 	import Modal from '$lib/components/Modal.svelte';
 	import DdNetMod from '$lib/components/admin/DDNetMod.svelte';
@@ -1125,7 +1124,7 @@
 				{/each}
 				{#if tickets.length === 0}
 					<div class="py-12 text-center">
-						<p class="text-slate-400">{navigating ? '加载中...' : '暂无反馈'}</p>
+						<p class="text-slate-400">{navigating.to ? '加载中...' : '暂无反馈'}</p>
 					</div>
 				{/if}
 			</div>
