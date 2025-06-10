@@ -508,26 +508,28 @@
 		<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
 			<h3 class="mb-1 text-base font-bold">活跃记录</h3>
 			<div
-				class="scrollbar-subtle mx-auto max-w-fit overflow-x-auto rounded bg-slate-700 px-2 py-3 md:px-3"
+				class="scrollbar-subtle mx-auto max-w-fit overflow-x-auto rounded bg-slate-700 p-1 sm:p-2 md:p-3"
 			>
 				<div class="flex flex-row flex-nowrap gap-2">
-					<div class="flex flex-col text-xs md:text-sm">
+					<div class="hidden flex-col text-xs sm:flex">
 						<p class="-mt-1 flex-grow text-nowrap">周一</p>
 						<p class="text-nowrap">周日</p>
 					</div>
 					<div class="flex flex-col flex-nowrap lg:gap-[0.125rem]">
 						{#each data.activity as row}
-							<div class="flex flex-row flex-nowrap lg:gap-[0.125rem]">
+							<div
+								class="flex flex-row flex-nowrap border-slate-800 first:border-t lg:border-none lg:gap-[0.125rem]"
+							>
 								{#each row as col}
 									{#if col.date}
 										<div
 											use:tippy={{ content: `${col.date} - ${col.hours} 小时` }}
-											class="h-[0.6rem] w-[0.6rem] border border-slate-800 md:h-3 md:w-3"
+											class="h-[calc((100svw-4rem)/53)] w-[calc((100svw-4rem)/53)] border-b border-r border-slate-800 first:border-l sm:h-[0.6rem] sm:w-[0.6rem] md:h-3 md:w-3 lg:border-l lg:border-t"
 											style="background-color: {hoursToColor(col.hours)}"
 										></div>
 									{:else}
 										<div
-											class="h-[0.6rem] w-[0.6rem] border border-transparent md:h-3 md:w-3"
+											class="h-[calc((100svw-4rem)/53)] w-[calc((100svw-4rem)/53)] sm:h-[0.6rem] sm:w-[0.6rem] md:h-3 md:w-3"
 										></div>
 									{/if}
 								{/each}
