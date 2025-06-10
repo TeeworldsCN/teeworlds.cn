@@ -508,7 +508,7 @@
 		<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
 			<h3 class="mb-1 text-base font-bold">活跃记录</h3>
 			<div
-				class="scrollbar-subtle mx-auto max-w-fit overflow-x-auto rounded bg-slate-700 p-1 sm:p-2 md:p-3"
+				class="mx-auto max-w-fit rounded bg-slate-700 p-1 sm:p-2 md:p-3"
 			>
 				<div class="flex flex-row flex-nowrap gap-2">
 					<div class="hidden flex-col text-xs sm:flex">
@@ -524,12 +524,12 @@
 									{#if col.date}
 										<div
 											use:tippy={{ content: `${col.date} - ${col.hours} 小时` }}
-											class="h-[calc((100svw-4rem)/53)] w-[calc((100svw-4rem)/53)] border-b border-r border-slate-800 first:border-l sm:h-[0.6rem] sm:w-[0.6rem] md:h-3 md:w-3 lg:border-l lg:border-t"
+											class="h-[calc((100svw-5rem)/54)] w-[calc((100svw-5rem)/54)] border-b border-r border-slate-800 first:border-l sm:h-[0.6rem] sm:w-[0.6rem] md:h-3 md:w-3 lg:border-l lg:border-t"
 											style="background-color: {hoursToColor(col.hours)}"
 										></div>
 									{:else}
 										<div
-											class="h-[calc((100svw-4rem)/53)] w-[calc((100svw-4rem)/53)] sm:h-[0.6rem] sm:w-[0.6rem] md:h-3 md:w-3"
+											class="h-[calc((100svw-5rem)/54)] w-[calc((100svw-5rem)/54)] sm:h-[0.6rem] sm:w-[0.6rem] md:h-3 md:w-3"
 										></div>
 									{/if}
 								{/each}
