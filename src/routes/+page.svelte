@@ -3,11 +3,7 @@
 
 	const { data } = $props();
 
-	const isAdmin = $derived(() =>
-		(data.user?.data?.permissions || []).some(
-			(permission) => permission == 'SUPER' || permission.endsWith('_ADMIN')
-		)
-	);
+	const isAdmin = $derived(() => (data.user?.data?.permissions || []).length > 0);
 </script>
 
 <h1 class="text-md">TeeworldsCN 是由个人开发的 Teeworlds 信息查询工具箱</h1>
