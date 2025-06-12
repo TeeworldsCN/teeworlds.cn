@@ -78,7 +78,7 @@ export const POST = async ({ locals, request }) => {
 			body: JSON.stringify({
 				avatar_url: 'https://teeworlds.cn/shareicon.png',
 				username: locals.user.username,
-				content: `!ban_chn ${ip} '${body.name.replace(/'/g, `_`)}' ${duration} ${body.reason}`
+				content: `!ban ${ip} '${body.name.replace(/'/g, `_`)}' ${duration} ${body.reason}`
 			})
 		});
 
