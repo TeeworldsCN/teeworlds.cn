@@ -285,6 +285,7 @@
 			}
 
 			success = '封禁请求已提交';
+			clearSuccessAfterDelay();
 			showBanForm = false;
 			banFormData = {
 				ip: '',
@@ -295,7 +296,7 @@
 			};
 
 			// Reload bans after a short delay to allow server processing
-			setTimeout(loadBans, 2000);
+			setTimeout(loadBans, 1000);
 		} catch (err) {
 			console.error('Failed to submit ban:', err);
 			error = err instanceof Error ? err.message : String(err);
@@ -344,9 +345,10 @@
 			}
 
 			success = '解封请求已提交';
+			clearSuccessAfterDelay();
 
 			// Reload bans after a short delay to allow server processing
-			setTimeout(loadBans, 2000);
+			setTimeout(loadBans, 1000);
 		} catch (err) {
 			console.error('Failed to unban:', err);
 			error = err instanceof Error ? err.message : String(err);
@@ -440,10 +442,16 @@
 		}
 	};
 
+	let successTimeout: NodeJS.Timeout | null = null;
+
 	// Clear success message after copying
 	const clearSuccessAfterDelay = () => {
-		setTimeout(() => {
+		if (successTimeout) {
+			clearTimeout(successTimeout);
+		}
+		successTimeout = setTimeout(() => {
 			success = '';
+			successTimeout = null;
 		}, 2000);
 	};
 </script>
