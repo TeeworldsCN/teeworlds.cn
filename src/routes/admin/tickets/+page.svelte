@@ -989,7 +989,7 @@
 		</div>
 		<!-- Collapsible Admin List -->
 		{#if !isAdminListCollapsed && connectedAdmins.length > 0}
-			<div class="max-h-[25vh] overflow-y-auto rounded-lg bg-slate-900 px-2 py-2">
+			<div class="scrollbar-subtle max-h-[25vh] overflow-y-auto rounded-lg bg-slate-900 px-2 py-2">
 				<div class="mb-1 text-xs text-slate-400">在线管理员:</div>
 				<div class="space-y-1">
 					{#each connectedAdmins as admin}
