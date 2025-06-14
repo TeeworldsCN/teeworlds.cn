@@ -35,14 +35,15 @@ export const load = (async ({ fetch, parent, url }) => {
 					?.flatMap((server) => Object.values(server.servers).flatMap((server) => server))
 					.includes(ip)
 			);
+			const key = primaryAddress(server.addresses);
 			return {
-				key: primaryAddress(server.addresses),
+				key,
 				...server,
 				region: region(server.location),
 				community: community?.name,
 				community_icon: community?.icon.url,
 				searchText:
-					`${region(server.location)}|${server.info.name}|${server.info.game_type}|${server.info.map.name}|${server.location}|${server.info.clients.map((client) => client.name + '|' + client.clan).join('|')}`.toLowerCase()
+					`${key}|${region(server.location)}|${server.info.name}|${server.info.game_type}|${server.info.map.name}|${server.location}|${server.info.clients.map((client) => client.name + '|' + client.clan).join('|')}`.toLowerCase()
 			};
 		});
 
