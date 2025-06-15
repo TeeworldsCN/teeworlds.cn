@@ -20,6 +20,24 @@
 
 	const finishedMaps = $derived(propData.maps ? new Set(propData.maps) : null);
 
+	// Track when data was last fetched for auto-refresh functionality
+	let lastDataFetchTime = $state(Date.now());
+
+	// Auto-refresh constants
+	const AUTO_REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+	// Check if data is older than 5 minutes
+	const isDataStale = () => {
+		return Date.now() - lastDataFetchTime > AUTO_REFRESH_THRESHOLD;
+	};
+
+	// Auto-refresh function that only refreshes if data is stale
+	const autoRefresh = async () => {
+		if (isDataStale() && !loading) {
+			await refresh();
+		}
+	};
+
 	const checkMapName = async (map: string) => {
 		const url = `/ddnet/maps/${encodeURIComponent(map)}`;
 		const response = await fetch(url, { method: 'HEAD' });
@@ -107,6 +125,7 @@
 
 		loading = true;
 		await invalidate('/api/servers');
+		lastDataFetchTime = Date.now(); // Update fetch time after successful refresh
 		loading = false;
 	};
 
@@ -217,16 +236,46 @@
 			goto('', { keepFocus: true, noScroll: true, replaceState: true });
 		}
 	});
+
+	// Update data fetch time when propData changes (initial load or navigation)
+	$effect(() => {
+		propData.servers; // Track propData.servers changes
+		lastDataFetchTime = Date.now();
+	});
+
+	// Auto-refresh on page visibility change and input focus
+	$effect(() => {
+		// Page visibility change handler
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === 'visible') {
+				autoRefresh();
+			}
+		};
+
+		// Add page visibility listener
+		document.addEventListener('visibilitychange', handleVisibilityChange);
+
+		// Cleanup function
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+		};
+	});
 </script>
 
 <svelte:head>
 	<meta property="og:title" content="DDNet 服务器列表 - TeeworldsCN" />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://teeworlds.cn/ddnet/servers" />
-	<meta property="og:description" content="查看当前在线的 DDraceNetwork 服务器，包括玩家数量、地图和游戏模式" />
+	<meta
+		property="og:description"
+		content="查看当前在线的 DDraceNetwork 服务器，包括玩家数量、地图和游戏模式"
+	/>
 	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
 	<meta name="title" content="DDNet 服务器列表 - TeeworldsCN" />
-	<meta name="description" content="查看当前在线的 DDraceNetwork 服务器，包括玩家数量、地图和游戏模式" />
+	<meta
+		name="description"
+		content="查看当前在线的 DDraceNetwork 服务器，包括玩家数量、地图和游戏模式"
+	/>
 </svelte:head>
 
 <svelte:window
@@ -250,18 +299,21 @@
 			placeholder="🔎 搜索"
 			class="w-[unset] flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-slate-300 sm:w-1 md:mb-0"
 			bind:value={$serverSearch.include}
+			onfocus={autoRefresh}
 		/>
 		<input
 			type="text"
 			placeholder="🚫 排除"
 			class="w-[unset] flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-slate-300 sm:w-1 md:mb-0"
 			bind:value={$serverSearch.exclude}
+			onfocus={autoRefresh}
 		/>
 		<input
 			type="text"
 			placeholder="👤 玩家名"
 			class="hidden w-24 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-slate-300 sm:block md:w-48"
 			bind:value={name}
+			onfocus={autoRefresh}
 		/>
 	</div>
 	<button
@@ -337,9 +389,7 @@
 			🌎
 		</button>
 	</div>
-	<div
-		class="w-ful scrollbar-subtle h-[calc(100svh-16.5rem)] sm:h-[calc(100svh-14rem)]"
-	>
+	<div class="w-ful scrollbar-subtle h-[calc(100svh-16.5rem)] sm:h-[calc(100svh-14rem)]">
 		<VirtualScroll keeps={75} data={servers()} key="key" estimateSize={32} let:data>
 			<button
 				class="flex h-[32px] w-full gap-1 rounded px-1 py-1 text-left hover:bg-slate-700 sm:gap-2"
