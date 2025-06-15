@@ -160,6 +160,7 @@
 				bans: bansData,
 				timestamp: Date.now()
 			};
+			lastBansUpdate = cacheData.timestamp;
 			localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
 		} catch (err) {
 			console.warn('Failed to save bans to cache:', err);
