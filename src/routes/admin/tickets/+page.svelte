@@ -16,9 +16,11 @@
 		faChevronRight,
 		faRefresh,
 		faChevronLeft,
-		faChevronRight as faChevronRightNav,
 		faEyeSlash,
-		faEye
+		faEye,
+		faServer,
+		faUser,
+		faShield
 	} from '@fortawesome/free-solid-svg-icons';
 	import { browser } from '$app/environment';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -1072,7 +1074,10 @@
 					class:bg-slate-700={!offsetIncrementedByNewTicket}
 					class:hover:bg-slate-600={!offsetIncrementedByNewTicket}
 					class:text-slate-200={!offsetIncrementedByNewTicket}
-					title="上一页"
+					use:tippy={{
+						content: '上一页',
+						placement: 'top'
+					}}
 				>
 					<Fa icon={faChevronLeft} size="sm" />
 				</button>
@@ -1080,14 +1085,20 @@
 					onclick={handleNextPage}
 					disabled={offset + data.limit >= totalCount}
 					class="flex h-6 w-8 items-center justify-center rounded-md bg-slate-700 px-2 py-1 text-sm text-slate-200 hover:bg-slate-600 disabled:pointer-events-none disabled:opacity-50"
-					title="下一页"
+					use:tippy={{
+						content: '下一页',
+						placement: 'top'
+					}}
 				>
-					<Fa icon={faChevronRightNav} size="sm" />
+					<Fa icon={faChevronRight} size="sm" />
 				</button>
 				<button
 					onclick={handleRefresh}
 					class="flex h-6 w-8 items-center justify-center rounded-md bg-slate-700 px-2 py-1 text-sm text-slate-200 *:rounded-md hover:bg-slate-600"
-					title="刷新当前页面数据"
+					use:tippy={{
+						content: '刷新当前页面数据',
+						placement: 'top'
+					}}
 				>
 					<Fa icon={faRefresh} size="sm" />
 				</button>
@@ -1168,11 +1179,37 @@
 					onclick={() => {
 						ddnetMod = true;
 					}}
-					class="flex h-6 items-center justify-center rounded-md bg-blue-700 px-2 py-1 text-sm text-slate-200 hover:bg-blue-600"
+					use:tippy={{
+						content: 'DDNet 封禁工具 (Ctrl+E)',
+						placement: 'top'
+					}}
+					class="flex h-6 w-8 items-center justify-center rounded-md bg-blue-700 px-2 py-1 text-sm text-slate-200 hover:bg-blue-600"
 				>
-					DDNet MOD
+					<Fa icon={faShield} size="sm" />
 				</button>
 			{/if}
+			<a
+				href="/ddnet/servers"
+				target="_blank"
+				use:tippy={{
+					content: '服务器列表',
+					placement: 'top'
+				}}
+				class="flex h-6 w-8 items-center justify-center rounded-md bg-green-700 px-2 py-1 text-sm text-slate-200 hover:bg-green-600"
+			>
+				<Fa icon={faServer} size="sm" />
+			</a>
+			<a
+				href="/ddnet/players"
+				target="_blank"
+				use:tippy={{
+					content: '玩家查询页面',
+					placement: 'top'
+				}}
+				class="flex h-6 w-8 items-center justify-center rounded-md bg-green-700 px-2 py-1 text-sm text-slate-200 hover:bg-green-600"
+			>
+				<Fa icon={faUser} size="sm" />
+			</a>
 		</div>
 	</div>
 
@@ -1234,6 +1271,10 @@
 				onclick={closeTicketPanel}
 				class="absolute right-2 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 p-2 text-slate-400 hover:bg-slate-700 hover:text-slate-200 sm:top-11"
 				aria-label="关闭面板"
+				use:tippy={{
+					content: '关闭面板',
+					placement: 'left'
+				}}
 			>
 				<Fa icon={faXmark} />
 			</button>
