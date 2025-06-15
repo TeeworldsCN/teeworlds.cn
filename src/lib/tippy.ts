@@ -56,10 +56,9 @@ export const tippy: Tippy = (element, props = {}) => {
 	let contentElement: HTMLElement | null = null;
 	let arrowElement: HTMLElement | null = null;
 	let cleanup: (() => void) | null = null;
-	let showTimeout: number | null = null;
-	let hideTimeout: number | null = null;
 	let isVisible = false;
-	let currentProps = { arrow: true, ...props };
+	let currentProps = { arrow: true, appendTo: 'parent', ...props };
+	let appendTo: Element | null = null;
 
 	const createTooltip = () => {
 		if (tooltipElement) return tooltipElement;
@@ -94,7 +93,7 @@ export const tippy: Tippy = (element, props = {}) => {
 			tooltipElement.appendChild(arrowElement);
 		}
 
-		const appendTo =
+		appendTo =
 			currentProps.appendTo === 'parent'
 				? element.parentElement
 				: currentProps.appendTo instanceof Element
@@ -172,7 +171,7 @@ export const tippy: Tippy = (element, props = {}) => {
 		// Start auto-update for position tracking
 		cleanup = autoUpdate(element, tooltip, updatePosition);
 
-		showTimeout = window.setTimeout(() => {
+		window.setTimeout(() => {
 			isVisible = true;
 			if (currentProps.content && contentElement) {
 				contentElement.textContent = currentProps.content;
@@ -196,7 +195,7 @@ export const tippy: Tippy = (element, props = {}) => {
 		const cleanupCall = cleanup;
 		cleanup = null;
 
-		hideTimeout = window.setTimeout(() => {
+		window.setTimeout(() => {
 			isVisible = false;
 			tooltip.classList.remove('visible');
 			// Remove after animation
