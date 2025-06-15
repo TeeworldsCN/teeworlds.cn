@@ -85,20 +85,6 @@
 	function getTooltipContent(skinName: string) {
 		return copiedSkin === skinName ? `${skinName} 已复制！` : `${skinName} 点击复制`;
 	}
-
-	// Update tooltip content when copy state changes
-	$effect(() => {
-		const elements = document.querySelectorAll('[data-skin-name]');
-		elements.forEach((el) => {
-			const skinName = el.getAttribute('data-skin-name');
-			if (skinName) {
-				const instance = (el as any)._tippy;
-				if (instance) {
-					instance.setContent(getTooltipContent(skinName));
-				}
-			}
-		});
-	});
 </script>
 
 <svelte:head>
@@ -152,9 +138,7 @@
 	</p>
 
 	<!-- Skins grid with virtual scrolling -->
-	<div
-		class="scrollbar-subtle grid h-[calc(100svh-16rem)] w-full sm:h-[calc(100svh-14rem)]"
-	>
+	<div class="scrollbar-subtle grid h-[calc(100svh-16rem)] w-full sm:h-[calc(100svh-14rem)]">
 		<VirtualScroll keeps={20} data={filteredSkins} key="row" let:data>
 			<div class="h-20 w-full overflow-hidden">
 				{#each data.skins as skin}

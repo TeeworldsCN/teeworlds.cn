@@ -7,7 +7,7 @@
 	import { uaIsQQ, uaIsWechat } from '$lib/helpers.js';
 	import type { ButtonData, TicketMessage } from '$lib/server/db/tickets.js';
 	import { onMount, tick } from 'svelte';
-	import tippy from 'tippy.js';
+	import tippy from '$lib/tippy';
 
 	const { data } = $props();
 

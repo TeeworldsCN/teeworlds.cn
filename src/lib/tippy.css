@@ -1,0 +1,92 @@
+/* Floating UI Tooltip Styles */
+.floating-tooltip {
+	position: absolute;
+	top: 0;
+	left: 0;
+	background: #333;
+	color: white;
+	padding: 6px 10px;
+	border-radius: 6px;
+	font-size: 14px;
+	line-height: 1.4;
+	word-wrap: break-word;
+	z-index: 9999;
+	pointer-events: none;
+	opacity: 0;
+	transform: scale(0.85);
+	transition: opacity 0.1s ease, transform 0.15s ease;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+	max-width: 320px;
+}
+
+.floating-tooltip.interactive {
+	pointer-events: auto;
+}
+
+.floating-tooltip.visible {
+	opacity: 1;
+	transform: scale(1);
+}
+
+/* Content container */
+.floating-tooltip-content {
+	position: relative;
+	z-index: 1;
+}
+
+/* Arrow styles - child of tooltip */
+.floating-tooltip-arrow {
+	position: absolute;
+	width: 16px;
+	height: 16px;
+}
+
+.floating-tooltip-arrow::before {
+	content: '';
+	position: absolute;
+	border-color: transparent;
+	border-style: solid;
+}
+
+/* Arrow positioning for different placements */
+.floating-tooltip[data-placement^='top'] > .floating-tooltip-arrow {
+	bottom: 0;
+}
+
+.floating-tooltip[data-placement^='top'] > .floating-tooltip-arrow::before {
+	bottom: -7px;
+	left: 0;
+	border-width: 8px 8px 0;
+	border-top-color: #333;
+}
+
+.floating-tooltip[data-placement^='bottom'] > .floating-tooltip-arrow {
+	top: 0;
+}
+
+.floating-tooltip[data-placement^='bottom'] > .floating-tooltip-arrow::before {
+	top: -7px;
+	left: 0;
+	border-width: 0 8px 8px;
+	border-bottom-color: #333;
+}
+
+.floating-tooltip[data-placement^='left'] > .floating-tooltip-arrow {
+	right: 0;
+}
+
+.floating-tooltip[data-placement^='left'] > .floating-tooltip-arrow::before {
+	right: -7px;
+	border-width: 8px 0 8px 8px;
+	border-left-color: #333;
+}
+
+.floating-tooltip[data-placement^='right'] > .floating-tooltip-arrow {
+	left: 0;
+}
+
+.floating-tooltip[data-placement^='right'] > .floating-tooltip-arrow::before {
+	left: -7px;
+	border-width: 8px 8px 8px 0;
+	border-right-color: #333;
+}

@@ -1176,7 +1176,8 @@
 		<div class="flex h-8 items-center gap-2 rounded-lg bg-slate-900 px-2">
 			{#if hasPermission('DDNET_MOD')}
 				<button
-					onclick={() => {
+					onclick={(ev) => {
+						ev.currentTarget.blur();
 						ddnetMod = true;
 					}}
 					use:tippy={{
@@ -1191,6 +1192,9 @@
 			<a
 				href="/ddnet/servers"
 				target="_blank"
+				onclick={(ev) => {
+					ev.currentTarget.blur();
+				}}
 				use:tippy={{
 					content: '服务器列表',
 					placement: 'top'
@@ -1202,6 +1206,9 @@
 			<a
 				href="/ddnet/players"
 				target="_blank"
+				onclick={(ev) => {
+					ev.currentTarget.blur();
+				}}
 				use:tippy={{
 					content: '玩家查询页面',
 					placement: 'top'

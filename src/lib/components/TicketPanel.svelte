@@ -4,7 +4,7 @@
 	import CameraCapture from './CameraCapture.svelte';
 	import ChatTimeline, { type TicketImageUrl } from './ChatTimeline.svelte';
 	import { tick, type Snippet } from 'svelte';
-	import tippy from 'tippy.js';
+	import tippy from '$lib/tippy';
 	import { fade } from 'svelte/transition';
 
 	interface Props {
