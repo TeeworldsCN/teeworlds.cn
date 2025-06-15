@@ -10,6 +10,7 @@
 		faList
 	} from '@fortawesome/free-solid-svg-icons';
 	import VirtualScroll from 'svelte-virtual-scroll-list';
+	import { onMount } from 'svelte';
 
 	const { show }: { show: boolean } = $props();
 
@@ -33,6 +34,9 @@
 				by: string;
 				expires: number;
 		  };
+
+	// Cache configuration
+	const CACHE_KEY = 'ddnet_bans_cache';
 
 	let bans: BanEntry[] = $state([]);
 	let loading = $state(false);
@@ -147,15 +151,49 @@
 		}
 	};
 
+	// Cache functions
+	const saveBansToCache = (bansData: BanEntry[]) => {
+		try {
+			const cacheData = {
+				bans: bansData,
+				timestamp: Date.now()
+			};
+			localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+		} catch (err) {
+			console.warn('Failed to save bans to cache:', err);
+		}
+	};
+
+	const loadBansFromCache = (): BanEntry[] | null => {
+		try {
+			const cached = localStorage.getItem(CACHE_KEY);
+			if (!cached) return null;
+
+			const cacheData = JSON.parse(cached);
+			// Return cached data regardless of age - we'll refresh in background
+			if (cacheData.bans && Array.isArray(cacheData.bans)) {
+				return cacheData.bans;
+			}
+		} catch (err) {
+			console.warn('Failed to load bans from cache:', err);
+		}
+		return null;
+	};
+
 	const loadBans = async () => {
 		error = '';
+		loading = true;
 		try {
 			const response = await fetch('/admin/api/ddnet/bans');
 			if (!response.ok) {
 				throw new Error(`Error: ${response.status}`);
 			}
-			bans = await response.json();
-			bans.sort((a, b) => a.expires - b.expires);
+			const newBans: BanEntry[] = await response.json();
+			newBans.sort((a, b) => a.expires - b.expires);
+			bans = newBans;
+
+			// Save to cache after successful load
+			saveBansToCache(newBans);
 		} catch (err) {
 			console.error('Failed to load bans:', err);
 			error = err instanceof Error ? err.message : String(err);
@@ -421,7 +459,7 @@
 				reason: '',
 				duration: '10'
 			};
-			loading = true;
+
 			loadBans();
 		}
 	});
@@ -454,6 +492,14 @@
 			successTimeout = null;
 		}, 2000);
 	};
+
+	onMount(() => {
+		// Load bans from cache on initial mount
+		const cachedBans = loadBansFromCache();
+		if (cachedBans) {
+			bans = cachedBans;
+		}
+	});
 </script>
 
 <div
@@ -496,7 +542,6 @@
 				</button>
 				<button
 					onclick={() => {
-						loading = true;
 						loadBans();
 					}}
 					disabled={loading}
@@ -671,14 +716,14 @@
 		</div>
 
 		<!-- Loading State -->
-		{#if loading}
-			<div class="h-[calc(100svh-25rem)] py-8 text-center">
-				<div class="text-slate-400">加载中...</div>
-			</div>
-		{:else if filteredBans().length === 0}
+		{#if filteredBans().length === 0}
 			<div class="h-[calc(100svh-25rem)] py-8 text-center">
 				<div class="text-slate-400">
-					{searchQuery ? '没有找到匹配的封禁记录' : '暂无封禁记录'}
+					{#if loading}
+						<div class="text-slate-400">加载中...</div>
+					{:else}
+						{searchQuery ? '没有找到匹配的封禁记录' : '暂无封禁记录'}
+					{/if}
 				</div>
 			</div>
 		{:else}
