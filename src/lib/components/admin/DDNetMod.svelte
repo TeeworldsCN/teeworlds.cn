@@ -37,8 +37,10 @@
 
 	// Cache configuration
 	const CACHE_KEY = 'ddnet_bans_cache';
+	const CACHE_EXPIRATION = 5 * 60 * 1000; // 5 minutes
 
 	let bans: BanEntry[] = $state([]);
+	let lastBansUpdate = $state(0);
 	let loading = $state(false);
 	let error = $state('');
 	let success = $state('');
@@ -164,7 +166,7 @@
 		}
 	};
 
-	const loadBansFromCache = (): BanEntry[] | null => {
+	const loadBansFromCache = (): { bans: BanEntry[]; timestamp: number } | null => {
 		try {
 			const cached = localStorage.getItem(CACHE_KEY);
 			if (!cached) return null;
@@ -172,7 +174,7 @@
 			const cacheData = JSON.parse(cached);
 			// Return cached data regardless of age - we'll refresh in background
 			if (cacheData.bans && Array.isArray(cacheData.bans)) {
-				return cacheData.bans;
+				return cacheData;
 			}
 		} catch (err) {
 			console.warn('Failed to load bans from cache:', err);
@@ -448,6 +450,13 @@
 		});
 	};
 
+	const loadBansIfStale = async () => {
+		const timeSinceLastUpdate = Date.now() - lastBansUpdate;
+		if (timeSinceLastUpdate > CACHE_EXPIRATION) {
+			await loadBans();
+		}
+	};
+
 	$effect(() => {
 		if (show) {
 			searchQuery = '';
@@ -460,7 +469,7 @@
 				duration: '10'
 			};
 
-			loadBans();
+			loadBansIfStale();
 		}
 	});
 
@@ -497,7 +506,8 @@
 		// Load bans from cache on initial mount
 		const cachedBans = loadBansFromCache();
 		if (cachedBans) {
-			bans = cachedBans;
+			bans = cachedBans.bans;
+			lastBansUpdate = cachedBans.timestamp;
 		}
 	});
 </script>
@@ -542,6 +552,7 @@
 				</button>
 				<button
 					onclick={() => {
+						bans = [];
 						loadBans();
 					}}
 					disabled={loading}
