@@ -270,6 +270,13 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 							author_name: 'System',
 							visibility: MESSAGE_VISIBILITY.VISITOR_ONLY
 						});
+
+						messages.push({
+							message: `豆豆温馨提示：关闭窗口后不能再实时收到消息`,
+							author_type: 'system',
+							author_name: '豆豆',
+							visibility: MESSAGE_VISIBILITY.VISITOR_ONLY
+						});
 					}
 
 					break;
@@ -289,13 +296,25 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 						});
 
 						messages.push({
+							message: `已召唤管理，管理可能会指导您提交申请材料。感谢配合！`,
+							author_type: 'system',
+							author_name: 'System',
+							visibility: MESSAGE_VISIBILITY.VISITOR_ONLY
+						});
+
+						messages.push({
 							message: `系统提示，不要忘了检查玩家的证据，让玩家展示游玩记录 demo。如果你不清楚如何提交改名申请，请在管理群询问，不要盲目接单。`,
 							author_type: 'system',
 							author_name: 'System',
 							visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
 						});
 
-						// TODO: name check
+						messages.push({
+							message: `豆豆温馨提示：关闭窗口后不能再实时收到消息。`,
+							author_type: 'system',
+							author_name: '豆豆',
+							visibility: MESSAGE_VISIBILITY.VISITOR_ONLY
+						});
 					}
 					break;
 				case 'feedback':
@@ -314,7 +333,7 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 						});
 
 						messages.push({
-							message: `如果不是立刻需要解决的问题，留言后退出即可\n（请不要点关闭，否则管理可能会看不到）`,
+							message: `如果不是立刻需要解决的问题，留言后退出即可\n（请不要点关闭按钮，否则管理可能会看不到）`,
 							author_type: 'system',
 							author_name: '豆豆',
 							visibility: MESSAGE_VISIBILITY.VISITOR_ONLY
