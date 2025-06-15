@@ -154,7 +154,10 @@
 									hideOnClick: false,
 									sticky: true
 								}}
-								onclick={() => copySkinName(skin.name)}
+								onclick={(ev) => {
+									ev?.currentTarget?.blur();
+									copySkinName(skin.name);
+								}}
 								aria-label={`复制皮肤名称: ${skin.name}`}
 							>
 								<div class="relative h-16 w-16">

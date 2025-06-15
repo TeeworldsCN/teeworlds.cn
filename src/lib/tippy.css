@@ -13,9 +13,8 @@
 	z-index: 9999;
 	pointer-events: none;
 	opacity: 0;
-	transform: scale(0.85);
-	transition: opacity 0.1s ease, transform 0.15s ease;
-	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+	transition: opacity 0.15s ease;
+	box-shadow: 0 0 12px 1px rgba(0, 0, 0, 0.3);
 	max-width: 320px;
 }
 
@@ -25,7 +24,6 @@
 
 .floating-tooltip.visible {
 	opacity: 1;
-	transform: scale(1);
 }
 
 /* Content container */

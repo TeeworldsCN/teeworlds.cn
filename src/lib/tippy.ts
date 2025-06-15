@@ -212,11 +212,9 @@ export const tippy: Tippy = (element, props = {}) => {
 	};
 
 	const handleMouseEnter = () => {
-		console.log('enter');
 		show();
 	};
 	const handleMouseLeave = () => {
-		console.log('leave');
 		if (!currentProps.interactive) {
 			hide();
 		}
