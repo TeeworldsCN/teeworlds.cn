@@ -148,7 +148,7 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 			}
 
 			const ticketData: CreateTicketData = {
-				title: '其他问题',
+				title: '其他反馈',
 				visitor_name: userInfo.playerName || '访客',
 				author_uid: userInfo.uid
 			};
@@ -300,7 +300,7 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 					break;
 				case 'feedback':
 					{
-						ticketData.title = `其他问题`;
+						ticketData.title = `其他反馈`;
 
 						if (!body.args.name) {
 							return error(400, 'Bad Request');
