@@ -526,6 +526,8 @@
 				notificationPermission = Notification.permission;
 			}
 		}
+
+		checkOpenTickets();
 	};
 
 	let notificationListenerCleanup: (() => void) | null = null;
@@ -833,6 +835,37 @@
 
 	const dismissWelcomeScreen = () => {
 		showWelcomeScreen = false;
+	};
+
+	// Check for open tickets on mount and show notifications
+	const checkOpenTickets = () => {
+		if (!browser) return;
+
+		// Find all tickets with 'open' status
+		const openTickets = tickets.filter((ticket) => ticket.status === 'open');
+
+		if (openTickets.length > 0) {
+			// Play notification sound for open tickets
+			playNotificationSound('new');
+
+			// Show a summary notification for multiple open tickets
+			if (openTickets.length === 1) {
+				const ticket = openTickets[0];
+				showNotification(
+					'有待处理的工单',
+					`${ticket.visitor_name || '匿名用户'}: ${ticket.title}`,
+					ticket.uuid
+				);
+			} else {
+				showNotification(
+					'有待处理的工单',
+					`当前有 ${openTickets.length} 个工单等待处理`,
+					'open-tickets-summary'
+				);
+			}
+
+			console.log(`Found ${openTickets.length} open tickets on page load`);
+		}
 	};
 
 	const handlePreviousPage = () => {
