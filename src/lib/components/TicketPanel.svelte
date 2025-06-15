@@ -384,6 +384,7 @@
 						<button
 							type="button"
 							onclick={handleReopenTicket}
+							use:tippy={{ content: '将工单状态重置为待处理', placement: 'right' }}
 							class="rounded bg-blue-600 px-2 py-1 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
 						>
 							重开
@@ -393,6 +394,7 @@
 					<button
 						type="button"
 						onclick={handleCloseTicket}
+						use:tippy={{ content: '关闭工单，标记为已解决', placement: 'right' }}
 						class="rounded bg-red-600 px-2 py-1 text-xs text-white focus:outline-none focus:ring-2 focus:ring-red-500"
 					>
 						关闭
@@ -501,6 +503,7 @@
 									<button
 										onclick={handleUnsubscribe}
 										disabled={isSubscribing}
+										use:tippy={{ content: '放弃接单后将不会收到后续消息的推送' }}
 										class="rounded bg-red-800 px-2 py-1 text-xs text-white hover:bg-red-700 focus:outline-none disabled:opacity-50"
 									>
 										{isSubscribing ? '处理中...' : '放弃'}
