@@ -717,11 +717,11 @@ const realtimeShutdown = () => {
 	console.log('Shutting down realtime connections...');
 
 	for (const [emit, { lock }] of adminConnections.entries()) {
-		emit('close', 'shutdown');
+		emit('message', 'shutdown');
 		lock.set(false);
 	}
 	for (const [emit, { lock }] of visitorConnectionMap.entries()) {
-		emit('close', 'shutdown');
+		emit('message', 'shutdown');
 		lock.set(false);
 	}
 

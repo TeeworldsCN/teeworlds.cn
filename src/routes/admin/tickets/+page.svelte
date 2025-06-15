@@ -303,11 +303,6 @@
 			}
 		});
 
-		const closeMessage = connection.select('close');
-		closeMessage.subscribe((reason) => {
-			disconnectReason = reason;
-		});
-
 		// Set connected status when connection is established
 		isSSEConnected = true;
 		console.log('SSE connection opened');
@@ -317,6 +312,12 @@
 		// Subscribe to SSE messages
 		sseMessages.subscribe((messageData) => {
 			if (!messageData) return;
+
+			if (messageData === 'shutdown') {
+				console.log('Server is shutting down');
+				disconnectReason = 'shutdown';
+				return;
+			}
 
 			try {
 				const ticketEvent: TicketEvent = JSON.parse(messageData);
