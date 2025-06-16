@@ -16,19 +16,13 @@ export interface TippyProps {
 	placement?: Placement;
 	offset?: number | [number, number];
 	hideOnClick?: boolean;
-	sticky?: boolean;
 	arrow?: boolean;
 	delay?: number | [number, number];
-	duration?: number | [number, number];
 	interactive?: boolean;
-	trigger?: string;
-	theme?: string;
-	animation?: string;
 	maxWidth?: number | string;
 	zIndex?: number;
 	appendTo?: Element | 'parent';
-	boundary?: Element | 'clippingParents';
-	popperOptions?: any;
+	touch?: 'tap' | 'hold';
 }
 
 export interface TippyReturn {
@@ -47,9 +41,12 @@ export type Tippy = (element: HTMLElement, props?: TippyProps) => TippyReturn;
  *   import {tippy} from '$lib/tippy';
  * </script>
  * <button use:tippy={{content: 'Test'}}>Test</button>
+ * <button use:tippy={{content: 'Hold me', touch: 'hold'}}>Hold</button>
+
  * ```
  * @param element The element to target (omitted with use)
  * @param props Tooltip properties
+ * @param props.touch Touch interaction mode: 'tap' (default) or 'hold'
  */
 export const tippy: Tippy = (element, props = {}) => {
 	let tooltipElement: HTMLElement | null = null;
@@ -57,8 +54,11 @@ export const tippy: Tippy = (element, props = {}) => {
 	let arrowElement: HTMLElement | null = null;
 	let cleanup: (() => void) | null = null;
 	let isVisible = false;
-	let currentProps = { arrow: true, appendTo: 'parent', ...props };
+	let currentProps = { arrow: true, appendTo: 'parent', touch: 'tap', ...props };
 	let appendTo: Element | null = null;
+
+	// Touch-specific state
+	let activePointerId: number | null = null;
 
 	const createTooltip = () => {
 		if (tooltipElement) return tooltipElement;
@@ -211,17 +211,76 @@ export const tippy: Tippy = (element, props = {}) => {
 	};
 
 	const handleMouseEnter = () => {
+		// Don't show on mouse enter if we're in tap mode and already visible from touch
+		if (currentProps.touch === 'tap' && isVisible) return;
 		show();
 	};
 	const handleMouseLeave = () => {
-		if (!currentProps.interactive) {
+		if (!currentProps.interactive && currentProps.touch !== 'tap') {
 			hide();
 		}
 	};
 	const handleFocus = () => show();
-	const handleBlur = () => hide();
+	const handleBlur = () => {
+		if (currentProps.touch !== 'tap') {
+			hide();
+		}
+	};
 	const handleClick = () => {
-		if (currentProps.hideOnClick !== false) {
+		if (currentProps.hideOnClick !== false && currentProps.touch !== 'tap') {
+			hide();
+		}
+	};
+
+	// Touch event handlers
+	const handlePointerDown = (ev: PointerEvent) => {
+		// Only handle touch events, let mouse events use existing handlers
+		if (ev.pointerType !== 'touch') return;
+
+		// Prevent multiple touch interactions
+		if (activePointerId !== null) return;
+
+		activePointerId = ev.pointerId;
+
+		if (currentProps.touch === 'tap') {
+			show();
+		} else if (currentProps.touch === 'hold') {
+			// Show immediately when starting to hold
+			show();
+		}
+	};
+
+
+
+	const handlePointerUp = (ev: PointerEvent) => {
+		if (ev.pointerId !== activePointerId) return;
+
+		if (currentProps.touch === 'tap') {
+			// For tap mode, do nothing - tooltip stays visible until tapping elsewhere
+			// The hide will be handled by document pointer listener
+		} else if (currentProps.touch === 'hold') {
+			// Hide immediately when releasing hold
+			hide();
+		}
+
+		activePointerId = null;
+	};
+
+	const handlePointerCancel = (ev: PointerEvent) => {
+		if (ev.pointerId !== activePointerId) return;
+
+		hide();
+		activePointerId = null;
+	};
+
+	// Document-level handler for tap mode to hide when tapping elsewhere
+	const handleDocumentPointerDown = (ev: PointerEvent) => {
+		if (ev.pointerType !== 'touch' || currentProps.touch !== 'tap') return;
+		if (!isVisible || !tooltipElement) return;
+
+		// Check if the touch is outside the tooltip and trigger element
+		const target = ev.target as Element;
+		if (!element.contains(target) && !tooltipElement.contains(target)) {
 			hide();
 		}
 	};
@@ -233,8 +292,31 @@ export const tippy: Tippy = (element, props = {}) => {
 	element.addEventListener('blur', handleBlur);
 	element.addEventListener('click', handleClick);
 
+	// Add touch event listeners
+	element.addEventListener('pointerdown', handlePointerDown);
+	element.addEventListener('pointerup', handlePointerUp);
+	element.addEventListener('pointercancel', handlePointerCancel);
+
+	// Add document listener for tap mode
+	if (currentProps.touch === 'tap') {
+		document.addEventListener('pointerdown', handleDocumentPointerDown);
+	}
+
 	const update = (newProps: TippyProps) => {
+		const oldTouch = currentProps.touch;
 		currentProps = { ...currentProps, ...newProps };
+
+		// Handle touch mode changes
+		if (newProps.touch && newProps.touch !== oldTouch) {
+			// Remove old document listener
+			document.removeEventListener('pointerdown', handleDocumentPointerDown);
+
+			// Add new document listener if needed
+			if (currentProps.touch === 'tap') {
+				document.addEventListener('pointerdown', handleDocumentPointerDown);
+			}
+		}
+
 		if (isVisible && contentElement && currentProps.content) {
 			contentElement.textContent = currentProps.content;
 			updatePosition();
@@ -244,11 +326,23 @@ export const tippy: Tippy = (element, props = {}) => {
 	const destroy = () => {
 		hide();
 
+		// Clean up touch-specific state
+		activePointerId = null;
+
+		// Remove mouse event listeners
 		element.removeEventListener('mouseenter', handleMouseEnter);
 		element.removeEventListener('mouseleave', handleMouseLeave);
 		element.removeEventListener('focus', handleFocus);
 		element.removeEventListener('blur', handleBlur);
 		element.removeEventListener('click', handleClick);
+
+		// Remove touch event listeners
+		element.removeEventListener('pointerdown', handlePointerDown);
+		element.removeEventListener('pointerup', handlePointerUp);
+		element.removeEventListener('pointercancel', handlePointerCancel);
+
+		// Remove document listener
+		document.removeEventListener('pointerdown', handleDocumentPointerDown);
 
 		// Remove instance reference
 		delete (element as any)._tippyInstance;
