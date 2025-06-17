@@ -24,19 +24,9 @@ export const handleReport: (type: string) => Handler =
 		}
 
 		if (mode != 'DIRECT') {
-			if (type === '举报') {
-				return await reply.link({
-					label: '🔗 举报系统',
-					prefix: '举报系统 ->',
-					url: 'https://teeworlds.cn/ddnet/tickets'
-				});
-			} else {
-				return await reply.link({
-					label: '🔗 反馈系统',
-					prefix: '反馈系统 ->',
-					url: 'https://teeworlds.cn/ddnet/tickets'
-				});
-			}
+			return await reply.text(
+				`请私聊豆豆 /${type} 指令获取${type}链接。（点击豆豆头像选择“发消息”或“添加使用”）`
+			);
 		}
 
 		const { limited, triggered } = await reportLimiter.isLimited(uid);
@@ -55,11 +45,14 @@ export const handleReport: (type: string) => Handler =
 			},
 			10 * 60 * 1000
 		);
-		return await reply.textLink(`为你生成了${type}连接，请点开提供详细信息。有效期 10 分钟。`, {
-			label: `🔗 ${type}链接`,
-			prefix: `${type}链接：`,
-			url: `https://teeworlds.cn/goto#r${encodeURIComponent(token)}`
-		});
+		return await reply.textLink(
+			`为你生成了${type}连接，请点开提供详细信息。有效期 10 分钟。（请不要提供给其他人）`,
+			{
+				label: `🔗 ${type}链接`,
+				prefix: `${type}链接：`,
+				url: `https://teeworlds.cn/goto#r${encodeURIComponent(token)}`
+			}
+		);
 	};
 
 export const handleVerify: Handler = async ({ reply, platform, uid, mode }) => {
