@@ -216,7 +216,7 @@ export const tippy: Tippy = (element, props = {}) => {
 		show();
 	};
 	const handleMouseLeave = () => {
-		if (!currentProps.interactive && currentProps.touch !== 'tap') {
+		if (!currentProps.interactive) {
 			hide();
 		}
 	};
@@ -249,8 +249,6 @@ export const tippy: Tippy = (element, props = {}) => {
 			show();
 		}
 	};
-
-
 
 	const handlePointerUp = (ev: PointerEvent) => {
 		if (ev.pointerId !== activePointerId) return;
