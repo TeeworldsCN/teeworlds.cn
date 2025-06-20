@@ -10,6 +10,7 @@
 		onUploadError?: (error: string, filename: string, errorType?: string) => void;
 		disabled?: boolean;
 		multiple?: boolean;
+		pasteGuard?: HTMLElement | string; // Element or selector to check focus for paste events
 	}
 
 	let {
@@ -19,7 +20,8 @@
 		onUploadComplete,
 		onUploadError,
 		disabled = false,
-		multiple = false
+		multiple = false,
+		pasteGuard
 	}: Props = $props();
 
 	let fileInput: HTMLInputElement;
@@ -296,6 +298,25 @@
 	// Paste handlers
 	const handlePaste = async (event: ClipboardEvent) => {
 		if (disabled || isUploading) return;
+
+		// Check if pasteGuard is specified and if focus is on the guarded element
+		if (pasteGuard) {
+			const activeElement = document.activeElement;
+			let guardElement: HTMLElement | null = null;
+
+			if (typeof pasteGuard === 'string') {
+				// If pasteGuard is a selector string, find the element
+				guardElement = document.querySelector(pasteGuard);
+			} else {
+				// If pasteGuard is an element object
+				guardElement = pasteGuard;
+			}
+
+			// Only proceed if the active element matches the guard element
+			if (!guardElement || activeElement !== guardElement) {
+				return;
+			}
+		}
 
 		const clipboardData = event.clipboardData;
 		if (!clipboardData) return;

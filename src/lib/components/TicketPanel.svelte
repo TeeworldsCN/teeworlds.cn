@@ -482,6 +482,7 @@
 								onUploadComplete={handleAttachmentUpload}
 								onUploadError={handleUploadError}
 								multiple={true}
+								pasteGuard="#message-input"
 							/>
 							<CameraCapture
 								onCapture={(file) => {
