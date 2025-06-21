@@ -70,20 +70,6 @@ sqlite
 	)
 	.run();
 
-// Add visibility column to existing table if it doesn't exist
-try {
-	sqlite.query(`ALTER TABLE ticket_messages ADD COLUMN visibility INTEGER DEFAULT 0`).run();
-} catch (error) {
-	// Column might already exist, ignore error
-}
-
-// Add deleted column to existing table if it doesn't exist
-try {
-	sqlite.query(`ALTER TABLE ticket_messages ADD COLUMN deleted INTEGER DEFAULT 0`).run();
-} catch (error) {
-	// Column might already exist, ignore error
-}
-
 // Create ticket attachments table with UUID primary key
 sqlite
 	.query(
@@ -102,13 +88,6 @@ sqlite
 		)`
 	)
 	.run();
-
-// Add deleted column to existing attachments table if it doesn't exist
-try {
-	sqlite.query(`ALTER TABLE ticket_attachments ADD COLUMN deleted INTEGER DEFAULT 0`).run();
-} catch (error) {
-	// Column might already exist, ignore error
-}
 
 // Create ticket bans table
 sqlite
@@ -692,7 +671,11 @@ export const getTicket = (uuid: string): Ticket | null => {
 	}
 };
 
-export const getTicketMessages = (ticket_uuid: string, isAdmin?: boolean, isSuperAdmin?: boolean): TicketMessage[] => {
+export const getTicketMessages = (
+	ticket_uuid: string,
+	isAdmin?: boolean,
+	isSuperAdmin?: boolean
+): TicketMessage[] => {
 	try {
 		let messages: TicketMessage[];
 
@@ -912,7 +895,10 @@ export const addTicketAttachment = (
 	}
 };
 
-export const getTicketAttachments = (ticket_uuid: string, isSuperAdmin?: boolean): TicketAttachmentClient[] => {
+export const getTicketAttachments = (
+	ticket_uuid: string,
+	isSuperAdmin?: boolean
+): TicketAttachmentClient[] => {
 	try {
 		if (isSuperAdmin) {
 			// SUPER admins see all attachments including deleted ones
@@ -1306,13 +1292,9 @@ export const addCopyableMessage = (data: {
 // MESSAGE AND ATTACHMENT DELETION FUNCTIONS
 // ============================================================================
 
-export type DeleteMessageResult =
-	| { success: true }
-	| { success: false; error: string };
+export type DeleteMessageResult = { success: true } | { success: false; error: string };
 
-export type DeleteAttachmentResult =
-	| { success: true }
-	| { success: false; error: string };
+export type DeleteAttachmentResult = { success: true } | { success: false; error: string };
 
 export const deleteTicketMessage = (
 	messageUuid: string,
