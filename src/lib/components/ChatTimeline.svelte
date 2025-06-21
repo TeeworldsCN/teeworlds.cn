@@ -217,12 +217,12 @@
 		}
 	};
 
-	const nameColor = (authorType: string) => {
+	const nameColor = (authorType: string, authorName: string) => {
 		switch (authorType) {
 			case 'visitor':
 				return isVisitorView ? 'text-slate-400' : 'text-sky-500';
 			case 'admin':
-				return isVisitorView ? 'text-sky-500' : 'text-slate-400';
+				return isVisitorView || authorName !== currentUsername ? 'text-sky-500' : 'text-slate-400';
 			case 'bot':
 				return 'text-green-400';
 			default:
@@ -351,13 +351,10 @@
 										class="{chatColor(
 											message.author_type,
 											isVisitorView
-										)} rounded-lg px-3 py-2 {isDeleted && isSuperAdmin
-											? 'outline outline-2 outline-red-500'
-											: ''}"
+										)} rounded-lg px-3 py-2 {isDeleted ? 'outline outline-2 outline-red-500' : ''}"
 									>
 										<p
-											class="whitespace-pre-wrap break-all text-sm text-white {isDeleted &&
-											isSuperAdmin
+											class="whitespace-pre-wrap break-all text-sm text-white {isDeleted
 												? 'opacity-70'
 												: ''}"
 										>
@@ -393,7 +390,9 @@
 									? 'text-right'
 									: 'text-left'}"
 							>
-								<span class={nameColor(message.author_type)}>{message.author_name}</span>
+								<span class={nameColor(message.author_type, message.author_name)}
+									>{message.author_name}</span
+								>
 								• {formatDate(message.created_at)}
 								{#if message.visibility !== 0}
 									<div class="mt-0.5 text-xs opacity-70">这条消息只有你可以看到</div>
@@ -411,14 +410,13 @@
 					{#if isImage(attachment.mime_type)}
 						<!-- Full image display -->
 						<div
-							class="group relative rounded-lg border border-slate-600 bg-slate-800 px-4 py-1 {isDeleted &&
-							isSuperAdmin
+							class="group relative rounded-lg border border-slate-600 bg-slate-800 px-4 py-1 {isDeleted
 								? 'outline outline-2 outline-red-500'
 								: ''}"
 						>
 							<button
 								onclick={() => previewImage(attachment)}
-								class="group relative block {isDeleted && isSuperAdmin ? 'opacity-70' : ''}"
+								class="group relative block {isDeleted ? 'opacity-70' : ''}"
 							>
 								<div
 									class="mx-auto overflow-hidden rounded border border-slate-600 transition-colors group-hover:border-slate-500"
@@ -471,14 +469,11 @@
 					{:else}
 						<!-- File attachment display -->
 						<div
-							class="group relative max-w-64 rounded-lg border border-slate-600 bg-slate-800 p-3 {isDeleted &&
-							isSuperAdmin
+							class="group relative max-w-64 rounded-lg border border-slate-600 bg-slate-800 p-3 {isDeleted
 								? 'outline outline-2 outline-red-500'
 								: ''}"
 						>
-							<div
-								class="flex items-center space-x-3 {isDeleted && isSuperAdmin ? 'opacity-70' : ''}"
-							>
+							<div class="flex items-center space-x-3 {isDeleted ? 'opacity-70' : ''}">
 								<div class="flex-shrink-0">
 									<div
 										class="flex h-12 w-12 items-center justify-center rounded border border-slate-600 bg-slate-700 text-lg"

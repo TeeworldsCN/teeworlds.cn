@@ -573,7 +573,11 @@
 									(m) => m.uuid === ticketEvent.data.message_uuid
 								);
 								if (messageIndex !== -1) {
-									selectedTicketMessages[messageIndex].deleted = 1;
+									if (!hasPermission('SUPER')) {
+										selectedTicketMessages.splice(messageIndex, 1);
+									} else {
+										selectedTicketMessages[messageIndex].deleted = 1;
+									}
 								}
 							}
 						}
@@ -586,7 +590,11 @@
 									(a) => a.uuid === ticketEvent.data.attachment_uuid
 								);
 								if (attachmentIndex !== -1) {
-									selectedTicketAttachments[attachmentIndex].deleted = 1;
+									if (!hasPermission('SUPER')) {
+										selectedTicketAttachments.splice(attachmentIndex, 1);
+									} else {
+										selectedTicketAttachments[attachmentIndex].deleted = 1;
+									}
 								}
 							}
 						}
