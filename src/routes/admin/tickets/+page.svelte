@@ -198,6 +198,58 @@
 		}
 	};
 
+	const handleDeleteMessage = async (messageUuid: string) => {
+		try {
+			const response = await fetch('/api/tickets', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					action: 'delete_message',
+					message_uuid: messageUuid,
+					as: 'admin'
+				})
+			});
+
+			if (!response.ok) {
+				const errorMessage = await parseErrorResponse(response);
+				throw new Error(errorMessage);
+			}
+
+			// Message deletion will be updated via SSE
+		} catch (error) {
+			console.error('Error deleting message:', error);
+			alertMessage(`删除消息失败: ${error instanceof Error ? error.message : '未知错误'}`);
+		}
+	};
+
+	const handleDeleteAttachment = async (attachmentUuid: string) => {
+		try {
+			const response = await fetch('/api/tickets', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					action: 'delete_attachment',
+					attachment_uuid: attachmentUuid,
+					as: 'admin'
+				})
+			});
+
+			if (!response.ok) {
+				const errorMessage = await parseErrorResponse(response);
+				throw new Error(errorMessage);
+			}
+
+			// Attachment deletion will be updated via SSE
+		} catch (error) {
+			console.error('Error deleting attachment:', error);
+			alertMessage(`删除附件失败: ${error instanceof Error ? error.message : '未知错误'}`);
+		}
+	};
+
 	// Preload audio files to avoid repeated HTTP requests
 	let audioCache: { [key: string]: HTMLAudioElement } = {};
 
@@ -513,6 +565,32 @@
 							}
 						}
 						break;
+					case 'message_deleted':
+						{
+							// Mark message as deleted in the UI
+							if (selectedTicket && selectedTicket.uuid === ticketEvent.data.ticket_uuid) {
+								const messageIndex = selectedTicketMessages.findIndex(
+									(m) => m.uuid === ticketEvent.data.message_uuid
+								);
+								if (messageIndex !== -1) {
+									selectedTicketMessages[messageIndex].deleted = 1;
+								}
+							}
+						}
+						break;
+					case 'attachment_deleted':
+						{
+							// Mark attachment as deleted in the UI
+							if (selectedTicket && selectedTicket.uuid === ticketEvent.data.ticket_uuid) {
+								const attachmentIndex = selectedTicketAttachments.findIndex(
+									(a) => a.uuid === ticketEvent.data.attachment_uuid
+								);
+								if (attachmentIndex !== -1) {
+									selectedTicketAttachments[attachmentIndex].deleted = 1;
+								}
+							}
+						}
+						break;
 				}
 			} catch (err) {
 				console.error('Error parsing SSE event:', err);
@@ -618,7 +696,8 @@
 			author_type: 'system' as const,
 			author_name: 'System',
 			visibility: -1,
-			created_at: Date.now()
+			created_at: Date.now(),
+			deleted: 0
 		});
 		scrollToBottom();
 	};
@@ -1245,9 +1324,14 @@
 					onIncreaseAttachmentLimit={handleIncreaseAttachmentLimit}
 					onBanUser={handleBanUser}
 					onUnbanUser={handleUnbanUser}
+					onDeleteMessage={handleDeleteMessage}
+					onDeleteAttachment={handleDeleteAttachment}
 					isCurrentUserSubscribed={selectedTicket
 						? isUserSubscribedToTicket(selectedTicket.uuid)
 						: false}
+					isAdmin={true}
+					isSuperAdmin={hasSuper}
+					currentUsername={data.user?.username}
 				/>
 			{/key}
 		{:else}

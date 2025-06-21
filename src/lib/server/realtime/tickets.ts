@@ -37,8 +37,10 @@ export type TicketEvent =
 	| TicketDeletedEvent
 	| TicketUpdateEvent
 	| MessageAddedEvent
+	| MessageDeletedEvent
 	| StatusChangedEvent
 	| AttachmentAddedEvent
+	| AttachmentDeletedEvent
 	| AdminConnectionCountUpdatedEvent
 	| AdminListUpdatedEvent
 	| AdminSubscriptionChangedEvent
@@ -78,6 +80,15 @@ export interface MessageAddedEvent {
 	};
 }
 
+export interface MessageDeletedEvent {
+	type: 'message_deleted';
+	data: {
+		message_uuid: string;
+		ticket_uuid: string;
+		deleted_by: string;
+	};
+}
+
 export interface StatusChangedEvent {
 	type: 'status_changed';
 	data: {
@@ -94,6 +105,15 @@ export interface AttachmentAddedEvent {
 	data: {
 		attachment: TicketAttachmentClient;
 		ticket: Ticket;
+	};
+}
+
+export interface AttachmentDeletedEvent {
+	type: 'attachment_deleted';
+	data: {
+		attachment_uuid: string;
+		ticket_uuid: string;
+		deleted_by: string;
 	};
 }
 
@@ -418,7 +438,8 @@ export const notifyAttachmentAdded = (attachment: TicketAttachment, ticket: Tick
 		file_size: attachment.file_size,
 		mime_type: attachment.mime_type,
 		uploaded_by: attachment.uploaded_by,
-		uploaded_at: attachment.uploaded_at
+		uploaded_at: attachment.uploaded_at,
+		deleted: attachment.deleted
 	};
 
 	const event: TicketEvent = {
@@ -428,6 +449,40 @@ export const notifyAttachmentAdded = (attachment: TicketAttachment, ticket: Tick
 
 	// Notify ticket viewers
 	broadcastToTicket(attachment.ticket_uuid, event);
+
+	// Notify admins
+	broadcastToAdmins(event);
+};
+
+export const notifyMessageDeleted = (messageUuid: string, ticketUuid: string, deletedBy: string) => {
+	const event: TicketEvent = {
+		type: 'message_deleted',
+		data: {
+			message_uuid: messageUuid,
+			ticket_uuid: ticketUuid,
+			deleted_by: deletedBy
+		}
+	};
+
+	// Notify ticket viewers
+	broadcastToTicket(ticketUuid, event);
+
+	// Notify admins
+	broadcastToAdmins(event);
+};
+
+export const notifyAttachmentDeleted = (attachmentUuid: string, ticketUuid: string, deletedBy: string) => {
+	const event: TicketEvent = {
+		type: 'attachment_deleted',
+		data: {
+			attachment_uuid: attachmentUuid,
+			ticket_uuid: ticketUuid,
+			deleted_by: deletedBy
+		}
+	};
+
+	// Notify ticket viewers
+	broadcastToTicket(ticketUuid, event);
 
 	// Notify admins
 	broadcastToAdmins(event);

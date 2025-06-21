@@ -147,6 +147,28 @@
 							adminCount = ticketEvent.data.adminConnectionCount;
 						}
 						break;
+					case 'message_deleted':
+						{
+							// Remove deleted message from visitor view (visitors can't see deleted messages)
+							const messageIndex = messages.findIndex(
+								(m) => m.uuid === ticketEvent.data.message_uuid
+							);
+							if (messageIndex !== -1) {
+								messages.splice(messageIndex, 1);
+							}
+						}
+						break;
+					case 'attachment_deleted':
+						{
+							// Remove deleted attachment from visitor view (visitors can't see deleted attachments)
+							const attachmentIndex = attachments.findIndex(
+								(a) => a.uuid === ticketEvent.data.attachment_uuid
+							);
+							if (attachmentIndex !== -1) {
+								attachments.splice(attachmentIndex, 1);
+							}
+						}
+						break;
 				}
 			} catch (err) {
 				console.error('Error parsing SSE event:', err);
@@ -328,7 +350,8 @@
 					author_type: 'system' as const,
 					author_name: 'System',
 					visibility: -1, // Local only - navigation warnings are only visible to the current user
-					created_at: Date.now()
+					created_at: Date.now(),
+					deleted: 0
 				};
 
 				// Add to messages (this will show even if they choose to stay)
@@ -373,6 +396,8 @@
 		onCloseTicket={ticket.status !== 'closed' && !isSSEClosed ? handleCloseTicket : undefined}
 		isVisitorView={true}
 		{adminCount}
+		isAdmin={false}
+		isSuperAdmin={false}
 	/>
 </div>
 

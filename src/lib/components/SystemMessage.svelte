@@ -7,9 +7,11 @@
 		timestamp: number; // Timestamp for the message
 		visibility?: number; // Message visibility (0 = all, 1 = admin only, 2 = visitor only, -1 = local only)
 		onButtonClick?: (buttonId: string) => void; // Callback for button clicks
+		isDeleted?: boolean; // Whether the message is deleted (for SUPER admin styling)
+		isSuperAdmin?: boolean; // Whether the current user is a SUPER admin
 	}
 
-	let { type, message, timestamp, visibility = 0, onButtonClick }: Props = $props();
+	let { type, message, timestamp, visibility = 0, onButtonClick, isDeleted = false, isSuperAdmin = false }: Props = $props();
 
 	// State for copy feedback
 	let copySuccess = $state(false);
@@ -177,13 +179,23 @@
 	};
 
 	const getContainerClasses = () => {
-		if (isUploadError() || isSendError()) return `border-red-600/50 bg-red-900/30`;
-		if (isNavigationWarning()) return `border-blue-600/50 bg-blue-900/30`;
-		if (isDisconnectionEvent()) return `border-red-600/50 bg-red-900/30`;
-		if (isConnectionEvent()) return `border-green-600/50 bg-green-900/30`;
-		if (isButtonGroup()) return 'border-zinc-600/50 bg-zinc-900/30';
-		if (isCopyableMessage()) return 'border-blue-600/50 bg-blue-900/30';
-		return `border-amber-600/50 bg-amber-900/30`;
+		// Add deleted styling for SUPER admins
+		const deletedClasses = isDeleted && isSuperAdmin ? 'border-red-500 opacity-70' : '';
+
+		let baseClasses = '';
+		if (isUploadError() || isSendError()) baseClasses = `border-red-600/50 bg-red-900/30`;
+		else if (isNavigationWarning()) baseClasses = `border-blue-600/50 bg-blue-900/30`;
+		else if (isDisconnectionEvent()) baseClasses = `border-red-600/50 bg-red-900/30`;
+		else if (isConnectionEvent()) baseClasses = `border-green-600/50 bg-green-900/30`;
+		else if (isButtonGroup()) baseClasses = 'border-zinc-600/50 bg-zinc-900/30';
+		else if (isCopyableMessage()) baseClasses = 'border-blue-600/50 bg-blue-900/30';
+		else baseClasses = `border-amber-600/50 bg-amber-900/30`;
+
+		// Override border color if deleted
+		if (deletedClasses) {
+			return deletedClasses;
+		}
+		return baseClasses;
 	};
 
 	const formatDate = (timestamp: number): string => {

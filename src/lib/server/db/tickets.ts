@@ -3,8 +3,10 @@ import {
 	notifyTicketCreated,
 	notifyTicketDeleted,
 	notifyMessageAdded,
+	notifyMessageDeleted,
 	notifyStatusChanged,
 	notifyAttachmentAdded,
+	notifyAttachmentDeleted,
 	notifyAdminSubscriptionChanged,
 	notifyUserBanned,
 	notifyUserUnbanned,
@@ -61,6 +63,7 @@ sqlite
 			author_type TEXT NOT NULL,
 			author_name TEXT NOT NULL,
 			visibility INTEGER DEFAULT 0,
+			deleted INTEGER DEFAULT 0,
 			created_at INTEGER NOT NULL,
 			FOREIGN KEY (ticket_uuid) REFERENCES tickets (uuid) ON DELETE CASCADE
 		)`
@@ -70,6 +73,13 @@ sqlite
 // Add visibility column to existing table if it doesn't exist
 try {
 	sqlite.query(`ALTER TABLE ticket_messages ADD COLUMN visibility INTEGER DEFAULT 0`).run();
+} catch (error) {
+	// Column might already exist, ignore error
+}
+
+// Add deleted column to existing table if it doesn't exist
+try {
+	sqlite.query(`ALTER TABLE ticket_messages ADD COLUMN deleted INTEGER DEFAULT 0`).run();
 } catch (error) {
 	// Column might already exist, ignore error
 }
@@ -87,10 +97,18 @@ sqlite
 			file_data BLOB NOT NULL,
 			uploaded_by TEXT NOT NULL,
 			uploaded_at INTEGER NOT NULL,
+			deleted INTEGER DEFAULT 0,
 			FOREIGN KEY (ticket_uuid) REFERENCES tickets (uuid) ON DELETE CASCADE
 		)`
 	)
 	.run();
+
+// Add deleted column to existing attachments table if it doesn't exist
+try {
+	sqlite.query(`ALTER TABLE ticket_attachments ADD COLUMN deleted INTEGER DEFAULT 0`).run();
+} catch (error) {
+	// Column might already exist, ignore error
+}
 
 // Create ticket bans table
 sqlite
@@ -199,6 +217,7 @@ export interface TicketMessage {
 	author_name: string;
 	visibility: number; // 0 = all, 1 = admin only, 2 = visitor only
 	created_at: number;
+	deleted: number; // 0 = not deleted, 1 = deleted
 }
 
 // System message types for JSON parsing
@@ -320,6 +339,7 @@ export interface TicketAttachment {
 	file_data: Buffer;
 	uploaded_by: string;
 	uploaded_at: number;
+	deleted: number; // 0 = not deleted, 1 = deleted
 }
 
 export interface TicketBan {
@@ -342,6 +362,7 @@ export interface TicketAttachmentClient {
 	mime_type: string;
 	uploaded_by: string;
 	uploaded_at: number;
+	deleted: number; // 0 = not deleted, 1 = deleted
 }
 
 export interface CreateTicketData {
@@ -398,18 +419,24 @@ const getTicketQuery = sqlite.prepare<Ticket, string>(
 );
 
 const getTicketMessagesQuery = sqlite.prepare<TicketMessage, string>(
-	`SELECT uuid, ticket_uuid, message, author_type, author_name, visibility, created_at
+	`SELECT uuid, ticket_uuid, message, author_type, author_name, visibility, created_at, deleted
 	 FROM ticket_messages WHERE ticket_uuid = ? ORDER BY created_at ASC`
 );
 
 const getTicketMessagesForAdminQuery = sqlite.prepare<TicketMessage, string>(
-	`SELECT uuid, ticket_uuid, message, author_type, author_name, visibility, created_at
-	 FROM ticket_messages WHERE ticket_uuid = ? AND visibility != 2 ORDER BY created_at ASC`
+	`SELECT uuid, ticket_uuid, message, author_type, author_name, visibility, created_at, deleted
+	 FROM ticket_messages WHERE ticket_uuid = ? AND visibility != 2 AND deleted = 0 ORDER BY created_at ASC`
 );
 
 const getTicketMessagesForVisitorQuery = sqlite.prepare<TicketMessage, string>(
-	`SELECT uuid, ticket_uuid, message, author_type, author_name, visibility, created_at
-	 FROM ticket_messages WHERE ticket_uuid = ? AND visibility != 1 ORDER BY created_at ASC`
+	`SELECT uuid, ticket_uuid, message, author_type, author_name, visibility, created_at, deleted
+	 FROM ticket_messages WHERE ticket_uuid = ? AND visibility != 1 AND deleted = 0 ORDER BY created_at ASC`
+);
+
+// Query for SUPER admins to see all messages including deleted ones
+const getTicketMessagesForSuperAdminQuery = sqlite.prepare<TicketMessage, string>(
+	`SELECT uuid, ticket_uuid, message, author_type, author_name, visibility, created_at, deleted
+	 FROM ticket_messages WHERE ticket_uuid = ? AND visibility != 2 ORDER BY created_at ASC`
 );
 
 const insertTicketMessageQuery = sqlite.prepare<
@@ -455,7 +482,13 @@ const insertTicketAttachmentQuery = sqlite.prepare<
 );
 
 const getTicketAttachmentsQuery = sqlite.prepare<TicketAttachmentClient, string>(
-	`SELECT uuid, ticket_uuid, filename, original_filename, file_size, mime_type, uploaded_by, uploaded_at
+	`SELECT uuid, ticket_uuid, filename, original_filename, file_size, mime_type, uploaded_by, uploaded_at, deleted
+	 FROM ticket_attachments WHERE ticket_uuid = ? AND deleted = 0 ORDER BY uploaded_at ASC`
+);
+
+// Query for SUPER admins to see all attachments including deleted ones
+const getTicketAttachmentsForSuperAdminQuery = sqlite.prepare<TicketAttachmentClient, string>(
+	`SELECT uuid, ticket_uuid, filename, original_filename, file_size, mime_type, uploaded_by, uploaded_at, deleted
 	 FROM ticket_attachments WHERE ticket_uuid = ? ORDER BY uploaded_at ASC`
 );
 
@@ -526,6 +559,26 @@ const getBanByUuidQuery = sqlite.prepare<TicketBan, string>(
 );
 
 const deleteBanQuery = sqlite.prepare<unknown, string>(`DELETE FROM ticket_bans WHERE uuid = ?`);
+
+// Prepared statements for marking messages and attachments as deleted
+const markMessageDeletedQuery = sqlite.prepare<unknown, [string]>(
+	`UPDATE ticket_messages SET deleted = 1 WHERE uuid = ?`
+);
+
+const markAttachmentDeletedQuery = sqlite.prepare<unknown, [string]>(
+	`UPDATE ticket_attachments SET deleted = 1 WHERE uuid = ?`
+);
+
+// Prepared statements for getting message/attachment info for permission checks
+const getMessageInfoQuery = sqlite.prepare<
+	{ author_type: string; author_name: string; ticket_uuid: string; deleted: number },
+	string
+>(`SELECT author_type, author_name, ticket_uuid, deleted FROM ticket_messages WHERE uuid = ?`);
+
+const getAttachmentInfoQuery = sqlite.prepare<
+	{ uploaded_by: string; ticket_uuid: string; deleted: number },
+	string
+>(`SELECT uploaded_by, ticket_uuid, deleted FROM ticket_attachments WHERE uuid = ?`);
 
 // Query to get all open tickets for a user
 const getUserOpenTicketsQuery = sqlite.prepare<Pick<Ticket, 'uuid'>, string>(
@@ -639,15 +692,21 @@ export const getTicket = (uuid: string): Ticket | null => {
 	}
 };
 
-export const getTicketMessages = (ticket_uuid: string, isAdmin?: boolean): TicketMessage[] => {
+export const getTicketMessages = (ticket_uuid: string, isAdmin?: boolean, isSuperAdmin?: boolean): TicketMessage[] => {
 	try {
 		let messages: TicketMessage[];
 
 		if (isAdmin === true) {
 			// Admin can see all messages except visitor-only (visibility = 2)
-			messages = getTicketMessagesForAdminQuery.all(ticket_uuid);
+			if (isSuperAdmin) {
+				// SUPER admins see all messages including deleted ones
+				messages = getTicketMessagesForSuperAdminQuery.all(ticket_uuid);
+			} else {
+				// Regular admins don't see deleted messages (filtered in SQL)
+				messages = getTicketMessagesForAdminQuery.all(ticket_uuid);
+			}
 		} else if (isAdmin === false) {
-			// Visitor can see all messages except admin-only (visibility = 1)
+			// Visitor can see all messages except admin-only (visibility = 1) and deleted messages (filtered in SQL)
 			messages = getTicketMessagesForVisitorQuery.all(ticket_uuid);
 		} else {
 			// If role is not specified, return all messages (for backward compatibility)
@@ -689,7 +748,8 @@ const insertTicketMessage = (data: AddMessageData, isUpdate: boolean): AddMessag
 			author_type: data.author_type,
 			author_name: data.author_name,
 			visibility: visibility,
-			created_at: now
+			created_at: now,
+			deleted: 0 // Will be set by database default, but needed for TypeScript
 		};
 
 		// Get ticket for notification
@@ -832,7 +892,8 @@ export const addTicketAttachment = (
 
 		const fullAttachment: TicketAttachment = {
 			uuid: attachmentUuid,
-			...attachment
+			...attachment,
+			deleted: 0 // Will be set by database default, but needed for TypeScript
 		};
 
 		updateTicketTimestampQuery.run(attachment.uploaded_at, attachment.ticket_uuid);
@@ -851,17 +912,22 @@ export const addTicketAttachment = (
 	}
 };
 
-export const getTicketAttachments = (ticket_uuid: string): TicketAttachmentClient[] => {
+export const getTicketAttachments = (ticket_uuid: string, isSuperAdmin?: boolean): TicketAttachmentClient[] => {
 	try {
-		const attachments = getTicketAttachmentsQuery.all(ticket_uuid);
-		return attachments;
+		if (isSuperAdmin) {
+			// SUPER admins see all attachments including deleted ones
+			return getTicketAttachmentsForSuperAdminQuery.all(ticket_uuid);
+		} else {
+			// Regular users don't see deleted attachments (filtered in SQL)
+			return getTicketAttachmentsQuery.all(ticket_uuid);
+		}
 	} catch (error) {
 		console.error('Error getting ticket attachments:', error);
 		return [];
 	}
 };
 
-export const deleteTicketAttachment = (uuid: string): boolean => {
+export const hardDeleteTicketAttachment = (uuid: string): boolean => {
 	try {
 		const result = deleteTicketAttachmentQuery.run(uuid);
 		return result.changes > 0;
@@ -1234,6 +1300,118 @@ export const addCopyableMessage = (data: {
 		},
 		false
 	);
+};
+
+// ============================================================================
+// MESSAGE AND ATTACHMENT DELETION FUNCTIONS
+// ============================================================================
+
+export type DeleteMessageResult =
+	| { success: true }
+	| { success: false; error: string };
+
+export type DeleteAttachmentResult =
+	| { success: true }
+	| { success: false; error: string };
+
+export const deleteTicketMessage = (
+	messageUuid: string,
+	adminUsername: string,
+	isSuperAdmin: boolean = false
+): DeleteMessageResult => {
+	try {
+		// Get message info for permission checks
+		const messageInfo = getMessageInfoQuery.get(messageUuid);
+		if (!messageInfo) {
+			return { success: false, error: 'Message not found' };
+		}
+
+		// Check if message is already deleted
+		if (messageInfo.deleted === 1) {
+			return { success: false, error: 'Message is already deleted' };
+		}
+
+		// Permission checks:
+		// 1. SUPER admins can delete any message (including system messages)
+		// 2. Only sender admin can delete their own messages
+		// 3. Any ticket admin can delete visitor messages
+		// 4. Regular admins cannot delete system messages
+		if (!isSuperAdmin) {
+			if (messageInfo.author_type === 'system' || messageInfo.author_type === 'sys') {
+				return { success: false, error: 'System messages cannot be deleted' };
+			}
+
+			if (messageInfo.author_type === 'admin') {
+				// Admin message - only the sender can delete it
+				if (messageInfo.author_name !== adminUsername) {
+					return { success: false, error: 'You can only delete your own messages' };
+				}
+			}
+		}
+		// For visitor messages, any ticket admin can delete them (no additional check needed)
+		// For SUPER admins, no additional checks needed (they can delete anything)
+
+		// Mark message as deleted
+		const result = markMessageDeletedQuery.run(messageUuid);
+		if (result.changes === 0) {
+			return { success: false, error: 'Failed to delete message' };
+		}
+
+		// Notify about message deletion
+		notifyMessageDeleted(messageUuid, messageInfo.ticket_uuid, adminUsername);
+
+		return { success: true };
+	} catch (error) {
+		console.error('Error deleting ticket message:', error);
+		return { success: false, error: 'Failed to delete message' };
+	}
+};
+
+export const deleteTicketAttachment = (
+	attachmentUuid: string,
+	adminUsername: string
+): DeleteAttachmentResult => {
+	try {
+		// Get attachment info for permission checks
+		const attachmentInfo = getAttachmentInfoQuery.get(attachmentUuid);
+		if (!attachmentInfo) {
+			return { success: false, error: 'Attachment not found' };
+		}
+
+		// Check if attachment is already deleted
+		if (attachmentInfo.deleted === 1) {
+			return { success: false, error: 'Attachment is already deleted' };
+		}
+
+		// Permission checks:
+		// 1. Only sender admin can delete their own attachments
+		// 2. Any ticket admin can delete visitor attachments
+		// Check if this is an admin attachment by checking if uploaded_by matches admin username
+		// (This is a simple heuristic - admin usernames vs visitor names)
+		const isAdminAttachment = attachmentInfo.uploaded_by === adminUsername;
+
+		if (isAdminAttachment) {
+			// Admin attachment - only the uploader can delete it
+			if (attachmentInfo.uploaded_by !== adminUsername) {
+				return { success: false, error: 'You can only delete your own attachments' };
+			}
+		}
+		// For visitor attachments, any ticket admin can delete them (no additional check needed)
+
+		// Mark attachment as deleted
+		const result = markAttachmentDeletedQuery.run(attachmentUuid);
+		if (result.changes === 0) {
+			return { success: false, error: 'Failed to delete attachment' };
+		}
+
+		// Notify about attachment deletion
+		notifyAttachmentDeleted(attachmentUuid, attachmentInfo.ticket_uuid, adminUsername);
+
+		return { success: true };
+	} catch (error) {
+		console.error('Error deleting ticket attachment:', error);
+		return { success: false, error: 'Failed to delete attachment' };
+	}
 };
 
 // ============================================================================

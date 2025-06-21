@@ -6,6 +6,7 @@
 	import { fade } from 'svelte/transition';
 	import Fa from 'svelte-fa';
 	import { faSearchPlus } from '@fortawesome/free-solid-svg-icons';
+	import { tippy } from '$lib/tippy';
 
 	export type TicketImageUrl = {
 		uuid: string;
@@ -30,6 +31,11 @@
 		containerId?: string;
 		isVisitorView?: boolean; // For visitor page to flip message alignment
 		onButtonClick?: (buttonId: string) => void; // Callback for button clicks in system messages
+		isAdmin?: boolean; // Whether the current user is an admin
+		isSuperAdmin?: boolean; // Whether the current user is a SUPER admin
+		currentUsername?: string; // Current user's username for permission checks
+		onDeleteMessage?: (messageUuid: string) => Promise<void> | void; // Callback for deleting messages
+		onDeleteAttachment?: (attachmentUuid: string) => Promise<void> | void; // Callback for deleting attachments
 	}
 
 	let {
@@ -39,7 +45,12 @@
 		images,
 		containerId = 'messages-container',
 		isVisitorView = false,
-		onButtonClick
+		onButtonClick,
+		isAdmin = false,
+		isSuperAdmin = false,
+		currentUsername,
+		onDeleteMessage,
+		onDeleteAttachment
 	}: Props = $props();
 
 	// Image preview state
@@ -136,6 +147,61 @@
 	const closeImagePreview = () => {
 		showImagePreview = false;
 		previewAttachment = null;
+	};
+
+	// Check if user can delete a message
+	const canDeleteMessage = (message: TicketMessage): boolean => {
+		if (!isAdmin || !currentUsername) return false;
+
+		// SUPER admins can delete any message (including system messages)
+		if (isSuperAdmin) return true;
+
+		// System messages cannot be deleted by regular admins
+		if (message.author_type === 'system' || message.author_type === 'sys') return false;
+
+		// Admin messages: only the sender can delete
+		if (message.author_type === 'admin') {
+			return message.author_name === currentUsername;
+		}
+
+		// Visitor messages: any admin can delete
+		return true;
+	};
+
+	// Check if user can delete an attachment
+	const canDeleteAttachment = (attachment: TicketAttachmentClient): boolean => {
+		if (!isAdmin || !currentUsername) return false;
+
+		// Admin attachments: only the uploader can delete
+		// (Simple heuristic: if uploaded_by matches current username, it's an admin attachment)
+		if (attachment.uploaded_by === currentUsername) {
+			return true;
+		}
+
+		// Visitor attachments: any admin can delete
+		return true;
+	};
+
+	// Handle message deletion
+	const handleDeleteMessage = async (messageUuid: string) => {
+		if (onDeleteMessage) {
+			try {
+				await onDeleteMessage(messageUuid);
+			} catch (error) {
+				console.error('Failed to delete message:', error);
+			}
+		}
+	};
+
+	// Handle attachment deletion
+	const handleDeleteAttachment = async (attachmentUuid: string) => {
+		if (onDeleteAttachment) {
+			try {
+				await onDeleteAttachment(attachmentUuid);
+			} catch (error) {
+				console.error('Failed to delete attachment:', error);
+			}
+		}
 	};
 
 	const chatColor = (authorType: string, isVisitorView: boolean) => {
@@ -264,6 +330,8 @@
 							timestamp={message.created_at}
 							visibility={message.visibility}
 							{onButtonClick}
+							isDeleted={message.deleted === 1}
+							{isSuperAdmin}
 						/>
 					</div>
 				{:else}
@@ -272,27 +340,52 @@
 						message.author_type !== 'bot' && isVisitorView
 							? message.author_type === 'visitor'
 							: message.author_type === 'admin'}
+					{@const isDeleted = message.deleted === 1}
+					{@const showDeleteButton = canDeleteMessage(message) && !isDeleted}
 					<div class="flex {shouldAlignRight ? 'justify-end' : 'justify-start'}">
 						<div class="max-w-xs lg:max-w-md">
 							<div class="flex" class:flex-row-reverse={!shouldAlignRight}>
 								<div class="flex-1"></div>
-								<div class="{chatColor(message.author_type, isVisitorView)} rounded-lg px-3 py-2">
-									<p class="whitespace-pre-wrap break-all text-sm text-white">
-										{#each linkifyText(message.message) as part (part.key)}
-											{#if part.type === 'link'}
-												<a
-													href={part.content}
-													target="_blank"
-													rel="noopener noreferrer"
-													class="text-blue-100 underline transition-colors hover:text-blue-200"
-												>
+								<div class="group relative">
+									<div
+										class="{chatColor(
+											message.author_type,
+											isVisitorView
+										)} rounded-lg px-3 py-2 {isDeleted && isSuperAdmin
+											? 'outline outline-2 outline-red-500'
+											: ''}"
+									>
+										<p
+											class="whitespace-pre-wrap break-all text-sm text-white {isDeleted &&
+											isSuperAdmin
+												? 'opacity-70'
+												: ''}"
+										>
+											{#each linkifyText(message.message) as part (part.key)}
+												{#if part.type === 'link'}
+													<a
+														href={part.content}
+														target="_blank"
+														rel="noopener noreferrer"
+														class="text-blue-100 underline transition-colors hover:text-blue-200"
+													>
+														{part.content}
+													</a>
+												{:else}
 													{part.content}
-												</a>
-											{:else}
-												{part.content}
-											{/if}
-										{/each}
-									</p>
+												{/if}
+											{/each}
+										</p>
+									</div>
+									{#if showDeleteButton}
+										<button
+											onclick={() => handleDeleteMessage(message.uuid)}
+											class="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs text-white opacity-0 transition-opacity hover:bg-red-700 group-hover:opacity-100"
+											use:tippy={{ content: '删除消息', placement: 'top' }}
+										>
+											×
+										</button>
+									{/if}
 								</div>
 							</div>
 							<div
@@ -311,12 +404,22 @@
 				{/if}
 			{:else if item.type === 'attachment'}
 				{@const attachment = item.data as TicketAttachmentClient}
+				{@const isDeleted = attachment.deleted === 1}
+				{@const showDeleteButton = canDeleteAttachment(attachment) && !isDeleted}
 				<!-- Inline attachment -->
 				<div class="flex justify-center">
 					{#if isImage(attachment.mime_type)}
 						<!-- Full image display -->
-						<div class="rounded-lg border border-slate-600 bg-slate-800 px-4 py-1">
-							<button onclick={() => previewImage(attachment)} class="group relative block">
+						<div
+							class="group relative rounded-lg border border-slate-600 bg-slate-800 px-4 py-1 {isDeleted &&
+							isSuperAdmin
+								? 'outline outline-2 outline-red-500'
+								: ''}"
+						>
+							<button
+								onclick={() => previewImage(attachment)}
+								class="group relative block {isDeleted && isSuperAdmin ? 'opacity-70' : ''}"
+							>
 								<div
 									class="mx-auto overflow-hidden rounded border border-slate-600 transition-colors group-hover:border-slate-500"
 								>
@@ -355,11 +458,27 @@
 									<span>{formatDate(attachment.uploaded_at)}</span>
 								</div>
 							</div>
+							{#if showDeleteButton}
+								<button
+									onclick={() => handleDeleteAttachment(attachment.uuid)}
+									class="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs text-white opacity-0 transition-opacity hover:bg-red-700 group-hover:opacity-100"
+									use:tippy={{ content: '删除附件', placement: 'top' }}
+								>
+									×
+								</button>
+							{/if}
 						</div>
 					{:else}
 						<!-- File attachment display -->
-						<div class="max-w-64 rounded-lg border border-slate-600 bg-slate-800 p-3">
-							<div class="flex items-center space-x-3">
+						<div
+							class="group relative max-w-64 rounded-lg border border-slate-600 bg-slate-800 p-3 {isDeleted &&
+							isSuperAdmin
+								? 'outline outline-2 outline-red-500'
+								: ''}"
+						>
+							<div
+								class="flex items-center space-x-3 {isDeleted && isSuperAdmin ? 'opacity-70' : ''}"
+							>
 								<div class="flex-shrink-0">
 									<div
 										class="flex h-12 w-12 items-center justify-center rounded border border-slate-600 bg-slate-700 text-lg"
@@ -386,6 +505,15 @@
 							<div class="mt-2 text-center text-xs text-slate-400">
 								{formatDate(attachment.uploaded_at)}
 							</div>
+							{#if showDeleteButton}
+								<button
+									onclick={() => handleDeleteAttachment(attachment.uuid)}
+									class="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs text-white opacity-0 transition-opacity hover:bg-red-700 group-hover:opacity-100"
+									use:tippy={{ content: '删除附件', placement: 'top' }}
+								>
+									×
+								</button>
+							{/if}
 						</div>
 					{/if}
 				</div>

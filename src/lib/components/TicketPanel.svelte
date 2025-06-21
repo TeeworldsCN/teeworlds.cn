@@ -24,12 +24,17 @@
 		onIncreaseAttachmentLimit?: (ticketUuid: string) => Promise<void> | void; // For admins to increase attachment limits
 		onBanUser?: (authorUid: string, duration: number, reason?: string) => Promise<void> | void; // For admins to ban users
 		onUnbanUser?: (authorUid: string) => Promise<void> | void; // For admins to unban users
+		onDeleteMessage?: (messageUuid: string) => Promise<void> | void; // For admins to delete messages
+		onDeleteAttachment?: (attachmentUuid: string) => Promise<void> | void; // For admins to delete attachments
 		isCurrentUserSubscribed?: boolean; // For checking subscription status
 		isVisitorView?: boolean; // For visitor page to flip message alignment
 		readonlyInput?: boolean;
 		onButtonClick?: (buttonId: string) => void; // Callback for button clicks in system messages
 		children?: Snippet; // For passing in custom content
 		adminCount?: number; // For displaying admin count in visitor view
+		isAdmin?: boolean; // Whether the current user is an admin
+		isSuperAdmin?: boolean; // Whether the current user is a SUPER admin
+		currentUsername?: string; // Current user's username for permission checks
 	}
 
 	let {
@@ -49,12 +54,17 @@
 		onIncreaseAttachmentLimit,
 		onBanUser,
 		onUnbanUser,
+		onDeleteMessage,
+		onDeleteAttachment,
 		isCurrentUserSubscribed = false,
 		isVisitorView = false,
 		readonlyInput = false,
 		onButtonClick,
 		children,
-		adminCount
+		adminCount,
+		isAdmin = false,
+		isSuperAdmin = false,
+		currentUsername
 	}: Props = $props();
 
 	let newMessage = $state('');
@@ -108,7 +118,8 @@
 			author_type: 'system' as const,
 			author_name: 'System',
 			visibility: -1, // Local only - send errors are only visible to the current user
-			created_at: Date.now()
+			created_at: Date.now(),
+			deleted: 0
 		};
 
 		localMessages.push(errorSystemMessage);
@@ -299,7 +310,8 @@
 			author_type: 'system' as const,
 			author_name: 'System',
 			visibility: -1, // Local only - upload errors are only visible to the current user
-			created_at: Date.now()
+			created_at: Date.now(),
+			deleted: 0
 		};
 
 		localMessages.push(errorSystemMessage);
@@ -429,6 +441,11 @@
 				containerId="ticket-messages-container"
 				{isVisitorView}
 				{onButtonClick}
+				{isAdmin}
+				{isSuperAdmin}
+				{currentUsername}
+				{onDeleteMessage}
+				{onDeleteAttachment}
 			/>
 		</div>
 	</div>

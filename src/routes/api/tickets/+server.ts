@@ -9,6 +9,8 @@ import {
 	isUserSubscribed,
 	increaseAttachmentLimit,
 	deleteTicket,
+	deleteTicketMessage,
+	deleteTicketAttachment,
 	type CreateTicketData,
 	type AddMessageData,
 	addTicketMessage,
@@ -873,6 +875,51 @@ export const POST: RequestHandler = async ({ locals, request, cookies }) => {
 			return json({ success: true });
 		}
 
+		case 'delete_message': {
+			// Only admins with TICKETS permission can delete messages
+			if (!hasPermission(locals.user, 'TICKETS')) {
+				return error(403, 'Forbidden');
+			}
+
+			const { message_uuid } = body;
+
+			if (!message_uuid) {
+				return error(400, 'Message UUID is required');
+			}
+
+			const adminUsername = locals.user?.username || 'Admin';
+			const isSuperAdmin = hasPermission(locals.user, 'SUPER');
+			const result = deleteTicketMessage(message_uuid, adminUsername, isSuperAdmin);
+
+			if (!result.success) {
+				return error(400, result.error);
+			}
+
+			return json({ success: true });
+		}
+
+		case 'delete_attachment': {
+			// Only admins with TICKETS permission can delete attachments
+			if (!hasPermission(locals.user, 'TICKETS')) {
+				return error(403, 'Forbidden');
+			}
+
+			const { attachment_uuid } = body;
+
+			if (!attachment_uuid) {
+				return error(400, 'Attachment UUID is required');
+			}
+
+			const adminUsername = locals.user?.username || 'Admin';
+			const result = deleteTicketAttachment(attachment_uuid, adminUsername);
+
+			if (!result.success) {
+				return error(400, result.error);
+			}
+
+			return json({ success: true });
+		}
+
 		default:
 			return error(400, 'Unknown action');
 	}
@@ -893,6 +940,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 	// For admin requests, include banned state of the ticket author
 	const isAdmin = hasPermission(locals.user, 'TICKETS');
+	const isSuperAdmin = hasPermission(locals.user, 'SUPER');
 	if (isAdmin && ticket.author_uid) {
 		ticket.author_banned = isUserBanned(ticket.author_uid);
 	}
@@ -900,8 +948,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	const response: any = { ticket };
 
 	if (includeMessages) {
-		response.messages = getTicketMessages(ticketUuid, isAdmin);
-		response.attachments = getTicketAttachments(ticketUuid);
+		response.messages = getTicketMessages(ticketUuid, isAdmin, isSuperAdmin);
+		response.attachments = getTicketAttachments(ticketUuid, isSuperAdmin);
 	}
 
 	return json(response);
