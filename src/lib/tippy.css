@@ -1,6 +1,6 @@
 /* Floating UI Tooltip Styles */
 .floating-tooltip {
-	position: fixed; /* Use fixed instead of absolute to escape parent constraints */
+	position: absolute;
 	top: 0;
 	left: 0;
 	background: #111;
