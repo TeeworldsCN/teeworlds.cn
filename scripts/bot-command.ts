@@ -1,7 +1,12 @@
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
+
 const args = process.argv.slice(2);
 
 const options = {
-	port: 5173
+	port: parseInt(process.env.PORT || '3000')
 };
 
 let rest = '';
@@ -34,14 +39,31 @@ for (let i = 0; i < args.length; i++) {
 }
 
 (async () => {
+	// Build headers following SvelteKit adapter-node conventions
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json'
+	};
+
+	// Read SvelteKit adapter-node environment variables
+	const addressHeader = process.env.ADDRESS_HEADER?.toLowerCase();
+	const xffDepth = parseInt(process.env.XFF_DEPTH || '1');
+
+	// Set headers based on SvelteKit configuration
+	if (addressHeader) {
+		headers[addressHeader] = '127.0.0.1';
+	} else {
+		// Default fallback headers for localhost detection
+		let xff = '127.0.0.1';
+		for (let i = 1; i < xffDepth; i++) {
+			xff += ',127.0.0.1';
+		}
+		headers['x-forwarded-for'] = xff;
+		headers['x-real-ip'] = '127.0.0.1';
+	}
+
 	const result = await fetch(`http://localhost:${options.port}/bots/local`, {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'x-forwarded-for': '127.0.0.1',
-			'x-forwarded-host': 'localhost',
-			'x-forwarded-proto': 'http'
-		},
+		headers,
 		body: JSON.stringify({
 			message: rest
 		})

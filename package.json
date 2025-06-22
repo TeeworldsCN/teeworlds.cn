@@ -21,6 +21,7 @@
 		"bun-types": "^1.2.15",
 		"chart.js": "^4.4.9",
 		"croner": "^9.0.0",
+		"dotenv": "^16.5.0",
 		"fast-xml-parser": "^5.2.1",
 		"jsonwebtoken": "^9.0.2",
 		"keyv": "^5.3.3",

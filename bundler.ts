@@ -13,16 +13,10 @@ import { nodeResolve } from '@rollup/plugin-node-resolve';
 
 	for (const script of scripts) {
 		console.log(`Bundling ${script}`);
-		const bundle = await rollup({
-			input: join('scripts', script),
-			external: ['bun:sqlite'],
-			plugins: [nodeResolve()],
-			output: { file: resolve(outputPath, script.replace(/\.ts$/, '.js')), format: 'esm' }
-		});
-
-		await bundle.write({
-			format: 'esm',
-			dir: outputPath
+		await Bun.build({
+			entrypoints: [join(scriptsPath, script)],
+			outdir: outputPath,
+			format: 'esm'
 		});
 	}
 })();
