@@ -1,7 +1,5 @@
-import { rollup } from 'rollup';
 import { join, resolve } from 'path';
 import { readdir, mkdir } from 'fs/promises';
-import { nodeResolve } from '@rollup/plugin-node-resolve';
 
 (async () => {
 	const scriptsPath = 'scripts';
