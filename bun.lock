@@ -4,9 +4,10 @@
     "": {
       "name": "teeworlds.cn",
       "dependencies": {
-        "@floating-ui/dom": "^1.7.1",
+        "sharp": "^0.34.2",
       },
       "devDependencies": {
+        "@floating-ui/dom": "^1.7.1",
         "@fortawesome/free-brands-svg-icons": "^6.7.2",
         "@fortawesome/free-solid-svg-icons": "^6.7.2",
         "@keyv/valkey": "^1.0.3",
@@ -38,7 +39,6 @@
         "qrcode": "^1.5.4",
         "rollup": "^4.40.0",
         "rss-parser": "^3.13.0",
-        "sharp": "^0.34.2",
         "sqlstring-sqlite": "^0.1.1",
         "svelte": "^5.28.2",
         "svelte-check": "^4.1.6",
