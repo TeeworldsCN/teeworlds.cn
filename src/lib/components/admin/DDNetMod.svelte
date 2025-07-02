@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ipToNumber, numberToIp } from '$lib/helpers';
+	import { alert } from '$lib/tippy';
 	import Fa from 'svelte-fa';
 	import {
 		faRefresh,
@@ -42,8 +43,6 @@
 	let bans: BanEntry[] = $state([]);
 	let lastBansUpdate = $state(0);
 	let loading = $state(false);
-	let error = $state('');
-	let success = $state('');
 	let quickCommand = $state('');
 
 	// Form states
@@ -58,6 +57,9 @@
 	let submitting = $state(false);
 	let reasonInput: HTMLInputElement | undefined = $state();
 	let durationInput: HTMLInputElement | undefined = $state();
+
+	// Component root element reference
+	let rootElement: HTMLElement;
 
 	// Search and filter
 	let searchQuery = $state('');
@@ -184,7 +186,6 @@
 	};
 
 	const loadBans = async () => {
-		error = '';
 		loading = true;
 		try {
 			const response = await fetch('/admin/api/ddnet/bans');
@@ -199,7 +200,11 @@
 			saveBansToCache(newBans);
 		} catch (err) {
 			console.error('Failed to load bans:', err);
-			error = err instanceof Error ? err.message : String(err);
+			alert({
+				message: err instanceof Error ? err.message : String(err),
+				type: 'error',
+				attachTo: rootElement
+			});
 		} finally {
 			loading = false;
 		}
@@ -287,18 +292,14 @@
 	};
 
 	const submitBan = async () => {
-		// Clear previous messages
-		error = '';
-		success = '';
-
 		if (!banFormData.ip || !banFormData.name || !banFormData.reason || !banFormData.duration) {
-			error = '请填写所有必填字段';
+			alert({ message: '请填写所有必填字段', type: 'error', attachTo: rootElement });
 			return;
 		}
 
 		const durationResult = parseDuration(banFormData.duration);
 		if (durationResult.error) {
-			error = durationResult.error;
+			alert({ message: durationResult.error, type: 'error', attachTo: rootElement });
 			return;
 		}
 
@@ -325,8 +326,7 @@
 				throw new Error(errorText || `Error: ${response.status}`);
 			}
 
-			success = '封禁请求已提交';
-			clearSuccessAfterDelay();
+			alert({ message: '封禁请求已提交', type: 'success', attachTo: rootElement });
 			showBanForm = false;
 			banFormData = {
 				ip: '',
@@ -340,7 +340,11 @@
 			setTimeout(loadBans, 1000);
 		} catch (err) {
 			console.error('Failed to submit ban:', err);
-			error = err instanceof Error ? err.message : String(err);
+			alert({
+				message: err instanceof Error ? err.message : String(err),
+				type: 'error',
+				attachTo: rootElement
+			});
 		} finally {
 			submitting = false;
 		}
@@ -355,10 +359,6 @@
 		) {
 			return;
 		}
-
-		// Clear previous messages
-		error = '';
-		success = '';
 
 		try {
 			let ip: string;
@@ -385,22 +385,21 @@
 				throw new Error(errorText || `Error: ${response.status}`);
 			}
 
-			success = '解封请求已提交';
-			clearSuccessAfterDelay();
+			alert({ message: '解封请求已提交', type: 'success', attachTo: rootElement });
 
 			// Reload bans after a short delay to allow server processing
 			setTimeout(loadBans, 1000);
 		} catch (err) {
 			console.error('Failed to unban:', err);
-			error = err instanceof Error ? err.message : String(err);
+			alert({
+				message: err instanceof Error ? err.message : String(err),
+				type: 'error',
+				attachTo: rootElement
+			});
 		}
 	};
 
 	const copyUnbanCommand = async (ban: BanEntry) => {
-		// Clear previous messages
-		error = '';
-		success = '';
-
 		let command: string;
 		if (ban.type === 'ban') {
 			command = `!unban ${numberToIp(ban.ip)}`;
@@ -410,11 +409,10 @@
 
 		try {
 			await navigator.clipboard.writeText(command);
-			success = '解封指令已复制到剪贴板';
-			clearSuccessAfterDelay();
+			alert({ message: '解封指令已复制到剪贴板', type: 'success', attachTo: rootElement });
 		} catch (err) {
 			console.error('Failed to copy:', err);
-			error = '复制失败';
+			alert({ message: '复制失败', type: 'error', attachTo: rootElement });
 		}
 	};
 
@@ -490,19 +488,6 @@
 		}
 	};
 
-	let successTimeout: NodeJS.Timeout | null = null;
-
-	// Clear success message after copying
-	const clearSuccessAfterDelay = () => {
-		if (successTimeout) {
-			clearTimeout(successTimeout);
-		}
-		successTimeout = setTimeout(() => {
-			success = '';
-			successTimeout = null;
-		}, 2000);
-	};
-
 	onMount(() => {
 		// Load bans from cache on initial mount
 		const cachedBans = loadBansFromCache();
@@ -514,6 +499,7 @@
 </script>
 
 <div
+	bind:this={rootElement}
 	class="scrollbar-subtle container max-h-[calc(100svh-8rem)] overflow-y-auto rounded-l-lg rounded-br-lg bg-slate-700 p-3 text-left shadow-lg"
 >
 	<!-- svelte-ignore a11y_autofocus -->
@@ -568,8 +554,8 @@
 
 	<!-- Ban Form -->
 	{#if showBanForm}
-		<div class="mb-6 rounded-lg bg-slate-600 p-4">
-			<h3 class="mb-3 text-lg font-bold">添加新封禁</h3>
+		<div class="rounded-lg bg-slate-600 p-4">
+			<h3 class="mb-3 text-lg font-bold">提交新封禁</h3>
 			<form
 				onsubmit={(e) => {
 					e.preventDefault();
@@ -680,6 +666,17 @@
 								title="刷屏 / Spam"
 							>
 								刷屏
+							</button>
+							<button
+								type="button"
+								onclick={() => {
+									banFormData.reason = '冒充他人 / Fake';
+									reasonInput?.focus();
+								}}
+								class="rounded bg-slate-600 px-2 py-1 text-xs text-white hover:bg-slate-500"
+								title="冒充他人 / Fake"
+							>
+								冒充
 							</button>
 							<button
 								type="button"
@@ -807,17 +804,5 @@
 				</div>
 			</div>
 		{/if}
-	{/if}
-	<!-- Messages -->
-	{#if error}
-		<div class="text-nowrap rounded bg-red-900 p-1 text-white">
-			{error}
-		</div>
-	{:else if success}
-		<div class="text-nowrap rounded bg-green-900 p-1 text-white">
-			{success}
-		</div>
-	{:else}
-		<div class="text-nowrap p-1 text-white opacity-0">状态</div>
 	{/if}
 </div>

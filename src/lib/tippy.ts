@@ -381,5 +381,120 @@ export type CreateTippy = (defaultProps: TippyProps) => Tippy;
 export const createTippy: CreateTippy = (defaultProps) => (element, props) =>
 	tippy(element, { ...defaultProps, ...props });
 
-// For compatibility with direct tippy imports
-export default tippy;
+/**
+ * Alert properties interface
+ */
+export interface AlertProps {
+	message: string;
+	duration?: number; // Duration in milliseconds, default 3000
+	type?: 'info' | 'success' | 'warning' | 'error'; // Alert type for styling
+	attachTo?: HTMLElement; // Element to attach the alert container to
+}
+
+/**
+ * Show a popup alert in the top right corner of the page or attached element
+ * Multiple alerts will stack vertically
+ *
+ * @example
+ * ```ts
+ * import { alert } from '$lib/tippy';
+ *
+ * alert({ message: 'Hello world!' });
+ * alert({ message: 'Success!', type: 'success', duration: 5000 });
+ * alert({ message: 'Error!', type: 'error', attachTo: document.getElementById('my-component') });
+ * ```
+ *
+ * @param props Alert properties
+ */
+export const alert = (props: AlertProps) => {
+	const { message, duration = 3000, type = 'info', attachTo } = props;
+
+	// Create alert container if it doesn't exist
+	const containerId = attachTo ? `alert-container-${attachTo.id || 'attached'}` : 'alert-container';
+	let container = document.getElementById(containerId);
+	if (!container) {
+		container = document.createElement('div');
+		container.id = containerId;
+
+		if (attachTo) {
+			// Position relative to the attached element
+			container.className =
+				'fixed bottom-4 right-4 z-[10000] flex flex-col gap-2 pointer-events-none';
+			attachTo.appendChild(container);
+		} else {
+			// Global positioning
+			container.className =
+				'fixed bottom-4 right-4 z-[10000] flex flex-col gap-2 pointer-events-none';
+			document.body.appendChild(container);
+		}
+	}
+
+	// Create alert element
+	const alertElement = document.createElement('div');
+	alertElement.className = `
+		alert-item pointer-events-auto
+		bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg
+		px-4 py-3 max-w-sm min-w-64 
+		motion-translate-x-in-[100%] motion-duration-300 motion-preset-shake 
+		${type === 'success' ? 'border-green-500/50 bg-green-950/50' : ''}
+		${type === 'warning' ? 'border-yellow-500/50 bg-yellow-950/50' : ''}
+		${type === 'error' ? 'border-red-500/50 bg-red-950/50' : ''}
+		${type === 'info' ? 'border-blue-500/50 bg-blue-950/50' : ''}
+	`
+		.replace(/\s+/g, ' ')
+		.trim();
+
+	// Create message content
+	const messageElement = document.createElement('div');
+	messageElement.className = 'text-sm text-zinc-200';
+	messageElement.textContent = message;
+	alertElement.appendChild(messageElement);
+
+	// Add type indicator if not info
+	if (type !== 'info') {
+		const indicator = document.createElement('div');
+		indicator.className = `
+			absolute top-2 right-2 w-2 h-2 rounded-full
+			${type === 'success' ? 'bg-green-500' : ''}
+			${type === 'warning' ? 'bg-yellow-500' : ''}
+			${type === 'error' ? 'bg-red-500' : ''}
+		`
+			.replace(/\s+/g, ' ')
+			.trim();
+		alertElement.appendChild(indicator);
+	}
+
+	// Add to container (prepend to stack newest at bottom)
+	container.appendChild(alertElement);
+
+	// Auto-hide after duration
+	const hideTimeout = setTimeout(() => {
+		hideAlert(alertElement);
+	}, duration);
+
+	// Add click to dismiss
+	alertElement.addEventListener('click', () => {
+		clearTimeout(hideTimeout);
+		hideAlert(alertElement);
+	});
+
+	return {
+		hide: () => {
+			clearTimeout(hideTimeout);
+			hideAlert(alertElement);
+		}
+	};
+};
+
+/**
+ * Hide an alert with animation
+ */
+const hideAlert = (alertElement: HTMLElement) => {
+	const container = alertElement.parentElement;
+	alertElement.remove();
+
+	// Clean up container if empty
+	if (container && container.children.length === 0) {
+		container.remove();
+	}
+};

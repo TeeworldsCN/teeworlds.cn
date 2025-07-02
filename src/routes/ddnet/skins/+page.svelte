@@ -151,8 +151,7 @@
 								use:tippy={{
 									content: getTooltipContent(skin.name),
 									placement: 'top',
-									hideOnClick: false,
-									sticky: true
+									hideOnClick: false
 								}}
 								onclick={(ev) => {
 									ev?.currentTarget?.blur();

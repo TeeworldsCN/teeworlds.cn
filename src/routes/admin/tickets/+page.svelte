@@ -20,7 +20,8 @@
 		faEye,
 		faServer,
 		faUser,
-		faShield
+		faShield,
+		faSearch
 	} from '@fortawesome/free-solid-svg-icons';
 	import { browser } from '$app/environment';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -29,6 +30,7 @@
 	import type { Permission } from '$lib/types.js';
 	import Modal from '$lib/components/Modal.svelte';
 	import DdNetMod from '$lib/components/admin/DDNetMod.svelte';
+	import PlayerFinder from '$lib/components/admin/PlayerFinder.svelte';
 
 	const { data } = $props();
 
@@ -1039,6 +1041,7 @@
 
 	// MODs
 	let ddnetMod = $state(false);
+	let playerFinder = $state(false);
 
 	// Keyboard shortcuts
 	const handleKeydown = (event: KeyboardEvent) => {
@@ -1048,6 +1051,11 @@
 			if (hasPermission('DDNET_MOD')) {
 				ddnetMod = !ddnetMod;
 			}
+		}
+		// Ctrl+F to toggle Player Finder modal
+		if (event.ctrlKey && event.key === 'f') {
+			event.preventDefault();
+			playerFinder = !playerFinder;
 		}
 	};
 </script>
@@ -1277,6 +1285,19 @@
 					<Fa icon={faShield} size="sm" />
 				</button>
 			{/if}
+			<button
+				onclick={(ev) => {
+					ev?.currentTarget?.blur();
+					playerFinder = true;
+				}}
+				use:tippy={{
+					content: '玩家追踪工具 (Ctrl+F)',
+					placement: 'top'
+				}}
+				class="flex h-6 w-8 items-center justify-center rounded-md bg-purple-700 px-2 py-1 text-sm text-slate-200 hover:bg-purple-600"
+			>
+				<Fa icon={faSearch} size="sm" />
+			</button>
 			<a
 				href="/ddnet/servers"
 				target="_blank"
@@ -1445,3 +1466,7 @@
 		<DdNetMod show={ddnetMod}></DdNetMod>
 	</Modal>
 {/if}
+
+<Modal bind:show={playerFinder}>
+	<PlayerFinder show={playerFinder}></PlayerFinder>
+</Modal>

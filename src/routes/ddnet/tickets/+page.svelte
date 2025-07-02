@@ -7,7 +7,7 @@
 	import { uaIsQQ, uaIsWechat } from '$lib/helpers.js';
 	import type { ButtonData, TicketMessage } from '$lib/server/db/tickets.js';
 	import { onMount, tick } from 'svelte';
-	import tippy from '$lib/tippy';
+	import { tippy } from '$lib/tippy';
 
 	const { data } = $props();
 
@@ -352,18 +352,21 @@
 	const rememberNameFlow = async () => {
 		if (playerName !== data.playerName) {
 			await wait(125);
-			const button = await buttonPrompt(`需要豆豆帮你绑定 ${playerName} 这个游戏名吗？\n下次提交会自动使用这个游戏名`, [
-				{
-					text: '绑定',
-					id: 'remember',
-					variant: 'primary'
-				},
-				{
-					text: '不用了',
-					id: 'forget',
-					variant: 'secondary'
-				}
-			]);
+			const button = await buttonPrompt(
+				`需要豆豆帮你绑定 ${playerName} 这个游戏名吗？\n下次提交会自动使用这个游戏名`,
+				[
+					{
+						text: '绑定',
+						id: 'remember',
+						variant: 'primary'
+					},
+					{
+						text: '不用了',
+						id: 'forget',
+						variant: 'secondary'
+					}
+				]
+			);
 			if (button === 'remember') {
 				await bindName(playerName);
 			}
@@ -793,15 +796,13 @@
 			},
 			{
 				text: '改名申请',
-				description:
-					'改名需要至少有3000分，且能够证明游玩记录（例如近一年的demo记录）',
+				description: '改名需要至少有3000分，且能够证明游玩记录（例如近一年的demo记录）',
 				variant: 'primary',
 				id: 'namechange'
 			},
 			{
 				text: '其他反馈',
-				description:
-					'其他需要反馈的事项或建议（例如：举报管理滥权，网站报错反馈等）',
+				description: '其他需要反馈的事项或建议（例如：举报管理滥权，网站报错反馈等）',
 				variant: 'secondary',
 				id: 'feedback'
 			}
