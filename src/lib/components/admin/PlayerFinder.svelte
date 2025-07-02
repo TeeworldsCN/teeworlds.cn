@@ -55,7 +55,7 @@
 	// Cache configuration
 	const STORAGE_KEY = 'player_finder_targets';
 	const COMMUNITY_STORAGE_KEY = 'player_finder_community';
-	const SEARCH_INTERVAL = 1 * 60 * 1000; // 1 minutes
+	const SEARCH_INTERVAL = 3 * 60 * 1000; // 3 minutes
 	const OFFLINE_THRESHOLD = 15 * 60 * 1000; // 15 minutes
 
 	let targets: PlayerTarget[] = $state([]);
