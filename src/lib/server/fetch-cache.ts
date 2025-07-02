@@ -293,4 +293,26 @@ export class FetchCache<T> {
 		}
 		return { result: result.data, hit: result.hit, string: false, timestamp: result.timestamp };
 	}
+
+	/**
+	 * Get the immediate cache, without checking for updates
+	 * @returns false if cache does not exist or is not the correct version, otherwise the cached data
+	 */
+	async getCacheAsString(): Promise<string | false> {
+		const key = `dd:cache:${this.url}`;
+		const cache = await volatile.get<CachedData>(key);
+		if (!cache) return false;
+		if (cache.v !== this.version) return false;
+		return cache.data;
+	}
+
+	/**
+	 * Get the immediate cache, without checking for updates
+	 * @returns false if cache does not exist or is not the correct version, otherwise the cached data
+	 */
+	async getCache(): Promise<T | false> {
+		const data = await this.getCacheAsString();
+		if (data === false) return false;
+		return JSON.parse(data);
+	}
 }

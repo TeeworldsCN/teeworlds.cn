@@ -6,13 +6,18 @@ export const GET: RequestHandler = async () => {
 	try {
 		const [serversData, gameInfoData] = await Promise.all([
 			servers.fetchCache(),
-			gameInfo.fetchCache()
+			(() => {
+				const promise = gameInfo.getCache();
+				// fetch the data asynchronously for future requests
+				gameInfo.fetchAsString();
+				return promise;
+			})()
 		]);
 
 		return new Response(
 			JSON.stringify({
 				servers: serversData.result.servers,
-				gameInfo: gameInfoData.result
+				gameInfo: gameInfoData
 			}),
 			{
 				headers: {
