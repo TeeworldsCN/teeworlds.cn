@@ -112,7 +112,7 @@ export class FetchCache<T> {
 			const result:
 				| { result: string; hit: boolean; string: true; timestamp: number }
 				| { data: T; hit: boolean; string: false; timestamp: number } = await (async () => {
-				const now = Date.now() / (this.minQueryInterval * 1000);
+				const now = Date.now();
 				const key = `dd:cache:${this.url}`;
 				let cache = await volatile.get<CachedData>(key);
 				if (cache && cache.v !== this.version) {
@@ -146,7 +146,7 @@ export class FetchCache<T> {
 					};
 				}
 
-				this.nextQueryTime = Math.floor(now) + 1;
+				this.nextQueryTime = now + this.minQueryInterval * 1000;
 
 				if (!this.skipHead) {
 					if (cache) {
@@ -195,16 +195,16 @@ export class FetchCache<T> {
 							data = await this.transformer(result);
 							const now = Date.now();
 							let stringData;
-							if (tag) {
-								// only cache if the tag is valid
-								stringData = JSON.stringify(data);
-								await volatile.set<CachedData>(key, {
-									tag,
-									timestamp: now,
-									data: stringData,
-									v: this.version
-								});
-							}
+
+							// only cache if the tag is valid
+							stringData = JSON.stringify(data);
+							await volatile.set<CachedData>(key, {
+								tag: tag || '',
+								timestamp: now,
+								data: stringData,
+								v: this.version
+							});
+
 							return {
 								data,
 								hit: false,

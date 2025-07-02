@@ -12,14 +12,15 @@ export const load = (async ({ fetch, parent, url }) => {
 		name = decodeAsciiURIComponent(name);
 	}
 
-	const data = (await (await fetch('/api/servers')).json()) as {
-		servers: ServerInfo;
-		gameInfo: GameInfo;
-	};
-
-	const maps = name
-		? await (await fetch(`/api/info?name=${encodeURIComponent(name)}`)).json()
-		: null;
+	const [data, maps] = await Promise.all([
+		fetch('/api/servers').then((res) => res.json()) as Promise<{
+			servers: ServerInfo;
+			gameInfo: GameInfo;
+		}>,
+		name
+			? fetch(`/api/info?name=${encodeURIComponent(name)}`).then((res) => res.json())
+			: Promise.resolve(null)
+	]);
 
 	const ddnet = data.gameInfo.communities.find((community) => community.id == 'ddnet');
 	if (ddnet) ddnet.icon.servers = data.gameInfo.servers;

@@ -4,8 +4,10 @@ import { gameInfo, servers } from '$lib/server/fetches/servers';
 
 export const GET: RequestHandler = async () => {
 	try {
-		const serversData = await servers.fetchCache();
-		const gameInfoData = await gameInfo.fetchCache();
+		const [serversData, gameInfoData] = await Promise.all([
+			servers.fetchCache(),
+			gameInfo.fetchCache()
+		]);
 
 		return new Response(
 			JSON.stringify({
