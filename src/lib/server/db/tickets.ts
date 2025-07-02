@@ -856,7 +856,7 @@ export const getAllTicketCount = (): number => {
 };
 
 export const addTicketAttachment = (
-	attachment: Omit<TicketAttachment, 'uuid'>
+	attachment: Omit<TicketAttachment, 'uuid' | 'deleted'>
 ): TicketAttachment | null => {
 	try {
 		const attachmentUuid = crypto.randomUUID();

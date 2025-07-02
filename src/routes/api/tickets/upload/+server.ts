@@ -258,6 +258,16 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 		});
 	} catch (err) {
 		console.error('File upload error:', err);
+		if ((err as any)?.status == 413) {
+			return json(
+				{
+					success: false,
+					error: '文件大小超过 50MB 限制',
+					errorType: 'file_too_large'
+				},
+				{ status: 400 }
+			);
+		}
 		return json(
 			{
 				success: false,

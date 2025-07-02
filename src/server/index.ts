@@ -186,14 +186,12 @@ export class ServerRequest extends EventEmitter<{
 	private _request: Request;
 	private _destroyed: boolean = false;
 	private _paused: boolean = false;
-	private _reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 	private _resumeCallbacks: (() => void)[] = [];
 	public headers: {};
 
 	constructor(request: Request) {
 		super();
 		this._request = request;
-		this._processBody();
 		this.headers = new Proxy({} as Record<string, string>, {
 			get: (_target, prop: string) => {
 				return this._request.headers.get(prop);
@@ -215,6 +213,7 @@ export class ServerRequest extends EventEmitter<{
 				return undefined;
 			}
 		});
+		this._processBody();
 	}
 
 	private async _processBody() {
@@ -224,7 +223,7 @@ export class ServerRequest extends EventEmitter<{
 				return;
 			}
 
-			this._reader = this._request.body.getReader();
+			const reader = this._request.body.getReader();
 
 			while (true) {
 				if (this._destroyed) {
@@ -246,20 +245,23 @@ export class ServerRequest extends EventEmitter<{
 					break;
 				}
 
-				const { done, value } = await this._reader.read();
+				try {
+					const { done, value } = await reader.read();
+					if (done) {
+						this.emit('end');
+						break;
+					}
 
-				if (done) {
-					this.emit('end');
-					break;
-				}
-
-				if (value) {
-					this.emit('data', value);
+					if (value) {
+						this.emit('data', value);
+					}
+				} catch (error) {
+					throw error;
 				}
 			}
 		} catch (error) {
 			if (!this._destroyed) {
-				this.emit('error', error as Error);
+				this.destroy();
 			}
 		}
 	}
@@ -300,14 +302,8 @@ export class ServerRequest extends EventEmitter<{
 		return this;
 	}
 
-	destroy(error?: Error) {
+	destroy() {
 		this._destroyed = true;
-		if (this._reader) {
-			this._reader.cancel(error);
-		}
-		if (error) {
-			this.emit('error', error);
-		}
 		return this;
 	}
 }
@@ -324,7 +320,7 @@ const server = Bun.serve({
 			handler(req, res, () => {});
 		});
 	},
-	idleTimeout: 60, 
+	idleTimeout: 60,
 	error(error) {
 		console.error('Bun.serve error:', error);
 		return new Response('Internal Server Error', { status: 500 });
