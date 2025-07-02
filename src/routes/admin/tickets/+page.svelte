@@ -259,19 +259,22 @@
 		try {
 			audioCache.new = new Audio('/audio/new.ogg');
 			audioCache.message = new Audio('/audio/msg.ogg');
+			audioCache.found = new Audio('/audio/found.ogg');
 
 			// Preload the audio files
 			audioCache.new.preload = 'auto';
 			audioCache.message.preload = 'auto';
+			audioCache.found.preload = 'auto';
 
 			audioCache.new.load();
 			audioCache.message.load();
+			audioCache.found.load();
 		} catch (error) {
 			console.error('Error initializing audio:', error);
 		}
 	};
 
-	const playNotificationSound = (soundType: 'new' | 'message') => {
+	const playNotificationSound = (soundType: 'new' | 'message' | 'found') => {
 		if (notificationVolume > 0) {
 			try {
 				const audio = audioCache[soundType];
@@ -1468,5 +1471,9 @@
 {/if}
 
 <Modal bind:show={playerFinder}>
-	<PlayerFinder show={playerFinder}></PlayerFinder>
+	<PlayerFinder
+		show={playerFinder}
+		{playNotificationSound}
+		{showNotification}
+	></PlayerFinder>
 </Modal>

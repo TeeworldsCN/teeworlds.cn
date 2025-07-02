@@ -13,7 +13,14 @@
 	import { SvelteMap } from 'svelte/reactivity';
 	import TeeRender from '$lib/components/TeeRender.svelte';
 
-	const { show }: { show: boolean } = $props();
+	const {
+		playNotificationSound,
+		showNotification
+	}: {
+		show?: boolean;
+		playNotificationSound?: (soundType: 'new' | 'message' | 'found') => void;
+		showNotification?: (title: string, body: string, tag?: string) => void;
+	} = $props();
 
 	type PlayerTarget = {
 		id: string;
@@ -48,7 +55,7 @@
 	// Cache configuration
 	const STORAGE_KEY = 'player_finder_targets';
 	const COMMUNITY_STORAGE_KEY = 'player_finder_community';
-	const SEARCH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+	const SEARCH_INTERVAL = 1 * 60 * 1000; // 1 minutes
 	const OFFLINE_THRESHOLD = 15 * 60 * 1000; // 15 minutes
 
 	let targets: PlayerTarget[] = $state([]);
@@ -297,17 +304,26 @@
 			body = playerNames;
 		}
 
-		// Browser notification
-		if ('Notification' in window && Notification.permission === 'granted') {
-			try {
-				new Notification(title, {
-					body,
-					icon: '/favicon.png',
-					badge: '/favicon.png',
-					tag: 'player-finder-batch'
-				});
-			} catch (error) {
-				console.error('Error showing notification:', error);
+		// Use passed notification functions if available, otherwise fallback to built-in
+		if (playNotificationSound) {
+			playNotificationSound('found');
+		}
+
+		if (showNotification) {
+			showNotification(title, body, 'player-finder-batch');
+		} else {
+			// Fallback to browser notification
+			if ('Notification' in window && Notification.permission === 'granted') {
+				try {
+					new Notification(title, {
+						body,
+						icon: '/favicon.png',
+						badge: '/favicon.png',
+						tag: 'player-finder-batch'
+					});
+				} catch (error) {
+					console.error('Error showing notification:', error);
+				}
 			}
 		}
 
@@ -317,15 +333,17 @@
 	let lastAutoSearchTime = $state(Date.now());
 
 	// Start automatic searching
-	const startSearching = () => {
+	const startSearching = (firstTime: boolean) => {
 		if (searchInterval) return;
 
 		searchInterval = setInterval(() => {
 			lastAutoSearchTime = Date.now();
 			searchPlayers();
 		}, SEARCH_INTERVAL);
+
+		lastAutoSearchTime = Date.now();
 		// Also search immediately
-		searchPlayers(true);
+		searchPlayers(firstTime);
 	};
 
 	// Stop automatic searching
@@ -334,6 +352,11 @@
 			clearInterval(searchInterval);
 			searchInterval = null;
 		}
+	};
+
+	const searchImmediately = () => {
+		stopSearching();
+		startSearching(false);
 	};
 
 	// Format time display
@@ -375,7 +398,7 @@
 	onMount(() => {
 		loadTargets();
 		loadCommunity();
-		startSearching();
+		startSearching(true);
 		realtimeInterval = setInterval(() => {
 			realtimeTick++;
 		}, 1000);
@@ -404,7 +427,7 @@
 				bind:value={selectedCommunity}
 				onchange={() => {
 					saveCommunity();
-					searchPlayers();
+					searchImmediately();
 				}}
 				class="rounded border border-slate-500 bg-slate-800 px-3 py-1 text-slate-300"
 				use:tippy={{ content: '选择服务器社区' }}
@@ -430,7 +453,7 @@
 					添加目标
 				</button>
 				<button
-					onclick={() => searchPlayers()}
+					onclick={() => searchImmediately()}
 					disabled={loading}
 					class="flex items-center gap-2 rounded bg-green-600 px-3 py-1 text-white hover:bg-green-700 disabled:opacity-50"
 				>
