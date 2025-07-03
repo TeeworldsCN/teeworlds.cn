@@ -291,9 +291,33 @@
 		searchQuery = '';
 	};
 
+	// Helper function to validate IPv4 format
+	const isValidIPv4 = (ip: string): boolean => {
+		// Check if IP contains port (has colon)
+		if (ip.includes(':')) {
+			return false;
+		}
+
+		// IPv4 regex pattern
+		const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+		return ipv4Regex.test(ip);
+	};
+
 	const submitBan = async () => {
 		if (!banFormData.ip || !banFormData.name || !banFormData.reason || !banFormData.duration) {
 			alert({ message: '请填写所有必填字段', type: 'error', attachTo: rootElement });
+			return;
+		}
+
+		// Validate IP format
+		if (!isValidIPv4(banFormData.ip)) {
+			alert({ message: 'IP 地址格式无效，请输入有效的 IPv4 地址（不包含端口）', type: 'error', attachTo: rootElement });
+			return;
+		}
+
+		// Validate IP range end if provided
+		if (banFormData.ipRangeEnd && !isValidIPv4(banFormData.ipRangeEnd)) {
+			alert({ message: 'IP 范围结束地址格式无效，请输入有效的 IPv4 地址（不包含端口）', type: 'error', attachTo: rootElement });
 			return;
 		}
 
