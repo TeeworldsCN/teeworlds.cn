@@ -142,7 +142,7 @@
 		}
 	};
 
-	const uploadFile = async (file: File) => {
+	const uploadFile = async (file: File, index: number = 0, total: number = 1) => {
 		// First compress the image if it's large
 		let processedFile: File;
 		try {
@@ -156,11 +156,8 @@
 		if (validationError) {
 			// Call the error callback for validation errors
 			onUploadError?.(validationError, file.name, 'validation_error');
-			return;
+			return false;
 		}
-
-		isUploading = true;
-		uploadProgress = 0;
 
 		try {
 			const formData = new FormData();
@@ -172,7 +169,11 @@
 
 			xhr.upload.addEventListener('progress', (e) => {
 				if (e.lengthComputable) {
-					uploadProgress = (e.loaded / e.total) * 100;
+					// Calculate progress within this file's segment
+					const fileProgress = (e.loaded / e.total) * 100;
+					const segmentSize = 100 / total;
+					const segmentStart = index * segmentSize;
+					uploadProgress = segmentStart + (fileProgress * segmentSize / 100);
 				}
 			});
 
@@ -191,40 +192,58 @@
 
 			if (result.success && result.attachment) {
 				onUploadComplete?.(result.attachment);
-				uploadProgress = 100;
-
-				// Reset after a short delay
-				setTimeout(() => {
-					uploadProgress = 0;
-					isUploading = false;
-				}, 250);
+				return true;
 			} else {
 				// Handle server error response
 				const errorMessage = result.error || '上传失败';
 				const errorType = result.errorType || 'unknown_error';
 
 				onUploadError?.(errorMessage, file.name, errorType);
-
-				isUploading = false;
-				uploadProgress = 0;
+				return false;
 			}
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : '上传失败';
 			onUploadError?.(errorMessage, file.name, 'network_error');
-			isUploading = false;
-			uploadProgress = 0;
+			return false;
 		}
 	};
 
 	// Public function that can be called from parent component
-	export const uploadFiles = (files: FileList | File[]) => {
+	export const uploadFiles = async (files: FileList | File[]) => {
 		if (disabled || isUploading) return;
 
 		const fileArray = Array.from(files);
-		if (multiple) {
-			fileArray.forEach(uploadFile);
-		} else if (fileArray.length > 0) {
-			uploadFile(fileArray[0]);
+		if (fileArray.length === 0) return;
+
+		// Set initial upload state
+		isUploading = true;
+		uploadProgress = 0;
+
+		try {
+			if (multiple && fileArray.length > 0) {
+				// Upload files sequentially with divided progress
+				for (let i = 0; i < fileArray.length; i++) {
+					const success = await uploadFile(fileArray[i], i, fileArray.length);
+					if (!success) {
+						// If upload fails, we continue with the next file
+						continue;
+					}
+				}
+			} else {
+				// Single file upload
+				await uploadFile(fileArray[0], 0, 1);
+			}
+
+			// Set final progress and reset after delay
+			uploadProgress = 100;
+			setTimeout(() => {
+				uploadProgress = 0;
+				isUploading = false;
+			}, 250);
+		} catch (error) {
+			// Reset state on error
+			uploadProgress = 0;
+			isUploading = false;
 		}
 	};
 
