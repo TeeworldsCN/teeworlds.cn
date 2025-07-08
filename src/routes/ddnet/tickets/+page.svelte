@@ -352,21 +352,32 @@
 	const rememberNameFlow = async () => {
 		if (playerName !== data.playerName) {
 			await wait(125);
-			const button = await buttonPrompt(
-				`需要豆豆帮你绑定 ${playerName} 这个游戏名吗？\n下次提交会自动使用这个游戏名`,
-				[
-					{
-						text: '绑定',
-						id: 'remember',
-						variant: 'primary'
-					},
-					{
-						text: '不用了',
-						id: 'forget',
-						variant: 'secondary'
-					}
-				]
-			);
+			const button = await buttonPrompt(`需要豆豆帮你绑定 ${playerName} 这个游戏名吗？`, [
+				{
+					text: '绑定',
+					description: '绑定后下次提交申请将自动使用这个游戏名提交',
+					id: 'remember',
+					variant: 'primary'
+				},
+				{
+					text: '不用了',
+					description: '下次提交时需要重新输入游戏名',
+					id: 'forget',
+					variant: 'secondary'
+				},
+				{
+					text: '打错了',
+					description: '将从头开始提交流程，以便你进行更正',
+					id: 'redo',
+					variant: 'warning'
+				}
+			]);
+
+			if (button === 'redo') {
+				location.reload();
+				throw new Error('Halt flow');
+			}
+
 			if (button === 'remember') {
 				await bindName(playerName);
 			}
@@ -468,7 +479,7 @@
 				const result = await buttonOrInputPrompt('你仍然可以直接发起举报', [
 					{
 						text: '直接发起举报',
-						description: '豆豆可以直接帮你召唤管理，之后需要你手动提供服务器信息。',
+						description: '豆豆可以直接帮你召唤管理，之后需要你向管理主动提供服务器信息。',
 						id: 'offline',
 						variant: 'primary'
 					}
@@ -482,7 +493,7 @@
 				}
 			}
 		} else {
-			sendMessage('为了让管理更好的协助你，请提供你的游戏名');
+			sendMessage('好的，豆豆会帮你提交举报。为了让管理更好的协助你，请告诉豆豆你的游戏名');
 			currentName = await inputPrompt();
 			reportFlow();
 			return;
@@ -492,7 +503,9 @@
 	const appealFlow = async () => {
 		await wait(125);
 		if (playerName) {
-			sendMessage(`好的，请问被封禁的游戏名是 ${playerName} 吗？不是的话请回复我需要申诉的玩家名`);
+			sendMessage(
+				`好的，豆豆会帮你提交封禁申诉。请问被封禁的游戏名是 ${playerName} 吗？不是的话请回复我需要申诉的玩家名`
+			);
 			await wait(125);
 			const result = await buttonOrInputPrompt('', [
 				{
@@ -504,12 +517,15 @@
 			if (result.type === 'input') {
 				currentName = result.value;
 			}
+		} else {
+			sendMessage('好的，豆豆会帮你提交封禁申诉。为了让管理更好的协助你，请告诉豆豆你的游戏名');
+			currentName = await inputPrompt();
 		}
 
 		await rememberNameFlow();
 		await wait(125);
 
-		sendMessage('好的，豆豆正在为你创建申诉请求...');
+		sendMessage('豆豆正在为你创建申诉请求...');
 
 		try {
 			// Create the ticket with the first message
@@ -557,21 +573,28 @@
 	};
 
 	const nameChangeFlow = async () => {
-		await wait(125);
-		sendMessage(
-			`好的，请问是要申请修改 ${playerName} 这个名字吗？不是的话请直接回复我需要改名的玩家名`
-		);
-		await wait(125);
-		const fromNameInput = await buttonOrInputPrompt('', [
-			{
-				text: `申请转移 ${playerName} 的分数`,
-				id: 'yes',
-				variant: 'primary'
-			}
-		]);
+		if (!playerName) {
+			await wait(125);
+			sendMessage('好的，豆豆会帮你申请改名转分。请告诉豆豆你现在的游戏名');
+			currentName = await inputPrompt();
+		} else {
+			await wait(125);
+			sendMessage(
+				`好的，豆豆会帮你申请改名转分。请问是要申请修改 ${playerName} 这个名字吗？不是的话请直接回复我需要改名的玩家名`
+			);
+			await wait(125);
 
-		if (fromNameInput.type === 'input') {
-			currentName = fromNameInput.value;
+			const fromNameInput = await buttonOrInputPrompt('', [
+				{
+					text: `申请转移 ${playerName} 的分数`,
+					id: 'yes',
+					variant: 'primary'
+				}
+			]);
+
+			if (fromNameInput.type === 'input') {
+				currentName = fromNameInput.value;
+			}
 		}
 
 		const fromName = playerName;
@@ -711,7 +734,7 @@
 	const feedbackFlow = async () => {
 		if (!playerName) {
 			await wait(125);
-			sendMessage('在提交问题反馈前，请告诉豆豆你的游戏名');
+			sendMessage('好的，豆豆会帮你提交反馈。为了方便管理协助你，请告诉豆豆你的游戏名');
 			currentName = await inputPrompt();
 			await rememberNameFlow();
 		}
