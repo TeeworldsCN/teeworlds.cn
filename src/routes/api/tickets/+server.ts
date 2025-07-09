@@ -92,7 +92,7 @@ const addDDNetBanMessage = async (
 				if (ban.ip == ipNum) {
 					found = true;
 					copyableMessages.push({
-						message: `豆豆检测DDNet封禁条目（点击复制解封指令）\nIP: ${numberToIp(ban.ip)}\n原因：${ban.reason}\n管理：${ban.by}\n解封：${new Date(ban.expires * 1000).toLocaleString('zh-CN')}`,
+						message: `申诉玩家的设备IP：${ip}\n豆豆检测DDNet封禁条目（点击复制解封指令）\nIP: ${numberToIp(ban.ip)}\n原因：${ban.reason}\n管理：${ban.by}\n解封：${new Date(ban.expires * 1000).toLocaleString('zh-CN')}`,
 						copy_content: `!unban ${numberToIp(ban.ip)}`,
 						author_name: 'System',
 						visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
@@ -102,7 +102,7 @@ const addDDNetBanMessage = async (
 				if (ban.start <= ipNum && ban.end >= ipNum) {
 					found = true;
 					copyableMessages.push({
-						message: `豆豆检测DDNet范围封禁条目（点击复制解封指令）\nIP: ${numberToIp(ban.start)}-${numberToIp(ban.end)}\n原因：${ban.reason}\n管理：${ban.by}\n解封：${new Date(ban.expires * 1000).toLocaleString('zh-CN')}`,
+						message: `申诉玩家的设备IP：${ip}\n豆豆检测DDNet范围封禁条目（点击复制解封指令）\nIP: ${numberToIp(ban.start)}-${numberToIp(ban.end)}\n原因：${ban.reason}\n管理：${ban.by}\n解封：${new Date(ban.expires * 1000).toLocaleString('zh-CN')}`,
 						copy_content: `!unban ${numberToIp(ban.start)}-${numberToIp(ban.end)}`,
 						author_name: 'System',
 						visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
@@ -113,7 +113,7 @@ const addDDNetBanMessage = async (
 
 		if (!found) {
 			copyableMessages.push({
-				message: `豆豆没有发现相关的封禁记录\n申诉玩家的设备IP：${ip}\n（点击复制IP）`,
+				message: `申诉玩家的设备IP：${ip}\n豆豆没有发现相关的封禁记录\n（点击复制IP）`,
 				copy_content: ip,
 				author_name: 'System',
 				visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
@@ -122,7 +122,7 @@ const addDDNetBanMessage = async (
 	} catch (err: any) {
 		console.error('Failed to check DDNet bans:', err);
 		copyableMessages.push({
-			message: `豆豆在检查封禁记录时遇到了问题\n申诉玩家的设备IP：${ip}\n（点击复制IP）`,
+			message: `申诉玩家的设备IP：${ip}\n豆豆在检查封禁记录时遇到了问题\n（点击复制IP）`,
 			copy_content: ip,
 			author_name: 'System',
 			visibility: MESSAGE_VISIBILITY.ADMIN_ONLY
