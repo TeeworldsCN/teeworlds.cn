@@ -17,6 +17,8 @@
 	const closeModal = () => {
 		show = false;
 	};
+
+	let clickedOnBackdrop: number | null = null;
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
@@ -26,8 +28,25 @@
 	onclose={() => {
 		show = false;
 	}}
-	onclick={(e) => {
-		if (e.target === dialog) closeModal();
+	onpointerdown={(e) => {
+		if (e.pointerType === 'mouse' && e.button !== 0) return;
+		if (clickedOnBackdrop != null) return;
+		if (e.target === dialog) {
+			clickedOnBackdrop = e.pointerId;
+		}
+	}}
+	onpointerup={(e) => {
+		if (e.pointerId === clickedOnBackdrop) {
+			if (e.target === dialog) {
+				closeModal();
+			}
+			clickedOnBackdrop = null;
+		}
+	}}
+	onpointercancel={(e) => {
+		if (e.pointerId === clickedOnBackdrop) {
+			clickedOnBackdrop = null;
+		}
 	}}
 >
 	<!-- svelte-ignore a11y_autofocus -->

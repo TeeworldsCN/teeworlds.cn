@@ -1471,9 +1471,5 @@
 {/if}
 
 <Modal bind:show={playerFinder}>
-	<PlayerFinder
-		show={playerFinder}
-		{playNotificationSound}
-		{showNotification}
-	></PlayerFinder>
+	<PlayerFinder show={playerFinder} {playNotificationSound} {showNotification}></PlayerFinder>
 </Modal>
