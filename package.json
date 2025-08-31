@@ -60,6 +60,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"caniuse-lite": "^1.0.30001739",
 		"sharp": "^0.34.2"
 	}
 }

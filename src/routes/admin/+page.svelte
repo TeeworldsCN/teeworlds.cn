@@ -25,6 +25,11 @@
 	</div>
 
 	<div class="mt-6">
+		<ToolboxButton href="/admin/posts">文章管理</ToolboxButton>
+		<div class="text-semibold">管理网站文章内容</div>
+	</div>
+
+	<div class="mt-6">
 		<ToolboxButton href="/admin/subs">订阅管理</ToolboxButton>
 		<div class="text-semibold">管理机器人自动发布消息的订阅功能</div>
 	</div>
