@@ -130,7 +130,7 @@
 			<h2 class="mb-3 text-xl font-bold">捐赠</h2>
 			<p class="mb-4 text-slate-300">
 				运行 DDNet 服务器需要资金。我们感谢任何金额的捐赠，这些捐赠将专门用于服务器成本。
-				请不要忘记在捐赠者列表中注明您希望列出的游戏内姓名：
+				请不要忘记备注您希望在捐赠者列表列出的游戏名。
 			</p>
 
 			{#if donateInfo.donateLinks.paypal}
