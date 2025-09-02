@@ -36,3 +36,6 @@ sensitive-lexicon.txt
 
 # Env
 .direnv
+
+# Augment
+.augment

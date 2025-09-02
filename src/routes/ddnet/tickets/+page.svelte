@@ -25,7 +25,7 @@
 		</p>
 
 		<p class="mt-4 text-lg leading-relaxed text-slate-200">
-			如果需要提交举报，请前往<Link href="/link?ref=https%3A//ddnet.org/discord" type="main"
+			如果需要提交举报，请前往<Link ref="https://ddnet.org/discord" type="main"
 				>DDNet 官方 Discord</Link
 			>进行举报。
 		</p>

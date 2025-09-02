@@ -17,6 +17,7 @@
 			if (hash == 'q') target = `/ddnet/qia`;
 			else if (hash == 'p') target = `/ddnet/players`;
 			else if (hash == 's') target = `/ddnet/servers`;
+			else if (hash == 'd' || hash == 'donate') target = `/donate`;
 			else if (hash.startsWith('ms')) target = `/ddnet/maps#${hash.slice(2)}`;
 			else if (hash.startsWith('m')) target = `/ddnet/maps/${hash.slice(1)}`;
 			else if (hash.startsWith('p')) target = `/ddnet/players/${hash.slice(1)}`;
@@ -66,5 +67,10 @@
 	<div class="mt-6">
 		<ToolboxButton href="/ddnet/servers">服务器列表</ToolboxButton>
 		<div class="text-semibold">显示 DDNet 服务器列表</div>
+	</div>
+
+	<div class="mt-6">
+		<ToolboxButton href="/donate">捐赠支持</ToolboxButton>
+		<div class="text-semibold">支持 DDNet 游戏的运行</div>
 	</div>
 {/if}

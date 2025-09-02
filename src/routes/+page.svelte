@@ -1,5 +1,7 @@
 <script>
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
+	import Fa from 'svelte-fa';
+	import { faHeart } from '@fortawesome/free-solid-svg-icons';
 
 	const { data } = $props();
 
@@ -12,6 +14,13 @@
 	<img src="/logos/ddnet.svg" alt="DDNet" class="mb-2 h-14" />
 	<ToolboxButton href="/ddnet">DDNet 工具箱</ToolboxButton>
 	<div class="text-semibold">查询 DDraceNetwork 相关信息</div>
+</div>
+
+<div class="mt-6">
+	<ToolboxButton href="/donate"
+		><Fa icon={faHeart} class="inline text-red-400" /> 捐赠支持</ToolboxButton
+	>
+	<div class="text-semibold">支持 DDRaceNetwork 的运行</div>
 </div>
 
 <div class="mt-6 h-px w-full bg-gradient-to-r from-slate-600 to-transparent"></div>

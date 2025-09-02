@@ -3,9 +3,9 @@
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
 	import {
 		faFaceSmile,
-		faFlag,
 		faGamepad,
 		faGlobe,
+		faHeart,
 		faInfoCircle,
 		faMap,
 		faRankingStar,
@@ -64,10 +64,10 @@
 </div>
 
 <div class="mt-6">
-	<ToolboxButton href="/ddnet/tickets"
-		><Fa icon={faFlag} class="inline"></Fa> 举报与反馈</ToolboxButton
+	<ToolboxButton href="/ddnet/donate"
+		><Fa icon={faHeart} class="inline"></Fa> 捐赠支持</ToolboxButton
 	>
-	<div class="text-semibold">发起举报、申诉与反馈等</div>
+	<div class="text-semibold">支持 DDNet 服务器运营</div>
 </div>
 
 <div class="mt-6 flex items-start">
@@ -75,14 +75,14 @@
 </div>
 
 <div class="mt-6">
-	<ToolboxButton href="/link/?ref={encodeURIComponent('https://wiki.ddnet.org/wiki/Main_Page/zh')}"
+	<ToolboxButton ref="https://wiki.ddnet.org/wiki/Main_Page/zh"
 		><Fa icon={faInfoCircle} class="inline"></Fa> 中文 Wiki</ToolboxButton
 	>
 	<div class="text-semibold">详细教程与操作指南</div>
 </div>
 
 <div class="mt-6">
-	<ToolboxButton href="/link/?ref={encodeURIComponent('https://ddnet.org/')}"
+	<ToolboxButton ref="https://ddnet.org/"
 		><Fa icon={faGlobe} class="inline"></Fa> DDNet 官网</ToolboxButton
 	>
 	<div class="text-semibold">前往 DDraceNetwork 官方网站</div>
