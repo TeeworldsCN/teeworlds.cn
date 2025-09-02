@@ -51,7 +51,10 @@ commands
 	.add('stat', handleStats)
 
 	.add('工具箱', handleToolbox)
+
+	.add('donate', handleDonate)
 	.add('赞助', handleDonate)
+	.add('捐赠', handleDonate)
 
 	// super admin only commands
 	.add('perm-add', adminPermissionAdd, [])
