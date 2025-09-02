@@ -4,7 +4,7 @@
 
 <svelte:head>
 	<title>捐赠支持 - TeeworldsCN</title>
-	<meta name="description" content="支持 TeeworldsCN 的发展" />
+	<meta name="description" content="捐赠服务器成本" />
 </svelte:head>
 
 <Breadcrumbs
