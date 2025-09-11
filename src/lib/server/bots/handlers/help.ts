@@ -6,7 +6,7 @@ export const handleHelp: Handler = async ({ reply, platform }) => {
 	await reply.textLink(
 		[
 			'目前豆豆可以提供以下查询功能：',
-			`  ${prefix}分数 <玩家名> - 查询分数`,
+			`  ${prefix}分数 <玩家名> - 查询里程与分数`,
 			`  ${prefix}地图 <地图名> - 查询地图`,
 			`  ${prefix}找人 <玩家名> - 查询玩家在线状态`,
 			`  ${prefix}状态 - 查询服务器运行状态`,

@@ -2,9 +2,9 @@
 	class="scrollbar-subtle container grid max-h-[calc(100svh-8rem)] grid-cols-1 gap-4 overflow-y-auto rounded-l-lg rounded-br-lg bg-slate-700 p-3 text-left shadow-lg md:grid-cols-2 lg:grid-cols-3"
 >
 	<div>
-		<h3 class="mb-2 rounded-lg bg-slate-600 px-2 text-xl font-bold">🌎 通过分</h3>
+		<h3 class="mb-2 rounded-lg bg-slate-600 px-2 text-xl font-bold">🌎 里程</h3>
 		<div>
-			首次通过地图会获得通过分。每张地图的难度由星星数量表示。不同类型的地图有不同的分数数据：
+			首次通过地图会近期里程（或称为通过分）。每张地图的难度由星星数量表示。不同类型的地图有不同的里程数据：
 		</div>
 		<table class="my-3 w-full table-auto overflow-hidden border border-slate-500">
 			<tbody>
@@ -61,8 +61,8 @@
 			</tbody>
 		</table>
 
-		<div>分数计算公式</div>
-		<div class="rounded bg-slate-900 p-1 text-center">分数 = 基数 + (星星 × 倍率)</div>
+		<div>里程计算公式</div>
+		<div class="rounded bg-slate-900 p-1 text-center">里程 = 基数 + (星星 × 倍率)</div>
 	</div>
 	<div>
 		<h3 class="mb-2 rounded-lg bg-slate-600 px-2 text-xl font-bold">👥 团队排位分</h3>

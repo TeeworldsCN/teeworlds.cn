@@ -287,7 +287,7 @@
 				class="cursor-pointer text-nowrap rounded bg-slate-700 px-4 py-2 font-semibold hover:bg-slate-600 active:bg-slate-700"
 				onclick={() => {
 					pointModal = !pointModal;
-				}}><Fa class="inline" icon={faQuestionCircle}></Fa> 分数说明</button
+				}}><Fa class="inline" icon={faQuestionCircle}></Fa> 积分说明</button
 			>
 		</div>
 	</div>
@@ -310,7 +310,7 @@
 			{#if explaination}
 				<span
 					class="mt-2 block rounded-lg bg-slate-800 px-3 py-1 text-sm font-normal shadow-md md:float-right md:mt-0 md:inline-block"
-					>分数统计结算有一天的延迟，部分数据可能需要48小时后才会出现</span
+					>里程与分数统计结算有一天的延迟，部分数据可能需要48小时后才会出现</span
 				>
 			{/if}
 		</h2>
@@ -409,7 +409,7 @@
 					<div
 						class="{i != 0 ? 'hidden md:grid' : ''} grid grid-cols-2 gap-2 text-center font-bold"
 					>
-						<div class="overflow-hidden text-center">分数</div>
+						<div class="overflow-hidden text-center">里程</div>
 						<div class="overflow-hidden text-center">完成度</div>
 					</div>
 					{#each col as stat}
@@ -507,9 +507,7 @@
 		</div>
 		<div class="mt-2 rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
 			<h3 class="mb-1 text-base font-bold">活跃记录</h3>
-			<div
-				class="mx-auto max-w-fit rounded bg-slate-700 p-1 sm:p-2 md:p-3"
-			>
+			<div class="mx-auto max-w-fit rounded bg-slate-700 p-1 sm:p-2 md:p-3">
 				<div class="flex flex-row flex-nowrap gap-2">
 					<div class="hidden flex-col text-xs sm:flex">
 						<p class="-mt-1 flex-grow text-nowrap">周一</p>
@@ -518,7 +516,7 @@
 					<div class="flex flex-col flex-nowrap lg:gap-[0.125rem]">
 						{#each data.activity as row}
 							<div
-								class="flex flex-row flex-nowrap border-slate-800 first:border-t lg:border-none lg:gap-[0.125rem]"
+								class="flex flex-row flex-nowrap border-slate-800 first:border-t lg:gap-[0.125rem] lg:border-none"
 							>
 								{#each row as col}
 									{#if col.date}
@@ -580,7 +578,7 @@
 				>
 					<option value="finish">最近完成</option>
 					<option value="rank">最高排名</option>
-					<option value="point">最高分数</option>
+					<option value="point">最高里程</option>
 					<option value="name">首字母排序</option>
 					<option value="unfinished">仅未完成</option>
 				</select>
@@ -608,7 +606,7 @@
 				<div class="hidden cursor-default text-nowrap rounded-t bg-slate-700 text-center sm:block">
 					<span class="inline-block w-32 overflow-hidden pl-2 text-left lg:w-48">地图</span>
 					<span class="hidden w-8 overflow-hidden text-left md:inline-block lg:w-16">类型</span>
-					<span class="inline-block w-8 overflow-hidden sm:w-16">分数</span>
+					<span class="inline-block w-8 overflow-hidden sm:w-16">里程</span>
 					<span class="hidden w-16 overflow-hidden text-right md:inline-block">团队排名</span>
 					<span class="hidden w-16 overflow-hidden text-right md:inline-block">个人排名</span>
 					<span class="inline-block w-16 overflow-hidden text-right sm:w-24">最短记录</span>
@@ -617,7 +615,7 @@
 				</div>
 				<div class="block cursor-default text-nowrap rounded-t bg-slate-700 text-center sm:hidden">
 					<span class="inline-block">地图</span>
-					<span class="inline-block">分数</span>
+					<span class="inline-block">里程</span>
 					<span class="inline-block">记录</span>
 					<span class="inline-block">完成</span>
 				</div>

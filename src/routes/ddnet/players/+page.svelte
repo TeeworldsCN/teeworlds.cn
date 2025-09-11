@@ -102,7 +102,9 @@
 			queryList = { player: null, top10: [] };
 			queryListName = null;
 		} else {
-			queryList = await (await fetch(`/api/players?query=${encodeURIComponent(queryingName)}`)).json();
+			queryList = await (
+				await fetch(`/api/players?query=${encodeURIComponent(queryingName)}`)
+			).json();
 			queryListName = queryingName;
 		}
 		querying = false;
@@ -127,10 +129,10 @@
 	});
 
 	const LADDER_NAMES: Record<string, [string, string]> = {
-		points: ['总通过分', '🌎'],
-		yearly: ['获得通过分 (近365天)', '📅'],
-		monthly: ['获得通过分 (近30天)', '📅'],
-		weekly: ['获得通过分 (近7天)', '📅'],
+		points: ['里程', '🌎'],
+		yearly: ['近期里程 (近365天)', '📅'],
+		monthly: ['近期里程 (近30天)', '📅'],
+		weekly: ['近期里程 (近7天)', '📅'],
 		team: ['团队排位分', '👥'],
 		rank: ['个人排位分', '👤']
 	};
@@ -140,10 +142,16 @@
 	<meta property="og:title" content="DDNet 玩家排名 - TeeworldsCN" />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://teeworlds.cn/ddnet/players" />
-	<meta property="og:description" content="查询 DDraceNetwork 玩家排名和分数，包括总分、团队分、个人分和时间段分数" />
+	<meta
+		property="og:description"
+		content="查询 DDraceNetwork 玩家排名和分数，包括里程、团队分、个人分和时间段分数"
+	/>
 	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
 	<meta name="title" content="DDNet 玩家排名 - TeeworldsCN" />
-	<meta name="description" content="查询 DDraceNetwork 玩家排名和分数，包括总分、团队分、个人分和时间段分数" />
+	<meta
+		name="description"
+		content="查询 DDraceNetwork 玩家排名和分数，包括里程、团队分、个人分和时间段分数"
+	/>
 </svelte:head>
 
 <Breadcrumbs
@@ -177,7 +185,7 @@
 		class="cursor-pointer text-nowrap rounded bg-slate-700 px-4 py-2 font-semibold hover:bg-slate-600 active:bg-slate-700"
 		onclick={() => {
 			showModal = !showModal;
-		}}><Fa class="inline" icon={faQuestionCircle}></Fa> 分数说明</button
+		}}><Fa class="inline" icon={faQuestionCircle}></Fa> 积分说明</button
 	>
 	<select
 		class="rounded bg-slate-700 px-4 py-2 text-slate-300"

@@ -56,7 +56,7 @@
 
 	<div class="mt-6">
 		<ToolboxButton href="/ddnet/players">查看排名</ToolboxButton>
-		<div class="text-semibold">查看 DDNet 排名与玩家分数</div>
+		<div class="text-semibold">查看 DDNet 排名与玩家里程与分数</div>
 	</div>
 
 	<div class="mt-6">

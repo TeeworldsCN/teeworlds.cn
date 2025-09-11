@@ -61,15 +61,15 @@ export const load = (async ({ data, parent }) => {
 			pending?: number;
 		};
 	}[] = [
-		{ icon: '🌎', name: '总通过分', rank: { ...player.points, pending: player.pending_points } },
+		{ icon: '🌎', name: '里程', rank: { ...player.points, pending: player.pending_points } },
 		{ icon: '👥', name: '团队排位分', rank: player.team_rank },
 		{ icon: '👤', name: '个人排位分', rank: player.rank },
-		{ icon: 'SV', name: '分数排名', rank: player.server_points || {} },
+		{ icon: 'SV', name: '里程排名', rank: player.server_points || {} },
 		{ icon: 'SV', name: '个人排位', rank: player.server_rank || {} },
 		{ icon: 'SV', name: '团队排位', rank: player.server_team_rank || {} },
-		{ icon: '📅', name: '获得通过分 (近365天)', rank: player.points_last_year },
-		{ icon: '📅', name: '获得通过分 (近30天)', rank: player.points_last_month },
-		{ icon: '📅', name: '获得通过分 (近7天)', rank: player.points_last_week }
+		{ icon: '📅', name: '近期里程 (近365天)', rank: player.points_last_year },
+		{ icon: '📅', name: '近期里程 (近30天)', rank: player.points_last_month },
+		{ icon: '📅', name: '近期里程 (近7天)', rank: player.points_last_week }
 	];
 
 	// setup activity

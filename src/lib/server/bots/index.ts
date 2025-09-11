@@ -31,6 +31,7 @@ commands
 	.add('？', handleHelp)
 
 	.add('分数', handlePoints)
+	.add('里程', handlePoints)
 	.add('points', handlePoints)
 	.add('point', handlePoints)
 

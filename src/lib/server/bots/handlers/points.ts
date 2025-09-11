@@ -56,7 +56,7 @@ export const handlePoints: Handler = async ({ platform, user, reply, args }) => 
 
 	const ranks = [
 		{
-			name: '🌎 总通过分',
+			name: '🌎 里程',
 			rank: player.points,
 			always: true
 		},

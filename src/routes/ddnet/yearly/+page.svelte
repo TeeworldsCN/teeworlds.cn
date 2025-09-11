@@ -527,7 +527,7 @@
 						},
 						{
 							type: 't',
-							text: `在更高分数的地图中大放异彩`
+							text: `在更高里程的地图中大放异彩`
 						}
 					],
 					background: bgMap(d.mpg[0]),
@@ -1468,10 +1468,20 @@
 	<meta property="og:title" content="DDNet 年度总结 - TeeworldsCN" />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://teeworlds.cn/ddnet/yearly" />
-	<meta property="og:description" content="{data.name ? `${data.name}的${data.year}年度总结` : `查看你的 DDraceNetwork ${data.year} 年度游戏数据总结`}" />
+	<meta
+		property="og:description"
+		content={data.name
+			? `${data.name}的${data.year}年度总结`
+			: `查看你的 DDraceNetwork ${data.year} 年度游戏数据总结`}
+	/>
 	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
 	<meta name="title" content="DDNet 年度总结 - TeeworldsCN" />
-	<meta name="description" content="{data.name ? `${data.name}的${data.year}年度总结` : `查看你的 DDraceNetwork ${data.year} 年度游戏数据总结`}" />
+	<meta
+		name="description"
+		content={data.name
+			? `${data.name}的${data.year}年度总结`
+			: `查看你的 DDraceNetwork ${data.year} 年度游戏数据总结`}
+	/>
 </svelte:head>
 
 <svelte:window on:resize={onResize} />
@@ -1884,8 +1894,8 @@
 										/>
 										<div class="flex flex-col">
 											<div class="font-semibold text-slate-300">{data.player.name}</div>
-											<div>目前分数：{data.player.points.points}pts</div>
-											<div>分数排名：No.{data.player.points.rank}</div>
+											<div>目前里程：{data.player.points.points}pts</div>
+											<div>里程排名：No.{data.player.points.rank}</div>
 										</div>
 									</div>
 									<div class="flex flex-col space-y-2">

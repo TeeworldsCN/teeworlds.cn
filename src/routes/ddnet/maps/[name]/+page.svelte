@@ -99,7 +99,7 @@
 			<div>
 				<h2 class="mb-3 text-xl font-bold">地图信息</h2>
 				<p use:tippy={{ content: data.map.type }}>类型：{mapType(data.map.type)}</p>
-				<p>分数：{data.map.points}</p>
+				<p>里程：{data.map.points}</p>
 				<p>难度：{numberToStars(data.map.difficulty)}</p>
 			</div>
 		</div>

@@ -41,7 +41,7 @@
 	<ToolboxButton href="/ddnet/players"
 		><Fa icon={faRankingStar} class="inline"></Fa> 排名查分</ToolboxButton
 	>
-	<div class="text-semibold">DDNet 排名与玩家分数</div>
+	<div class="text-semibold">DDNet 玩家里程、排名与分数</div>
 </div>
 
 <div class="mt-6">

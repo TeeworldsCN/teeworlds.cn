@@ -181,7 +181,7 @@
 			<div class="pointer-events-none px-4 text-center">
 				<div class="flex items-center justify-center gap-2 text-xl font-bold">
 					<Fa icon={faCoins} />
-					<span>{Math.floor(points)} 分数</span>
+					<span>{Math.floor(points)} 里程</span>
 				</div>
 				<div class="text-sm text-slate-400">
 					每秒: {Math.round(pointsPerSecond)} | 每次点击: {pointsPerClick}
@@ -193,7 +193,13 @@
 					class="relative h-20 w-20 select-none rounded-lg bg-slate-700 transition-all hover:bg-slate-600 active:scale-95"
 					onclick={clickTee}
 				>
-					<TeeRender useDefault name={skin} {body} {feet} className="w-full h-full pointer-events-none" />
+					<TeeRender
+						useDefault
+						name={skin}
+						{body}
+						{feet}
+						className="w-full h-full pointer-events-none"
+					/>
 				</button>
 			</div>
 
