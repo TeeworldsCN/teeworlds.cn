@@ -61,7 +61,7 @@ export const handlePoints: Handler = async ({ platform, user, reply, args }) => 
 			always: true
 		},
 		{
-			name: '📅 去年获得',
+			name: '📅 近年里程',
 			rank: player.yearly,
 			always: true
 		},
