@@ -37,7 +37,8 @@ class DonorHandler implements HTMLRewriterTypes.HTMLRewriterElementContentHandle
 	}
 
 	async text(text: HTMLRewriterTypes.Text) {
-		const donorName = text.text.trim()
+		const donorName = text.text
+			.trim()
 			.replace(/&nbsp;/g, ' ')
 			.replace(/&lt;/g, '<')
 			.replace(/&gt;/g, '>')
@@ -129,7 +130,10 @@ export const donate = new FetchCache<DonateInfo>(
 			const serverTextMatch = html.match(/DDNet\.org[\s\S]*?DDNet South Africa/);
 			if (serverTextMatch) {
 				const serverText = serverTextMatch[0];
-				const lines = serverText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+				const lines = serverText
+					.split('\n')
+					.map((line) => line.trim())
+					.filter((line) => line.length > 0);
 				let index = 0;
 				for (const [serverKey] of Object.entries(costs)) {
 					if (index < lines.length) {
@@ -141,7 +145,7 @@ export const donate = new FetchCache<DonateInfo>(
 		}
 
 		for (const [serverKey, serverData] of Object.entries(costs)) {
-			const displayName = serverNameMap[serverKey] || getServerDisplayName(serverKey);
+			const displayName = serverNameMap[serverKey];
 
 			if (typeof serverData === 'number') {
 				totalCost += serverData;
@@ -177,28 +181,50 @@ export const donate = new FetchCache<DonateInfo>(
 			}
 		}
 
-		// Calculate donation distribution
+		// Calculate donation distribution following DDNet's original algorithm
 		const sumToPay = totalCost - totalPartSponsored;
 		let donatedRest = 0;
+		const paid: Record<string, number> = {};
 
+		// First pass: calculate base allocation for each server
 		for (const server of servers) {
-			if (server.sponsor && server.cost === 0) continue; // Fully sponsored
+			paid[server.name] = 0;
 
+			// Add any remaining donations from previous servers
 			if (donatedRest > 0) {
-				server.donated += donatedRest;
+				paid[server.name] += donatedRest;
 				donatedRest = 0;
 			}
 
 			if (server.cost > 0 && !server.sponsor) {
-				const allocation = (server.cost * donated) / sumToPay;
-				server.donated += allocation;
-				if (server.donated > server.cost) {
-					donatedRest += server.donated - server.cost;
-					server.donated = server.cost;
+				// Unsponsored server: gets proportional share of donations
+				paid[server.name] += (server.cost * donated) / sumToPay;
+				if (paid[server.name] > server.cost) {
+					donatedRest += paid[server.name] - server.cost;
+					paid[server.name] = server.cost;
+				}
+			} else if (server.sponsor && server.cost > 0) {
+				// Partially sponsored server: sponsored amount + proportional share of remaining cost
+				const remainingCost = server.cost - server.donated; // server.donated is the sponsored amount
+				paid[server.name] += (remainingCost * donated) / sumToPay + server.donated;
+				if (paid[server.name] > server.cost) {
+					donatedRest += paid[server.name] - server.cost;
+					paid[server.name] = server.cost;
 				}
 			}
+			// Fully sponsored servers (cost === 0) don't need allocation
+		}
 
-			server.percentage = server.cost > 0 ? (server.donated / server.cost) * 100 : 100;
+		// Second pass: update server objects with calculated amounts
+		for (const server of servers) {
+			if (server.cost === 0) {
+				// Fully sponsored server
+				server.donated = 0;
+				server.percentage = 100;
+			} else {
+				server.donated = paid[server.name] || 0;
+				server.percentage = (server.donated / server.cost) * 100;
+			}
 		}
 
 		// Extract donors list using HTMLRewriter
@@ -229,61 +255,11 @@ export const donate = new FetchCache<DonateInfo>(
 			.transform(html);
 
 		// Extract PayPal link using HTMLRewriter
-		new HTMLRewriter()
-			.on('a[href*="paypal"]', new PayPalHandler(data))
-			.transform(html);
+		new HTMLRewriter().on('a[href*="paypal"]', new PayPalHandler(data)).transform(html);
 
 		return data;
 	},
 	{
-		version: 3,
+		version: 4
 	}
 );
-
-function getServerDisplayName(serverKey: string): string {
-	const serverNames: Record<string, string> = {
-		ddnet: 'DDNet.org',
-		master: 'DDNet Master',
-		master2: 'DDNet Master2',
-		db: 'DDNet Database',
-		ger1: 'DDNet GER1',
-		ger2: 'DDNet GER2',
-		ger3: 'DDNet GER3',
-		pol: 'DDNet POL',
-		fin: 'DDNet FIN',
-		rus1: 'DDNet RUS1',
-		rus2: 'DDNet RUS2',
-		rus4: 'DDNet RUS4',
-		rus6: 'DDNet RUS6',
-		bhr: 'DDNet Bahrain',
-		irn: 'DDNet Persian',
-		chl: 'DDNet Chile',
-		bra1: 'DDNet Brazil1',
-		bra2: 'DDNet Brazil2',
-		arg: 'DDNet Argentina',
-		usa1: 'DDNet USA1',
-		usa2: 'DDNet USA2',
-		usa3: 'DDNet USA3',
-		usa4: 'DDNet USA4',
-		chn: 'DDNet CHN',
-		chn0: 'DDNet CHN0',
-		chn1: 'DDNet CHN1',
-		chn2: 'DDNet CHN2',
-		chn3: 'DDNet CHN3',
-		chn5: 'DDNet CHN5',
-		chn6: 'DDNet CHN6',
-		chn7: 'DDNet CHN7',
-		chn8: 'DDNet CHN8',
-		chn9: 'DDNet CHN9',
-		chn10: 'DDNet CHN10',
-		chn11: 'DDNet CHN11',
-		twn: 'DDNet Taiwan',
-		kor: 'DDNet Korea',
-		sgp: 'DDNet Singapore',
-		ind: 'DDNet India',
-		aus: 'DDNet Australia',
-		zaf: 'DDNet South Africa'
-	};
-	
-	return serverNames[serverKey] || serverKey.toUpperCase();
-}
