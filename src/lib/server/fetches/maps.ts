@@ -17,9 +17,8 @@ export type MapList = {
 	tiles: string[];
 }[];
 
-const fetchDDStats = async (sql: string) => {
-	sql = sql.replace(/\n/g, ' ');
-	const result = await fetch(`https://db.ddstats.org/ddnet.json?sql=${encodeURIComponent(sql)}`);
+const fetchDDStats = async () => {
+	const result = await fetch(`https://ddstats.tw/maps/json`);
 
 	if (!result.ok) {
 		throw new Error(`Failed to fetch data: ${result.status} ${result.statusText}`);
@@ -29,14 +28,20 @@ const fetchDDStats = async (sql: string) => {
 	if (!json.ok) {
 		throw new Error(`Failed to fetch data: ${json.error}`);
 	}
-	return json;
+	return json as {
+		map: string;
+		server: string;
+		points: number;
+		stars: number;
+		mapper: string;
+		timestamp?: string;
+	}[];
 };
 
 let databaseUpdating = false;
 
 const updateDatabaseMaps = async () => {
 	databaseUpdating = true;
-	let offset = 0;
 	const maps: Record<
 		string,
 		{
@@ -48,23 +53,17 @@ const updateDatabaseMaps = async () => {
 		}
 	> = {};
 
-	while (true) {
-		const sql = `select Map, Server, Points, Stars, Mapper, datetime(Timestamp, "+01:00") as Release from maps limit ${offset}, 1001;`;
-		const result = await fetchDDStats(sql);
-		for (const row of result.rows) {
-			maps[row[0]] = {
-				type: row[1],
-				points: row[2],
-				difficulty: row[3],
-				mapper: row[4],
-				release: row[5] == '1970-01-01 01:00:00' ? undefined : row[5]
-			};
-		}
-		if (!result?.truncated) {
-			break;
-		}
-		offset += result.rows.length;
+	const result = await fetchDDStats();
+	for (const item of result) {
+		maps[item.map] = {
+			type: item.server,
+			points: item.points,
+			difficulty: item.stars,
+			mapper: item.mapper,
+			release: item.timestamp == null ? undefined : item.timestamp
+		};
 	}
+
 	await volatile.set('ddnet:cache:dbmaps', {
 		maps,
 		updated: Date.now()
@@ -123,6 +122,6 @@ export const maps = new FetchCache<MapList>(
 		return result;
 	},
 	{
-		version: 3
+		version: 4
 	}
 );

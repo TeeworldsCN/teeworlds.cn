@@ -347,7 +347,7 @@
 	</div>
 {:else}
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-		{#each paginatedMaps as map (map.name)}
+		{#each paginatedMaps as map, index (map.name + index)}
 			<div class="rounded border border-slate-700 bg-slate-700 p-4 pt-3 shadow">
 				<h3 class="scrollbar-hide h-8 overflow-x-auto text-nowrap text-lg font-bold">
 					{map.name}
