@@ -82,7 +82,7 @@ export const gameInfo = new FetchCache<GameInfo>(
 		const result = (await response.json()) as GameInfo;
 		for (const community of result.communities) {
 			if (community.icon.url) {
-				community.icon.url = (await convert(community.icon.url)).toString();
+				community.icon.url = await convert(community.icon.url);
 			}
 		}
 		return result;

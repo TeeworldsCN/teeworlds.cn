@@ -29,7 +29,7 @@
 
 	afterNavigate(() => {
 		share({
-			icon: new URL(data.map.icon, window.location.href).href,
+			icon: `${window.location.origin}/shareicon.png`,
 			link: `https://teeworlds.cn/goto#m${encodeAsciiURIComponent(data.map.name)}`,
 			title: `${data.map.name}`,
 			desc: mapDescription

@@ -1,7 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import { convert } from '$lib/server/imgproxy';
 import type { PageServerLoad } from './$types';
-import { basename } from 'path';
 import { decodeAsciiURIComponent, encodeAsciiURIComponent } from '$lib/link';
 import { uaIsStrict } from '$lib/helpers';
 
@@ -42,9 +41,7 @@ export const load = (async ({ url, parent, params }) => {
 	}
 
 	if (data.thumbnail) {
-		const filename = basename(data.thumbnail);
-		data.thumbnail = (await convert(data.thumbnail)).toString();
-		data.icon = `/api/mapicons/${filename}`;
+		data.thumbnail = await convert(data.thumbnail);
 	}
 
 	const map = data as {

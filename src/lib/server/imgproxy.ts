@@ -1,33 +1,36 @@
+/**
+ * Built-in image proxy that fetches and caches images
+ * Replaces external imgproxy service with internal API endpoint
+ */
+
 import { env } from '$env/dynamic/private';
+import { createHmac } from 'crypto';
 
-const hmacKey = env.IMGPROXY_KEY
-	? await crypto.subtle.importKey(
-			'raw',
-			Buffer.from(env.IMGPROXY_KEY, 'hex'),
-			{ name: 'HMAC', hash: 'SHA-256' },
-			false,
-			['sign']
-		)
-	: undefined;
-
-const saltStr = env.IMGPROXY_SALT
-	? Buffer.from(env.IMGPROXY_SALT, 'hex').toString('ascii')
-	: undefined;
+/**
+ * Generate HMAC signature for the proxy URL
+ * @param url - The URL to proxy
+ * @param type - The type of image (icon or image)
+ * @returns HMAC signature as hex string
+ */
+const generateSignature = (url: string, type: string): string => {
+	const secret = env.IMGPROXY_SECRET || 'default-secret';
+	const message = `${url}:${type}`;
+	return createHmac('sha256', secret).update(message).digest('hex');
+};
 
 export const convert = async (url: string, type: 'icon' | 'image' = 'image') => {
-	if (!env.IMGPROXY_URL || !env.IMGPROXY_KEY || !env.IMGPROXY_SALT || !hmacKey || !saltStr) {
-		return new URL(url);
-	}
-
-	let encoded = Buffer.from(url).toString('base64url') + '.png';
-
+	// Encode the URL as a query parameter
+	const params = new URLSearchParams();
+	params.set('url', url);
 	if (type === 'icon') {
-		encoded = `rs:fill:128:128/${encoded}`;
+		params.set('type', 'icon');
 	}
 
-	const salted = Buffer.from(saltStr + '/' + encoded);
-	const signature = Buffer.from(await crypto.subtle.sign('HMAC', hmacKey, salted)).toString(
-		'base64url'
-	);
-	return new URL(`${signature}/${encoded}`, env.IMGPROXY_URL);
+	// Generate and add signature
+	const signature = generateSignature(url, type);
+	params.set('sig', signature);
+
+	// Return the internal API endpoint path as a string
+	// This will be resolved to the correct origin by the browser/server
+	return `/api/proxy-image?${params.toString()}`;
 };

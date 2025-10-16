@@ -103,7 +103,7 @@ export const maps = new FetchCache<MapList>(
 				converts.push(
 					(async () => {
 						if (map.thumbnail) {
-							map.thumbnail = (await convert(map.thumbnail)).toString();
+							map.thumbnail = await convert(map.thumbnail);
 						}
 						delete map.website;
 						delete map.web_preview;
@@ -127,6 +127,6 @@ export const maps = new FetchCache<MapList>(
 		return result;
 	},
 	{
-		version: 4
+		version: 6
 	}
 );
