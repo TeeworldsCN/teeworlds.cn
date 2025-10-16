@@ -53,22 +53,27 @@ const updateDatabaseMaps = async () => {
 		}
 	> = {};
 
-	const result = await fetchDDStats();
-	for (const item of result) {
-		maps[item.map] = {
-			type: item.server,
-			points: item.points,
-			difficulty: item.stars,
-			mapper: item.mapper,
-			release: item.timestamp == null ? undefined : item.timestamp
-		};
+	try {
+		const result = await fetchDDStats();
+		for (const item of result) {
+			maps[item.map] = {
+				type: item.server,
+				points: item.points,
+				difficulty: item.stars,
+				mapper: item.mapper,
+				release: item.timestamp == null ? undefined : item.timestamp
+			};
+		}
+
+		await volatile.set('ddnet:cache:dbmaps', {
+			maps,
+			updated: Date.now()
+		});
+		await volatile.delete('dd:cache:https://ddnet.org/releases/maps.json');
+	} catch (e) {
+		console.error('Failed to update database maps:', e);
 	}
 
-	await volatile.set('ddnet:cache:dbmaps', {
-		maps,
-		updated: Date.now()
-	});
-	await volatile.delete('dd:cache:https://ddnet.org/releases/maps.json');
 	databaseUpdating = false;
 };
 

@@ -11,7 +11,6 @@
 	import { addrToBase64, base64ToAddr } from '$lib/helpers.js';
 	import { page } from '$app/state';
 	import MapLink from '$lib/components/ddnet/MapLink.svelte';
-	import TeeRender from '$lib/components/TeeRender.svelte';
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 
 	const { data: propData } = $props();
@@ -522,13 +521,6 @@
 							<div class="w-20 self-center text-center">
 								{showScore(client.score, selectedServer.info.client_score_kind)}
 							</div>
-							<TeeRender
-								name={client.skin ? client.skin.name : ''}
-								className="w-8 h-8 mr-2"
-								useDefault
-								body={client.skin ? client.skin.color_body : null}
-								feet={client.skin ? client.skin.color_feet : null}
-							></TeeRender>
 							<div class="flex h-[3.25rem] flex-col">
 								<p class="font-semibold">{client.name}</p>
 								<p class="text-sm">{client.clan}</p>

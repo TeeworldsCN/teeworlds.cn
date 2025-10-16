@@ -5,6 +5,7 @@ import {
 	PERMISSION_LIST,
 	updateUserData
 } from '$lib/server/db/users';
+import type { Permission } from '$lib/types';
 import { type Handler } from '../protocol/types';
 import { WeChat } from '../protocol/wechat';
 import { ArgParser } from '../utils/arg-parser';
@@ -12,7 +13,7 @@ import { ArgParser } from '../utils/arg-parser';
 export const adminPermissionAdd: Handler = async ({ reply, args }) => {
 	const parser = new ArgParser(args);
 	const uid = parser.getString(0);
-	const permission = parser.getString(1);
+	const permission = parser.getString(1) as Permission;
 	if (!uid || !permission) {
 		return await reply.text('/give-perm <uid> <permission>');
 	}

@@ -27,7 +27,7 @@ export type User = {
 	uuid: UserUUID;
 	username: string;
 	version: number;
-	bind_name: string | null;
+	bind_name?: string | null;
 	data: UserData;
 };
 

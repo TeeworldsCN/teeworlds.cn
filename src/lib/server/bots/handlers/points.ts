@@ -1,11 +1,9 @@
 import { numberToSub } from '$lib/helpers';
 import { encodeAsciiURIComponent } from '$lib/link';
 import { regionalRanks } from '$lib/server/fetches/ranks';
-import { allowedText } from '$lib/server/filter';
-import { getPlayer } from '$lib/server/players';
 import type { Handler } from '../protocol/types';
 
-export const handlePoints: Handler = async ({ platform, user, reply, args }) => {
+export const handlePoints: Handler = async ({ user, reply, args }) => {
 	let playerName = args.trim();
 
 	// check binds
@@ -21,10 +19,17 @@ export const handlePoints: Handler = async ({ platform, user, reply, args }) => 
 		});
 	}
 
-	const data = await getPlayer(playerName);
-	if (data == null) {
+	const response = await fetch(
+		`https://ddnet.org/players/?json2=${encodeURIComponent(playerName)}`
+	);
+	if (!response.ok) {
+		return await reply.text('DDNet 官网暂时连接不上，请稍后再试。');
+	}
+
+	const data = await response.json();
+	if (!data || !data.player) {
 		// no valid player data
-		return await reply.text('啊，豆豆的数据代码出问题了，快叫人来修复豆豆。');
+		return await reply.text('未找到相关的玩家信息');
 	}
 
 	const player = data as typeof data & {
@@ -37,10 +42,6 @@ export const handlePoints: Handler = async ({ platform, user, reply, args }) => 
 			rank?: number;
 		};
 	};
-
-	if (!player.name || !allowedText(player.name)) {
-		return await reply.text('未找到相关的玩家信息');
-	}
 
 	const chnFetch = await regionalRanks('chn');
 	if (chnFetch) {
@@ -62,17 +63,17 @@ export const handlePoints: Handler = async ({ platform, user, reply, args }) => 
 		},
 		{
 			name: '📅 近年里程',
-			rank: player.yearly,
+			rank: player.points_last_year,
 			always: true
 		},
 		{ name: '👤 个人排位', rank: player.rank, always: false },
-		{ name: '👥 团队排位', rank: player.team, always: false },
+		{ name: '👥 团队排位', rank: player.team_rank, always: false },
 		{ name: '🇨🇳 国服个人排位', rank: player.chnRank, always: false },
 		{ name: '🇨🇳 国服团队排位', rank: player.chnTeam, always: false }
 	];
 
 	const lines = [
-		data.name,
+		data.player,
 		...ranks
 			.filter((rank) => rank.always || rank.rank?.rank)
 			.map((rank) => {
@@ -87,6 +88,6 @@ export const handlePoints: Handler = async ({ platform, user, reply, args }) => 
 	return await reply.textLink(lines.join('\n'), {
 		label: `🔗 玩家详情`,
 		prefix: '详情点击：',
-		url: `https://teeworlds.cn/goto#p${encodeAsciiURIComponent(player.name)}`
+		url: `https://teeworlds.cn/goto#p${encodeAsciiURIComponent(player.player)}`
 	});
 };

@@ -1,5 +1,5 @@
 import { authenticateByUsername, generateToken } from '$lib/server/db/users';
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load = (async ({ locals, url, parent }) => {

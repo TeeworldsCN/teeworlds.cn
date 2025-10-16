@@ -8,7 +8,6 @@
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import PointCalculation from '$lib/components/PointCalculation.svelte';
-	import TeeRender from '$lib/components/TeeRender.svelte';
 	import { secondsToDate } from '$lib/date';
 	import { KNOWN_REGIONS, mapType } from '$lib/ddnet/helpers';
 	import { checkMapName } from '$lib/ddnet/searches.js';
@@ -251,27 +250,6 @@
 <div class="mb-4">
 	<div class="flex w-full flex-col items-center justify-between gap-2 sm:flex-row">
 		<div>
-			<div class="flex flex-row items-center">
-				<button
-					class="-mb-1 -mt-1 mr-2 h-16 w-16 cursor-pointer"
-					data-skin-name={data.skin.n}
-					use:tippy={{
-						content: getSkinTooltipContent(data.skin.n || ''),
-						placement: 'right',
-						hideOnClick: false
-					}}
-					onclick={() => copySkinName(data.skin.n || 'default')}
-				>
-					<TeeRender
-						name={data.skin.n}
-						body={data.skin.b}
-						feet={data.skin.f}
-						useDefault
-						className="w-full h-full"
-					></TeeRender>
-				</button>
-				<div class="text-2xl font-bold">{data.player.player}</div>
-			</div>
 			<div class="text-md font-bold">
 				<span>最近活跃：{secondsToDate(data.last_finish.timestamp)}</span>
 			</div>
