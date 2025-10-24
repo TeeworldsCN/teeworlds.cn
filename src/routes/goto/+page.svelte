@@ -49,7 +49,7 @@
 {:else}
 	<Breadcrumbs
 		breadcrumbs={[
-			{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },
+			{ href: '/', text: '首页', title: 'TeeworldsCN' },
 			{ text: '快捷菜单', title: '快捷菜单' }
 		]}
 	/>

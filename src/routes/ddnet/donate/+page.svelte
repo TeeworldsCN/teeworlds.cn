@@ -25,7 +25,7 @@
 
 <Breadcrumbs
 	breadcrumbs={[
-		{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },
+		{ href: '/', text: '首页', title: 'TeeworldsCN' },
 		{ href: '/ddnet', text: 'DDNet', title: 'DDNet 相关页面' },
 		{ text: '捐赠支持', title: 'DDNet 捐赠支持' }
 	]}

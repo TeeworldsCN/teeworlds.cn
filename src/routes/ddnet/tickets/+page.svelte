@@ -10,7 +10,7 @@
 
 <Breadcrumbs
 	breadcrumbs={[
-		{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },
+		{ href: '/', text: '首页', title: 'TeeworldsCN' },
 		{ href: '/ddnet', text: 'DDNet' },
 		{ text: '举报与反馈', title: 'DDNet 举报与反馈' }
 	]}
@@ -32,7 +32,7 @@
 
 		<p class="mt-4 leading-relaxed text-slate-300">
 			你也可以加入
-			<Link href="https://chat.teeworlds.cn" type="main">Teeworlds 中文社区</Link>
+			<Link href="https://chat.teeworlds.cn" type="main">TeeworldsCN</Link>
 			了解动态（社区不再提供管理服务）。
 		</p>
 	</div>

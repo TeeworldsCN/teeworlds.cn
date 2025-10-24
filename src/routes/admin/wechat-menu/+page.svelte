@@ -293,7 +293,7 @@
 
 <Breadcrumbs
 	breadcrumbs={[
-		{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },
+		{ href: '/', text: '首页', title: 'TeeworldsCN' },
 		{ href: '/admin', text: '管理工具', title: '管理工具' },
 		{ text: '微信自定义菜单', title: '微信自定义菜单' }
 	]}

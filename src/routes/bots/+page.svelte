@@ -85,7 +85,7 @@
 
 <Breadcrumbs
 	breadcrumbs={[
-		{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },
+		{ href: '/', text: '首页', title: 'TeeworldsCN' },
 		{ text: '豆豆', title: 'DDNet 豆豆' }
 	]}
 />

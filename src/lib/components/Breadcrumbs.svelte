@@ -17,7 +17,7 @@
 
 	onDestroy(() => {
 		if (browser) {
-			document.title = 'Teeworlds 中文社区';
+			document.title = 'TeeworldsCN';
 		}
 	});
 </script>

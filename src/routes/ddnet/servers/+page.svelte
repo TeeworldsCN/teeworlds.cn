@@ -285,7 +285,7 @@
 
 <Breadcrumbs
 	breadcrumbs={[
-		{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },
+		{ href: '/', text: '首页', title: 'TeeworldsCN' },
 		{ href: '/ddnet', text: 'DDNet' },
 		{ text: '服务器', title: 'DDNet 服务器列表' }
 	]}

@@ -240,7 +240,7 @@
 
 <Breadcrumbs
 	breadcrumbs={[
-		{ href: '/', text: '首页', title: 'Teeworlds 中文社区' },
+		{ href: '/', text: '首页', title: 'TeeworldsCN' },
 		{ href: '/ddnet', text: 'DDNet' },
 		{ href: '/ddnet/players', text: '排名', title: 'DDNet 排名' },
 		{ text: data.player.player, title: data.player.player }
