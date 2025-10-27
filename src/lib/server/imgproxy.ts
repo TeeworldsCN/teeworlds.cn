@@ -12,25 +12,24 @@ import { createHmac } from 'crypto';
  * @param type - The type of image (icon or image)
  * @returns HMAC signature as hex string
  */
-const generateSignature = (url: string, type: string): string => {
+const generateSignature = (url: string): string => {
 	const secret = env.IMGPROXY_SECRET || 'default-secret';
-	const message = `${url}:${type}`;
-	return createHmac('sha256', secret).update(message).digest('hex');
+	const message = `${url}`;
+	return createHmac('sha256', secret).update(message).digest('base64url');
 };
 
-export const convert = async (url: string, type: 'icon' | 'image' = 'image') => {
-	// Encode the URL as a query parameter
-	const params = new URLSearchParams();
-	params.set('url', url);
-	if (type === 'icon') {
-		params.set('type', 'icon');
+export const convert = async (url: string) => {
+	// Process the path: remove https://ddnet.org if present
+	let path = url;
+	if (path.startsWith('https://ddnet.org')) {
+		path = path.slice('https://ddnet.org'.length);
 	}
 
-	// Generate and add signature
-	const signature = generateSignature(url, type);
-	params.set('sig', signature);
+	// URL-base64 encode the path
+	const encodedPath = Buffer.from(path, 'utf-8').toString('base64url');
 
-	// Return the internal API endpoint path as a string
-	// This will be resolved to the correct origin by the browser/server
-	return `/api/proxy-image?${params.toString()}`;
+	// Generate and URL-base64 encode signature
+	const signature = generateSignature(path);
+
+	return `/images/${signature}/${encodedPath}`;
 };

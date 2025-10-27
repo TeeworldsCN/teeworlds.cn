@@ -10,28 +10,35 @@ import { createHmac } from 'crypto';
  * @param signature - The signature to verify
  * @returns true if signature is valid, false otherwise
  */
-const verifySignature = (url: string, type: string, signature: string): boolean => {
+const verifySignature = (url: string, signature: string): boolean => {
 	const secret = env.IMGPROXY_SECRET || 'default-secret';
-	const message = `${url}:${type}`;
-	const expectedSignature = createHmac('sha256', secret).update(message).digest('hex');
+	const expectedSignature = createHmac('sha256', secret).update(url).digest('base64url');
 	return signature === expectedSignature;
 };
 
-export const GET: RequestHandler = async ({ url }) => {
-	const targetUrl = url.searchParams.get('url');
-	const type = url.searchParams.get('type') || 'image';
-	const signature = url.searchParams.get('sig');
+export const GET: RequestHandler = async ({ params }) => {
+	const { sig, path } = params;
 
-	if (!targetUrl) {
-		return error(400, 'Missing url parameter');
+	if (!sig || !path) {
+		return error(400, 'Missing parameters');
 	}
 
-	if (!signature) {
-		return error(403, 'Missing signature');
+	// Decode the base64url encoded sig and path
+	let decodedPath: string;
+	try {
+		decodedPath = Buffer.from(path, 'base64url').toString('utf-8');
+	} catch {
+		return error(400, 'Invalid base64url encoding');
+	}
+
+	// Reconstruct the target URL
+	let targetUrl = decodedPath;
+	if (targetUrl.startsWith('/')) {
+		targetUrl = `https://ddnet.org${targetUrl}`;
 	}
 
 	// Verify the signature
-	if (!verifySignature(targetUrl, type, signature)) {
+	if (!verifySignature(decodedPath, sig)) {
 		return error(403, 'Invalid signature');
 	}
 
@@ -57,8 +64,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		return new Response(response.body, {
 			headers: {
 				'content-type': contentType,
-				'cache-control': 'public, max-age=31536000, immutable',
-				'expires': new Date(Date.now() + 31536000 * 1000).toUTCString()
+				'cache-control': 'public, max-age=31536000, immutable'
 			}
 		});
 	} catch (err) {
