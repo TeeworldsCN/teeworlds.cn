@@ -22,7 +22,6 @@
 			else if (hash.startsWith('m')) target = `/ddnet/maps/${hash.slice(1)}`;
 			else if (hash.startsWith('p')) target = `/ddnet/players/${hash.slice(1)}`;
 			else if (hash.startsWith('s')) target = `/ddnet/servers#${hash.slice(1)}`;
-			else if (hash.startsWith('r')) target = `/ddnet/tickets?token=${hash.slice(1)}`;
 		}
 
 		setTimeout(() => {

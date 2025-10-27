@@ -50,12 +50,6 @@
 	</div>
 {/if}
 
-{#if hasPermission('TICKETS')}
-	<div class="mt-6">
-		<ToolboxButton href="/admin/tickets">反馈和举报管理</ToolboxButton>
-		<div class="text-semibold">管理反馈和举报</div>
-	</div>
-{/if}
 
 {#if hasPermission('POSTING')}
 	<div class="mt-6">
