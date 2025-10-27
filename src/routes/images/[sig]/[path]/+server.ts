@@ -67,11 +67,15 @@ export const GET: RequestHandler = async ({ params }) => {
 
 		const contentType = response.headers.get('content-type') || 'image/png';
 
+		// Extract filename from target URL for Content-Disposition header
+		const filename = targetUrl.split('/').pop() || 'image';
+
 		// Return the image with cache headers set to cache forever
 		// Using max-age of 1 year (31536000 seconds) and immutable flag
 		return new Response(response.body, {
 			headers: {
 				'content-type': contentType,
+				'content-disposition': `inline; filename="${filename}"`,
 				'cache-control': 'public, max-age=31536000, immutable'
 			}
 		});
