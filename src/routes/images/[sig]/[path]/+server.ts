@@ -23,21 +23,29 @@ export const GET: RequestHandler = async ({ params }) => {
 		return error(400, 'Missing parameters');
 	}
 
-	// Decode the base64url encoded sig and path
+	// Extract file extension from the path parameter
+	const extensionIndex = path.lastIndexOf('.');
+	if (extensionIndex === -1) {
+		return error(400, 'Invalid path: missing file extension');
+	}
+	const extension = path.slice(extensionIndex);
+	const pathWithoutExt = path.slice(0, extensionIndex);
+
+	// Decode the base64url encoded path without extension
 	let decodedPath: string;
 	try {
-		decodedPath = Buffer.from(path, 'base64url').toString('utf-8');
+		decodedPath = Buffer.from(pathWithoutExt, 'base64url').toString('utf-8');
 	} catch {
 		return error(400, 'Invalid base64url encoding');
 	}
 
-	// Reconstruct the target URL
-	let targetUrl = decodedPath;
+	// Reconstruct the target URL with extension
+	let targetUrl = `${decodedPath}${extension}`;
 	if (targetUrl.startsWith('/')) {
 		targetUrl = `https://ddnet.org${targetUrl}`;
 	}
 
-	// Verify the signature
+	// Verify the signature using path without extension
 	if (!verifySignature(decodedPath, sig)) {
 		return error(403, 'Invalid signature');
 	}

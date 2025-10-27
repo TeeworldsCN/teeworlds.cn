@@ -5,6 +5,7 @@
 
 import { env } from '$env/dynamic/private';
 import { createHmac } from 'crypto';
+import { extname } from 'path';
 
 /**
  * Generate HMAC signature for the proxy URL
@@ -25,11 +26,17 @@ export const convert = async (url: string) => {
 		path = path.slice('https://ddnet.org'.length);
 	}
 
-	// URL-base64 encode the path
-	const encodedPath = Buffer.from(path, 'utf-8').toString('base64url');
+	// Extract file extension
+	const extension = extname(path);
+
+	// Remove extension from path for encoding
+	const pathWithoutExt = path.slice(0, -extension.length);
+
+	// URL-base64 encode the path without extension
+	const encodedPath = Buffer.from(pathWithoutExt, 'utf-8').toString('base64url');
 
 	// Generate and URL-base64 encode signature
-	const signature = generateSignature(path);
+	const signature = generateSignature(pathWithoutExt);
 
-	return `/images/${signature}/${encodedPath}`;
+	return `/images/${signature}/${encodedPath}${extension}`;
 };

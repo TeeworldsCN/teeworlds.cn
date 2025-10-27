@@ -77,6 +77,6 @@ export const maps = new FetchCache<MapList>(
 		return result;
 	},
 	{
-		version: 7
+		version: 8
 	}
 );
