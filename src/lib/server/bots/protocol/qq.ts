@@ -193,7 +193,7 @@ export class QQBotProtocol {
 		});
 		if (result.error) {
 			console.error(
-				`Failed to upload group media: ${result.code} ${result.message} ${result.body}`
+				`Failed to upload group media: ${result.code} ${result.message} ${result.body}\n\n${image}`
 			);
 			return null;
 		}
@@ -208,7 +208,7 @@ export class QQBotProtocol {
 		});
 		if (result.error) {
 			console.error(
-				`Failed to upload direct media: ${result.code} ${result.message} ${result.body}`
+				`Failed to upload direct media: ${result.code} ${result.message} ${result.body}\n\n${image}`
 			);
 			return null;
 		}

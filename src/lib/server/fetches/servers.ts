@@ -88,7 +88,7 @@ export const gameInfo = new FetchCache<GameInfo>(
 		return result;
 	},
 	{
-		version: 4,
+		version: 5,
 		minQueryInterval: 1800,
 		skipHead: true
 	}

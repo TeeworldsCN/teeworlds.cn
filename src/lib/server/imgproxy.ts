@@ -38,5 +38,5 @@ export const convert = async (url: string) => {
 	// Generate and URL-base64 encode signature
 	const signature = generateSignature(pathWithoutExt);
 
-	return `/images/${signature}/${encodedPath}${extension}`;
+	return `/api/img/${signature}/${encodedPath}${extension}`;
 };
