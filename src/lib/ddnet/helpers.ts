@@ -21,7 +21,8 @@ const MAP_TYPES: { [key: string]: string } = {
 	'ddmax.easy': '古典.Easy',
 	'ddmax.next': '古典.Next',
 	'ddmax.pro': '古典.Pro',
-	'ddmax.nut': '古典.Nut'
+	'ddmax.nut': '古典.Nut',
+	event: '活动'
 };
 
 export const mapType = (type: string) => {

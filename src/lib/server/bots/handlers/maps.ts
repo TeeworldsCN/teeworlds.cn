@@ -19,6 +19,7 @@ const MAPTYPE_KEYWORDS: Record<string, string> = {
 	'-s': 'solo',
 	'-ra': 'race',
 	'-f': 'fun',
+	'-e': 'event',
 	新: 'novice',
 	中: 'moderate',
 	高: 'brutal',
@@ -28,7 +29,8 @@ const MAPTYPE_KEYWORDS: Record<string, string> = {
 	分: 'dummy',
 	单: 'solo',
 	竞: 'race',
-	娱: 'fun'
+	娱: 'fun',
+	活: 'event'
 };
 
 const MAPDIFF_KEYWORDS: Record<string, number> = {

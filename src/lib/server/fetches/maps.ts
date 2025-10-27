@@ -24,11 +24,7 @@ const fetchDDStats = async () => {
 		throw new Error(`Failed to fetch data: ${result.status} ${result.statusText}`);
 	}
 
-	const json = await result.json();
-	if (!json.ok) {
-		throw new Error(`Failed to fetch data: ${json.error}`);
-	}
-	return json as {
+	const json = (await result.json()) as {
 		map: string;
 		server: string;
 		points: number;
@@ -36,67 +32,21 @@ const fetchDDStats = async () => {
 		mapper: string;
 		timestamp?: string;
 	}[];
-};
 
-let databaseUpdating = false;
+	const map = new Map<string, (typeof json)['0']>();
 
-const updateDatabaseMaps = async () => {
-	databaseUpdating = true;
-	const maps: Record<
-		string,
-		{
-			type: string;
-			points: number;
-			difficulty: number;
-			mapper?: string;
-			release?: string;
-		}
-	> = {};
-
-	try {
-		const result = await fetchDDStats();
-		for (const item of result) {
-			maps[item.map] = {
-				type: item.server,
-				points: item.points,
-				difficulty: item.stars,
-				mapper: item.mapper,
-				release: item.timestamp == null ? undefined : item.timestamp
-			};
-		}
-
-		await volatile.set('ddnet:cache:dbmaps', {
-			maps,
-			updated: Date.now()
-		});
-		await volatile.delete('dd:cache:https://ddnet.org/releases/maps.json');
-	} catch (e) {
-		console.error('Failed to update database maps:', e);
+	for (const item of json) {
+		map.set(item.map, item);
 	}
 
-	databaseUpdating = false;
-};
-
-const getDatabaseMaps = async () => {
-	const volatileMaps = await volatile.get<{ maps: any; updated: number }>('ddnet:cache:dbmaps');
-
-	// if the data is over a month old, update it
-	if (
-		!databaseUpdating &&
-		(!volatileMaps || Date.now() - volatileMaps.updated > 30 * 24 * 60 * 60 * 1000)
-	) {
-		// don't wait for the update to finish
-		updateDatabaseMaps();
-	}
-
-	return volatileMaps ? volatileMaps.maps : {};
+	return map;
 };
 
 export const maps = new FetchCache<MapList>(
 	'https://ddnet.org/releases/maps.json',
 	async (response) => {
 		const result = await response.json();
-		const databaseMaps = await getDatabaseMaps();
+		const databaseMaps = await fetchDDStats();
 		if (result[0]) {
 			const converts: Promise<void>[] = [];
 			for (const map of result) {
@@ -111,14 +61,14 @@ export const maps = new FetchCache<MapList>(
 				);
 
 				// correct map info from database data
-				const databaseMap = databaseMaps[map.name];
+				const databaseMap = databaseMaps.get(map.name);
 
 				if (databaseMap) {
-					if (databaseMap.type) map.type = databaseMap.type;
+					if (databaseMap.server) map.type = databaseMap.server;
 					if (databaseMap.points) map.points = databaseMap.points;
-					if (databaseMap.difficulty) map.difficulty = databaseMap.difficulty;
+					if (databaseMap.stars) map.difficulty = databaseMap.stars;
 					if (databaseMap.mapper) map.mapper = databaseMap.mapper;
-					if (databaseMap.release) map.release = databaseMap.release;
+					if (databaseMap.timestamp) map.release = databaseMap.timestamp;
 				}
 			}
 
