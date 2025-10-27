@@ -38,5 +38,5 @@ export const convert = async (url: string) => {
 	// Generate and URL-base64 encode signature
 	const signature = generateSignature(pathWithoutExt);
 
-	return `/api/img/${signature}/${encodedPath}${extension}`;
+	return `https://teeworlds.cn/api/img/${signature}/${encodedPath}${extension}`;
 };
