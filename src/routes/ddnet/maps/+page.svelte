@@ -6,7 +6,7 @@
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 	import { encodeAsciiURIComponent } from '$lib/link';
 	import type { MapList } from '$lib/server/fetches/maps';
-	import { ddnetDate, mapType, numberToStars, TILES } from '$lib/ddnet/helpers';
+	import { ddnetDate, MAP_TYPES, mapType, numberToStars, TILES } from '$lib/ddnet/helpers';
 	import { browser } from '$app/environment';
 	import { tippy } from '$lib/tippy';
 	import { checkMapName, checkMapper } from '$lib/ddnet/searches';
@@ -269,16 +269,9 @@
 			<span class="hidden sm:inline-block">类型</span>
 			<select class="rounded bg-slate-700 px-4 py-2 text-slate-300" bind:value={type}>
 				<option value="all">全部</option>
-				<option value="novice">新手</option>
-				<option value="moderate">中阶</option>
-				<option value="brutal">高阶</option>
-				<option value="insane">疯狂</option>
-				<option value="ddmax">古典</option>
-				<option value="oldschool">传统</option>
-				<option value="dummy">分身</option>
-				<option value="solo">单人</option>
-				<option value="race">竞速</option>
-				<option value="fun">娱乐</option>
+				{#each Object.entries(MAP_TYPES) as [k, v]}
+					<option value={k}>{v}</option>
+				{/each}
 			</select>
 		</div>
 		<div class="flex flex-row items-center space-x-2">

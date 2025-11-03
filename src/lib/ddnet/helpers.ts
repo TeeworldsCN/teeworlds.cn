@@ -8,7 +8,7 @@ export const ddnetDate = (date: string) => {
 	return new Date(date.slice(0, 10) + 'T' + date.slice(11, 19) + '+01:00');
 };
 
-const MAP_TYPES: { [key: string]: string } = {
+export const MAP_TYPES: { [key: string]: string } = {
 	solo: '单人',
 	dummy: '分身',
 	novice: '新手',
@@ -18,6 +18,7 @@ const MAP_TYPES: { [key: string]: string } = {
 	oldschool: '传统',
 	race: '竞速',
 	fun: '娱乐',
+	ddmax: '古典',
 	'ddmax.easy': '古典.Easy',
 	'ddmax.next': '古典.Next',
 	'ddmax.pro': '古典.Pro',

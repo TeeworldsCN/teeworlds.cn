@@ -5,26 +5,43 @@ import { maps, type MapList } from '$lib/server/fetches/maps';
 import type { Handler } from '../protocol/types';
 
 const MAPTYPE_KEYWORDS: Record<string, string> = {
-	'-ro': 'random',
+	'-rol': 'random',
 	'-rnd': 'random',
+	'-ran': 'random',
 	随: 'random',
 
-	'-n': 'novice',
-	'-m': 'moderate',
-	'-b': 'brutal',
-	'-i': 'insane',
-	'-dd': 'ddmax',
-	'-o': 'oldschool',
-	'-du': 'dummy',
-	'-s': 'solo',
-	'-ra': 'race',
-	'-f': 'fun',
-	'-e': 'event',
+	'-nov': 'novice',
+	'-mod': 'moderate',
+	'-bru': 'brutal',
+	'-ins': 'insane',
+	'-ddm': 'ddmax',
+	'-eas': 'ddmax.easy',
+	'-nex': 'ddmax.next',
+	'-nut': 'ddmax.nut',
+	'-pro': 'ddmax.pro',
+	'-old': 'oldschool',
+	'-dum': 'dummy',
+	'-sol': 'solo',
+	'-rac': 'race',
+	'-fun': 'fun',
+	'-eve': 'event',
+	'-ddmax.ea': 'ddmax.easy',
+	'-ddmax.ne': 'ddmax.next',
+	'-ddmax.nu': 'ddmax.nut',
+	'-ddmax.pr': 'ddmax.pro',
 	新: 'novice',
 	中: 'moderate',
 	高: 'brutal',
 	疯: 'insane',
 	古: 'ddmax',
+	古典Ea: 'ddmax.easy',
+	古典Ne: 'ddmax.next',
+	古典Nu: 'ddmax.nut',
+	古典Pr: 'ddmax.nut',
+	'古典.Ea': 'ddmax.easy',
+	'古典.Ne': 'ddmax.next',
+	'古典.Nu': 'ddmax.nut',
+	'古典.Pr': 'ddmax.pro',
 	传: 'oldschool',
 	分: 'dummy',
 	单: 'solo',
@@ -32,6 +49,8 @@ const MAPTYPE_KEYWORDS: Record<string, string> = {
 	娱: 'fun',
 	活: 'event'
 };
+
+const MAPTYPE_KEYWORDS_SORTED = Object.keys(MAPTYPE_KEYWORDS).sort((a, b) => b.length - a.length);
 
 const MAPDIFF_KEYWORDS: Record<string, number> = {
 	'1': 1,
@@ -59,7 +78,7 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 	let type = '';
 	let diff = 0;
 
-	for (const keyword of Object.keys(MAPTYPE_KEYWORDS)) {
+	for (const keyword of MAPTYPE_KEYWORDS_SORTED) {
 		if (mapName.toLowerCase().startsWith(keyword)) {
 			type = MAPTYPE_KEYWORDS[keyword];
 			break;
