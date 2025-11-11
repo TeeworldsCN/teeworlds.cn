@@ -1,4 +1,5 @@
 <script lang="ts">
+	import nis from '$lib/assets/nis.png';
 	import { enhance } from '$app/forms';
 	import { navigating, page } from '$app/state';
 	import Link from '$lib/components/Link.svelte';
@@ -96,9 +97,17 @@
 	<footer
 		class="flex h-8 flex-row flex-nowrap items-center text-nowrap bg-slate-900 px-4 py-1 text-slate-300"
 	>
-		<div class="text-xs sm:text-base">
-			<Link href="https://beian.miit.gov.cn/" type="subtle" className="font-bold"
+		<div class="flex max-h-8 flex-col overflow-hidden text-xs">
+			<Link href="https://beian.miit.gov.cn/" rel="noreferrer" target="_blank" type="subtle"
 				>冀ICP备2021002466号</Link
+			>
+			<Link
+				href="https://beian.mps.gov.cn/#/query/webSearch?code=13020302001199"
+				rel="noreferrer"
+				target="_blank"
+				type="subtle"
+				><div class="h-2.5 w-2.5 inline-block" style="background-image: url({nis});background-size: contain;"></div>
+				冀公网安备13020302001199号</Link
 			>
 		</div>
 		<div class="flex-grow"></div>
