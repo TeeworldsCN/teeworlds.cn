@@ -50,7 +50,6 @@
 	</div>
 {/if}
 
-
 {#if hasPermission('POSTING')}
 	<div class="mt-6">
 		<ToolboxButton href="/admin/qq-threads">QQ 机器人发帖</ToolboxButton>

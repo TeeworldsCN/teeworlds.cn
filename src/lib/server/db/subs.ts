@@ -13,7 +13,7 @@ export const getSubscriptions = (key: SubscriptionKey) => {
 	if (!result) {
 		return [];
 	}
-    return result;
+	return result;
 };
 
 export const addSubscription = (key: SubscriptionKey, target: string) => {

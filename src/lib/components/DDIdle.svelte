@@ -189,7 +189,7 @@
 
 			<div class="flex justify-center px-4 py-4">
 				<button
-					class="relative h-20 w-20 select-none rounded-lg bg-slate-700 transition-all hover:bg-slate-600 active:scale-95 text-4xl font-bold"
+					class="relative h-20 w-20 select-none rounded-lg bg-slate-700 text-4xl font-bold transition-all hover:bg-slate-600 active:scale-95"
 					onclick={clickTee}
 				>
 					恰

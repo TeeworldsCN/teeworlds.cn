@@ -67,7 +67,7 @@ export const POST: RequestHandler = async ({ fetch, locals, request, url, cookie
 		body.message,
 		body,
 		'DIRECT',
-		false,
+		false
 	);
 
 	if (response) {

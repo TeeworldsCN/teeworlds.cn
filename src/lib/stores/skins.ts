@@ -11,7 +11,7 @@ export const EMOTE = {
 	hurt: 2,
 	smile: 3,
 	unused: 4,
-	surprised: 5,
+	surprised: 5
 };
 
 const loadSkinInfo = async () => {

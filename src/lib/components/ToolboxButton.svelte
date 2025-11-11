@@ -23,14 +23,14 @@
 		href={finalHref()}
 		target="_blank"
 		rel="noopener noreferrer"
-		class="mb-1 inline-block rounded-md bg-slate-600 px-4 py-1 text-2xl font-bold text-white hover:bg-slate-500 border border-slate-400"
+		class="mb-1 inline-block rounded-md border border-slate-400 bg-slate-600 px-4 py-1 text-2xl font-bold text-white hover:bg-slate-500"
 	>
 		{@render children()}
 	</a>
 {:else}
 	<a
 		href={finalHref()}
-		class="mb-1 inline-block rounded-md bg-slate-600 px-4 py-1 text-2xl font-bold text-white hover:bg-slate-500 border border-slate-400"
+		class="mb-1 inline-block rounded-md border border-slate-400 bg-slate-600 px-4 py-1 text-2xl font-bold text-white hover:bg-slate-500"
 	>
 		{@render children()}
 	</a>

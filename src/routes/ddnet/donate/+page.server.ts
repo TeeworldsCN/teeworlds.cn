@@ -4,7 +4,7 @@ import { donate } from '$lib/server/fetches/donate';
 export const load: PageServerLoad = async () => {
 	try {
 		const donateData = await donate.fetchCache();
-		
+
 		return {
 			donateInfo: donateData.result
 		};

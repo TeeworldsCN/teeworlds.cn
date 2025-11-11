@@ -40,12 +40,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		return error(404, 'Bot not found');
 	}
 
-	const result = await QQBot.createRole(
-		body.guild_id,
-		body.name,
-		body.color,
-		body.hoist
-	);
+	const result = await QQBot.createRole(body.guild_id, body.name, body.color, body.hoist);
 
 	if (result.error) {
 		return error(result.code, result.message);

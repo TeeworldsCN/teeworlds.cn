@@ -55,7 +55,7 @@
 	</header>
 
 	<!-- Post Content -->
-	<div class="prose prose-invert prose-slate max-w-none">
+	<div class="prose prose-slate prose-invert max-w-none">
 		{@html renderedContent}
 	</div>
 </article>

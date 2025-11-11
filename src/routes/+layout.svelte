@@ -106,7 +106,10 @@
 				rel="noreferrer"
 				target="_blank"
 				type="subtle"
-				><div class="h-2.5 w-2.5 inline-block" style="background-image: url({nis});background-size: contain;"></div>
+				><div
+					class="inline-block h-2.5 w-2.5"
+					style="background-image: url({nis});background-size: contain;"
+				></div>
 				冀公网安备13020302001199号</Link
 			>
 		</div>

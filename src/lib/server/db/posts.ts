@@ -55,13 +55,9 @@ const createPostStmt = sqlite.prepare(
 	'INSERT INTO posts (uuid, key, title, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
 );
 
-const getPostByKeyStmt = sqlite.prepare(
-	'SELECT * FROM posts WHERE key = ?'
-);
+const getPostByKeyStmt = sqlite.prepare('SELECT * FROM posts WHERE key = ?');
 
-const getPostByUuidStmt = sqlite.prepare(
-	'SELECT * FROM posts WHERE uuid = ?'
-);
+const getPostByUuidStmt = sqlite.prepare('SELECT * FROM posts WHERE uuid = ?');
 
 const updatePostStmt = sqlite.prepare(
 	'UPDATE posts SET key = ?, title = ?, content = ?, updated_at = ? WHERE uuid = ?'
@@ -69,9 +65,7 @@ const updatePostStmt = sqlite.prepare(
 
 const deletePostStmt = sqlite.prepare('DELETE FROM posts WHERE uuid = ?');
 
-const listPostsStmt = sqlite.prepare(
-	'SELECT * FROM posts ORDER BY created_at DESC'
-);
+const listPostsStmt = sqlite.prepare('SELECT * FROM posts ORDER BY created_at DESC');
 
 // ============================================================================
 // FUNCTIONS
@@ -106,12 +100,12 @@ export const updatePost = (uuid: string, data: UpdatePostData): boolean => {
 	if (!existingPost) {
 		return false;
 	}
-	
+
 	const updatedKey = data.key ?? existingPost.key;
 	const updatedTitle = data.title ?? existingPost.title;
 	const updatedContent = data.content ?? existingPost.content;
 	const now = Date.now();
-	
+
 	const result = updatePostStmt.run(updatedKey, updatedTitle, updatedContent, now, uuid);
 	return result.changes > 0;
 };

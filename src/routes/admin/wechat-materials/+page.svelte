@@ -571,7 +571,9 @@
 	<div class="w-[800px] max-w-full rounded-b-lg bg-zinc-800 p-4">
 		{#if previewItem}
 			{#if previewItem.type === 'news' && previewItem.content?.news_item}
-				<div class="preview-modal-content max-h-[calc(100svh-20rem)] overflow-y-auto rounded-md bg-white">
+				<div
+					class="preview-modal-content max-h-[calc(100svh-20rem)] overflow-y-auto rounded-md bg-white"
+				>
 					{#each previewItem.content.news_item as article}
 						<div class="mb-6 border-b border-gray-200 px-6 pb-6 pt-6 last:border-0 last:pb-0">
 							<h3 class="mb-2 text-xl font-bold text-gray-800">{article.title}</h3>

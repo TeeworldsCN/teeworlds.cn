@@ -1,4 +1,10 @@
-import { hasPermission, getUserByUuid, updateUserData, PERMISSION_LIST, type UserUUID } from '$lib/server/db/users';
+import {
+	hasPermission,
+	getUserByUuid,
+	updateUserData,
+	PERMISSION_LIST,
+	type UserUUID
+} from '$lib/server/db/users';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -44,9 +50,11 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 	}
 
 	// Prevent users from removing their own SUPER permission
-	if (locals.user.uuid === uuid &&
+	if (
+		locals.user.uuid === uuid &&
 		locals.user.data.permissions?.includes('SUPER') &&
-		!permissions.includes('SUPER')) {
+		!permissions.includes('SUPER')
+	) {
 		return error(400, 'Cannot remove your own SUPER permission');
 	}
 

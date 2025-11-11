@@ -22,7 +22,7 @@ export const getSkinImageByPath = async (
 	path: string,
 	grayscale: boolean
 ): Promise<{ result: Uint8Array | null; hit: boolean }> => {
-	const skin = getSkinData(path, grayscale)
+	const skin = getSkinData(path, grayscale);
 	if (skin) {
 		return { result: skin, hit: true };
 	}

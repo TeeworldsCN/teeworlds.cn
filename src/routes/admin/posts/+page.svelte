@@ -58,7 +58,7 @@
 
 		try {
 			const method = editingPost ? 'PATCH' : 'POST';
-			const body = editingPost 
+			const body = editingPost
 				? { uuid: editingPost.uuid, key: postKey, title: postTitle, content: postContent }
 				: { key: postKey, title: postTitle, content: postContent };
 
@@ -145,7 +145,7 @@
 </div>
 
 {#if error}
-	<div class="mt-4 rounded-md bg-red-900/50 border border-red-700 p-4 text-red-200">
+	<div class="mt-4 rounded-md border border-red-700 bg-red-900/50 p-4 text-red-200">
 		{error}
 	</div>
 {/if}
@@ -155,7 +155,7 @@
 		<h2 class="mb-4 text-xl font-semibold text-slate-200">
 			{editingPost ? '编辑文章' : '新建文章'}
 		</h2>
-		
+
 		<div class="space-y-4">
 			<div>
 				<label for="post-key" class="mb-2 block text-sm font-medium text-slate-300">
@@ -195,7 +195,7 @@
 					bind:value={postContent}
 					placeholder="使用 Markdown 格式编写文章内容..."
 					rows="15"
-					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono text-sm"
+					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 font-mono text-sm text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 				></textarea>
 			</div>
 
@@ -221,7 +221,7 @@
 
 <div class="mt-6">
 	<h2 class="mb-4 text-xl font-semibold text-slate-200">现有文章</h2>
-	
+
 	{#if posts.length === 0}
 		<div class="rounded-lg bg-slate-800 p-8 text-center text-slate-400">
 			暂无文章，点击上方按钮创建第一篇文章

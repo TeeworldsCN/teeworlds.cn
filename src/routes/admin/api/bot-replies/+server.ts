@@ -1,11 +1,11 @@
-import { 
-	createBotReply, 
-	updateBotReplyByUuid, 
-	deleteBotReplyByUuid, 
+import {
+	createBotReply,
+	updateBotReplyByUuid,
+	deleteBotReplyByUuid,
 	listBotReplies,
 	getBotReply,
 	type CreateBotReplyData,
-	type UpdateBotReplyData 
+	type UpdateBotReplyData
 } from '$lib/server/db/botreply';
 import { hasPermission } from '$lib/server/db/users';
 import { error } from '@sveltejs/kit';
@@ -17,7 +17,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 	}
 
 	const replies = listBotReplies();
-	
+
 	return new Response(JSON.stringify(replies), {
 		headers: { 'content-type': 'application/json' }
 	});
@@ -53,21 +53,21 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 				if (!body.data || !body.data.keyword || !body.data.response) {
 					return new Response('Missing required fields', { status: 400 });
 				}
-				
+
 				// Validate keyword and response
 				if (body.data.keyword.trim().length === 0) {
 					return new Response('Keyword cannot be empty', { status: 400 });
 				}
-				
+
 				if (body.data.response.trim().length === 0) {
 					return new Response('Response cannot be empty', { status: 400 });
 				}
-				
+
 				const reply = createBotReply({
 					keyword: body.data.keyword.trim(),
 					response: body.data.response.trim()
 				});
-				
+
 				return new Response(JSON.stringify(reply), {
 					headers: { 'content-type': 'application/json' }
 				});
@@ -77,25 +77,25 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 				if (!body.uuid || !body.data || !body.data.keyword || !body.data.response) {
 					return new Response('Missing required fields', { status: 400 });
 				}
-				
+
 				// Validate keyword and response
 				if (body.data.keyword.trim().length === 0) {
 					return new Response('Keyword cannot be empty', { status: 400 });
 				}
-				
+
 				if (body.data.response.trim().length === 0) {
 					return new Response('Response cannot be empty', { status: 400 });
 				}
-				
+
 				const success = updateBotReplyByUuid(body.uuid, {
 					keyword: body.data.keyword.trim(),
 					response: body.data.response.trim()
 				});
-				
+
 				if (!success) {
 					return new Response('Bot reply not found', { status: 404 });
 				}
-				
+
 				const updatedReply = getBotReply(body.uuid);
 				return new Response(JSON.stringify(updatedReply), {
 					headers: { 'content-type': 'application/json' }
@@ -106,13 +106,13 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 				if (!body.uuid) {
 					return new Response('Missing UUID', { status: 400 });
 				}
-				
+
 				const success = deleteBotReplyByUuid(body.uuid);
-				
+
 				if (!success) {
 					return new Response('Bot reply not found', { status: 404 });
 				}
-				
+
 				return new Response(JSON.stringify({ success: true }), {
 					headers: { 'content-type': 'application/json' }
 				});

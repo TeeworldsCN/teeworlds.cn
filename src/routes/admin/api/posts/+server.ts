@@ -1,11 +1,11 @@
-import { 
-	createPost, 
-	updatePost, 
-	deletePost, 
+import {
+	createPost,
+	updatePost,
+	deletePost,
 	listPosts,
 	getPostByUuid,
 	type CreatePostData,
-	type UpdatePostData 
+	type UpdatePostData
 } from '$lib/server/db/posts';
 import { hasPermission } from '$lib/server/db/users';
 import { error, json } from '@sveltejs/kit';
@@ -17,7 +17,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 	}
 
 	const posts = listPosts();
-	
+
 	return json(posts);
 };
 
