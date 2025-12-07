@@ -1,9 +1,7 @@
-import { getSkinData, setSkinData } from '$lib/server/db/skins.js';
 import { getSkinImageByPath } from '$lib/server/skin-cache';
 import { error } from '@sveltejs/kit';
-import sharp from 'sharp';
 
-export const GET = async ({ request, url }) => {
+export const GET = async ({ url }) => {
 	const path = url.pathname;
 
 	if (!path.startsWith('/api/skins/')) {
@@ -22,12 +20,23 @@ export const GET = async ({ request, url }) => {
 		return error(404);
 	}
 
-	return new Response(result, {
+	return new Response(result as Uint8Array<ArrayBuffer>, {
 		headers: {
+			'access-control-allow-origin': '*',
+			'access-control-allow-methods': 'GET',
 			'content-type': 'image/png',
 			'cache-control': 'public, max-age=31536000',
 			'x-skin-cache': hit ? 'hit' : 'miss',
 			'x-skin-time': `${elapsed()}`
+		}
+	});
+};
+
+export const OPTIONS = async () => {
+	return new Response(null, {
+		headers: {
+			'access-control-allow-origin': '*',
+			'access-control-allow-methods': 'GET'
 		}
 	});
 };
