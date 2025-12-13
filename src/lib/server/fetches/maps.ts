@@ -60,11 +60,15 @@ export const maps = new FetchCache<MapList>(
 					})()
 				);
 
-				map.release = DateTime.fromFormat(map.release, 'yyyy-MM-dd HH:mm', {
+				const officialDate = DateTime.fromFormat(map.release, 'yyyy-MM-dd HH:mm', {
 					zone: 'Europe/Berlin'
-				})
-					.toUTC()
-					.toFormat("yyyy-MM-dd'T'HH:mm");
+				}).toUTC();
+
+				if (officialDate.isValid) {
+					map.release = officialDate.toFormat("yyyy-MM-dd'T'HH:mm");
+				} else {
+					delete map.release;
+				}
 
 				// correct map info from database data
 				const databaseMap = databaseMaps.get(map.name);
@@ -83,6 +87,6 @@ export const maps = new FetchCache<MapList>(
 		return result;
 	},
 	{
-		version: 12
+		version: 13
 	}
 );
