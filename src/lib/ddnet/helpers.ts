@@ -5,7 +5,7 @@ export const numberToStars = (num: number) => {
 
 /** Convert ddnet's YYYY-MM-DD HH:MM:SS which is GMT+1 to local time */
 export const ddnetDate = (date: string) => {
-	return new Date(date.slice(0, 10) + 'T' + date.slice(11, 19) + '+01:00');
+	return new Date(date.slice(0, 10) + 'T' + date.slice(11, 19) + 'Z');
 };
 
 export const MAP_TYPES: { [key: string]: string } = {

@@ -1,6 +1,6 @@
 import { FetchCache } from '$lib/server/fetch-cache';
 import { convert } from '$lib/server/imgproxy';
-import { volatile } from '../keyv';
+import { DateTime } from 'luxon';
 
 export type MapList = {
 	name: string;
@@ -60,6 +60,12 @@ export const maps = new FetchCache<MapList>(
 					})()
 				);
 
+				map.release = DateTime.fromFormat(map.release, 'yyyy-MM-dd HH:mm', {
+					zone: 'Europe/Berlin'
+				})
+					.toUTC()
+					.toFormat("yyyy-MM-dd'T'HH:mm");
+
 				// correct map info from database data
 				const databaseMap = databaseMaps.get(map.name);
 
@@ -77,6 +83,6 @@ export const maps = new FetchCache<MapList>(
 		return result;
 	},
 	{
-		version: 10
+		version: 12
 	}
 );
