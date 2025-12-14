@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import Fa from 'svelte-fa';
 	import { faXmark, faCoins, faGamepad } from '@fortawesome/free-solid-svg-icons';
+	import TeeRender from './TeeRender.svelte';
 	import { browser } from '$app/environment';
 
 	let { points = $bindable(0), skin, body, feet, name } = $props();
@@ -36,42 +37,42 @@
 		autoFinish: {
 			cost: 10,
 			name: '自动完成',
-			description: '每秒自动获得里程',
+			description: '每秒自动获得点数',
 			getEffect: (level: number) => level * 1.2,
 			getCost: (level: number) => Math.floor(10 * Math.pow(1.3, level))
 		},
 		hammer: {
 			cost: 50, // Increased from 25 (5x of previous)
 			name: '锤子升级',
-			description: '增加点击获得的里程',
+			description: '增加点击获得的点数',
 			getEffect: (level: number) => level * 3,
 			getCost: (level: number) => Math.floor(50 * Math.pow(1.4, level))
 		},
 		hook: {
 			cost: 250, // Increased from 100 (5x of previous)
 			name: '钩子升级',
-			description: '大幅提升每秒获得的里程',
+			description: '大幅提升每秒获得的点数',
 			getEffect: (level: number) => level * 8,
 			getCost: (level: number) => Math.floor(250 * Math.pow(1.6, level))
 		},
 		jetpack: {
 			cost: 1000, // Increased from 250 (4x of previous)
 			name: '喷气背包',
-			description: '显著提升每秒获得的里程',
+			description: '显著提升每秒获得的点数',
 			getEffect: (level: number) => level * 12,
 			getCost: (level: number) => Math.floor(1000 * Math.pow(1.7, level))
 		},
 		grenade: {
 			cost: 5000, // Increased from 1000 (5x of previous)
 			name: '弹射榴弹',
-			description: '大幅提升点击获得的里程',
+			description: '大幅提升点击获得的点数',
 			getEffect: (level: number) => level * 15,
 			getCost: (level: number) => Math.floor(5000 * Math.pow(1.8, level))
 		},
 		laser: {
 			cost: 25000, // Increased from 2500 (5x of previous)
 			name: '解冻激光',
-			description: '极大提升每秒获得的里程',
+			description: '极大提升每秒获得的点数',
 			getEffect: (level: number) => level * 25,
 			getCost: (level: number) => Math.floor(25000 * Math.pow(2.0, level))
 		}
@@ -189,10 +190,16 @@
 
 			<div class="flex justify-center px-4 py-4">
 				<button
-					class="relative h-20 w-20 select-none rounded-lg bg-slate-700 text-4xl font-bold transition-all hover:bg-slate-600 active:scale-95"
+					class="relative h-20 w-20 select-none rounded-lg bg-slate-700 transition-all hover:bg-slate-600 active:scale-95"
 					onclick={clickTee}
 				>
-					恰
+					<TeeRender
+						useDefault
+						name={skin}
+						{body}
+						{feet}
+						className="w-full h-full pointer-events-none"
+					/>
 				</button>
 			</div>
 
@@ -209,7 +216,7 @@
 									{discovered[key] ? `${upgrade.name} (Lv.${levels[key]})` : '??? (Lv.0)'}
 								</span>
 								<span>
-									{discovered[key] ? `${Math.floor(upgrade.cost)} 里程` : '???'}
+									{discovered[key] ? `${Math.floor(upgrade.cost)} 点数` : '???'}
 								</span>
 							</div>
 							<div class="text-left text-sm text-slate-400">

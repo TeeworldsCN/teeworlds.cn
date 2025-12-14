@@ -4,6 +4,8 @@ import { decodeAsciiURIComponent, encodeAsciiURIComponent } from '$lib/link';
 import { ranks, regionalRanks } from '$lib/server/fetches/ranks';
 import { maps } from '$lib/server/fetches/maps';
 import { uaIsStrict } from '$lib/helpers';
+import { getSkin } from '$lib/server/ddtracker';
+import { getPlayer } from '$lib/server/players';
 
 interface PlayerRank {
 	points?: number;
@@ -48,8 +50,6 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 	const fetchPlayer = fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`);
 	const fetchMaps = maps.fetchCache();
 	const fetchRanks = ranks.fetchCache();
-
-	let response: Response | null = null as unknown as Response;
 
 	const [playerData, mapData, rankData] = await Promise.all([
 		(async () => {
@@ -99,8 +99,7 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 			} | null = null;
 
 			try {
-				response = await fetchPlayer;
-				data = await response.json();
+				data = await (await fetchPlayer).json();
 			} catch {
 				// ignored, mostly paring error
 			}
@@ -111,11 +110,12 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 		fetchRanks
 	]);
 
-	if (!response || !response.ok) {
-		return error(500);
-	}
-
 	if (!playerData || !playerData.player) {
+		// get player from player cache, if exists then it is a upstream error
+		const player = await getPlayer(name);
+		if (player) {
+			return error(500);
+		}
 		return error(404);
 	}
 
@@ -190,8 +190,7 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 		} catch {}
 	}
 
-	// DDTracker functionality removed - use empty skin object
-	const skin = {} as {
+	const skin = (getSkin(player.player) || {}) as {
 		n?: string;
 		b?: number;
 		f?: number;

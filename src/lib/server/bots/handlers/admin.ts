@@ -13,7 +13,7 @@ import { ArgParser } from '../utils/arg-parser';
 export const adminPermissionAdd: Handler = async ({ reply, args }) => {
 	const parser = new ArgParser(args);
 	const uid = parser.getString(0);
-	const permission = parser.getString(1) as Permission;
+	const permission = parser.getString(1) as unknown as Permission;
 	if (!uid || !permission) {
 		return await reply.text('/give-perm <uid> <permission>');
 	}

@@ -34,9 +34,99 @@
 
 	let ranks: RankInfo['ranks'] = $state(sliceRanks());
 
+	// queried global ranks
+	const queryRanks = () => {
+		const result: RankInfo['ranks'] = {
+			points: [],
+			team: [],
+			rank: [],
+			yearly: [],
+			monthly: [],
+			weekly: []
+		};
+		const player = queryList.player;
+		if (player) {
+			const name = player.name;
+			if (player.points.rank) result.points.push({ name, ...player.points });
+			if (player.team.rank) result.team.push({ name, ...player.team });
+			if (player.rank.rank) result.rank.push({ name, ...player.rank });
+			if (player.yearly.rank) result.yearly.push({ name, ...player.yearly });
+			if (player.monthly.rank) result.monthly.push({ name, ...player.monthly });
+			if (player.weekly.rank) result.weekly.push({ name, ...player.weekly });
+		}
+		return result;
+	};
+
+	// find top 500 ranks with search name
+	const searchRanksTop500 = () => {
+		const result: RankInfo['ranks'] = {
+			points: [],
+			team: [],
+			rank: [],
+			yearly: [],
+			monthly: [],
+			weekly: []
+		};
+		for (const ladder of Object.keys(data.ranks) as (keyof RankInfo['ranks'])[]) {
+			result[ladder] = data.ranks[ladder].filter((rank) => rank.name == searchName);
+		}
+		return result;
+	};
+
+	const MIN_QUERY_INTERVAL = 200;
+	let queryingName: string | null = null;
+	let queryListName: string | null = $state(null);
+	let queryList = $state<{ player: any; top10: { name: string; points: number }[] }>({
+		player: null,
+		top10: []
+	});
+
+	let querying = false;
+	let lastQueryTime = 0;
+
 	function gotoName(name: string) {
 		goto(`/ddnet/players/${encodeAsciiURIComponent(name)}`);
 	}
+
+	async function query() {
+		if (querying) return;
+
+		querying = true;
+		const remaining = MIN_QUERY_INTERVAL - (Date.now() - lastQueryTime);
+		lastQueryTime = Date.now();
+		if (remaining > 0) {
+			await new Promise((resolve) => setTimeout(resolve, remaining));
+		}
+		queryingName = searchName;
+		if (!searchName) {
+			queryList = { player: null, top10: [] };
+			queryListName = null;
+		} else {
+			queryList = await (
+				await fetch(`/api/players?query=${encodeURIComponent(queryingName)}`)
+			).json();
+			queryListName = queryingName;
+		}
+		querying = false;
+		if (searchName != queryingName) {
+			query();
+		}
+	}
+
+	$effect(() => {
+		if (data.region == 'GLOBAL' && queryListName) {
+			ranks = queryRanks();
+		} else if (searchName) {
+			ranks = searchRanksTop500();
+		} else {
+			ranks = sliceRanks();
+		}
+	});
+
+	$effect(() => {
+		searchName;
+		query();
+	});
 
 	const LADDER_NAMES: Record<string, [string, string]> = {
 		points: ['里程', '🌎'],
@@ -72,7 +162,7 @@
 	]}
 />
 
-<div class="mb-2 flex-col space-y-2 md:flex md:flex-row md:space-x-2 md:space-y-0">
+<div class="mb-4 flex-col space-y-2 md:flex md:flex-row md:space-x-2 md:space-y-0">
 	<input
 		type="text"
 		placeholder="查找玩家名"
@@ -113,6 +203,25 @@
 	</select>
 </div>
 
+<!-- horizontally scrollable list of cards -->
+<div class="scrollbar-hide overflow-x-auto text-nowrap">
+	{#each queryList.top10 as player}
+		<button
+			class="mx-2 inline-block rounded border {player.name == searchName
+				? 'border-slate-300'
+				: 'border-slate-600'} bg-slate-700 px-2 py-0 hover:border-blue-500 active:border-blue-300"
+			onclick={() => {
+				searchName = player.name;
+			}}
+		>
+			<span class="text-base font-bold">{player.name}</span>
+			<span class="text-sm">
+				{player.points}pts
+			</span>
+		</button>
+	{/each}
+</div>
+
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 	{#each Object.keys(ranks) as ladder}
 		{@const ladderName = LADDER_NAMES[ladder]}
@@ -140,14 +249,26 @@
 				</h2>
 			{/if}
 			<ul class="mt-2">
-				{#each ranks[ladder as any as keyof RankInfo['ranks']] as rank}
+				{#if ranks[ladder as any as keyof RankInfo['ranks']].length == 0}
 					<li>
-						<span class="inline-block w-8 text-right">{rank.rank}.</span>
-						<span class="inline-block w-20 text-right">{rank.points}pts</span>
-						{#if rank.region}<FlagSpan flag={rank.region} />{/if}
-						<PlayerLink player={rank.name} className="font-semibold">{rank.name}</PlayerLink>
+						{#if data.region != 'GLOBAL' && !searchName}
+							<span class="text-center">无记录，可能已停服</span>
+						{:else if data.region != 'GLOBAL' && searchName}
+							<span class="text-center">未进区服前 500 名</span>
+						{:else}
+							<span class="text-center">未获得记录</span>
+						{/if}
 					</li>
-				{/each}
+				{:else}
+					{#each ranks[ladder as any as keyof RankInfo['ranks']] as rank}
+						<li>
+							<span class="inline-block w-8 text-right">{rank.rank}.</span>
+							<span class="inline-block w-20 text-right">{rank.points}pts</span>
+							{#if rank.region}<FlagSpan flag={rank.region} />{/if}
+							<PlayerLink player={rank.name} className="font-semibold">{rank.name}</PlayerLink>
+						</li>
+					{/each}
+				{/if}
 			</ul>
 		</div>
 	{/each}

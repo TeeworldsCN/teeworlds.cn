@@ -1,5 +1,6 @@
 import type { RequestHandler } from './$types';
 import { error, json } from '@sveltejs/kit';
+import { getPlayer } from '$lib/server/players';
 
 export const GET: RequestHandler = async ({ request, url }) => {
 	const name = url.searchParams.get('name');
@@ -8,14 +9,12 @@ export const GET: RequestHandler = async ({ request, url }) => {
 		return error(400);
 	}
 
-	const response = await fetch(`https://ddnet.org/players/?json2=${encodeURIComponent(name)}`);
-	if (!response || !response.ok) {
+	const player = await getPlayer(name);
+	if (!player) {
 		return error(500);
 	}
 
-	const player = await response.json();
-
-	if (!player.player) {
+	if (!player.name) {
 		return error(404);
 	}
 
