@@ -28,6 +28,9 @@ jobs:
       - name: Build Project
         run: bun --bun run build
 
+      - name: Move rust scripts to build folder
+        run: mv rust build
+
       - name: Bundle scripts
         run: bun run bundle
 
