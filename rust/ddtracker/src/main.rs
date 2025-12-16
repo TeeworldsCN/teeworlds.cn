@@ -2,6 +2,8 @@ use std::str::FromStr;
 
 use chrono::Utc;
 use cron::Schedule;
+use env_logger;
+use log::{error, info};
 use reqwest::Client;
 use rusqlite::{params, Connection, Transaction};
 use serde_json::{Map, Value};
@@ -12,6 +14,9 @@ const CRON_EXPRESSION: &str = "0 * * * * *";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+    info!("Starting ddtracker");
+
     let mut conn = Connection::open("./cache/ddtracker.db")?;
     conn.execute_batch("PRAGMA journal_mode = WAL;")?;
     conn.execute_batch(
@@ -29,8 +34,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let now = Utc::now();
         if let Some(next) = schedule.upcoming(Utc).take(1).next() {
+            info!("Next task scheduled at {}", next);
             let until_next = next - now;
             tokio::time::sleep(Duration::from_millis(until_next.num_milliseconds() as u64)).await;
+            info!("Running task");
             task(&client, &mut conn).await?;
         }
     }
@@ -38,13 +45,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn task(client: &Client, conn: &mut Connection) -> Result<(), Box<dyn std::error::Error>> {
     let now = chrono::Utc::now().timestamp() / 60;
+    info!("Fetching server data from {}", SERVERS_URL);
     let response = client.get(SERVERS_URL).send().await?;
     let body = response.text().await;
     match body {
         Ok(body) => {
+            info!("Successfully fetched server data, parsing JSON");
             let servers_data: Value = serde_json::from_str(&body)?;
+            info!("Parsed server data successfully");
 
             let tx = conn.transaction()?;
+            info!("Started database transaction");
 
             fn client_update_stmt<'b>(
                 tx: &'b Transaction<'b>,
@@ -131,6 +142,7 @@ async fn task(client: &Client, conn: &mut Connection) -> Result<(), Box<dyn std:
                                         if current_skin == skin_data {
                                             // same skin, update the skin time
                                             client_update_skin_time(&tx, &name, &location, now);
+                                            info!("Updated skin time for {} in {}", name, location);
                                         }
                                     }
                                 }
@@ -140,7 +152,7 @@ async fn task(client: &Client, conn: &mut Connection) -> Result<(), Box<dyn std:
                 }
             }
 
-            // second pass, update the skin if the current skin has not been seen in the last 30 minutes
+            // second pass, update the skin if the current skin has not been seen in the last 10 minutes
             if let Some(servers) = servers_data["servers"].as_array() {
                 for server in servers {
                     if let (Some(info), Some(location)) =
@@ -168,7 +180,7 @@ async fn task(client: &Client, conn: &mut Connection) -> Result<(), Box<dyn std:
                                     if let Ok((current_skin, current_skin_time)) =
                                         client_get_stmt(&tx, &name, &location)
                                     {
-                                        if current_skin != skin_data && current_skin_time + 30 < now
+                                        if current_skin != skin_data && current_skin_time + 5 < now
                                         {
                                             client_update_stmt(
                                                 &tx,
@@ -177,7 +189,17 @@ async fn task(client: &Client, conn: &mut Connection) -> Result<(), Box<dyn std:
                                                 skin_data.as_str(),
                                                 now,
                                             );
+                                            info!("Updated skin for {} in {}", name, location);
                                         }
+                                    } else {
+                                        client_update_stmt(
+                                                &tx,
+                                                name,
+                                                location,
+                                                skin_data.as_str(),
+                                                now,
+                                            );
+                                        info!("Inserted skin for {} in {}", name, location);
                                     }
                                 }
                             }
@@ -185,12 +207,15 @@ async fn task(client: &Client, conn: &mut Connection) -> Result<(), Box<dyn std:
                     }
                 }
                 update_time_info_stmt(&tx, now);
+                info!("Updated last_update time to {}", now);
                 tx.commit()?;
+                info!("Committed transaction");
             }
         }
-        Err(_) => {
-            // failed to fetch the server list, ignore
+        Err(e) => {
+            error!("Failed to fetch server list: {}", e);
         }
     }
+    info!("Task completed");
     Ok(())
 }
