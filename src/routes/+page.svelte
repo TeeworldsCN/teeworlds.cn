@@ -20,7 +20,7 @@
 	<ToolboxButton href="/donate"
 		><Fa icon={faHeart} class="inline text-red-400" /> 捐赠支持</ToolboxButton
 	>
-	<div class="text-semibold">支持 DDRaceNetwork 的运行</div>
+	<div class="text-semibold">打赏与支持</div>
 </div>
 
 <div class="mt-6 h-px w-full bg-gradient-to-r from-slate-600 to-transparent"></div>

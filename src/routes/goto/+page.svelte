@@ -70,6 +70,6 @@
 
 	<div class="mt-6">
 		<ToolboxButton href="/donate">捐赠支持</ToolboxButton>
-		<div class="text-semibold">支持 DDNet 游戏的运行</div>
+		<div class="text-semibold">打赏与支持</div>
 	</div>
 {/if}

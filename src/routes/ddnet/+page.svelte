@@ -64,10 +64,10 @@
 </div>
 
 <div class="mt-6">
-	<ToolboxButton href="/ddnet/donate"
-		><Fa icon={faHeart} class="inline"></Fa> 捐赠支持</ToolboxButton
+	<ToolboxButton href="/donate"
+		><Fa icon={faHeart} class="inline text-red-400" /> 捐赠支持</ToolboxButton
 	>
-	<div class="text-semibold">支持 DDNet 服务器运营</div>
+	<div class="text-semibold">打赏与支持</div>
 </div>
 
 <div class="mt-6 flex items-start">
