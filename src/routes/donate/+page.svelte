@@ -51,6 +51,7 @@
 			<a
 				href="https://ifdian.net/order/create?user_id=86452e60dba811ed862c5254001e7c00&remark=%E4%B8%BA%20TeeworldsCN%20%E6%89%93%E8%B5%8F&affiliate_code=ddnet"
 				class="inline-flex items-center rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-700"
+				target="_blank"
 			>
 				通过爱发电捐赠
 			</a>
