@@ -42,5 +42,21 @@
 				查看 DDNet 捐赠详情
 			</a>
 		</div>
+
+		<div class="mb-6">
+			<h3 class="mb-3 text-lg font-semibold text-slate-200">支持 TeeworldsCN</h3>
+			<p class="mb-3 text-slate-300">
+				TeeworldsCN 由 TsFreddie 个人进行维护与跟进功能，如果你觉得本站好用，可以：
+			</p>
+			<a
+				href="https://ifdian.net/order/create?user_id=86452e60dba811ed862c5254001e7c00&remark=%E4%B8%BA%20TeeworldsCN%20%E6%89%93%E8%B5%8F&affiliate_code=ddnet"
+				class="inline-flex items-center rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-700"
+			>
+				通过爱发电捐赠
+			</a>
+			<p class="mt-1 text-xs text-purple-300/60">
+				注：爱发电捐赠可能不会用于提供服务器成本，仅用于支持维护本查询站
+			</p>
+		</div>
 	</div>
 </div>
