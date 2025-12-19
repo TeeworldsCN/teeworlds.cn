@@ -71,7 +71,7 @@
 </div>
 
 <div class="mt-6 flex items-start">
-	<div class="h-px grow bg-gradient-to-r from-slate-600 to-transparent"></div>
+	<div class="h-px grow bg-linear-to-r from-slate-600 to-transparent"></div>
 </div>
 
 <div class="mt-6">

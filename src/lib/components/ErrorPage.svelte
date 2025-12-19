@@ -39,7 +39,7 @@
 
 <div class="flex h-full w-full flex-col items-center justify-center p-4">
 	<div
-		class="motion-safe:animate-fade-in w-full max-w-lg rounded-lg border border-slate-500/30 bg-gradient-to-b from-slate-700 to-slate-800 p-8 shadow-xl backdrop-blur-sm"
+		class="motion-safe:animate-fade-in w-full max-w-lg rounded-lg border border-slate-500/30 bg-linear-to-b from-slate-700 to-slate-800 p-8 shadow-xl backdrop-blur-sm"
 	>
 		<div class="flex flex-col items-center justify-center">
 			<div
@@ -62,7 +62,7 @@
 
 			<div class="mt-10">
 				<button
-					class="focus:ring-opacity-50 rounded-md bg-gradient-to-r from-blue-500 to-blue-600 px-8 py-2.5 font-medium text-white shadow-md focus:ring-2 focus:ring-blue-300 focus:outline-none"
+					class="focus:ring-opacity-50 rounded-md bg-linear-to-r from-blue-500 to-blue-600 px-8 py-2.5 font-medium text-white shadow-md focus:ring-2 focus:ring-blue-300 focus:outline-none"
 					onclick={handleButtonClick}
 				>
 					返回
