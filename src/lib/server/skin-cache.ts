@@ -1,6 +1,8 @@
-import sharp from 'sharp';
+import { building } from '$app/environment';
 import { getSkinData, setSkinData } from './db/skins';
 import { skins } from './fetches/skins';
+
+const sharp = building ? null : (await import('sharp')).default;
 
 export const getSkinImageByName = async (
 	name: string,
@@ -40,7 +42,7 @@ export const getSkinImageByPath = async (
 		return { result: skinDataArray, hit: false };
 	} else {
 		// Load image with Sharp
-		const skinImage = sharp(skinDataBuffer).modulate({ saturation: 0 });
+		const skinImage = sharp!(skinDataBuffer).modulate({ saturation: 0 });
 		const { width, height, channels } = await skinImage.metadata();
 
 		if (channels != 4) {
