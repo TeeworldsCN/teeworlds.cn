@@ -34,7 +34,7 @@
 					target="_blank"
 					class="inline-flex items-center rounded-lg bg-[#ffa500] px-4 py-2 font-medium text-black transition-colors hover:bg-[#e19201]"
 				>
-					官方捐赠页面
+					查看官方捐赠页面
 				</a>
 			</div>
 
@@ -52,7 +52,7 @@
 					class="inline-flex items-center rounded-lg border-2 border-cyan-400 bg-black px-4 py-2 font-medium text-cyan-400 transition-colors hover:bg-cyan-400/10"
 					target="_blank"
 				>
-					查看 Axiom 捐赠详细
+					查看 Axiom 赞助页面
 				</a>
 			</div>
 
