@@ -177,7 +177,7 @@
 						type="text"
 						bind:value={newKeyword}
 						placeholder="输入关键词..."
-						class="mt-1 block w-full rounded-md border border-zinc-600 bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+						class="mt-1 block w-full rounded-md border border-zinc-600 bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-400 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 					/>
 				</div>
 				<div>
@@ -187,7 +187,7 @@
 						bind:value={newResponse}
 						placeholder="输入回复内容..."
 						rows="3"
-						class="mt-1 block w-full rounded-md border border-zinc-600 bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+						class="mt-1 block w-full rounded-md border border-zinc-600 bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-400 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 					></textarea>
 				</div>
 				<div class="flex space-x-2">
@@ -230,7 +230,7 @@
 									id="edit-keyword"
 									type="text"
 									bind:value={editKeyword}
-									class="mt-1 block w-full rounded-md border border-zinc-600 bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+									class="mt-1 block w-full rounded-md border border-zinc-600 bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-400 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 								/>
 							</div>
 							<div>
@@ -241,7 +241,7 @@
 									id="edit-response"
 									bind:value={editResponse}
 									rows="3"
-									class="mt-1 block w-full rounded-md border border-zinc-600 bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+									class="mt-1 block w-full rounded-md border border-zinc-600 bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-400 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 								></textarea>
 							</div>
 							<div class="flex space-x-2">
@@ -272,7 +272,7 @@
 								<div class="mb-2">
 									<span class="text-sm font-medium text-zinc-400">回复:</span>
 									<div
-										class="ml-2 mt-1 whitespace-pre-wrap rounded bg-zinc-700 p-2 text-sm text-zinc-200"
+										class="mt-1 ml-2 rounded bg-zinc-700 p-2 text-sm whitespace-pre-wrap text-zinc-200"
 									>
 										{reply.response}
 									</div>

@@ -388,7 +388,7 @@
 										oninput={(e) =>
 											updateTextElement(paragraphIndex, elementIndex, e.currentTarget.value)}
 										placeholder="输入文本..."
-										class="w-full resize-none rounded border border-slate-500 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+										class="w-full resize-none rounded border border-slate-500 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 										style="font-weight: {element.text.props?.font_bold
 											? 'bold'
 											: 'normal'}; font-style: {element.text.props?.italic
@@ -415,7 +415,7 @@
 													image: { ...element.image, third_url: e.currentTarget.value }
 												})}
 											placeholder="图片URL..."
-											class="w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+											class="w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 										/>
 										<div class="flex items-center gap-2">
 											<span class="text-xs text-slate-400">宽度:</span>
@@ -432,7 +432,7 @@
 															width_percent: parseInt(e.currentTarget.value) || 100
 														}
 													})}
-												class="w-20 rounded border border-slate-500 bg-slate-700 px-2 py-1 text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+												class="w-20 rounded border border-slate-500 bg-slate-700 px-2 py-1 text-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 											/>
 											<span class="text-xs text-slate-400">%</span>
 										</div>
@@ -453,7 +453,7 @@
 												video: { third_url: e.currentTarget.value }
 											})}
 										placeholder="视频URL..."
-										class="w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+										class="w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 									/>
 								</div>
 							{:else if element.type === QQRichTextType.Url}
@@ -472,7 +472,7 @@
 													url: { ...element.url, url: e.currentTarget.value }
 												})}
 											placeholder="链接URL..."
-											class="w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+											class="w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 										/>
 										<input
 											type="text"
@@ -483,7 +483,7 @@
 													url: { ...element.url, desc: e.currentTarget.value }
 												})}
 											placeholder="链接描述..."
-											class="w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+											class="w-full rounded border border-slate-500 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 										/>
 									</div>
 								</div>

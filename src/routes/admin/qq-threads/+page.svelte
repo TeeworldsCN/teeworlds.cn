@@ -154,7 +154,7 @@
 					onchange={() => {
 						selectedChannelId = '';
 					}}
-					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 				>
 					<option value="">请选择服务器</option>
 					{#each data.guilds as guild}
@@ -172,7 +172,7 @@
 					id="channel-select"
 					bind:value={selectedChannelId}
 					disabled={!selectedGuildId}
-					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
 				>
 					<option value="">请选择频道</option>
 					{#each availableChannels() as channel}
@@ -192,7 +192,7 @@
 					bind:value={threadTitle}
 					placeholder="输入帖子标题..."
 					maxlength="100"
-					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 				/>
 				<div class="mt-1 text-xs text-slate-400">
 					{threadTitle.length}/100 字符

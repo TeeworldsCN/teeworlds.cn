@@ -115,7 +115,7 @@
 					>
 						<div>
 							<span
-								class="prose inline-block rounded-xl px-4 py-3 prose-p:my-0 prose-p:py-0 prose-a:py-0 prose-code:m-0 prose-ul:my-0 prose-ul:py-0 prose-li:py-0"
+								class="prose prose-p:my-0 prose-p:py-0 prose-a:py-0 prose-code:m-0 prose-ul:my-0 prose-ul:py-0 prose-li:py-0 inline-block rounded-xl px-4 py-3"
 								class:rounded-bl-none={message.from === 'bot'}
 								class:bg-slate-300={message.from === 'bot'}
 								class:text-gray-800={message.from === 'bot'}
@@ -148,7 +148,7 @@
 				id="user-input"
 				type="text"
 				placeholder="说点什么吧..."
-				class="w-full rounded-l-md border border-slate-500 bg-slate-600 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-600"
+				class="w-full rounded-l-md border border-slate-500 bg-slate-600 px-3 py-2 focus:ring-2 focus:ring-teal-600 focus:outline-none"
 				bind:value={inputValue}
 				onkeydown={(ev) => {
 					if (ev.key == 'Enter') {
@@ -158,7 +158,7 @@
 			/>
 			<button
 				id="send-button"
-				class="text-nowrap rounded-r-md bg-teal-600 px-4 py-2 text-white transition duration-300 hover:bg-teal-500"
+				class="rounded-r-md bg-teal-600 px-4 py-2 text-nowrap text-white transition duration-300 hover:bg-teal-500"
 				disabled={!inputValue}
 				onclick={send}>发送</button
 			>

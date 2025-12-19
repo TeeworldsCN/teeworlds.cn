@@ -43,7 +43,7 @@
 	>
 		<div class="flex flex-col items-center justify-center">
 			<div
-				class="text-9xl font-semibold motion-safe:motion-preset-slide-down-md motion-safe:motion-duration-1000 {getErrorColor(
+				class="motion-safe:motion-preset-slide-down-md motion-safe:motion-duration-1000 text-9xl font-semibold {getErrorColor(
 					page.status
 				)} drop-shadow-md"
 			>
@@ -51,7 +51,7 @@
 			</div>
 
 			<div
-				class="mt-6 text-center text-xl font-medium text-slate-200 motion-safe:motion-preset-slide-down-md motion-safe:motion-delay-300"
+				class="motion-safe:motion-preset-slide-down-md motion-safe:motion-delay-300 mt-6 text-center text-xl font-medium text-slate-200"
 			>
 				{#if errorMessages[page.status]}
 					{errorMessages[page.status]}
@@ -62,7 +62,7 @@
 
 			<div class="mt-10">
 				<button
-					class="rounded-md bg-gradient-to-r from-blue-500 to-blue-600 px-8 py-2.5 font-medium text-white shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50"
+					class="focus:ring-opacity-50 rounded-md bg-gradient-to-r from-blue-500 to-blue-600 px-8 py-2.5 font-medium text-white shadow-md focus:ring-2 focus:ring-blue-300 focus:outline-none"
 					onclick={handleButtonClick}
 				>
 					返回

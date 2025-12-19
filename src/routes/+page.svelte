@@ -8,7 +8,7 @@
 	const isAdmin = $derived(() => (data.user?.data?.permissions || []).length > 0);
 </script>
 
-<div class="mb-2 flex h-8 items-center whitespace-nowrap text-sm text-slate-500 md:text-base">
+<div class="mb-2 flex h-8 items-center text-sm whitespace-nowrap text-slate-500 md:text-base">
 	TsFreddie 的 Teeworlds 信息工具箱
 </div>
 

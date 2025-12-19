@@ -32,7 +32,7 @@
 	});
 </script>
 
-<p class="mb-8 mt-8 text-lg">您正在访问外部链接，请分享到浏览器中打开</p>
+<p class="mt-8 mb-8 text-lg">您正在访问外部链接，请分享到浏览器中打开</p>
 
-<p class="mb-2 mt-8 text-lg">或者您也可以手动复制链接：</p>
+<p class="mt-8 mb-2 text-lg">或者您也可以手动复制链接：</p>
 <code class="mx-3 text-white">{getDecodedRef()}</code>

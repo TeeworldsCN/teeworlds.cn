@@ -178,11 +178,11 @@
 		<canvas bind:this={canvasElement} class="hidden"></canvas>
 
 		<!-- Top Controls -->
-		<div class="absolute left-4 right-4 top-4 flex items-center justify-between">
+		<div class="absolute top-4 right-4 left-4 flex items-center justify-between">
 			<button
 				type="button"
 				onclick={stopCamera}
-				class="flex h-10 w-10 items-center justify-center rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-70"
+				class="bg-opacity-50 hover:bg-opacity-70 flex h-10 w-10 items-center justify-center rounded-full bg-black text-white"
 				aria-label="关闭摄像头"
 			>
 				<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -195,7 +195,7 @@
 				</svg>
 			</button>
 
-			<div class="rounded-lg bg-black bg-opacity-50 px-3 py-1">
+			<div class="bg-opacity-50 rounded-lg bg-black px-3 py-1">
 				<p class="text-sm text-white">拍照上传</p>
 			</div>
 
@@ -204,7 +204,7 @@
 		</div>
 
 		<!-- Bottom Controls -->
-		<div class="absolute bottom-8 left-0 right-0 flex items-center justify-center">
+		<div class="absolute right-0 bottom-8 left-0 flex items-center justify-center">
 			<!-- Cancel Button (positioned further left) -->
 			<button
 				type="button"

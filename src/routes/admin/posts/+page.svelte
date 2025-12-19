@@ -7,7 +7,6 @@
 
 	const { data } = $props();
 
-	let posts = $state<Post[]>(data.posts);
 	let showForm = $state(false);
 	let editingPost = $state<Post | null>(null);
 	let loading = $state(false);
@@ -74,7 +73,6 @@
 			}
 
 			await invalidateAll();
-			posts = data.posts;
 			resetForm();
 		} catch (err) {
 			console.error('Failed to save post:', err);
@@ -105,7 +103,6 @@
 			}
 
 			await invalidateAll();
-			posts = data.posts;
 		} catch (err) {
 			console.error('Failed to delete post:', err);
 			error = err instanceof Error ? err.message : '删除失败';
@@ -166,7 +163,7 @@
 					type="text"
 					bind:value={postKey}
 					placeholder="例如: my-first-post"
-					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 				/>
 				<div class="mt-1 text-xs text-slate-400">
 					只能包含字母、数字、下划线和连字符。将用于 URL: /p/{postKey}
@@ -182,7 +179,7 @@
 					type="text"
 					bind:value={postTitle}
 					placeholder="输入文章标题..."
-					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 				/>
 			</div>
 
@@ -195,7 +192,7 @@
 					bind:value={postContent}
 					placeholder="使用 Markdown 格式编写文章内容..."
 					rows="15"
-					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 font-mono text-sm text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+					class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 font-mono text-sm text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 				></textarea>
 			</div>
 
@@ -222,13 +219,13 @@
 <div class="mt-6">
 	<h2 class="mb-4 text-xl font-semibold text-slate-200">现有文章</h2>
 
-	{#if posts.length === 0}
+	{#if data.posts.length === 0}
 		<div class="rounded-lg bg-slate-800 p-8 text-center text-slate-400">
 			暂无文章，点击上方按钮创建第一篇文章
 		</div>
 	{:else}
 		<div class="space-y-4">
-			{#each posts as post (post.uuid)}
+			{#each data.posts as post (post.uuid)}
 				<div class="rounded-lg bg-slate-800 p-4">
 					<div class="flex items-start justify-between">
 						<div class="flex-1">

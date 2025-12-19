@@ -4,14 +4,12 @@
 
 	const { data } = $props();
 
-	let error = $state(data.error);
 	let forgetPassword = $state(false);
 
 	let username = $state('');
 	let password = $state('');
 
 	afterNavigate(() => {
-		error = data.error;
 		const errorElement = document.getElementById('error');
 		errorElement?.classList.remove('motion-preset-shake');
 		requestAnimationFrame(() => {
@@ -23,19 +21,19 @@
 </script>
 
 <div id="login" class="mx-auto max-w-96">
-	<div class="h-[4rem]">
+	<div class="h-16">
 		{#if data.registered}
 			<div class="mb-4 flex items-center justify-between rounded-lg bg-slate-600 px-4 py-2">
 				<p>{data.registered}</p>
 			</div>
 		{/if}
 
-		{#if error}
+		{#if data.error}
 			<div
 				id="error"
 				class="motion-preset-shake mb-4 flex items-center justify-between rounded-lg bg-orange-900 px-4 py-2"
 			>
-				<p>{error}</p>
+				<p>{data.error}</p>
 			</div>
 		{/if}
 	</div>

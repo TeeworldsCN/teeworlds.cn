@@ -3,7 +3,6 @@
 	import markdownIt from 'markdown-it';
 
 	const { data } = $props();
-	const { post } = data;
 
 	// Configure markdown-it with safe defaults
 	const md = markdownIt({
@@ -13,7 +12,7 @@
 		typographer: true // Enable some language-neutral replacement + quotes beautification
 	});
 
-	const renderedContent = $derived(md.render(post.content));
+	const renderedContent = $derived(md.render(data.post.content));
 
 	const formatDate = (timestamp: number) => {
 		return new Date(timestamp).toLocaleString('zh-CN', {
@@ -27,34 +26,34 @@
 </script>
 
 <svelte:head>
-	<title>{post.title} - TeeworldsCN</title>
-	<meta name="description" content={post.title} />
+	<title>{data.post.title} - TeeworldsCN</title>
+	<meta name="description" content={data.post.title} />
 </svelte:head>
 
 <Breadcrumbs
 	breadcrumbs={[
 		{ href: '/', text: '首页', title: 'TeeworldsCN' },
-		{ text: post.title, title: post.title }
+		{ text: data.post.title, title: data.post.title }
 	]}
 />
 
 <article class="mx-auto max-w-4xl">
-	<!-- Post Header -->
+	<!-- data.post.Header -->
 	<header class="mb-8">
-		<h1 class="mb-4 text-3xl font-bold text-slate-200">{post.title}</h1>
+		<h1 class="mb-4 text-3xl font-bold text-slate-200">{data.post.title}</h1>
 		<div class="flex items-center gap-4 text-sm text-slate-400">
-			<time datetime={new Date(post.created_at).toISOString()}>
-				发布于 {formatDate(post.created_at)}
+			<time datetime={new Date(data.post.created_at).toISOString()}>
+				发布于 {formatDate(data.post.created_at)}
 			</time>
-			{#if post.updated_at !== post.created_at}
-				<time datetime={new Date(post.updated_at).toISOString()}>
-					更新于 {formatDate(post.updated_at)}
+			{#if data.post.updated_at !== data.post.created_at}
+				<time datetime={new Date(data.post.updated_at).toISOString()}>
+					更新于 {formatDate(data.post.updated_at)}
 				</time>
 			{/if}
 		</div>
 	</header>
 
-	<!-- Post Content -->
+	<!-- data.post.Content -->
 	<div class="prose prose-slate prose-invert max-w-none">
 		{@html renderedContent}
 	</div>

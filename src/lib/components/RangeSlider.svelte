@@ -11,9 +11,6 @@
 		class: className = ''
 	} = $props();
 
-	if (value[0] < min) value[0] = min;
-	if (value[1] > max) value[1] = max;
-
 	let swapped = $state(false);
 	const normalizedValue = $derived([
 		(Math.min(value[0], value[1]) - min) / (max - min),
@@ -86,41 +83,41 @@
 
 <div class={className}>
 	<div class="flex h-full w-full touch-none flex-col items-center justify-center">
-		<div class="relative h-[1rem] w-[calc(100%-1rem)]">
-			<div class="absolute mt-[0.375rem] h-[0.25rem] w-full rounded-full bg-slate-600"></div>
+		<div class="relative h-4 w-[calc(100%-1rem)]">
+			<div class="absolute mt-1.5 h-1 w-full rounded-full bg-slate-600"></div>
 			<div
-				class="absolute mt-[0.375rem] h-[0.25rem] rounded-full bg-blue-500"
+				class="absolute mt-1.5 h-[0.25rem] rounded-full bg-blue-500"
 				style="left: calc({normalizedValue[0] * 100}%); width: calc({(normalizedValue[1] -
 					normalizedValue[0]) *
 					100}%);"
 			></div>
 			<button
 				id="left-handle"
-				class="group absolute -ml-[0.5rem] -mt-[0.25rem] h-[2.75rem] w-[2rem] p-[0.5rem]"
+				class="group absolute -mt-[0.25rem] -ml-[0.5rem] h-[2.75rem] w-[2rem] p-[0.5rem]"
 				style="left: calc({normalizedValue[swapped ? 1 : 0] * 100}% - 0.5rem);"
 				aria-label="range left"
 				onpointerdowncapture={onPointerDown}
 			>
 				<div
-					class="pointer-events-none absolute left-[0.5rem] top-[0.25rem] h-[1rem] w-[1rem] rounded-full border border-slate-500 bg-slate-600 transition-[background-color,scale] group-hover:scale-125 group-hover:bg-blue-500 group-active:scale-125 group-active:bg-blue-400"
+					class="pointer-events-none absolute top-[0.25rem] left-[0.5rem] h-[1rem] w-[1rem] rounded-full border border-slate-500 bg-slate-600 transition-[background-color,scale] group-hover:scale-125 group-hover:bg-blue-500 group-active:scale-125 group-active:bg-blue-400"
 				></div>
 			</button>
 			<button
 				id="right-handle"
-				class="group absolute -ml-[0.5rem] -mt-[0.25rem] h-[2.75rem] w-[2rem] p-[0.5rem]"
+				class="group absolute -mt-[0.25rem] -ml-[0.5rem] h-[2.75rem] w-[2rem] p-[0.5rem]"
 				style="left: calc({normalizedValue[swapped ? 0 : 1] * 100}% - 0.5rem);"
 				aria-label="range left"
 				onpointerdowncapture={onPointerDown}
 			>
 				<div
-					class="pointer-events-none absolute left-[0.5rem] top-[0.25rem] h-[1rem] w-[1rem] rounded-full border border-slate-500 bg-slate-600 transition-[background-color,scale] group-hover:scale-125 group-hover:bg-blue-500 group-active:scale-125 group-active:bg-blue-400"
+					class="pointer-events-none absolute top-1 left-2 h-4 w-4 rounded-full border border-slate-500 bg-slate-600 transition-[background-color,scale] group-hover:scale-125 group-hover:bg-blue-500 group-active:scale-125 group-active:bg-blue-400"
 				></div>
 			</button>
 		</div>
 		{#if text && text.length >= 2}
-			<div class="flex w-full flex-row items-center justify-between px-[0.25rem]">
+			<div class="flex w-full flex-row items-center justify-between px-1">
 				{#each text as text}
-					<div class="select-none text-sm text-slate-400">{text}</div>
+					<div class="text-sm text-slate-400 select-none">{text}</div>
 				{/each}
 			</div>
 		{/if}

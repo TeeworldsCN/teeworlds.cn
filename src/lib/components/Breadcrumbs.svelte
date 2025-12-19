@@ -23,7 +23,7 @@
 </script>
 
 {#if breadcrumbs.length}
-	<nav class="mb-2 flex h-8 items-center whitespace-nowrap text-sm md:text-base">
+	<nav class="mb-2 flex h-8 items-center text-sm whitespace-nowrap md:text-base">
 		<div>
 			{#each breadcrumbs as breadcrumb, i}
 				{#if breadcrumb.href}

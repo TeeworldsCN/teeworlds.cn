@@ -247,9 +247,9 @@
 	]}
 />
 
-<div class="mb-4 flex flex-col space-y-2 xl:flex-row xl:space-x-5 xl:space-y-0">
+<div class="mb-4 flex flex-col space-y-2 xl:flex-row xl:space-y-0 xl:space-x-5">
 	<div
-		class="flex flex-col items-center space-y-2 sm:flex-grow sm:flex-row sm:space-x-2 sm:space-y-0"
+		class="flex flex-col items-center space-y-2 sm:flex-grow sm:flex-row sm:space-y-0 sm:space-x-2"
 	>
 		<input
 			type="text"
@@ -342,7 +342,7 @@
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 		{#each paginatedMaps as map, index (map.name + index)}
 			<div class="rounded border border-slate-700 bg-slate-700 p-4 pt-3 shadow">
-				<h3 class="scrollbar-hide h-8 overflow-x-auto text-nowrap text-lg font-bold">
+				<h3 class="scrollbar-hide h-8 overflow-x-auto text-lg font-bold text-nowrap">
 					{map.name}
 				</h3>
 				<p class="scrollbar-hide h-6 overflow-x-auto whitespace-nowrap">
@@ -365,7 +365,7 @@
 					{/if}
 				</span>
 				<div
-					class="relative mt-2 aspect-map h-auto w-full overflow-hidden rounded-md border border-slate-600 hover:border-blue-500 active:border-blue-300"
+					class="aspect-map relative mt-2 h-auto w-full overflow-hidden rounded-md border border-slate-600 hover:border-blue-500 active:border-blue-300"
 				>
 					<button
 						class="h-full w-full"
@@ -381,16 +381,16 @@
 							src={map.thumbnail}
 							alt={map.name}
 							use:abortOnDestroy
-							class="absolute left-0 top-0 h-full w-full object-cover"
+							class="absolute top-0 left-0 h-full w-full object-cover"
 						/>
 					</button>
 					<p
-						class="absolute bottom-0 right-0 rounded-tl-lg bg-slate-800 bg-opacity-70 py-1 pl-3 pr-9 text-sm backdrop-blur"
+						class="bg-opacity-70 absolute right-0 bottom-0 rounded-tl-lg bg-slate-800 py-1 pr-9 pl-3 text-sm backdrop-blur"
 					>
 						{mapType(map.type)}
 						{numberToStars(map.difficulty)} ({map.points} pts)
 						<button
-							class="absolute bottom-0 right-0 h-full bg-slate-800 px-2 hover:bg-slate-900 active:bg-slate-700"
+							class="absolute right-0 bottom-0 h-full bg-slate-800 px-2 hover:bg-slate-900 active:bg-slate-700"
 							onclick={(e) => {
 								previewMapName = map.name;
 								showMapPreviewModal = true;
@@ -439,7 +439,7 @@
 						class="fake-content inline-block w-full rounded bg-slate-600 align-middle leading-tight"
 					></span>
 				</div>
-				<div class="mt-2 aspect-map h-auto w-full rounded-md border border-slate-600"></div>
+				<div class="aspect-map mt-2 h-auto w-full rounded-md border border-slate-600"></div>
 				<div class="scrollbar-hide mt-1 h-8 overflow-x-auto overflow-y-hidden whitespace-nowrap">
 					{#each Array(10) as _}
 						<div class="mr-1 inline-block h-8 w-8 rounded bg-slate-600"></div>
@@ -451,7 +451,7 @@
 
 	<div class="mt-6 flex items-center justify-center space-x-4">
 		<button
-			class="text-nowrap rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
+			class="rounded bg-blue-500 px-4 py-2 text-nowrap text-white hover:bg-blue-600 disabled:opacity-50"
 			onclick={() => loadPage(currentPage - 1)}
 			disabled={currentPage <= 1}>上一页</button
 		>
@@ -469,7 +469,7 @@
 		</div>
 
 		<button
-			class="text-nowrap rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
+			class="rounded bg-blue-500 px-4 py-2 text-nowrap text-white hover:bg-blue-600 disabled:opacity-50"
 			onclick={() => loadPage(currentPage + 1)}
 			disabled={currentPage >= totalPages}>下一页</button
 		>

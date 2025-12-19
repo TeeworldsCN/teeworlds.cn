@@ -253,7 +253,7 @@
 		<div>
 			<div class="flex flex-row items-center">
 				<button
-					class="-mb-1 -mt-1 mr-2 h-16 w-16 cursor-pointer"
+					class="-mt-1 mr-2 -mb-1 h-16 w-16 cursor-pointer"
 					data-skin-name={data.skin.n}
 					use:tippy={{
 						content: getSkinTooltipContent(data.skin.n || ''),
@@ -278,13 +278,13 @@
 		</div>
 		<div>
 			<button
-				class="cursor-pointer text-nowrap rounded bg-blue-500 px-4 py-2 font-semibold hover:bg-blue-600 active:bg-blue-500"
+				class="cursor-pointer rounded bg-blue-500 px-4 py-2 font-semibold text-nowrap hover:bg-blue-600 active:bg-blue-500"
 				onclick={() => {
 					mapModal = !mapModal;
 				}}><Fa class="inline" icon={faMap}></Fa> 过图数据</button
 			>
 			<button
-				class="cursor-pointer text-nowrap rounded bg-slate-700 px-4 py-2 font-semibold hover:bg-slate-600 active:bg-slate-700"
+				class="cursor-pointer rounded bg-slate-700 px-4 py-2 font-semibold text-nowrap hover:bg-slate-600 active:bg-slate-700"
 				onclick={() => {
 					pointModal = !pointModal;
 				}}><Fa class="inline" icon={faQuestionCircle}></Fa> 积分说明</button
@@ -432,7 +432,7 @@
 											{Math.floor((stat.points / stat.total_points) * 100)}%
 										</p>
 										<p
-											class="z-10 float-left ml-2 mt-0 text-right text-xs text-emerald-200 md:mt-1"
+											class="z-10 float-left mt-0 ml-2 text-right text-xs text-emerald-200 md:mt-1"
 										>
 											{#if stat.total_points}{stat.points}/{stat.total_points}{/if}
 										</p>
@@ -445,7 +445,7 @@
 									{:else}
 										<p class="z-10 float-right mr-2 text-xs text-emerald-200 md:text-base"></p>
 										<p
-											class="z-10 float-left ml-2 mt-0 text-right text-xs text-emerald-200 md:mt-1"
+											class="z-10 float-left mt-0 ml-2 text-right text-xs text-emerald-200 md:mt-1"
 										></p>
 										<div
 											class="h-full {stat.finishes == stat.total_map
@@ -461,7 +461,7 @@
 									<p class="z-10 float-left ml-2 text-right text-xs text-teal-200 md:text-base">
 										{Math.floor((stat.finishes / stat.total_map) * 100)}%
 									</p>
-									<p class="z-10 float-right mr-2 mt-0 text-left text-xs text-teal-200 md:mt-1">
+									<p class="z-10 float-right mt-0 mr-2 text-left text-xs text-teal-200 md:mt-1">
 										{stat.finishes}/{stat.total_map}
 									</p>
 									<div
@@ -522,7 +522,7 @@
 									{#if col.date}
 										<div
 											use:tippy={{ content: `${col.date} - ${col.hours} 小时` }}
-											class="h-[calc((100svw-5rem)/54)] w-[calc((100svw-5rem)/54)] border-b border-r border-slate-800 first:border-l sm:h-[0.6rem] sm:w-[0.6rem] md:h-3 md:w-3 lg:border-l lg:border-t"
+											class="h-[calc((100svw-5rem)/54)] w-[calc((100svw-5rem)/54)] border-r border-b border-slate-800 first:border-l sm:h-[0.6rem] sm:w-[0.6rem] md:h-3 md:w-3 lg:border-t lg:border-l"
 											style="background-color: {hoursToColor(col.hours)}"
 										></div>
 									{:else}
@@ -564,7 +564,7 @@
 	<div class="container rounded-l-lg rounded-br-lg bg-slate-700 p-2 shadow-md md:p-4">
 		<h2 class="mb-3 text-xl font-bold">过图数据</h2>
 		<div class="rounded-lg bg-slate-600 p-2">
-			<div class="mb-4 flex-col space-y-2 md:flex md:flex-row md:space-x-2 md:space-y-0">
+			<div class="mb-4 flex-col space-y-2 md:flex md:flex-row md:space-y-0 md:space-x-2">
 				<input
 					type="text"
 					placeholder="搜索地图名"
@@ -603,7 +603,7 @@
 			<div
 				class="scrollbar-subtle h-[calc(100svh-15rem)] overflow-hidden md:h-[calc(100svh-13rem)]"
 			>
-				<div class="hidden cursor-default text-nowrap rounded-t bg-slate-700 text-center sm:block">
+				<div class="hidden cursor-default rounded-t bg-slate-700 text-center text-nowrap sm:block">
 					<span class="inline-block w-32 overflow-hidden pl-2 text-left lg:w-48">地图</span>
 					<span class="hidden w-8 overflow-hidden text-left md:inline-block lg:w-16">类型</span>
 					<span class="inline-block w-8 overflow-hidden sm:w-16">里程</span>
@@ -613,7 +613,7 @@
 					<span class="hidden w-16 overflow-hidden md:inline-block">次数</span>
 					<span class="inline-block w-32 overflow-hidden lg:w-40">首次完成</span>
 				</div>
-				<div class="block cursor-default text-nowrap rounded-t bg-slate-700 text-center sm:hidden">
+				<div class="block cursor-default rounded-t bg-slate-700 text-center text-nowrap sm:hidden">
 					<span class="inline-block">地图</span>
 					<span class="inline-block">里程</span>
 					<span class="inline-block">记录</span>
@@ -632,7 +632,7 @@
 						{@const isTeamTop10 = data.map.team_rank && data.map.team_rank <= 10}
 						{@const isRankTop10 = data.map.rank && data.map.rank <= 10}
 						<div
-							class="min-w-fit cursor-default flex-col text-nowrap text-center"
+							class="min-w-fit cursor-default flex-col text-center text-nowrap"
 							class:bg-slate-700={index % 2 == 1}
 							class:bg-slate-600={index % 2 == 0}
 						>

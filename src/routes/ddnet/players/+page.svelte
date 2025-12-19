@@ -162,7 +162,7 @@
 	]}
 />
 
-<div class="mb-4 flex-col space-y-2 md:flex md:flex-row md:space-x-2 md:space-y-0">
+<div class="mb-4 flex-col space-y-2 md:flex md:flex-row md:space-y-0 md:space-x-2">
 	<input
 		type="text"
 		placeholder="查找玩家名"
@@ -182,7 +182,7 @@
 		查询玩家
 	</button>
 	<button
-		class="cursor-pointer text-nowrap rounded bg-slate-700 px-4 py-2 font-semibold hover:bg-slate-600 active:bg-slate-700"
+		class="cursor-pointer rounded bg-slate-700 px-4 py-2 font-semibold text-nowrap hover:bg-slate-600 active:bg-slate-700"
 		onclick={() => {
 			showModal = !showModal;
 		}}><Fa class="inline" icon={faQuestionCircle}></Fa> 积分说明</button

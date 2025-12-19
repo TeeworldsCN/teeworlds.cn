@@ -35,16 +35,6 @@
 	</div>
 
 	<div class="mt-6">
-		<ToolboxButton href="/admin/wechat-menu">微信菜单管理</ToolboxButton>
-		<div class="text-semibold">管理微信公众号的自定义菜单</div>
-	</div>
-
-	<div class="mt-6">
-		<ToolboxButton href="/admin/wechat-materials">微信素材管理</ToolboxButton>
-		<div class="text-semibold">管理微信公众号的永久素材</div>
-	</div>
-
-	<div class="mt-6">
 		<ToolboxButton href="/admin/bot-replies">机器人关键词回复</ToolboxButton>
 		<div class="text-semibold">管理机器人关键词自动回复功能</div>
 	</div>

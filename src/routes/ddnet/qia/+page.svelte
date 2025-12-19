@@ -51,7 +51,7 @@
 				<input
 					id="player-name"
 					type="text"
-					class="w-full rounded border border-slate-500 bg-slate-600 px-3 py-2 text-sm font-normal shadow-md placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20"
+					class="w-full rounded border border-slate-500 bg-slate-600 px-3 py-2 text-sm font-normal shadow-md placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 focus:outline-none"
 					placeholder="输入你的游戏名称..."
 					bind:value={playerName}
 					onkeydown={(ev) => {

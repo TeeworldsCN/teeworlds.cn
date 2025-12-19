@@ -166,7 +166,7 @@
 {#if show}
 	{#if expanded}
 		<div
-			class="fixed bottom-4 right-4 z-50 flex max-h-[calc(100svh-2rem)] w-80 max-w-[calc(100svw-2rem)] touch-none select-none flex-col rounded-lg border border-slate-500 bg-slate-800 text-slate-300 shadow-lg"
+			class="fixed right-4 bottom-4 z-50 flex max-h-[calc(100svh-2rem)] w-80 max-w-[calc(100svw-2rem)] touch-none flex-col rounded-lg border border-slate-500 bg-slate-800 text-slate-300 shadow-lg select-none"
 			style="-webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;"
 		>
 			<div class="pointer-events-auto flex items-center justify-between p-4">
@@ -190,7 +190,7 @@
 
 			<div class="flex justify-center px-4 py-4">
 				<button
-					class="relative h-20 w-20 select-none rounded-lg bg-slate-700 transition-all hover:bg-slate-600 active:scale-95"
+					class="relative h-20 w-20 rounded-lg bg-slate-700 transition-all select-none hover:bg-slate-600 active:scale-95"
 					onclick={clickTee}
 				>
 					<TeeRender
@@ -229,7 +229,7 @@
 		</div>
 	{:else}
 		<button
-			class="fixed bottom-4 right-4 z-50 flex h-12 w-12 touch-none select-none items-center justify-center rounded-full bg-slate-800 text-slate-300 shadow-lg hover:bg-slate-700"
+			class="fixed right-4 bottom-4 z-50 flex h-12 w-12 touch-none items-center justify-center rounded-full bg-slate-800 text-slate-300 shadow-lg select-none hover:bg-slate-700"
 			onclick={() => (expanded = true)}
 			style="-webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;"
 			oncontextmenu={(e) => e.preventDefault()}

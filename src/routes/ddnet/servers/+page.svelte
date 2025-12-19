@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto, invalidate } from '$app/navigation';
+	import { afterNavigate, goto, invalidate } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import {
@@ -19,10 +19,11 @@
 	import MapLink from '$lib/components/ddnet/MapLink.svelte';
 	import TeeRender from '$lib/components/TeeRender.svelte';
 	import { encodeAsciiURIComponent } from '$lib/link.js';
+	import { onMount } from 'svelte';
 
 	const { data: propData } = $props();
 
-	let name = $state(propData.name);
+	let name = $state('');
 
 	const finishedMaps = $derived(propData.maps ? new Set(propData.maps) : null);
 
@@ -266,6 +267,10 @@
 			document.removeEventListener('visibilitychange', handleVisibilityChange);
 		};
 	});
+
+	onMount(() => {
+		name = propData.name || '';
+	});
 </script>
 
 <svelte:head>
@@ -323,7 +328,7 @@
 		/>
 	</div>
 	<button
-		class="text-nowrap rounded bg-blue-500 px-4 py-1 text-white hover:bg-blue-600 disabled:bg-blue-500 disabled:opacity-50"
+		class="rounded bg-blue-500 px-4 py-1 text-nowrap text-white hover:bg-blue-600 disabled:bg-blue-500 disabled:opacity-50"
 		onclick={refresh}
 		disabled={loading}
 	>
@@ -339,28 +344,28 @@
 			社区
 		</button>
 		<button
-			class="flex-1 text-nowrap rounded-t-lg px-4 text-left text-sm hover:bg-slate-700 sm:text-base"
+			class="flex-1 rounded-t-lg px-4 text-left text-sm text-nowrap hover:bg-slate-700 sm:text-base"
 			class:bg-slate-600={$serverSearch.sort[0].key == 'name'}
 			onclick={() => toggleSort('name')}
 		>
 			名称
 		</button>
 		<button
-			class="w-8 overflow-hidden text-nowrap rounded-t-lg px-0 text-center text-sm hover:bg-slate-700 sm:w-16 sm:text-base md:px-4 md:text-left lg:w-24"
+			class="w-8 overflow-hidden rounded-t-lg px-0 text-center text-sm text-nowrap hover:bg-slate-700 sm:w-16 sm:text-base md:px-4 md:text-left lg:w-24"
 			class:bg-slate-600={$serverSearch.sort[0].key == 'mode'}
 			onclick={() => toggleSort('mode')}
 		>
 			模式
 		</button>
 		<button
-			class="w-16 text-nowrap rounded-t-lg px-0 text-center text-sm hover:bg-slate-700 sm:text-base md:px-4 md:text-left lg:w-48"
+			class="w-16 rounded-t-lg px-0 text-center text-sm text-nowrap hover:bg-slate-700 sm:text-base md:px-4 md:text-left lg:w-48"
 			class:bg-slate-600={$serverSearch.sort[0].key == 'map'}
 			onclick={() => toggleSort('map')}
 		>
 			地图
 		</button>
 		<button
-			class="w-12 text-nowrap rounded-t-lg px-0 text-center text-sm hover:bg-slate-700 sm:text-base md:w-16 md:px-4 md:text-right lg:w-24"
+			class="w-12 rounded-t-lg px-0 text-center text-sm text-nowrap hover:bg-slate-700 sm:text-base md:w-16 md:px-4 md:text-right lg:w-24"
 			class:bg-slate-600={$serverSearch.sort[0].key == 'player'}
 			class:bg-amber-900={$serverSearch.sort[0].key == 'region' &&
 				$serverSearch.sort[1].key == 'player'}
@@ -371,7 +376,7 @@
 			玩家
 		</button>
 		<button
-			class="hidden w-6 text-nowrap rounded-t-lg text-sm hover:bg-slate-700 sm:text-base md:block md:w-16 lg:w-24"
+			class="hidden w-6 rounded-t-lg text-sm text-nowrap hover:bg-slate-700 sm:text-base md:block md:w-16 lg:w-24"
 			class:bg-slate-600={$serverSearch.sort[0].key == 'region' &&
 				$serverSearch.sort[1].key != 'player'}
 			class:bg-amber-900={$serverSearch.sort[0].key == 'region' &&
@@ -383,7 +388,7 @@
 			地区
 		</button>
 		<button
-			class="block w-6 text-nowrap rounded-t-lg text-sm hover:bg-slate-700 sm:text-base md:hidden"
+			class="block w-6 rounded-t-lg text-sm text-nowrap hover:bg-slate-700 sm:text-base md:hidden"
 			class:bg-slate-600={$serverSearch.sort[0].key == 'region' &&
 				$serverSearch.sort[1].key != 'player'}
 			class:bg-amber-900={$serverSearch.sort[0].key == 'region' &&
@@ -403,7 +408,7 @@
 					showServerInfo(data);
 				}}
 			>
-				<span class="my-auto w-3 text-nowrap text-xs md:text-base"
+				<span class="my-auto w-3 text-xs text-nowrap md:text-base"
 					>{data.info.passworded ? '🔒' : ''}</span
 				>
 				<span class="inline-block h-full w-8 px-0 text-center md:w-16 md:px-2">
@@ -415,11 +420,11 @@
 					{/if}
 				</span>
 				<span
-					class="my-auto flex-1 flex-grow overflow-hidden overflow-ellipsis text-nowrap text-xs sm:text-base"
+					class="my-auto flex-1 flex-grow overflow-hidden text-xs text-nowrap overflow-ellipsis sm:text-base"
 					>{data.info.name}</span
 				>
 				<span
-					class="my-auto w-8 overflow-hidden text-nowrap text-xs sm:w-16 sm:text-base lg:w-24 lg:overflow-ellipsis"
+					class="my-auto w-8 overflow-hidden text-xs text-nowrap sm:w-16 sm:text-base lg:w-24 lg:overflow-ellipsis"
 					class:text-[#ff8080]={modes.isFreeze(data.info.game_type)}
 					class:text-[#ffff88]={modes.isCatch(data.info.game_type)}
 					class:text-[#7ffa7d]={modes.isStd(data.info.game_type)}
@@ -434,7 +439,7 @@
 					{data.info.game_type}
 				</span>
 				<span
-					class="my-auto w-16 overflow-hidden text-nowrap text-xs sm:text-base lg:w-48 lg:overflow-ellipsis"
+					class="my-auto w-16 overflow-hidden text-xs text-nowrap sm:text-base lg:w-48 lg:overflow-ellipsis"
 					>{#if finishedMaps}<span class="inline-block w-3 sm:w-6"
 							>{#if finishedMaps.has(data.info.map.name)}<Fa
 									class="inline"
@@ -443,11 +448,11 @@
 						>{/if}{data.info.map.name}</span
 				>
 				<span
-					class="my-auto w-12 overflow-hidden text-nowrap text-right text-xs md:w-16 md:text-sm lg:w-24 lg:text-base"
+					class="my-auto w-12 overflow-hidden text-right text-xs text-nowrap md:w-16 md:text-sm lg:w-24 lg:text-base"
 					>{data.info.clients.length}/{data.info.max_players}</span
 				>
 				<span
-					class="my-auto w-6 overflow-hidden text-nowrap text-center text-xs md:w-16 md:text-base lg:w-24"
+					class="my-auto w-6 overflow-hidden text-center text-xs text-nowrap md:w-16 md:text-base lg:w-24"
 					class:text-green-400={regionLevel(data.location) == 0}
 					class:text-green-600={regionLevel(data.location) == 1}
 					class:text-orange-600={regionLevel(data.location) == 2}>{data.region}</span

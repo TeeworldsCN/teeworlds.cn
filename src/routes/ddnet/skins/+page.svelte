@@ -116,7 +116,7 @@
 				type="text"
 				bind:value={searchField}
 				placeholder="搜索皮肤..."
-				class="w-full rounded-md bg-slate-700 py-2 pl-10 pr-4 text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+				class="w-full rounded-md bg-slate-700 py-2 pr-4 pl-10 text-slate-300 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 			/>
 		</div>
 
@@ -125,7 +125,7 @@
 			<label class="inline-flex cursor-pointer items-center">
 				<input type="checkbox" bind:checked={showCommunity} class="peer sr-only" />
 				<div
-					class="peer relative h-6 w-11 rounded-full bg-slate-700 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rtl:peer-checked:after:-translate-x-full"
+					class="peer relative h-6 w-11 rounded-full bg-slate-700 peer-checked:bg-blue-600 peer-focus:ring-2 peer-focus:ring-blue-500 peer-focus:outline-none after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white rtl:peer-checked:after:-translate-x-full"
 				></div>
 				<span class="ms-3 text-sm font-medium text-slate-300">显示社区皮肤</span>
 			</label>

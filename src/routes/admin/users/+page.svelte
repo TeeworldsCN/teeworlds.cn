@@ -1,15 +1,22 @@
 <script lang="ts">
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Modal from '$lib/components/Modal.svelte';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
 	import type { User } from '$lib/server/db/users';
 	import { PERMISSIONS_SETTINGS } from '$lib/types';
 
 	const { data } = $props();
 
-	let searchInput = $state(data.search);
-	let platformFilter = $state(data.platform);
-	let userType = $state(data.userType);
+	let searchInput = $state('');
+	let platformFilter = $state('');
+	let userType = $state('');
+
+	afterNavigate(() => {
+		searchInput = data.search || '';
+		platformFilter = data.platform || '';
+		userType = data.userType || '';
+	});
+
 	let copyNotification = $state('');
 	let showUserModal = $state(false);
 	let editingUser = $state<User | null>(null);
@@ -385,7 +392,7 @@
 					type="text"
 					bind:value={searchInput}
 					placeholder="输入用户名进行搜索..."
-					class="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+					class="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 					onkeydown={(e) => {
 						if (e.key === 'Enter') {
 							handleSearch();
@@ -402,7 +409,7 @@
 						id="platform"
 						bind:value={platformFilter}
 						onchange={handlePlatformFilter}
-						class="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+						class="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 					>
 						<option value="">全部平台</option>
 						{#each availablePlatforms as platform}
@@ -427,7 +434,7 @@
 			{/if}
 			<button
 				onclick={handleSearch}
-				class="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+				class="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 			>
 				搜索
 			</button>
@@ -549,7 +556,7 @@
 
 <!-- Copy Notification Toast -->
 {#if copyNotification}
-	<div class="fixed bottom-4 right-4 z-50 rounded-lg bg-green-600 px-4 py-2 text-white shadow-lg">
+	<div class="fixed right-4 bottom-4 z-50 rounded-lg bg-green-600 px-4 py-2 text-white shadow-lg">
 		{copyNotification}
 	</div>
 {/if}
@@ -604,7 +611,7 @@
 							type="text"
 							bind:value={newUsername}
 							placeholder="输入新用户名"
-							class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+							class="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 						/>
 						<button
 							onclick={renameUserFunction}

@@ -92,7 +92,7 @@
 			<img
 				width="360"
 				height="225"
-				class="mb-4 mr-4 rounded"
+				class="mr-4 mb-4 rounded"
 				src={data.map.thumbnail}
 				alt="{data.map.name} thumbnail"
 			/>
@@ -104,7 +104,7 @@
 			</div>
 		</div>
 		<button
-			class="absolute bottom-4 right-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+			class="absolute right-4 bottom-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
 			onclick={() => (showMapPreviewModal = true)}
 		>
 			<Fa class="inline" icon={faMapLocation}></Fa> 查看地图

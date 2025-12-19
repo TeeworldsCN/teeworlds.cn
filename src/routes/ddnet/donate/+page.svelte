@@ -2,9 +2,7 @@
 	import type { PageData } from './$types';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 
-	let { data }: { data: PageData } = $props();
-
-	const { donateInfo } = data;
+	const { data }: { data: PageData } = $props();
 
 	function getProgressColor(percentage: number): string {
 		if (percentage >= 100) return '#059669'; // emerald-600
@@ -32,7 +30,7 @@
 />
 
 <div class="grid grid-cols-1 gap-4 md:grid-cols-1">
-	{#if donateInfo}
+	{#if data.donateInfo}
 		<!-- Funding Overview -->
 		<div class="rounded-lg bg-slate-700 p-2 shadow-md md:p-4">
 			<h1 class="mb-3 text-xl font-bold">DDNet 服务器资助</h1>
@@ -44,21 +42,21 @@
 			<!-- Total Progress -->
 			<div class="mb-6">
 				<h2 class="mb-3 text-xl font-semibold text-slate-200">
-					总计 {donateInfo.funding.total.year}
+					总计 {data.donateInfo.funding.total.year}
 				</h2>
 				<div class="relative h-8 rounded-lg bg-slate-600">
 					<div
 						class="h-full rounded-lg transition-all duration-300"
 						style="width: {Math.min(
-							donateInfo.funding.total.percentage,
+							data.donateInfo.funding.total.percentage,
 							100
-						)}%; background-color: {getProgressColor(donateInfo.funding.total.percentage)}"
+						)}%; background-color: {getProgressColor(data.donateInfo.funding.total.percentage)}"
 					></div>
 					<div
 						class="absolute inset-0 flex items-center justify-center text-sm font-medium text-white"
 					>
-						{formatEuro(donateInfo.funding.total.donated)} € 已捐赠 / {formatEuro(
-							donateInfo.funding.total.cost
+						{formatEuro(data.donateInfo.funding.total.donated)} € 已捐赠 / {formatEuro(
+							data.donateInfo.funding.total.cost
 						)} € 总成本
 					</div>
 				</div>
@@ -66,7 +64,7 @@
 
 			<!-- Server List -->
 			<div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-				{#each donateInfo.funding.servers as server}
+				{#each data.donateInfo.funding.servers as server}
 					<div class="rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3">
 						<div class="mb-2 flex items-center justify-between">
 							<h3 class="mb-1 text-base font-bold">{server.displayName}</h3>
@@ -99,26 +97,26 @@
 			</div>
 
 			<!-- Historical Funding -->
-			{#if donateInfo.funding.old.cost > 0}
+			{#if data.donateInfo.funding.old.cost > 0}
 				<div class="mt-6">
 					<p class="mb-3 text-slate-300">当本年度完全覆盖时，我们仍然感谢捐赠以覆盖往年的成本：</p>
 					<h2 class="mb-3 text-xl font-semibold text-slate-200">
-						总计 {donateInfo.funding.old.years}
+						总计 {data.donateInfo.funding.old.years}
 					</h2>
 					<div class="relative h-8 rounded-lg bg-slate-600">
 						<div
 							class="h-full rounded-lg transition-all duration-300"
 							style="width: {Math.min(
-								donateInfo.funding.old.percentage,
+								data.donateInfo.funding.old.percentage,
 								100
-							)}%; background-color: {getProgressColor(donateInfo.funding.old.percentage)}"
+							)}%; background-color: {getProgressColor(data.donateInfo.funding.old.percentage)}"
 						></div>
 						<div
 							class="absolute inset-0 flex items-center justify-center text-sm font-medium text-white"
 						>
-							{formatEuro(donateInfo.funding.old.donated)} € / {formatEuro(
-								donateInfo.funding.old.cost
-							)} € 成本 {donateInfo.funding.old.years}
+							{formatEuro(data.donateInfo.funding.old.donated)} € / {formatEuro(
+								data.donateInfo.funding.old.cost
+							)} € 成本 {data.donateInfo.funding.old.years}
 						</div>
 					</div>
 				</div>
@@ -133,10 +131,10 @@
 				请不要忘记备注您希望在捐赠者列表列出的游戏名。
 			</p>
 
-			{#if donateInfo.donateLinks.paypal}
+			{#if data.donateInfo.donateLinks.paypal}
 				<div class="mb-6">
 					<a
-						href={donateInfo.donateLinks.paypal}
+						href={data.donateInfo.donateLinks.paypal}
 						target="_blank"
 						rel="noopener noreferrer"
 						class="inline-flex items-center rounded-lg bg-blue-600 px-6 py-3 font-medium text-white transition-colors hover:bg-blue-700"
@@ -153,14 +151,14 @@
 		</div>
 
 		<!-- Donors List -->
-		{#if donateInfo.donors.length > 0}
+		{#if data.donateInfo.donors.length > 0}
 			<div class="rounded-lg bg-slate-700 p-2 shadow-md md:p-4">
 				<h2 class="mb-3 text-xl font-bold">捐赠者</h2>
 				<p class="mb-4 text-slate-300">
 					这些人通过捐赠和赞助服务器慷慨支持 DDNet（按时间顺序排列）：
 				</p>
 				<div class="flex flex-wrap gap-2">
-					{#each donateInfo.donors as donor}
+					{#each data.donateInfo.donors as donor}
 						<span class="rounded bg-slate-600 px-3 py-1 text-sm text-slate-300">
 							{donor}
 						</span>

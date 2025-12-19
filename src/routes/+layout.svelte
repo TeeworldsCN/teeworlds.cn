@@ -52,7 +52,7 @@
 </script>
 
 <div
-	class="max-w-svw flex min-h-svh flex-col overflow-x-hidden bg-slate-800 {navigating.to
+	class="flex min-h-svh max-w-svw flex-col overflow-x-hidden bg-slate-800 {navigating.to
 		? 'opacity-60'
 		: 'opacity-100'}"
 	style={navigating.to ? 'transition: opacity 0.1s ease-in-out 0.1s;' : ''}
@@ -60,7 +60,7 @@
 	<header class="flex bg-slate-900 px-4 py-2 text-slate-300">
 		{#if uaNeedBackButton(data.ua)}
 			<button
-				class="fixed z-50 -ml-2 -mt-0.5 flex h-8 w-12 items-center justify-center rounded-md border border-slate-600 bg-sky-700 text-white shadow-md
+				class="fixed z-50 -mt-0.5 -ml-2 flex h-8 w-12 items-center justify-center rounded-md border border-slate-600 bg-sky-700 text-white shadow-md
 				hover:bg-sky-600 active:bg-sky-800 disabled:bg-slate-800 disabled:opacity-50"
 				onclick={handleBack}
 				{disabled}
@@ -79,7 +79,7 @@
 						<div class="scrollbar-hide mr-5 max-w-40 justify-center overflow-x-auto text-nowrap">
 							{data.user.username}
 						</div>
-						<button type="submit" class="justify-center text-nowrap rounded bg-sky-700 px-2"
+						<button type="submit" class="justify-center rounded bg-sky-700 px-2 text-nowrap"
 							>登出</button
 						>
 					</form>
@@ -89,13 +89,13 @@
 	</header>
 
 	<main class="flex flex-grow bg-slate-800 p-2 text-slate-300">
-		<div class="container relative mx-auto flex-grow">
+		<div class="relative container mx-auto flex-grow">
 			{@render children()}
 		</div>
 	</main>
 
 	<footer
-		class="flex h-8 flex-row flex-nowrap items-center text-nowrap bg-slate-900 px-4 py-1 text-slate-300"
+		class="flex h-8 flex-row flex-nowrap items-center bg-slate-900 px-4 py-1 text-nowrap text-slate-300"
 	>
 		<div class="flex max-h-8 flex-col overflow-hidden text-xs">
 			<Link href="https://beian.miit.gov.cn/" rel="noreferrer" target="_blank" type="subtle"
