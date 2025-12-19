@@ -44,6 +44,20 @@
 		</div>
 
 		<div class="mb-6">
+			<h3 class="mb-3 text-lg font-semibold text-slate-200">支持 Axiom</h3>
+			<p class="mb-3 text-slate-300">
+				Axiom 由 Axiom团队 进行运维，用于 Axiom 网站、帐号与游戏服务器成本：
+			</p>
+			<a
+				href="https://axiom.teeworlds.cn/sponsor"
+				class="inline-flex items-center rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-700"
+				target="_blank"
+			>
+				查看 Axiom 捐赠详细
+			</a>
+		</div>
+
+		<div class="mb-6">
 			<h3 class="mb-3 text-lg font-semibold text-slate-200">支持 TeeworldsCN</h3>
 			<p class="mb-3 text-slate-300">
 				TeeworldsCN 由 TsFreddie 个人进行维护与跟进功能，如果你觉得本站好用，可以：
