@@ -12,14 +12,31 @@
 	TsFreddie 的 Teeworlds 信息工具箱
 </div>
 
-<div class="mt-4">
-	<img src="/logos/ddnet.svg" alt="DDNet" class="h-14" />
+<div class="mt-6 grid gap-6 md:grid-cols-2">
+	<div class="rounded-lg border border-slate-600 p-6">
+		<img src="/logos/ddnet.svg" alt="DDNet" class="h-14" />
+		<div class="mt-4">
+			<ToolboxButton href="/ddnet">DDNet 工具箱</ToolboxButton>
+			<div class="text-semibold">查询 DDraceNetwork 相关信息</div>
+		</div>
+	</div>
+
+	<div class="rounded-lg border border-slate-600 p-6">
+		<span class="flex h-14 items-center text-4xl font-bold"
+			>Axi<span class="text-cyan-400">⌬</span>m</span
+		>
+		<div class="mt-4">
+			<ToolboxButton href="https://axiom.teeworlds.cn" newTab>Axiom 官网</ToolboxButton>
+			<div class="text-semibold">查看 Axiom 账号服官网与相关信息</div>
+		</div>
+	</div>
 </div>
 
-<div class="mt-6">
-	<ToolboxButton href="/ddnet">DDNet 工具箱</ToolboxButton>
-	<div class="text-semibold">查询 DDraceNetwork 相关信息</div>
+<div class="mt-4 text-sm text-slate-400">
+	本站导航的所有项目均为<span class="text-amber-500">免费开源项目</span>
 </div>
+
+<div class="mt-6 h-px w-full bg-linear-to-r from-slate-600 to-transparent"></div>
 
 <div class="mt-6">
 	<ToolboxButton href="/donate"
