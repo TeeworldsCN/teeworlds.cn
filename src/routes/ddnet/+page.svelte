@@ -87,14 +87,3 @@
 	>
 	<div class="text-semibold">前往 DDraceNetwork 官方网站</div>
 </div>
-
-<div class="mt-6 flex items-start">
-	<div class="h-px grow bg-gradient-to-r from-slate-600 to-transparent"></div>
-</div>
-
-<div class="mt-6">
-	<ToolboxButton href="/ddnet/nouis"
-		><Fa icon={faGamepad} class="inline"></Fa> 合成超大Tee</ToolboxButton
-	>
-	<div class="text-semibold">游玩搞怪小游戏</div>
-</div>

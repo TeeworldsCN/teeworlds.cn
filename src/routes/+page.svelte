@@ -1,17 +1,22 @@
 <script>
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
 	import Fa from 'svelte-fa';
-	import { faHeart } from '@fortawesome/free-solid-svg-icons';
+	import { faGamepad, faHeart } from '@fortawesome/free-solid-svg-icons';
 
 	const { data } = $props();
 
 	const isAdmin = $derived(() => (data.user?.data?.permissions || []).length > 0);
 </script>
 
-<h1 class="text-md">TeeworldsCN 是由个人开发的 Teeworlds 信息查询工具箱</h1>
+<div class="mb-2 flex h-8 items-center whitespace-nowrap text-sm text-slate-500 md:text-base">
+	TsFreddie 的 Teeworlds 信息工具箱
+</div>
+
+<div class="mt-4">
+	<img src="/logos/ddnet.svg" alt="DDNet" class="h-14" />
+</div>
 
 <div class="mt-6">
-	<img src="/logos/ddnet.svg" alt="DDNet" class="mb-2 h-14" />
 	<ToolboxButton href="/ddnet">DDNet 工具箱</ToolboxButton>
 	<div class="text-semibold">查询 DDraceNetwork 相关信息</div>
 </div>
@@ -31,6 +36,17 @@
 		<div class="text-semibold">管理员你好，点这里使用管理工具</div>
 	</div>
 {/if}
+
+<div class="mt-6">
+	<ToolboxButton href="/ddnet/nouis"
+		><Fa icon={faGamepad} class="inline"></Fa> 合成超大Tee</ToolboxButton
+	>
+	<div class="text-semibold">游玩搞怪小游戏</div>
+</div>
+
+<div class="mt-6 flex items-start">
+	<div class="h-px grow bg-gradient-to-r from-slate-600 to-transparent"></div>
+</div>
 
 <div class="mt-6">
 	<ToolboxButton href="https://chat.teeworlds.cn" newTab>加入社区</ToolboxButton>
