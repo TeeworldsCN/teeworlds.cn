@@ -4,6 +4,10 @@
 
 @import './lib/tippy.css';
 
+@theme {
+	--aspect-map: 360 / 225;
+}
+
 /* Hide scrollbar for Chrome, Safari and Opera */
 .scrollbar-hide::-webkit-scrollbar {
 	display: none;
