@@ -212,7 +212,9 @@ export class FetchCache<T> {
 								timestamp: now
 							};
 						}
-					} catch {}
+					} catch (e) {
+						console.error(e);
+					}
 				}
 
 				// not outdated, use the cache directly if it exists

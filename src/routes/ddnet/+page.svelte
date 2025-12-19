@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { encodeBase64Url } from '$lib/base64url';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
 	import {
@@ -64,7 +65,7 @@
 </div>
 
 <div class="mt-6">
-	<ToolboxButton href="/ddnet/donate"
+	<ToolboxButton href="/donate" newTab
 		><Fa icon={faHeart} class="inline text-red-400" /> 捐赠支持</ToolboxButton
 	>
 	<div class="text-semibold">打赏与支持</div>
