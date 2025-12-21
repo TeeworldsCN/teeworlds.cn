@@ -108,7 +108,8 @@ export const load = (async ({ data, parent }) => {
 	}
 
 	// setup growth
-	const maps = Object.keys(player.types)
+	const dedup = new Set<string>();
+	let maps = Object.keys(player.types)
 		.flatMap((type) =>
 			Object.entries(player.types[type].maps).map(([name, map]) => {
 				if (map.points == 0) {
@@ -120,6 +121,18 @@ export const load = (async ({ data, parent }) => {
 			})
 		)
 		.sort((a, b) => (b.map.first_finish || 0) - (a.map.first_finish || 0));
+	maps = maps.reduce(
+		(acc, map) => {
+			if (!dedup.has(map.name)) {
+				dedup.add(map.name);
+				acc.push(map);
+			} else {
+				console.error(map);
+			}
+			return acc;
+		},
+		[] as typeof maps
+	);
 
 	// points of last 365 days
 	let currentPoints = player.points.points;

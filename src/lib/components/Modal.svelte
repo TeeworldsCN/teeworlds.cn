@@ -23,7 +23,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <dialog
-	class="fixed top-8 z-50 overflow-visible border-none bg-transparent text-slate-300 shadow-lg backdrop:bg-black/60"
+	class="fixed z-50 flex h-svh max-h-svh w-svw max-w-svw flex-col items-center justify-center overflow-visible border-none bg-transparent text-slate-300 shadow-lg backdrop:bg-black/60"
 	bind:this={dialog}
 	onclose={() => {
 		show = false;
@@ -50,12 +50,14 @@
 	}}
 >
 	<!-- svelte-ignore a11y_autofocus -->
-	<button
-		onclick={() => closeModal()}
-		class="absolute -top-8 right-0 flex h-8 w-16 items-center justify-center rounded-t-lg bg-slate-600 text-white hover:bg-slate-500 focus:outline-none active:bg-slate-600"
-		><Fa icon={faXmark}></Fa></button
-	>
 	<div>
+		<div class="flex justify-end">
+			<button
+				onclick={() => closeModal()}
+				class="flex h-8 w-16 items-center justify-center rounded-t-lg bg-slate-600 text-white hover:bg-slate-500 focus:outline-none active:bg-slate-600"
+				><Fa icon={faXmark}></Fa></button
+			>
+		</div>
 		{@render header?.()}
 		{@render children?.()}
 	</div>
