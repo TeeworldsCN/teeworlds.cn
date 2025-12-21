@@ -24,6 +24,7 @@
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <dialog
 	class="fixed z-50 flex h-svh max-h-svh w-svw max-w-svw flex-col items-center justify-center overflow-visible border-none bg-transparent text-slate-300 shadow-lg backdrop:bg-black/60"
+	class:hidden={!show}
 	bind:this={dialog}
 	onclose={() => {
 		show = false;
