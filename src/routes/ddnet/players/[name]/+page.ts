@@ -126,8 +126,6 @@ export const load = (async ({ data, parent }) => {
 			if (!dedup.has(map.name)) {
 				dedup.add(map.name);
 				acc.push(map);
-			} else {
-				console.error(map);
 			}
 			return acc;
 		},
