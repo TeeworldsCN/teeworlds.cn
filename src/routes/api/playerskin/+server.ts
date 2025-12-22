@@ -26,7 +26,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			'content-type': 'application/json',
 			'access-control-allow-origin': '*',
 			'access-control-allow-methods': 'GET, HEAD',
-			'access-control-max-age': '86400'
+			'access-control-max-age': '86400',
+			'cache-control': 'public, max-age=300'
 		}
 	});
 };
