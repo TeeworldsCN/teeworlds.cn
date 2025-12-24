@@ -25,9 +25,49 @@ export const GET: RequestHandler = async ({ url }) => {
 		headers: {
 			'content-type': 'application/json',
 			'access-control-allow-origin': '*',
-			'access-control-allow-methods': 'GET, HEAD',
+			'access-control-allow-methods': 'GET, HEAD, POST',
 			'access-control-max-age': '86400',
 			'cache-control': 'public, max-age=300'
 		}
 	});
+};
+
+export const POST: RequestHandler = async ({ request }) => {
+	try {
+		const body = await request.json();
+		const { names, region, fallback } = body;
+
+		if (!names || !Array.isArray(names) || names.length === 0) {
+			return new Response('Bad Request: names array is required', { status: 400 });
+		}
+
+		const skins: any[] = [];
+
+		for (const name of names) {
+			if (typeof name !== 'string') {
+				continue;
+			}
+
+			let skin = getSkin(name, region || null);
+
+			if (!skin && fallback && region) {
+				skin = getSkin(name);
+			}
+
+			if (skin) {
+				skins.push(skin);
+			}
+		}
+
+		return new Response(JSON.stringify(skins), {
+			headers: {
+				'content-type': 'application/json',
+				'access-control-allow-origin': '*',
+				'access-control-allow-methods': 'GET, HEAD, POST',
+				'access-control-max-age': '86400'
+			}
+		});
+	} catch (error) {
+		return new Response('Bad Request: Invalid JSON', { status: 400 });
+	}
 };
