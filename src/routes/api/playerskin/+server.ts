@@ -41,6 +41,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			return new Response('Bad Request: names array is required', { status: 400 });
 		}
 
+		if (names.length > 64) {
+			return new Response('Bad Request: names array length cannot exceed 64', { status: 400 });
+		}
+
 		const skins: any[] = [];
 
 		for (const name of names) {
