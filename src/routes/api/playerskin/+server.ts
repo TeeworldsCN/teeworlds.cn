@@ -60,6 +60,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			if (skin) {
 				skins.push(skin);
+			} else {
+				skins.push({});
 			}
 		}
 
