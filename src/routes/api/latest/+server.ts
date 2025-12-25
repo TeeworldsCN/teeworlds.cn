@@ -5,7 +5,7 @@ export const GET = async () => {
 	return new Response(cache.result, {
 		headers: {
 			'Content-Type': 'application/json',
-			'Cache-Control': 'public, max-age=2'
+			'Cache-Control': 'public, max-age=3'
 		}
 	});
 };

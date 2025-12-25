@@ -15,5 +15,5 @@ export const latest = new FetchCache<
 		const result = await response.json();
 		return result.slice(0, 50);
 	},
-	{ version: 1, minQueryInterval: 2, skipHead: true, memory: true }
+	{ version: 1, minQueryInterval: 3, skipHead: true, memory: true }
 );

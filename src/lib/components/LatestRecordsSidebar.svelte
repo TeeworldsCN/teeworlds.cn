@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { faClock, faMap, faUser } from '@fortawesome/free-solid-svg-icons';
 	import Fa from 'svelte-fa';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
@@ -32,10 +32,12 @@
 		if (document.hidden) {
 			// Schedule next fetch attempt after checking visibility
 			if (isRunning) {
-				fetchTimeout = window.setTimeout(fetchLatestRecords, 2000);
+				fetchTimeout = window.setTimeout(fetchLatestRecords, 5000);
 			}
 			return;
 		}
+
+		let timeout = 5000;
 
 		try {
 			const response = await fetch('/api/latest');
@@ -46,26 +48,22 @@
 			const newRecords = [];
 
 			for (const record of latest) {
-				record.key = `${record.map}-${record.name}-${record.time}`;
+				record.key = `${record.timestamp}-${record.map}-${record.name}-${record.time}`;
 				if (latestRecords.some((r) => r.key === record.key)) continue;
 				newRecords.push(record);
 			}
 
-			newRecords.sort((a, b) => b.timestamp - a.timestamp);
+			newRecords.sort((a, b) => a.timestamp - b.timestamp);
 
 			if (newRecords.length > 0) {
-				const delta = 1900 / newRecords.length;
-
-				(async () => {
-					for (const record of newRecords) {
-						latestRecords.push(record);
-						latestRecords.sort((a, b) => b.timestamp - a.timestamp);
-						latestRecords.splice(50);
-						await new Promise((resolve) => setTimeout(resolve, delta));
-					}
-				})();
+				const delta = timeout / newRecords.length;
+				for (const record of newRecords) {
+					latestRecords.unshift(record);
+					latestRecords.splice(50);
+					await new Promise((resolve) => setTimeout(resolve, delta));
+				}
+				timeout = 0;
 			}
-
 			error = null;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to fetch latest records';
@@ -75,7 +73,7 @@
 
 		// Schedule next fetch after current one completes
 		if (isRunning) {
-			fetchTimeout = window.setTimeout(fetchLatestRecords, 2000);
+			fetchTimeout = window.setTimeout(fetchLatestRecords, timeout);
 		}
 	}
 
@@ -122,10 +120,18 @@
 					<div
 						in:scale={{ start: 0.8, duration: 300, easing: quartIn }}
 						animate:flip={{ duration: 300 }}
-						class="w-full rounded-lg border border-slate-600 bg-slate-800"
+						class="w-full rounded-lg border border-slate-600 bg-slate-800 px-2"
 					>
 						<div>
-							<FlagSpan flag={record.server} class="w-6" />
+							<Fa icon={faUser} class="inline-block w-7" />
+							<PlayerLink player={record.name} className="text-nowrap">{record.name}</PlayerLink>
+						</div>
+						<div>
+							<Fa icon={faMap} class="inline-block w-7" />
+							<MapLink map={record.map} className="text-nowrap font-semibold">{record.map}</MapLink>
+						</div>
+						<div>
+							<FlagSpan flag={record.server} class="inline-block w-7" />
 							<span
 								use:tippy={{
 									content: `于 ${secondsToDate(record.timestamp)} 用时 ${secondsToChineseTime(
@@ -135,14 +141,6 @@
 								}}
 								class="inline-block text-left text-nowrap">{secondsToTime(record.time)}</span
 							>
-						</div>
-						<div>
-							<Fa icon={faMap} class="inline-block w-6" />
-							<MapLink map={record.map} className="text-nowrap font-semibold">{record.map}</MapLink>
-						</div>
-						<div>
-							<Fa icon={faUser} class="inline-block w-6" />
-							<PlayerLink player={record.name} className="text-nowrap">{record.name}</PlayerLink>
 						</div>
 					</div>
 				{/each}
