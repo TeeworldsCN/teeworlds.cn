@@ -23,7 +23,6 @@
 
 	let latestRecords: LatestRecord[] = $state([]);
 	let isLoading = $state(true);
-	let error: string | null = $state(null);
 	let fetchTimeout: number | null = $state(null);
 	let isRunning = true;
 
@@ -69,9 +68,8 @@
 				}
 				timeout = 0;
 			}
-			error = null;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to fetch latest records';
+			console.error(err);
 		} finally {
 			isLoading = false;
 		}
@@ -110,14 +108,6 @@
 					class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-current border-t-transparent"
 				></div>
 				<p class="mt-2">加载中...</p>
-			</div>
-		{:else if error}
-			<div class="py-8 text-center text-red-400">
-				<p>加载失败: {error}</p>
-			</div>
-		{:else if latestRecords.length === 0}
-			<div class="py-8 text-center text-slate-400">
-				<p>暂无纪录</p>
 			</div>
 		{:else}
 			<div class="space-y-1 text-sm">
