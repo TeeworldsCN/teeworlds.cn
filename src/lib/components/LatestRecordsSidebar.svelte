@@ -55,6 +55,11 @@
 
 			newRecords.sort((a, b) => a.timestamp - b.timestamp);
 
+			if (isLoading) {
+				latestRecords.push(...newRecords.splice(0, Math.floor(newRecords.length - 3)));
+				isLoading = false;
+			}
+
 			if (newRecords.length > 0) {
 				const delta = timeout / newRecords.length;
 				for (const record of newRecords) {
