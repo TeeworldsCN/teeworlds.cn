@@ -9,6 +9,8 @@ interface FetchCacheOptions {
 	alwaysFetch?: boolean;
 	/** version */
 	version?: number;
+	/** keep the cache only in memory instead of writing to database. default to false */
+	memory?: boolean;
 }
 
 type CachedData = {
@@ -25,7 +27,9 @@ export class FetchCache<T> {
 	private version = 1;
 	private skipHead = false;
 	private alwaysFetch = false;
+	private memory = false;
 	private transformer: (response: Response) => Promise<T> | T;
+	private memoryCache: Map<string, CachedData> = new Map();
 	private callbacks:
 		| (
 				| {
@@ -62,6 +66,7 @@ export class FetchCache<T> {
 			this.minQueryInterval = options.minQueryInterval ?? this.minQueryInterval;
 			this.skipHead = options.skipHead ?? this.skipHead;
 			this.alwaysFetch = options.alwaysFetch ?? this.alwaysFetch;
+			this.memory = options.memory ?? this.memory;
 			if (this.alwaysFetch) {
 				this.skipHead = true;
 				this.minQueryInterval = -1;
@@ -114,7 +119,12 @@ export class FetchCache<T> {
 				| { data: T; hit: boolean; string: false; timestamp: number } = await (async () => {
 				const now = Date.now();
 				const key = `dd:cache:${this.url}`;
-				let cache = await volatile.get<CachedData>(key);
+				let cache: CachedData | undefined;
+				if (this.memory) {
+					cache = this.memoryCache.get(key);
+				} else {
+					cache = await volatile.get<CachedData>(key);
+				}
 				if (cache && cache.v !== this.version) {
 					cache = undefined;
 				}
@@ -198,12 +208,17 @@ export class FetchCache<T> {
 
 							// only cache if the tag is valid
 							stringData = JSON.stringify(data);
-							await volatile.set<CachedData>(key, {
+							const cachedData: CachedData = {
 								tag: tag || '',
 								timestamp: now,
 								data: stringData,
 								v: this.version
-							});
+							};
+							if (this.memory) {
+								this.memoryCache.set(key, cachedData);
+							} else {
+								await volatile.set<CachedData>(key, cachedData);
+							}
 
 							return {
 								data,
@@ -302,7 +317,12 @@ export class FetchCache<T> {
 	 */
 	async getCacheAsString(): Promise<string | false> {
 		const key = `dd:cache:${this.url}`;
-		const cache = await volatile.get<CachedData>(key);
+		let cache: CachedData | undefined;
+		if (this.memory) {
+			cache = this.memoryCache.get(key);
+		} else {
+			cache = await volatile.get<CachedData>(key);
+		}
 		if (!cache) return false;
 		if (cache.v !== this.version) return false;
 		return cache.data;
