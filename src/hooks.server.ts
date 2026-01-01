@@ -32,13 +32,6 @@ export const init: ServerInit = async () => {
 };
 
 export const handle = async ({ event, resolve }) => {
-	try {
-		event.locals.ip = event.getClientAddress();
-	} catch (e) {
-		console.log(e);
-		event.locals.ip = 'unknown';
-	}
-
 	// check login
 	{
 		const token = event.cookies.get('token');
