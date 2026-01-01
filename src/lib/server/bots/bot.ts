@@ -146,11 +146,15 @@ const handle = async ({ platform, user, msg, raw, mode, reply, group, isAt }: ro
 				if (link.bypass) return originalReply.textLink(msg, link);
 				return originalReply.text(msg);
 			},
-			imageTextLink: (msg, url, link) => {
-				if (link.fallback) return originalReply.imageText(msg + `\n${link.fallback}`, url);
-				if (link.bypass) return originalReply.imageTextLink(msg, url, link);
-				return originalReply.imageText(msg, url);
-			}
+			// undefined if original reply doesn't support image calls
+			imageTextLink:
+				originalReply.imageText && originalReply.imageTextLink
+					? (msg, url, link) => {
+							if (link.fallback) return originalReply.imageText!(msg + `\n${link.fallback}`, url);
+							if (link.bypass) return originalReply.imageTextLink!(msg, url, link);
+							return originalReply.imageText!(msg, url);
+						}
+					: undefined
 		};
 	}
 

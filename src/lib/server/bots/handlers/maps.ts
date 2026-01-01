@@ -149,21 +149,27 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 				`[${mapType(randomMap.type)} ${numberToStars(randomMap.difficulty)}] ${randomMap.points}pts`
 			];
 
-			if (descriptor) {
-				return await reply.imageTextLink(lines.join('\n'), randomMap.thumbnail, {
-					label: `🔗 查看所有 ${descriptor} 图`,
-					prefix: `${descriptor} 图列表: `,
-					url:
-						type == 'random'
-							? `https://teeworlds.cn/goto#ms${diff ? `diff=${diff}` : ''}`
-							: `https://teeworlds.cn/goto#mstype=${type}${diff ? `&diff=${diff}` : ''}`
-				});
+			const text = lines.join('\n');
+			const image = randomMap.thumbnail;
+			const link = descriptor
+				? {
+						label: `🔗 查看所有 ${descriptor} 图`,
+						prefix: `${descriptor} 图列表: `,
+						url:
+							type == 'random'
+								? `https://teeworlds.cn/goto#ms${diff ? `diff=${diff}` : ''}`
+								: `https://teeworlds.cn/goto#mstype=${type}${diff ? `&diff=${diff}` : ''}`
+					}
+				: {
+						label: `🔗 查看所有图`,
+						prefix: `地图列表: `,
+						url: `https://teeworlds.cn/goto#m`
+					};
+
+			if (reply.imageTextLink) {
+				return await reply.imageTextLink(text, image, link);
 			} else {
-				return await reply.imageTextLink(lines.join('\n'), randomMap.thumbnail, {
-					label: `🔗 查看所有图`,
-					prefix: `地图列表: `,
-					url: `https://teeworlds.cn/goto#m`
-				});
+				return await reply.textLink(text, link);
 			}
 		}
 
@@ -249,9 +255,17 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 		`[${mapType(targetMap.type)} ${numberToStars(targetMap.difficulty)}] ${targetMap.points}pts`
 	];
 
-	return await reply.imageTextLink(lines.join('\n'), targetMap.thumbnail, {
+	const text = lines.join('\n');
+	const image = targetMap.thumbnail;
+	const link = {
 		label: '🔗 地图详情',
 		prefix: '详情: ',
 		url: `https://teeworlds.cn/goto#m${encodeAsciiURIComponent(targetMap.name)}`
-	});
+	};
+
+	if (reply.imageTextLink) {
+		return await reply.imageTextLink(text, image, link);
+	} else {
+		return await reply.textLink(text, link);
+	}
 };
