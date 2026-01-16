@@ -117,7 +117,7 @@
 			{/if}地图数据
 		</h2>
 		<p>
-			发布日期：{data.map.release ? secondsToDate(data.map.release) : '远古'}
+			发布日期：{data.map.release > 0 ? secondsToDate(data.map.release) : '远古'}
 		</p>
 		{#if data.map.median_time}
 			<p>
