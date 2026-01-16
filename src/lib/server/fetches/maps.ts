@@ -78,7 +78,12 @@ export const maps = new FetchCache<MapList>(
 					if (databaseMap.points) map.points = databaseMap.points;
 					if (databaseMap.stars) map.difficulty = databaseMap.stars;
 					if (databaseMap.mapper) map.mapper = databaseMap.mapper;
-					if (databaseMap.timestamp) map.release = databaseMap.timestamp;
+					if (databaseMap.timestamp) {
+						const dbDate = DateTime.fromISO(databaseMap.timestamp, { zone: 'utc' });
+						if (dbDate.isValid) {
+							map.release = dbDate.toSeconds();
+						}
+					}
 				}
 			}
 
