@@ -92,6 +92,6 @@ export const maps = new FetchCache<MapList>(
 		return result;
 	},
 	{
-		version: 14
+		version: 15
 	}
 );
