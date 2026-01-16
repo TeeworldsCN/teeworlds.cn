@@ -11,7 +11,7 @@ export type MapList = {
 	points: number;
 	difficulty: number;
 	mapper?: string;
-	release?: string;
+	release?: number;
 	width: number;
 	height: number;
 	tiles: string[];
@@ -65,7 +65,7 @@ export const maps = new FetchCache<MapList>(
 				}).toUTC();
 
 				if (officialDate.isValid) {
-					map.release = officialDate.toFormat("yyyy-MM-dd'T'HH:mm");
+					map.release = officialDate.toSeconds();
 				} else {
 					delete map.release;
 				}
@@ -87,6 +87,6 @@ export const maps = new FetchCache<MapList>(
 		return result;
 	},
 	{
-		version: 13
+		version: 14
 	}
 );

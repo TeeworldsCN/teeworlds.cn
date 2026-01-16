@@ -4,7 +4,7 @@
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
-	import { secondsToDate } from '$lib/date';
+	import { secondsToDate, secondsToDateHM } from '$lib/date';
 	import { KNOWN_REGIONS, mapType, numberToStars } from '$lib/ddnet/helpers';
 	import { secondsToChineseTime, secondsToTime } from '$lib/helpers';
 	import { encodeAsciiURIComponent } from '$lib/link.js';
@@ -117,7 +117,7 @@
 			{/if}地图数据
 		</h2>
 		<p>
-			发布日期：{data.map.release > 0 ? secondsToDate(data.map.release) : '远古'}
+			发布日期：{data.map.release > 0 ? secondsToDateHM(data.map.release) : '远古'}
 		</p>
 		{#if data.map.median_time}
 			<p>

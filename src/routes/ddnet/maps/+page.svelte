@@ -12,6 +12,7 @@
 	import { checkMapName, checkMapper } from '$lib/ddnet/searches';
 	import RangeSlider from '$lib/components/RangeSlider.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { secondsToDateHM } from '$lib/date';
 	import Modal from '$lib/components/Modal.svelte';
 	import Fa from 'svelte-fa';
 	import { faMapLocation } from '@fortawesome/free-solid-svg-icons';
@@ -356,10 +357,7 @@
 				</p>
 				<span class="h-6 text-sm">
 					{#if map.release}
-						发布于：{ddnetDate(map.release).toLocaleString('zh-CN', {
-							dateStyle: 'short',
-							timeStyle: 'short'
-						})}
+						发布于：{secondsToDateHM(map.release)}
 					{:else}
 						发布于：远古
 					{/if}
