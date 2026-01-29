@@ -133,10 +133,8 @@ export const load = (async ({ data, parent }) => {
 	);
 
 	// points of last 365 days - calculate forward from 365 days ago
-	const day = 24 * 60 * 60 * 1000;
-	const today = new Date(Date.now() - 7 * 60 * 60 * 1000);
-	today.setHours(0, 0, 0, 0);
-	const firstActivity = new Date(today.getTime() - 365 * day);
+	// Reuse day, today, firstActivity from activity section above
+	const endOfDay = new Date(today).setHours(23, 59, 59, 0) / 1000;
 
 	// Sort maps by first_finish timestamp (ascending)
 	const sortedMaps = [...maps].sort((a, b) => (a.map.first_finish || 0) - (b.map.first_finish || 0));
