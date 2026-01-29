@@ -134,10 +134,11 @@ export const load = (async ({ data, parent }) => {
 
 	// points of last 365 days - calculate forward from 365 days ago
 	// Reuse day, today, firstActivity from activity section above
-	const endOfDay = new Date(today).setHours(23, 59, 59, 0) / 1000;
 
-	// Sort maps by first_finish timestamp (ascending)
-	const sortedMaps = [...maps].sort((a, b) => (a.map.first_finish || 0) - (b.map.first_finish || 0));
+	// Filter out unfinished maps (those without first_finish) and sort by first_finish timestamp (ascending)
+	const sortedMaps = [...maps]
+		.filter((m) => m.map.first_finish)
+		.sort((a, b) => a.map.first_finish! - b.map.first_finish!);
 
 	const growth: number[] = [];
 	let accumulatedPoints = 0;
@@ -146,10 +147,11 @@ export const load = (async ({ data, parent }) => {
 	// Iterate through each day from 365 days ago to today
 	for (let i = 0; i < 365; i++) {
 		const currentDay = new Date(firstActivity.getTime() + i * day);
-		const currentDayTimestamp = currentDay.getTime() / 1000;
+		// Use end of day (23:59:59) for comparison to include all maps finished on this day
+		const currentDayEndTimestamp = new Date(currentDay).setHours(23, 59, 59, 999) / 1000;
 
 		// Add points from all maps finished on or before this day
-		while (mapIndex < sortedMaps.length && (sortedMaps[mapIndex].map.first_finish || 0) <= currentDayTimestamp) {
+		while (mapIndex < sortedMaps.length && sortedMaps[mapIndex].map.first_finish! <= currentDayEndTimestamp) {
 			accumulatedPoints += sortedMaps[mapIndex].map.points;
 			mapIndex++;
 		}
