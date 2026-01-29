@@ -132,24 +132,37 @@ export const load = (async ({ data, parent }) => {
 		[] as typeof maps
 	);
 
-	// points of last 365 days
-	let currentPoints = player.points.points;
-	const endOfDay = new Date().setHours(23, 59, 59, 0) / 1000;
-	let currentDate = endOfDay;
-	let mapIndex = 0;
+	// points of last 365 days - calculate forward from 365 days ago
+	const day = 24 * 60 * 60 * 1000;
+	const today = new Date(Date.now() - 7 * 60 * 60 * 1000);
+	today.setHours(0, 0, 0, 0);
+	const firstActivity = new Date(today.getTime() - 365 * day);
+
+	// Sort maps by first_finish timestamp (ascending)
+	const sortedMaps = [...maps].sort((a, b) => (a.map.first_finish || 0) - (b.map.first_finish || 0));
 
 	const growth: number[] = [];
+	let accumulatedPoints = 0;
+	let mapIndex = 0;
 
+	// Iterate through each day from 365 days ago to today
 	for (let i = 0; i < 365; i++) {
-		while (maps[mapIndex] && (maps[mapIndex].map.first_finish || 0) >= currentDate) {
-			currentPoints -= maps[mapIndex].map.points;
+		const currentDay = new Date(firstActivity.getTime() + i * day);
+		const currentDayTimestamp = currentDay.getTime() / 1000;
+
+		// Add points from all maps finished on or before this day
+		while (mapIndex < sortedMaps.length && (sortedMaps[mapIndex].map.first_finish || 0) <= currentDayTimestamp) {
+			accumulatedPoints += sortedMaps[mapIndex].map.points;
 			mapIndex++;
 		}
-		growth.push(currentPoints);
-		currentDate -= 24 * 60 * 60;
+
+		growth.push(accumulatedPoints);
 	}
 
-	growth.reverse();
+	// Always set the last day (today) to the current player points to reflect the latest total
+	if (growth.length > 0) {
+		growth[growth.length - 1] = player.points.points;
+	}
 
 	return {
 		player: {
