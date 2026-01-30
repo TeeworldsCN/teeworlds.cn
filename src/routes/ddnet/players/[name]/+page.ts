@@ -133,23 +133,25 @@ export const load = (async ({ data, parent }) => {
 	);
 
 	// points of last 365 days
-	let currentPoints = player.points.points;
+	let currentPoints = 0;
 	const endOfDay = new Date().setHours(23, 59, 59, 0) / 1000;
-	let currentDate = endOfDay;
-	let mapIndex = 0;
+	let currentDate = endOfDay - 364 * 24 * 60 * 60;
 
 	const growth: number[] = [];
 
+	const finishedMaps = maps.filter((map) => map.map.first_finish).reverse();
+	let mapIndex = 0;
+
 	for (let i = 0; i < 365; i++) {
-		while (maps[mapIndex] && (maps[mapIndex].map.first_finish || 0) >= currentDate) {
-			currentPoints -= maps[mapIndex].map.points;
+		while (finishedMaps[mapIndex] && finishedMaps[mapIndex].map.first_finish! <= currentDate) {
+			currentPoints += finishedMaps[mapIndex].map.points;
 			mapIndex++;
 		}
 		growth.push(currentPoints);
-		currentDate -= 24 * 60 * 60;
+		currentDate += 24 * 60 * 60;
 	}
 
-	growth.reverse();
+	growth[growth.length - 1] = player.points.points;
 
 	return {
 		player: {
