@@ -81,7 +81,7 @@
 		</div>
 
 		<div class="mt-6">
-			<ToolboxButton ref="https://wiki.ddnet.org/wiki/Main_Page/zh"
+			<ToolboxButton href="/ddnet/wiki/Main_Page/zh"
 				><Fa icon={faInfoCircle} class="inline"></Fa> 中文 Wiki</ToolboxButton
 			>
 			<div class="text-semibold">详细教程与操作指南</div>
