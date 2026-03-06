@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { preloadCode, preloadData, goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
 	import { onMount } from 'svelte';
 
@@ -46,12 +45,9 @@
 {#if !showLinks}
 	<div></div>
 {:else}
-	<Breadcrumbs
-		breadcrumbs={[
-			{ href: '/', text: '首页', title: 'TeeworldsCN' },
-			{ text: '快捷菜单', title: '快捷菜单' }
-		]}
-	/>
+	<div class="mb-2 flex h-8 items-center text-sm whitespace-nowrap text-slate-500 md:text-base">
+		TsFreddie 的 Teeworlds 信息工具箱
+	</div>
 
 	<div class="mt-6">
 		<ToolboxButton href="/ddnet/players">查看排名</ToolboxButton>
@@ -66,10 +62,5 @@
 	<div class="mt-6">
 		<ToolboxButton href="/ddnet/servers">服务器列表</ToolboxButton>
 		<div class="text-semibold">显示 DDNet 服务器列表</div>
-	</div>
-
-	<div class="mt-6">
-		<ToolboxButton href="/donate">捐赠支持</ToolboxButton>
-		<div class="text-semibold">打赏与支持</div>
 	</div>
 {/if}
