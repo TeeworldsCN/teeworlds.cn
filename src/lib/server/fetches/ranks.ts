@@ -49,9 +49,9 @@ class LadderHandler implements HTMLRewriterTypes.HTMLRewriterElementContentHandl
 			this.context.type = 'ladder';
 		} else if (element.tagName === 'tr') {
 			// if previous rank is valid, push it (since we don't have onEndTag which leaks memory in Bun)
-			if (this.context.rank.name && this.context.ladder)
+			if (this.context.rank.name && this.context.ladder) {
 				this.data.ranks[this.context.ladder].push(this.context.rank);
-			// reset rank
+			}
 			this.context.rank = { rank: 0, points: 0, region: '', name: '' };
 		} else if (element.tagName === 'td') {
 			// extract info
@@ -69,6 +69,11 @@ class LadderHandler implements HTMLRewriterTypes.HTMLRewriterElementContentHandl
 	}
 	async text(text: HTMLRewriterTypes.Text) {
 		if (this.context.type === 'ladder') {
+			if (this.context.rank.name && this.context.ladder) {
+				this.data.ranks[this.context.ladder].push(this.context.rank);
+			}
+			this.context.rank = { rank: 0, points: 0, region: '', name: '' };
+
 			const ladderName = text.text.trim();
 			if (ladderName.match(/Points \([0-9]+ total\)/)) {
 				this.context.ladder = 'points';
@@ -94,6 +99,13 @@ class LadderHandler implements HTMLRewriterTypes.HTMLRewriterElementContentHandl
 			this.context.rank.name = unescapeHTML(text.text);
 		}
 		this.context.type = '';
+	}
+
+	finialize() {
+		if (this.context.rank.name && this.context.ladder) {
+			this.data.ranks[this.context.ladder].push(this.context.rank);
+		}
+		this.context.rank = { rank: 0, points: 0, region: '', name: '' };
 	}
 }
 
@@ -148,21 +160,13 @@ export const ranks = new FetchCache<RankInfo>(
 				handler
 			)
 			.on('p[class="toggle"] > span[data-type="date"]', new UpdateTimeHandler(ranks))
-			.onDocument({
-				end(end) {
-					// @ts-ignore
-					if (handler.context.rank.name && handler.context.ladder) {
-						// @ts-ignore
-						ranks.ranks[handler.context.ladder].push(handler.context.rank);
-					}
-				}
-			})
 			.transform(html);
 
+		handler.finialize();
 		return ranks;
 	},
 	{
-		version: 2,
+		version: 4,
 		minQueryInterval: 1800
 	}
 );
@@ -216,21 +220,13 @@ export const regionalRanks = async (region: string) => {
 					handler
 				)
 				.on('p[class="toggle"] > span[data-type="date"]', new UpdateTimeHandler(ranks))
-				.onDocument({
-					end(end) {
-						// @ts-ignore
-						if (handler.context.rank.name && handler.context.ladder) {
-							// @ts-ignore
-							ranks.ranks[handler.context.ladder].push(handler.context.rank);
-						}
-					}
-				})
 				.transform(html);
 
+			handler.finialize();
 			return ranks;
 		},
 		{
-			version: 2,
+			version: 4,
 			minQueryInterval: 1800
 		}
 	);
