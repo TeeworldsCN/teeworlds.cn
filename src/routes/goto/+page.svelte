@@ -19,6 +19,8 @@
 			else if (hash == 'd' || hash == 'donate') target = `/donate`;
 			else if (hash.startsWith('ms')) target = `/ddnet/maps#${hash.slice(2)}`;
 			else if (hash.startsWith('m')) target = `/ddnet/maps/${hash.slice(1)}`;
+			else if (hash.startsWith('pt'))
+				target = `/ddnet/players/${hash.slice(4)}?tool=20${hash.slice(2, 4)}`;
 			else if (hash.startsWith('p')) target = `/ddnet/players/${hash.slice(1)}`;
 			else if (hash.startsWith('s')) target = `/ddnet/servers#${hash.slice(1)}`;
 		}

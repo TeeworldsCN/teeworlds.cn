@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import { encodeAsciiURIComponent } from '$lib/link';
@@ -18,11 +19,11 @@
 	} from '@fortawesome/free-solid-svg-icons';
 	import Fa from 'svelte-fa';
 
+	let revealed = $derived(browser && Date.now() >= new Date('2025-04-02T00:00:00').getTime());
 	let playerName = $state('');
-
 	function gotoPlayer() {
 		if (playerName) {
-			goto(`/ddnet/players/${encodeAsciiURIComponent(playerName)}?tool=true`);
+			goto(`/ddnet/players/${encodeAsciiURIComponent(playerName)}?tool=2025`);
 		}
 	}
 </script>
@@ -41,7 +42,7 @@
 			<Fa icon={faGamepad} class="mr-2 text-4xl text-blue-400" />
 			<h1 class="text-4xl font-bold text-slate-100">恰分工具</h1>
 		</div>
-		<p class="text-slate-300">2025年愚人节活动</p>
+		<p class="text-slate-300">{revealed ? '2025年愚人节活动' : '2025年国服特供活动'}</p>
 	</div>
 
 	<div class="w-full max-w-md rounded-lg bg-slate-700 p-6 shadow-lg">

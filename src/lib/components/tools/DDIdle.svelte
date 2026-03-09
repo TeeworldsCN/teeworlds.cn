@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import Fa from 'svelte-fa';
 	import { faXmark, faCoins, faGamepad } from '@fortawesome/free-solid-svg-icons';
-	import TeeRender from './TeeRender.svelte';
+	import TeeRender from '../TeeRender.svelte';
 	import { browser } from '$app/environment';
 
 	let { points = $bindable(0), skin, body, feet, name } = $props();
@@ -172,7 +172,10 @@
 			<div class="pointer-events-auto flex items-center justify-between p-4">
 				<h2 class="text-lg font-bold">DDNet 恰分工具</h2>
 				<div class="flex gap-2">
-					<button class="text-slate-400 hover:text-slate-200" onclick={() => (expanded = false)}>
+					<button
+						class="cursor-pointer text-slate-400 hover:text-slate-200"
+						onclick={() => (expanded = false)}
+					>
 						<Fa icon={faXmark} />
 					</button>
 				</div>
@@ -190,7 +193,7 @@
 
 			<div class="flex justify-center px-4 py-4">
 				<button
-					class="relative h-20 w-20 rounded-lg bg-slate-700 transition-all select-none hover:bg-slate-600 active:scale-95"
+					class="relative h-20 w-20 cursor-pointer rounded-lg bg-slate-700 transition-all select-none hover:bg-slate-600 active:scale-95"
 					onclick={clickTee}
 				>
 					<TeeRender
@@ -207,7 +210,7 @@
 				<div class="space-y-2">
 					{#each Object.entries(upgrades) as [key, upgrade]}
 						<button
-							class="w-full rounded bg-slate-700 p-2 hover:bg-slate-600 disabled:opacity-50 disabled:hover:bg-slate-700"
+							class="cursor-pointer disabled:cursor-auto w-full rounded bg-slate-700 p-2 hover:bg-slate-600 disabled:opacity-50 disabled:hover:bg-slate-700"
 							disabled={points < upgrade.cost}
 							onclick={() => buyUpgrade(key as keyof typeof upgrades)}
 						>

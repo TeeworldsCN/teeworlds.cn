@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
-	import DdIdle from '$lib/components/DDIdle.svelte';
 	import MapLink from '$lib/components/ddnet/MapLink.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
@@ -16,7 +15,7 @@
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
 	import { tippy } from '$lib/tippy';
-	import { faMap, faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
+	import { faCoins, faMap, faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
 	import { Chart } from 'chart.js/auto';
 	import { onMount } from 'svelte';
 	import Fa from 'svelte-fa';
@@ -32,9 +31,29 @@
 	let sortType = $state('finish');
 	let copiedSkin = $state<string | null>(null);
 
-	// april fools
-	let qiaPoints = $state(0);
-	let hasQia = page.url.searchParams.get('tool') === 'true';
+	// April fools
+	let toolPoints = $state(0);
+	let pendingToolPoints = $state(0);
+	let toolVersion = $derived(() => {
+		const param = page.url.searchParams.get('tool');
+		if (param == 'true') return 2025;
+		return param ? parseInt(param) : 0;
+	});
+	let toolEntry = $state(page.url.hash === '#entry');
+
+	let toolButton = $derived(() => {
+		const date = new Date();
+		if (date.getMonth() == 3 && date.getDate() == 1) {
+			switch (date.getFullYear()) {
+				case 2025:
+					return ['恰分工具', 'qia'];
+				case 2026:
+					return ['领取里程红包', 'zhuli'];
+			}
+		}
+
+		return null;
+	});
 
 	// Copy skin name to clipboard
 	async function copySkinName(skinName: string) {
@@ -211,11 +230,11 @@
 		}
 	});
 
-	const fakePoints = $derived(Math.floor((data.ranks[0].rank.points || 0) + qiaPoints));
+	const fakePoints = $derived(Math.floor((data.ranks[0].rank.points || 0) + toolPoints));
 	const fakeRank = $derived(() => {
 		const currentPoints = data.ranks[0].rank.points || 0;
 		const totalPoints = data.player.points.total || currentPoints;
-		const points = currentPoints + qiaPoints;
+		const points = currentPoints + toolPoints;
 
 		// Linear interpolation: rank = 1 + (maxRank - 1) * (1 - (points - minPoints) / (maxPoints - minPoints))
 		const maxRank = data.ranks[0].rank.rank || 1;
@@ -249,7 +268,7 @@
 />
 
 <div class="mb-4">
-	<div class="flex w-full flex-col items-center justify-between gap-2 sm:flex-row">
+	<div class="flex h-auto w-full flex-col items-center justify-between gap-2 sm:h-24 sm:flex-row">
 		<div>
 			<div class="flex flex-row items-center">
 				<button
@@ -276,22 +295,37 @@
 				<span>最近活跃：{secondsToDate(data.last_finish.timestamp)}</span>
 			</div>
 		</div>
-		<div>
-			<button
-				class="cursor-pointer rounded bg-blue-500 px-4 py-2 font-semibold text-nowrap hover:bg-blue-600 active:bg-blue-500"
-				onclick={() => {
-					mapModal = !mapModal;
-				}}><Fa class="inline" icon={faMap}></Fa> 过图数据</button
-			>
-			<button
-				class="cursor-pointer rounded bg-slate-700 px-4 py-2 font-semibold text-nowrap hover:bg-slate-600 active:bg-slate-700"
-				onclick={() => {
-					pointModal = !pointModal;
-				}}><Fa class="inline" icon={faQuestionCircle}></Fa> 积分说明</button
-			>
+		<div class="flex flex-col-reverse items-center justify-center gap-5">
+			{#key 'tool'}
+				{@const button = toolButton()}
+				{#if button}
+					<button
+						class="motion-preset-seesaw motion-duration-500 cursor-pointer rounded bg-red-600 px-3 py-1.25 text-sm font-semibold text-nowrap text-white shadow-[0_0_15px_rgba(220,38,38,0.7)] hover:bg-red-700 active:bg-red-600"
+						onclick={() => {
+							toolEntry = true;
+							goto(`/ddnet/tool/${button[1]}`);
+						}}><Fa class="inline" icon={faCoins}></Fa> {button[0]}</button
+					>
+				{/if}
+			{/key}
+			<div>
+				<button
+					class="cursor-pointer rounded bg-blue-500 px-4 py-2 font-semibold text-nowrap hover:bg-blue-600 active:bg-blue-500"
+					onclick={() => {
+						mapModal = !mapModal;
+					}}><Fa class="inline" icon={faMap}></Fa> 过图数据</button
+				>
+				<button
+					class="cursor-pointer rounded bg-slate-700 px-4 py-2 font-semibold text-nowrap hover:bg-slate-600 active:bg-slate-700"
+					onclick={() => {
+						pointModal = !pointModal;
+					}}><Fa class="inline" icon={faQuestionCircle}></Fa> 积分说明</button
+				>
+			</div>
 		</div>
 	</div>
 </div>
+
 <div class="grid grid-cols-1 gap-4 md:grid-cols-1">
 	<div class="rounded-lg bg-slate-700 p-2 shadow-md md:p-4">
 		<h2 class="mb-3 text-xl font-bold">
@@ -320,6 +354,7 @@
 				<div
 					class="rounded-lg bg-slate-600 px-3 py-1 shadow-md sm:py-3"
 					class:opacity-50={!rank.rank.rank}
+					class:pulse-red={i == 0 && pendingToolPoints > 0}
 				>
 					<h3 class="mb-1 text-base font-bold">
 						{#if rank.icon == 'SV'}
@@ -333,19 +368,9 @@
 					{#if i == 0 && rank.rank.rank}
 						<p class="text-md">
 							<span class="text-sm">No.</span>{fakeRank()} - {fakePoints}pts
-							{#if rank.rank.pending || data.player.pending_unknown}
-								<span
-									class="cursor-pointer font-semibold text-blue-300 hover:text-blue-400"
-									use:tippy={{
-										content: `根据最近过图记录，有${data.player.pending_unknown ? '至少' : ''}${
-											rank.rank.pending || '?'
-										}分尚未结算。${
-											data.player.pending_unknown
-												? '今日过图超过10次，数据可能不准确，请以明日结算结果为准。'
-												: ''
-										}`
-									}}
-									>{' '}+{rank.rank.pending}{#if data.player.pending_unknown}?{/if}</span
+							{#if rank.rank.pending || data.player.pending_unknown || pendingToolPoints}
+								<span class="font-semibold text-blue-300"
+									>{' '}+{(rank.rank.pending || 0) + pendingToolPoints}</span
 								>
 							{/if}
 						</p>
@@ -510,13 +535,13 @@
 			<div class="mx-auto max-w-fit rounded bg-slate-700 p-1 sm:p-2 md:p-3">
 				<div class="flex flex-row flex-nowrap gap-2">
 					<div class="hidden flex-col text-xs sm:flex">
-						<p class="-mt-1 flex-grow text-nowrap">周一</p>
+						<p class="-mt-1 grow text-nowrap">周一</p>
 						<p class="text-nowrap">周日</p>
 					</div>
-					<div class="flex flex-col flex-nowrap lg:gap-[0.125rem]">
+					<div class="flex flex-col flex-nowrap lg:gap-0.5">
 						{#each data.activity as row}
 							<div
-								class="flex flex-row flex-nowrap border-slate-800 first:border-t lg:gap-[0.125rem] lg:border-none"
+								class="flex flex-row flex-nowrap border-slate-800 first:border-t lg:gap-0.5 lg:border-none"
 							>
 								{#each row as col}
 									{#if col.date}
@@ -546,14 +571,20 @@
 	</div>
 </div>
 
-{#if hasQia}
-	<DdIdle
-		skin={data.skin.n}
-		body={data.skin.b}
-		feet={data.skin.f}
-		bind:points={qiaPoints}
-		name={data.player.player}
-	></DdIdle>
+{#if toolVersion() == 2025}
+	{#await import('$lib/components/tools/DDIdle.svelte') then { default: DDIdle }}
+		<DDIdle
+			skin={data.skin.n}
+			body={data.skin.b}
+			feet={data.skin.f}
+			bind:points={toolPoints}
+			name={data.player.player}
+		></DDIdle>
+	{/await}
+{:else if toolVersion() == 2026}
+	{#await import('$lib/components/tools/DDShare.svelte') then { default: DDShare }}
+		<DDShare name={data.player.player} {toolEntry} bind:toolPoints bind:pendingToolPoints></DDShare>
+	{/await}
 {/if}
 
 <Modal bind:show={pointModal}>
@@ -685,3 +716,19 @@
 		</div>
 	</div>
 </Modal>
+
+<style>
+	.pulse-red {
+		animation: pulseRed 2s ease-in-out infinite;
+	}
+
+	@keyframes pulseRed {
+		0%,
+		100% {
+			box-shadow: 0 0 15px rgba(220, 38, 38, 0.5);
+		}
+		50% {
+			box-shadow: 0 0 30px rgba(220, 38, 38, 0.9);
+		}
+	}
+</style>
