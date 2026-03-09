@@ -105,7 +105,7 @@
 		saveData = getSave();
 		if (!saveData) return;
 
-		if (!saveData.otherTaskIncreased && saveData.otherTask) {
+		if (!saveData.otherTaskIncreased && saveData.otherTask && saveData.owner === name) {
 			saveData.otherTaskIncreased = true;
 			commitSave();
 			increaseForSelf();
