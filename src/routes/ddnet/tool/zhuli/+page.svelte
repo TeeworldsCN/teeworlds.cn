@@ -45,7 +45,14 @@
 	}
 
 	onMount(() => {
-		const existingData = JSON.parse(window.localStorage.getItem('ddshare') || 'null');
+		let existingData = JSON.parse(window.localStorage.getItem('ddshare') || 'null');
+
+		// handle expiring
+		if (existingData && existingData.expire < Date.now()) {
+			window.localStorage.removeItem('ddshare');
+			existingData = null;
+		}
+
 		if (existingData && existingData.owner && existingData.owner !== '') {
 			hasActivated = true;
 			saveDataOwner = existingData.owner;
