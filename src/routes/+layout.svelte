@@ -8,7 +8,7 @@
 	import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
 	import Fa from 'svelte-fa';
 	import { faGithub } from '@fortawesome/free-brands-svg-icons';
-	import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+	import { faArrowLeft, faCoins } from '@fortawesome/free-solid-svg-icons';
 	import { uaNeedBackButton } from '$lib/helpers';
 
 	let { children, data } = $props();
@@ -71,9 +71,14 @@
 		{/if}
 		<div class="container mx-auto">
 			<div class="flex w-full">
-				<div class="flex-grow">
+				<div class="grow">
 					<a href="/" class="text-lg font-bold"> TeeworldsCN </a>
 				</div>
+				<a
+					href="/donate"
+					class="flex cursor-pointer items-center justify-center gap-1 rounded bg-[#946ce6] px-2 text-sm font-semibold text-nowrap text-white transition-colors hover:bg-[#7f4be7]"
+					><Fa icon={faCoins} /> 打赏本站</a
+				>
 				{#if data.user}
 					<form class="flex" method="POST" action="/login/logout" use:enhance>
 						<div class="scrollbar-hide mr-5 max-w-40 justify-center overflow-x-auto text-nowrap">
@@ -88,8 +93,8 @@
 		</div>
 	</header>
 
-	<main class="flex flex-grow bg-slate-800 p-2 text-slate-300">
-		<div class="relative container mx-auto flex-grow">
+	<main class="flex grow bg-slate-800 p-2 text-slate-300">
+		<div class="relative container mx-auto grow">
 			{@render children()}
 		</div>
 	</main>
@@ -113,7 +118,7 @@
 				冀公网安备13020302001199号</Link
 			>
 		</div>
-		<div class="flex-grow"></div>
+		<div class="grow"></div>
 		<div>
 			<Link href="https://github.com/TeeworldsCN/teeworlds.cn" type="subtle" className="font-bold"
 				><Fa icon={faGithub} class="inline"></Fa> GitHub</Link

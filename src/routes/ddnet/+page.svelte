@@ -70,7 +70,7 @@
 		</div>
 
 		<div class="mt-6">
-			<ToolboxButton href="/donate" newTab
+			<ToolboxButton href="/donate"
 				><Fa icon={faHeart} class="inline text-red-400" /> 捐赠支持</ToolboxButton
 			>
 			<div class="text-semibold">打赏与支持</div>

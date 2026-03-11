@@ -33,7 +33,7 @@
 </div>
 
 <div class="mt-4 text-sm text-slate-400">
-	本站导航的所有项目均为<span class="text-amber-500">免费开源项目</span>
+	本站导航的所有项目均为<span class="text-amber-500">开放开源项目</span>
 </div>
 
 <div class="mt-6 h-px w-full bg-linear-to-r from-slate-600 to-transparent"></div>
