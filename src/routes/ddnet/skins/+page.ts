@@ -11,7 +11,12 @@ export const load = (async ({ fetch }) => {
 		if (!skins) {
 			return error(500, 'Failed to load skins data');
 		}
-		return { skins };
+
+		// Fetch skin colors
+		const colorsRes = await fetch('/api/skin-colors');
+		const skinColors = colorsRes.ok ? await colorsRes.json() : {};
+
+		return { skins, skinColors };
 	} catch (err) {
 		console.error('Error loading skins:', err);
 		return error(500, 'Failed to load skins data');

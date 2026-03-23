@@ -2,7 +2,7 @@
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import { tippy } from '$lib/tippy';
 	import Fa from 'svelte-fa';
-	import { faSearch } from '@fortawesome/free-solid-svg-icons';
+	import { faSearch, faPalette } from '@fortawesome/free-solid-svg-icons';
 	import TeeRender from '$lib/components/TeeRender.svelte';
 	import VirtualScroll from 'svelte-virtual-scroll-list';
 	import { EMOTE } from '$lib/stores/skins.js';
@@ -15,12 +15,70 @@
 	let showCommunity = $state(false);
 	let filteredSkins = $state<{ row: number; skins: typeof data.skins }[]>([]);
 	let copiedSkin = $state<string | null>(null);
+	let showColorFilter = $state(false);
+	let selectedHue = $state<number | null>(null);
+	let selectedSaturation = $state<number>(50);
+	let selectedLightness = $state<number>(50);
+
+	// Convert RGB to HSL
+	function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+		r /= 255;
+		g /= 255;
+		b /= 255;
+
+		const max = Math.max(r, g, b);
+		const min = Math.min(r, g, b);
+		let h = 0;
+		let s = 0;
+		const l = (max + min) / 2;
+
+		if (max !== min) {
+			const d = max - min;
+			s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+			switch (max) {
+				case r:
+					h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+					break;
+				case g:
+					h = ((b - r) / d + 2) / 6;
+					break;
+				case b:
+					h = ((r - g) / d + 4) / 6;
+					break;
+			}
+		}
+
+		return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+	}
+
+	// Check if skin matches color filter
+	function matchesColorFilter(skinName: string): boolean {
+		if (!showColorFilter || selectedHue === null) return true;
+
+		const colors = data.skinColors as Record<string, { r: number; g: number; b: number }>;
+		const skinColor = colors[skinName];
+		if (!skinColor) return false;
+
+		const { h, s, l } = rgbToHsl(skinColor.r, skinColor.g, skinColor.b);
+
+		// Check hue range (±30 degrees)
+		if (Math.abs(h - selectedHue) > 30) return false;
+
+		// Check saturation
+		if (s < selectedSaturation - 20) return false;
+
+		// Check lightness
+		if (l < selectedLightness - 25 || l > selectedLightness + 25) return false;
+
+		return true;
+	}
 
 	// Process skins data
 	$effect(() => {
 		if (!data.skins) return;
 
-		// Filter skins based on search query and community toggle
+		// Filter skins based on search query, community toggle, and color filter
 		const filtered = data.skins
 			.filter((skin) => {
 				// Filter by community toggle
@@ -32,8 +90,11 @@
 				const matchesSearch =
 					searchQuery === '' || skin.name.toLowerCase().includes(searchQuery.toLowerCase());
 
-				// For now, we don't have actual type information, so the toggle doesn't do anything
-				// In a real implementation, we would filter by skin.type here
+				// Filter by color
+				if (!matchesColorFilter(skin.name)) {
+					return false;
+				}
+
 				return matchesSearch;
 			})
 			.sort((a, b) => -a.date.localeCompare(b.date));
@@ -120,6 +181,16 @@
 			/>
 		</div>
 
+		<!-- Color filter toggle -->
+		<button
+			type="button"
+			class="flex items-center rounded-md bg-slate-700 px-3 py-2 text-slate-300 transition-colors hover:bg-slate-600"
+			onclick={() => (showColorFilter = !showColorFilter)}
+		>
+			<Fa icon={faPalette} class="me-2" />
+			<span>颜色过滤</span>
+		</button>
+
 		<!-- Community skins toggle -->
 		<div class="flex items-center">
 			<label class="inline-flex cursor-pointer items-center">
@@ -131,6 +202,64 @@
 			</label>
 		</div>
 	</div>
+
+	<!-- Color filter panel -->
+	{#if showColorFilter}
+		<div class="mb-4 rounded-lg bg-slate-700 p-4">
+			<div class="flex flex-col gap-4">
+				<!-- Hue slider -->
+				<div>
+					<label class="mb-1 block text-sm text-slate-300">色相</label>
+					<div class="flex items-center gap-2">
+						<input
+							type="range"
+							min="0"
+							max="360"
+							bind:value={selectedHue}
+							class="h-2 w-full cursor-pointer"
+							style="background: linear-gradient(to right, hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%), hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%))"
+						/>
+						<button
+							type="button"
+							class="rounded bg-slate-600 px-2 py-1 text-xs text-slate-300"
+							onclick={() => (selectedHue = null)}
+						>
+							清除
+						</button>
+					</div>
+					<div class="mt-1 text-center text-sm text-slate-400">
+						{selectedHue !== null ? `${selectedHue}°` : '全部'}
+					</div>
+				</div>
+
+				<!-- Saturation slider -->
+				<div>
+					<label class="mb-1 block text-sm text-slate-300">饱和度: {selectedSaturation}%</label>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						bind:value={selectedSaturation}
+						class="h-2 w-full cursor-pointer"
+						style="background: linear-gradient(to right, hsl(0,0%,50%), hsl(0,100%,50%))"
+					/>
+				</div>
+
+				<!-- Lightness slider -->
+				<div>
+					<label class="mb-1 block text-sm text-slate-300">亮度: {selectedLightness}%</label>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						bind:value={selectedLightness}
+						class="h-2 w-full cursor-pointer"
+						style="background: linear-gradient(to right, hsl(0,0%,0%), hsl(0,0%,50%), hsl(0,0%,100%))"
+					/>
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Skins count -->
 	<p class="mb-2 text-slate-400">
