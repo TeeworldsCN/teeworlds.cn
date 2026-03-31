@@ -368,7 +368,7 @@
 		if (claimed) {
 			pendingToolPoints = 0;
 			toolPoints = 5000;
-			expanded = false;
+			expanded = saveData.owner !== name;
 		}
 		shouldShowIntro = toolEntry && !saveData?.owner;
 		updateCount();
