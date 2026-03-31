@@ -394,7 +394,7 @@
 			class="fixed inset-0 z-50 flex touch-none flex-col items-center justify-center bg-black/90 text-white select-none"
 			style="-webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;"
 		>
-			{#if claimed}
+			{#if claimed && saveData.owner === name}
 				<!-- Day Ended Simple Card -->
 				<div
 					id="main-card"
