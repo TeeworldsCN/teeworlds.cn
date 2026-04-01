@@ -53,7 +53,9 @@
 			<div
 				class="motion-safe:motion-preset-slide-down-md motion-safe:motion-delay-300 mt-6 text-center text-xl font-medium text-slate-200"
 			>
-				{#if errorMessages[page.status]}
+				{#if page.error?.message && page.error.message.startsWith('#')}
+					{page.error.message.slice(1)}
+				{:else if errorMessages[page.status]}
 					{errorMessages[page.status]}
 				{:else}
 					发生了错误，请稍后重试

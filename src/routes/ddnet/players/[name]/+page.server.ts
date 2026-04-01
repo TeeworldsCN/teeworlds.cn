@@ -53,55 +53,64 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 
 	const [playerData, mapData, rankData] = await Promise.all([
 		(async () => {
-			let data: {
-				player: string;
-				points: {
-					total: number;
-					points: number;
-					rank: number;
-				};
-				team_rank: PlayerRank;
-				rank: PlayerRank;
-				server_points?: PlayerRank;
-				server_team_rank?: PlayerRank;
-				server_rank?: PlayerRank;
-				points_last_year: PlayerRank;
-				points_last_month: PlayerRank;
-				points_last_week: PlayerRank;
-				favorite_server: {
-					server: string;
-				};
-				first_finish: {
-					timestamp: number;
-					map: string;
-					time: number;
-				};
-				last_finishes: {
-					timestamp: number;
-					map: string;
-					time: number;
-					country: string;
-					type: string;
-				}[];
-				favorite_partners: {
-					name: string;
-					finishes: number;
-				}[];
-				types: { [key: string]: MapData };
-				activity: {
-					date: string;
-					hours_played: number;
-				}[];
-				hours_played_past_365_days: number;
-				pending_points?: number;
-				pending_unknown?: boolean;
-				data_update_time?: number;
-			} | null = null;
+			let data:
+				| {
+						player: string;
+						points: {
+							total: number;
+							points: number;
+							rank: number;
+						};
+						team_rank: PlayerRank;
+						rank: PlayerRank;
+						server_points?: PlayerRank;
+						server_team_rank?: PlayerRank;
+						server_rank?: PlayerRank;
+						points_last_year: PlayerRank;
+						points_last_month: PlayerRank;
+						points_last_week: PlayerRank;
+						favorite_server: {
+							server: string;
+						};
+						first_finish: {
+							timestamp: number;
+							map: string;
+							time: number;
+						};
+						last_finishes: {
+							timestamp: number;
+							map: string;
+							time: number;
+							country: string;
+							type: string;
+						}[];
+						favorite_partners: {
+							name: string;
+							finishes: number;
+						}[];
+						types: { [key: string]: MapData };
+						activity: {
+							date: string;
+							hours_played: number;
+						}[];
+						hours_played_past_365_days: number;
+						pending_points?: number;
+						pending_unknown?: boolean;
+						data_update_time?: number;
+				  }
+				| false
+				| string = false;
 
 			try {
-				data = await (await fetchPlayer).json();
-			} catch {
+				const playerJson = await (await fetchPlayer).text();
+				if (!playerJson) {
+					return;
+				}
+
+				data = JSON.parse(playerJson);
+			} catch (e: any) {
 				// ignored, mostly paring error
+				data = e?.message || String(e);
 			}
 
 			return data;
@@ -110,13 +119,21 @@ export const load = (async ({ fetch, parent, params, setHeaders }) => {
 		fetchRanks
 	]);
 
+	if (playerData === false) {
+		return error(404, `#未找到 "${name}" 的玩家数据`);
+	}
+
+	if (typeof playerData === 'string') {
+		return error(500, `#${playerData}`);
+	}
+
 	if (!playerData || !playerData.player) {
 		// get player from player cache, if exists then it is a upstream error
 		const player = await getPlayer(name);
-		if (player) {
-			return error(500);
+		if (player && player.name) {
+			return error(500, `#数据获取出错，通常是 DDNet 服务器响应过慢，请稍后再试。`);
 		}
-		return error(404);
+		return error(404, `#未找到 "${name}" 的玩家数据`);
 	}
 
 	const player = playerData;
