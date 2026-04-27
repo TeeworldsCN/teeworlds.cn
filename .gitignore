@@ -33,6 +33,7 @@ rust/target
 
 # Data
 sensitive-lexicon.txt
+skin_blocklist.txt
 
 # Env
 .direnv
