@@ -37,8 +37,57 @@ export const getSkinImageByPath = async (
 	const skinDataBuffer = await skinData.arrayBuffer();
 	const skinDataArray = new Uint8Array(skinDataBuffer);
 
+	// Extract dominant color for non-grayscale skins
+	let dominantRgb: { r: number; g: number; b: number } | undefined;
 	if (!grayscale) {
-		setSkinData(path, grayscale, skinDataArray);
+		const skinImage = sharp!(skinDataBuffer);
+		const { width, height, channels } = await skinImage.metadata();
+
+		if (channels == 4 && width && height) {
+			const bodyWidth = Math.round((width * 96) / 256);
+			const bodyHeight = Math.round((height * 96) / 128);
+
+			const { data: pixelData } = await skinImage
+				.clone()
+				.extract({
+					left: 0,
+					top: 0,
+					width: bodyWidth,
+					height: bodyHeight
+				})
+				.raw()
+				.toBuffer({ resolveWithObject: true });
+
+			// Find dominant color by summing RGB
+			const colorCounts: { [key: string]: number } = {};
+			for (let i = 0; i < pixelData.length; i += channels) {
+				const r = pixelData[i];
+				const g = pixelData[i + 1];
+				const b = pixelData[i + 2];
+				const a = pixelData[i + 3];
+
+				if (a > 128) {
+					// Quantize to reduce color space
+					const key = `${Math.floor(r / 16)},${Math.floor(g / 16)},${Math.floor(b / 16)}`;
+					colorCounts[key] = (colorCounts[key] || 0) + 1;
+				}
+			}
+
+			// Find most common color
+			let maxCount = 0;
+			let dominantKey = '0,0,0';
+			for (const [key, count] of Object.entries(colorCounts)) {
+				if (count > maxCount) {
+					maxCount = count;
+					dominantKey = key;
+				}
+			}
+
+			const [r, g, b] = dominantKey.split(',').map(Number);
+			dominantRgb = { r: r * 16, g: g * 16, b: b * 16 };
+		}
+
+		setSkinData(path, grayscale, skinDataArray, dominantRgb);
 		return { result: skinDataArray, hit: false };
 	} else {
 		// Load image with Sharp

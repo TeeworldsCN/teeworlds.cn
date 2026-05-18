@@ -37,5 +37,5 @@ export const skins = new FetchCache<SkinInfo>(
 		result.map = map;
 		return result;
 	},
-	{ version: 6 }
+	{ version: 7 }
 );
