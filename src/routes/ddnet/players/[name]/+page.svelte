@@ -21,18 +21,31 @@
 	import Fa from 'svelte-fa';
 	import VirtualScroll from 'svelte-virtual-scroll-list';
 
+	type PlayerData = ReturnType<typeof transformPlayerData>;
+
 	let { data: pageProps } = $props();
 	const playerName = $derived(decodeAsciiURIComponent(pageProps.name));
 
 	// Safe placeholder to avoid NPE in derived stores
-	let data = $state<any>({
-		player: { points: { points: 0 }, player: '...' },
+	let data = $state<PlayerData>({
+		player: {
+			player: '...',
+			first_finish: 0,
+			hours_played_past_365_days: 0,
+			data_update_time: 0,
+			favorite_server: null,
+			favorite_partners: [],
+			last_finishes: [],
+			pending_unknown: false,
+			pending_points: 0,
+			points: { points: 0 }
+		},
 		skin: { n: '', b: 0, f: 0 },
 		maps: [],
 		ranks: [{ rank: { points: 0, rank: 0 }, icon: '', name: '' }],
 		statsCols: [],
 		endOfDay: 0,
-		growth: [],
+		growth: [] as number[],
 		last_finish: { timestamp: 0 },
 		activity: []
 	});
@@ -167,6 +180,7 @@
 	});
 
 	let filteredMaps = $derived(() => {
+		const maps = data.maps;
 		if (!searchMap) {
 			let maps = [...data.maps];
 			if (filterType != 'all') {
@@ -211,7 +225,7 @@
 			}
 			return maps;
 		}
-		return data.maps.filter((map) => checkMapName(map.name, searchMap));
+		return maps.filter((map) => checkMapName(map.name, searchMap));
 	});
 
 	const hoursToColor = (value: number) => {
