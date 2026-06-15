@@ -3,6 +3,8 @@ import { DevReload } from '$lib/server/dev';
 import { volatile } from '$lib/server/keyv';
 import { mapTracker } from '$lib/server/tasks/map-tracker';
 import { toolClear } from '$lib/server/tasks/tool-clear';
+import { ranks } from '$lib/server/fetches/ranks';
+import { maps } from '$lib/server/fetches/maps';
 import { type ServerInit } from '@sveltejs/kit';
 import type { Cron } from 'croner';
 
@@ -31,6 +33,15 @@ export const init: ServerInit = async () => {
 		mapTracker,
 		toolClear
 	);
+
+	// Pre-warm maps and ranks cache so the first API call doesn't hit cold start
+	setTimeout(() => {
+		console.log('[warmup] Pre-fetching maps and ranks cache...');
+		Promise.allSettled([
+			maps.fetchCache().then(() => console.log('[warmup] Maps cache ready')),
+			ranks.fetchCache().then(() => console.log('[warmup] Ranks cache ready'))
+		]).catch(() => {});
+	}, 2000);
 };
 
 export const handle = async ({ event, resolve }) => {

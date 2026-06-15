@@ -162,7 +162,10 @@ export class FetchCache<T> {
 					if (cache) {
 						try {
 							// check against the cache tag if a cache is available
-							response = await fetch(this.url, { method: 'HEAD' });
+							response = await fetch(this.url, {
+								method: 'HEAD',
+								signal: AbortSignal.timeout(10000)
+							});
 							if (response.ok) {
 								tag = response.headers.get('etag') || response.headers.get('last-modified');
 								if (tag) {
@@ -187,14 +190,15 @@ export class FetchCache<T> {
 				// if the cache is outdated, fetch the file again
 				if (outdated) {
 					const abort = new AbortController();
+					const timeoutId = setTimeout(() => abort.abort(), 10000);
 					try {
 						const result = await fetch(this.url, { signal: abort.signal });
+						clearTimeout(timeoutId);
 
 						if (result.ok) {
 							tag = result.headers.get('etag') || result.headers.get('last-modified');
 							if (!this.alwaysFetch && cache && tag == cache.tag) {
 								// tag is the same, drop the connection immediately and just use the cache
-								abort.abort();
 								return {
 									result: cache.data,
 									hit: true,
@@ -228,6 +232,7 @@ export class FetchCache<T> {
 							};
 						}
 					} catch (e) {
+						clearTimeout(timeoutId);
 						console.error(e);
 					}
 				}

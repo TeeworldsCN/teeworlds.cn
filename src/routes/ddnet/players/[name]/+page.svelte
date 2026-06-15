@@ -15,13 +15,89 @@
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
 	import { tippy } from '$lib/tippy';
-	import { faCoins, faMap, faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
+	import { transformPlayerData } from '$lib/ddnet/transform-player';
+	import { faCoins, faMap, faQuestionCircle, faSpinner } from '@fortawesome/free-solid-svg-icons';
 	import { Chart } from 'chart.js/auto';
 	import { onMount } from 'svelte';
 	import Fa from 'svelte-fa';
 	import VirtualScroll from 'svelte-virtual-scroll-list';
 
-	let { data } = $props();
+	let { data: pageProps } = $props();
+
+	// Safe placeholder to avoid NPE in derived stores
+	let data = $state<any>({
+		player: { points: { points: 0 }, player: '...' },
+		skin: { n: '', b: 0, f: 0 },
+		maps: [],
+		ranks: [{ rank: { points: 0, rank: 0 }, icon: '', name: '' }],
+		statsCols: [],
+		endOfDay: 0,
+		growth: [],
+		last_finish: { timestamp: 0 },
+		activity: []
+	});
+	let loading = $state(true);
+	let loadError = $state<string | null>(null);
+	let loadAttempt = $state(0);
+
+	const API_TIMEOUT = 15000;
+	const MAX_RETRIES = 3;
+	const RETRY_BASE_DELAY = 2000;
+
+	/**
+	 * Fetch with timeout + retry with exponential backoff.
+	 * Returns the parsed JSON on success, throws on final failure.
+	 */
+	async function fetchWithRetry(url: string): Promise<any> {
+		let lastError: Error | null = null;
+
+		for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+			try {
+				const res = await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT) });
+				const body = await res.json();
+
+				if (res.ok) return body;
+
+				// 4xx errors are not retryable (e.g. 404)
+				if (res.status >= 400 && res.status < 500) {
+					return body;
+				}
+
+				// 5xx — retryable
+				lastError = new Error(body.error || `API error ${res.status}`);
+			} catch (e: any) {
+				if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+					lastError = new Error('请求超时，正在重试...');
+				} else {
+					lastError = e;
+				}
+			}
+
+			if (attempt < MAX_RETRIES - 1) {
+				loadAttempt = attempt + 1;
+				await new Promise((r) => setTimeout(r, RETRY_BASE_DELAY * Math.pow(2, attempt)));
+			}
+		}
+
+		throw lastError || new Error('获取数据失败');
+	}
+
+	async function loadPlayerData(name: string) {
+		loading = true;
+		loadError = null;
+		loadAttempt = 0;
+		try {
+			const result = await fetchWithRetry(`/api/player-detail/${encodeAsciiURIComponent(name)}`);
+			if (result.error && !result.player) {
+				throw new Error(result.error);
+			}
+			data = transformPlayerData(result);
+		} catch (e: any) {
+			loadError = e.message || '获取数据失败';
+		} finally {
+			loading = false;
+		}
+	}
 
 	let explaination = $state(false);
 	let pointModal = $state(false);
@@ -164,8 +240,11 @@
 
 	let chart: Chart | null = null;
 
-	onMount(() => {
-		chart = new Chart(document.getElementById('growth-chart') as HTMLCanvasElement, {
+	onMount(async () => {
+		await loadPlayerData(pageProps.name);
+		// Only init chart if data loaded successfully (canvas is in DOM)
+		if (!loadError) {
+			chart = new Chart(document.getElementById('growth-chart') as HTMLCanvasElement, {
 			type: 'line',
 			options: {
 				maintainAspectRatio: false,
@@ -209,6 +288,7 @@
 				]
 			}
 		});
+	}
 	});
 
 	$effect(() => {
@@ -245,29 +325,56 @@
 	});
 </script>
 
-<svelte:head>
-	<meta property="og:title" content="{data.player.player} - DDNet 玩家" />
-	<meta property="og:type" content="website" />
-	<meta
-		property="og:url"
-		content="https://teeworlds.cn/ddnet/players/{encodeAsciiURIComponent(data.player.player)}"
+{#if data}
+	<svelte:head>
+		<meta property="og:title" content="{data.player.player} - DDNet 玩家" />
+		<meta property="og:type" content="website" />
+		<meta
+			property="og:url"
+			content="https://teeworlds.cn/ddnet/players/{encodeAsciiURIComponent(data.player.player)}"
+		/>
+		<meta property="og:description" content={playerDescription} />
+		<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
+		<meta name="title" content="{data.player.player} - DDNet 玩家" />
+		<meta name="description" content={playerDescription} />
+	</svelte:head>
+
+	<Breadcrumbs
+		breadcrumbs={[
+			{ href: '/', text: '首页', title: 'TeeworldsCN' },
+			{ href: '/ddnet', text: 'DDNet' },
+			{ href: '/ddnet/players', text: '排名', title: 'DDNet 排名' },
+			{ text: data.player.player, title: data.player.player }
+		]}
 	/>
-	<meta property="og:description" content={playerDescription} />
-	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
-	<meta name="title" content="{data.player.player} - DDNet 玩家" />
-	<meta name="description" content={playerDescription} />
-</svelte:head>
+{/if}
 
-<Breadcrumbs
-	breadcrumbs={[
-		{ href: '/', text: '首页', title: 'TeeworldsCN' },
-		{ href: '/ddnet', text: 'DDNet' },
-		{ href: '/ddnet/players', text: '排名', title: 'DDNet 排名' },
-		{ text: data.player.player, title: data.player.player }
-	]}
-/>
+{#if loading}
+	<div class="flex flex-col items-center justify-center py-32">
+		<div class="mb-4">
+			<Fa class="animate-spin text-4xl text-blue-400" icon={faSpinner} />
+		</div>
+		<p class="text-lg text-slate-300">正在获取玩家数据，请耐心等待...</p>
+		{#if loadAttempt > 0}
+			<p class="mt-2 text-sm text-slate-400">正在第 {loadAttempt} 次重试中...</p>
+		{/if}
+	</div>
+{:else if loadError}
+	<div class="flex flex-col items-center justify-center py-32">
+		<div class="mb-4 text-4xl">😞</div>
+		<p class="text-lg text-red-400">获取数据失败</p>
+		<p class="mt-2 text-sm text-slate-400">{loadError}</p>
+		<button
+			class="mt-6 cursor-pointer rounded bg-blue-500 px-6 py-2 font-semibold text-white hover:bg-blue-600 active:bg-blue-500"
+			onclick={() => loadPlayerData(pageProps.name)}
+		>
+			重试
+		</button>
+	</div>
+{/if}
 
-<div class="mb-4">
+{#if !loading && !loadError}
+	<div class="mb-4">
 	<div class="flex h-auto w-full flex-col items-center justify-between gap-2 sm:h-24 sm:flex-row">
 		<div>
 			<div class="flex flex-row items-center">
@@ -585,6 +692,8 @@
 	{#await import('$lib/components/tools/DDShare.svelte') then { default: DDShare }}
 		<DDShare name={data.player.player} {toolEntry} bind:toolPoints bind:pendingToolPoints></DDShare>
 	{/await}
+{/if}
+
 {/if}
 
 <Modal bind:show={pointModal}>
