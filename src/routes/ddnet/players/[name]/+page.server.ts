@@ -14,5 +14,5 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		);
 	}
 
-	return {};
+	return { name: decodeAsciiURIComponent(param) };
 };
