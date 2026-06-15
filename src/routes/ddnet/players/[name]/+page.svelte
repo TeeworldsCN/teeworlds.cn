@@ -822,6 +822,8 @@
 	</div>
 </Modal>
 
+{/if}
+
 <style>
 	.pulse-red {
 		animation: pulseRed 2s ease-in-out infinite;
