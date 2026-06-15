@@ -15,6 +15,7 @@
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
 	import { tippy } from '$lib/tippy';
+	import { transformPlayerData } from '$lib/ddnet/transform-player';
 	import { faCoins, faMap, faQuestionCircle, faSpinner } from '@fortawesome/free-solid-svg-icons';
 	import { Chart } from 'chart.js/auto';
 	import { onMount } from 'svelte';
@@ -90,7 +91,7 @@
 			if (result.error && !result.player) {
 				throw new Error(result.error);
 			}
-			data = result;
+			data = transformPlayerData(result);
 		} catch (e: any) {
 			loadError = e.message || '获取数据失败';
 		} finally {
@@ -241,7 +242,9 @@
 
 	onMount(async () => {
 		await loadPlayerData(pageProps.name);
-		chart = new Chart(document.getElementById('growth-chart') as HTMLCanvasElement, {
+		// Only init chart if data loaded successfully (canvas is in DOM)
+		if (!loadError) {
+			chart = new Chart(document.getElementById('growth-chart') as HTMLCanvasElement, {
 			type: 'line',
 			options: {
 				maintainAspectRatio: false,
@@ -285,6 +288,7 @@
 				]
 			}
 		});
+	}
 	});
 
 	$effect(() => {

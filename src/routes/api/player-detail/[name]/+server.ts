@@ -85,18 +85,6 @@ export const GET: RequestHandler = async ({ params, setHeaders }) => {
 		return json({ error: `#未找到 "${name}" 的玩家数据`, status: 404 }, { status: 404 });
 	}
 
-	// Maps or ranks failed — still return partial, but flag errors so the client knows
-	if (mapError || rankError) {
-		return json(
-			{
-				error: mapError || rankError,
-				status: 500,
-				partial: true
-			},
-			{ status: 500 }
-		);
-	}
-
 	const player = playerData;
 
 	// remove useless activity data way past 365 days
@@ -111,37 +99,39 @@ export const GET: RequestHandler = async ({ params, setHeaders }) => {
 		}
 	}
 
-	// find all maps that are in last finishes
-	const lastFinishMaps = mapData.filter((map: any) =>
-		player.last_finishes.some((finish: any) => finish.map == map.name)
-	);
+	if (mapData) {
+		// find all maps that are in last finishes
+		const lastFinishMaps = mapData.filter((map: any) =>
+			player.last_finishes.some((finish: any) => finish.map == map.name)
+		);
 
-	// insert pending maps into map data
-	for (const map of lastFinishMaps) {
-		const type = player.types[map.type];
-		const typeMaps = type?.maps;
-		if (!typeMaps) continue;
+		// insert pending maps into map data
+		for (const map of lastFinishMaps) {
+			const type = player.types[map.type];
+			const typeMaps = type?.maps;
+			if (!typeMaps) continue;
 
-		const targetMap = typeMaps[map.name];
-		if (!targetMap) continue;
-		if (targetMap.first_finish) continue;
+			const targetMap = typeMaps[map.name];
+			if (!targetMap) continue;
+			if (targetMap.first_finish) continue;
 
-		const mapFinishInfo = player.last_finishes.find((finish: any) => finish.map == map.name);
-		if (!mapFinishInfo) continue;
+			const mapFinishInfo = player.last_finishes.find((finish: any) => finish.map == map.name);
+			if (!mapFinishInfo) continue;
 
-		targetMap.finishes = 1;
-		targetMap.first_finish = mapFinishInfo.timestamp;
-		targetMap.pending = true;
-		targetMap.time = mapFinishInfo.time ?? undefined;
+			targetMap.finishes = 1;
+			targetMap.first_finish = mapFinishInfo.timestamp;
+			targetMap.pending = true;
+			targetMap.time = mapFinishInfo.time ?? undefined;
 
-		const points = targetMap.points;
-		if (points) {
-			player.pending_points = (player.pending_points || 0) + points;
-		}
+			const points = targetMap.points;
+			if (points) {
+				player.pending_points = (player.pending_points || 0) + points;
+			}
 
-		const lastFinish = player.last_finishes[player.last_finishes.length - 1];
-		if (lastFinish && Date.now() / 1000 - lastFinish.timestamp < 24 * 60 * 60) {
-			player.pending_unknown = true;
+			const lastFinish = player.last_finishes[player.last_finishes.length - 1];
+			if (lastFinish && Date.now() / 1000 - lastFinish.timestamp < 24 * 60 * 60) {
+				player.pending_unknown = true;
+			}
 		}
 	}
 
@@ -169,15 +159,25 @@ export const GET: RequestHandler = async ({ params, setHeaders }) => {
 		f?: number;
 	};
 
-	player.data_update_time = rankData.update_time;
+	if (rankData) {
+		player.data_update_time = rankData.update_time;
+	}
 
-	// Cache response on client for 10 minutes
-	setHeaders({
-		'Cache-Control': 'public, max-age=600'
-	});
+	const isPartial = !!(mapError || rankError);
 
-	return json({
-		player,
-		skin
-	});
+	// Cache response on client for 10 minutes (only when not partial)
+	if (!isPartial) {
+		setHeaders({
+			'Cache-Control': 'public, max-age=600'
+		});
+	}
+
+	return json(
+		{
+			player,
+			skin,
+			...(isPartial ? { partial: true, error: (mapError || rankError)! } : {})
+		},
+		{ status: isPartial ? 206 : 200 }
+	);
 };
