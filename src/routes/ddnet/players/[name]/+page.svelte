@@ -240,11 +240,12 @@
 
 	let chart: Chart | null = null;
 
-	onMount(async () => {
-		await loadPlayerData(pageProps.name);
-		// Only init chart if data loaded successfully (canvas is in DOM)
-		if (!loadError) {
-			chart = new Chart(document.getElementById('growth-chart') as HTMLCanvasElement, {
+	function initChart() {
+		const canvas = document.getElementById('growth-chart') as HTMLCanvasElement | null;
+		if (!canvas) return;
+
+		if (chart) chart.destroy();
+		chart = new Chart(canvas, {
 			type: 'line',
 			options: {
 				maintainAspectRatio: false,
@@ -273,9 +274,14 @@
 				}
 			},
 			data: {
+				labels: data.growth.map((_, index) => {
+					return new Date(
+						(data.endOfDay - (364 - index) * 24 * 60 * 60) * 1000
+					).toLocaleDateString('zh-CN', { dateStyle: 'short' });
+				}),
 				datasets: [
 					{
-						data: [],
+						data: data.growth.map((point, index) => [index, point]),
 						segment: {
 							borderDash: (ctx) => (ctx.p1.parsed.y == 0 ? [5, 5] : undefined)
 						},
@@ -289,25 +295,26 @@
 			}
 		});
 	}
+
+	// Watch for player name changes (e.g. clicking a teammate link)
+	let currentName = $state(pageProps.name);
+	$effect(() => {
+		const newName = pageProps.name;
+		if (newName && newName !== currentName) {
+			currentName = newName;
+			if (chart) {
+				chart.destroy();
+				chart = null;
+			}
+			loadPlayerData(newName).then(() => {
+				if (!loadError) initChart();
+			});
+		}
 	});
 
-	$effect(() => {
-		data.growth;
-
-		if (chart) {
-			chart.data.labels = data.growth.map((_, index) => {
-				return new Date((data.endOfDay - (364 - index) * 24 * 60 * 60) * 1000).toLocaleDateString(
-					'zh-CN',
-					{
-						dateStyle: 'short'
-					}
-				);
-			});
-			chart.data.datasets[0].data = data.growth.map((point, index) => {
-				return [index, point];
-			});
-			chart.update();
-		}
+	onMount(async () => {
+		await loadPlayerData(pageProps.name);
+		if (!loadError) initChart();
 	});
 
 	const fakePoints = $derived(Math.floor((data.ranks[0].rank.points || 0) + toolPoints));
