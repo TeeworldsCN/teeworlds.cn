@@ -1,8 +1,64 @@
-import type FlagSpan from '$lib/components/FlagSpan.svelte';
+import { error } from '@sveltejs/kit';
+import { encodeAsciiURIComponent } from '$lib/link';
 import type { PageLoad } from './$types';
 
-export const load = (async ({ data, parent }) => {
-	const player = data.player;
+export const ssr = false;
+
+const API_TIMEOUT = 15000;
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY = 2000;
+
+/**
+ * Fetch with timeout + retry with exponential backoff.
+ * Returns the parsed JSON on success, throws on final failure.
+ */
+async function fetchWithRetry(url: string): Promise<any> {
+	let lastError: Error | null = null;
+
+	for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+		try {
+			const res = await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT) });
+			const body = await res.json();
+
+			if (res.ok) return body;
+
+			// 4xx errors are not retryable (e.g. 404)
+			if (res.status >= 400 && res.status < 500) {
+				return body;
+			}
+
+			// 5xx — retryable
+			lastError = new Error(body.error || `API error ${res.status}`);
+		} catch (e: any) {
+			if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+				lastError = new Error('请求超时，正在重试...');
+			} else {
+				lastError = e;
+			}
+		}
+
+		if (attempt < MAX_RETRIES - 1) {
+			// exponential backoff: 2s, 4s, ...
+			await new Promise((r) => setTimeout(r, RETRY_BASE_DELAY * Math.pow(2, attempt)));
+		}
+	}
+
+	throw lastError || new Error('获取数据失败');
+}
+
+export const load: PageLoad = async ({ params, parent }) => {
+	const name = params.name;
+
+	const result = await fetchWithRetry(
+		`/api/player-detail/${encodeAsciiURIComponent(name)}`
+	);
+
+	if (result.error && !result.player) {
+		return error(result.status || 500, result.error);
+	}
+
+	const player = result.player;
+	const skinResult = result.skin;
 
 	let last_finish = player.last_finishes[0] || {
 		timestamp: 0,
@@ -35,7 +91,7 @@ export const load = (async ({ data, parent }) => {
 				rank: data.points.rank,
 				points: data.points.points || 0,
 				total_points: data.points.total,
-				finishes: Object.entries(data.maps).filter(([_, map]) => map.finishes).length,
+				finishes: Object.entries(data.maps).filter(([_, map]: [string, any]) => map.finishes).length,
 				total_map: Object.keys(data.maps).length
 			};
 
@@ -73,7 +129,6 @@ export const load = (async ({ data, parent }) => {
 	];
 
 	// setup activity
-	// use berlin time zone to setup activity
 	const day = 24 * 60 * 60 * 1000;
 	const today = new Date(Date.now() - 7 * 60 * 60 * 1000);
 	today.setHours(0, 0, 0, 0);
@@ -111,13 +166,12 @@ export const load = (async ({ data, parent }) => {
 	const dedup = new Set<string>();
 	let maps = Object.keys(player.types)
 		.flatMap((type) =>
-			Object.entries(player.types[type].maps).map(([name, map]) => {
+			Object.entries(player.types[type].maps).map(([mapName, map]: [string, any]) => {
 				if (map.points == 0) {
-					// remove map ranks of 0-point maps
 					map.rank = undefined;
 					map.team_rank = undefined;
 				}
-				return { name, type, map };
+				return { name: mapName, type, map };
 			})
 		)
 		.sort((a, b) => (b.map.first_finish || 0) - (a.map.first_finish || 0));
@@ -132,13 +186,11 @@ export const load = (async ({ data, parent }) => {
 		[] as typeof maps
 	);
 
-	// points of last 365 days
 	let currentPoints = 0;
 	const endOfDay = new Date().setHours(23, 59, 59, 0) / 1000;
 	let currentDate = endOfDay - 364 * 24 * 60 * 60;
 
 	const growth: number[] = [];
-
 	const finishedMaps = maps.filter((map) => map.map.first_finish).reverse();
 	let mapIndex = 0;
 
@@ -167,7 +219,7 @@ export const load = (async ({ data, parent }) => {
 			points: player.points
 		},
 		activity: activityCols,
-		skin: data.skin,
+		skin: skinResult,
 		last_finish,
 		statsCols,
 		ranks,
@@ -176,4 +228,4 @@ export const load = (async ({ data, parent }) => {
 		maps,
 		...(await parent())
 	};
-}) satisfies PageLoad;
+};
