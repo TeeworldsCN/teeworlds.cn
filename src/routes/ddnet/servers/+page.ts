@@ -27,6 +27,7 @@ export const load = (async ({ fetch, parent, url }) => {
 	const kog = data.gameInfo.communities.find((community) => community.id == 'kog');
 	if (kog) kog.icon.servers = data.gameInfo['servers-kog'];
 
+	const seen = new Set<string>();
 	const servers = data.servers
 		.filter((server) => isAddressValid(server.addresses))
 		.map((server) => {
@@ -46,6 +47,11 @@ export const load = (async ({ fetch, parent, url }) => {
 				searchText:
 					`${key}|${region(server.location)}|${server.info.name}|${server.info.game_type}|${server.info.map.name}|${server.location}|${server.info.clients.map((client) => client.name + '|' + client.clan).join('|')}`.toLowerCase()
 			};
+		})
+		.filter((server) => {
+			if (seen.has(server.key)) return false;
+			seen.add(server.key);
+			return true;
 		});
 
 	return { servers, maps, name, ...(await parent()) };
