@@ -325,29 +325,27 @@
 	});
 </script>
 
-{#if data}
-	<svelte:head>
-		<meta property="og:title" content="{data.player.player} - DDNet 玩家" />
-		<meta property="og:type" content="website" />
-		<meta
-			property="og:url"
-			content="https://teeworlds.cn/ddnet/players/{encodeAsciiURIComponent(data.player.player)}"
-		/>
-		<meta property="og:description" content={playerDescription} />
-		<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
-		<meta name="title" content="{data.player.player} - DDNet 玩家" />
-		<meta name="description" content={playerDescription} />
-	</svelte:head>
-
-	<Breadcrumbs
-		breadcrumbs={[
-			{ href: '/', text: '首页', title: 'TeeworldsCN' },
-			{ href: '/ddnet', text: 'DDNet' },
-			{ href: '/ddnet/players', text: '排名', title: 'DDNet 排名' },
-			{ text: data.player.player, title: data.player.player }
-		]}
+<svelte:head>
+	<meta property="og:title" content="{data.player.player} - DDNet 玩家" />
+	<meta property="og:type" content="website" />
+	<meta
+		property="og:url"
+		content="https://teeworlds.cn/ddnet/players/{encodeAsciiURIComponent(data.player.player)}"
 	/>
-{/if}
+	<meta property="og:description" content={playerDescription} />
+	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
+	<meta name="title" content="{data.player.player} - DDNet 玩家" />
+	<meta name="description" content={playerDescription} />
+</svelte:head>
+
+<Breadcrumbs
+	breadcrumbs={[
+		{ href: '/', text: '首页', title: 'TeeworldsCN' },
+		{ href: '/ddnet', text: 'DDNet' },
+		{ href: '/ddnet/players', text: '排名', title: 'DDNet 排名' },
+		{ text: data.player.player, title: data.player.player }
+	]}
+/>
 
 {#if loading}
 	<div class="flex flex-col items-center justify-center py-32">
@@ -692,8 +690,6 @@
 	{#await import('$lib/components/tools/DDShare.svelte') then { default: DDShare }}
 		<DDShare name={data.player.player} {toolEntry} bind:toolPoints bind:pendingToolPoints></DDShare>
 	{/await}
-{/if}
-
 {/if}
 
 <Modal bind:show={pointModal}>
