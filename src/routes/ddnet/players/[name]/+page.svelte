@@ -12,17 +12,17 @@
 	import { KNOWN_REGIONS, mapType } from '$lib/ddnet/helpers';
 	import { checkMapName } from '$lib/ddnet/searches.js';
 	import { secondsToTime } from '$lib/helpers';
-	import { encodeAsciiURIComponent } from '$lib/link.js';
+	import { decodeAsciiURIComponent, encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
 	import { tippy } from '$lib/tippy';
 	import { transformPlayerData } from '$lib/ddnet/transform-player';
 	import { faCoins, faMap, faQuestionCircle, faSpinner } from '@fortawesome/free-solid-svg-icons';
 	import { Chart } from 'chart.js/auto';
-	import { onMount } from 'svelte';
 	import Fa from 'svelte-fa';
 	import VirtualScroll from 'svelte-virtual-scroll-list';
 
 	let { data: pageProps } = $props();
+	const playerName = $derived(decodeAsciiURIComponent(pageProps.name));
 
 	// Safe placeholder to avoid NPE in derived stores
 	let data = $state<any>({
@@ -297,24 +297,19 @@
 	}
 
 	// Watch for player name changes (e.g. clicking a teammate link)
-	let currentName = $state(pageProps.name);
+	let currentName = $state<string | null>(null);
 	$effect(() => {
-		const newName = pageProps.name;
-		if (newName && newName !== currentName) {
-			currentName = newName;
-			if (chart) {
-				chart.destroy();
-				chart = null;
-			}
-			loadPlayerData(newName).then(() => {
-				if (!loadError) initChart();
-			});
-		}
-	});
+		const newName = playerName;
+		if (!newName || newName === currentName) return;
 
-	onMount(async () => {
-		await loadPlayerData(pageProps.name);
-		if (!loadError) initChart();
+		currentName = newName;
+		if (chart) {
+			chart.destroy();
+			chart = null;
+		}
+		loadPlayerData(newName).then(() => {
+			if (!loadError) initChart();
+		});
 	});
 
 	const fakePoints = $derived(Math.floor((data.ranks[0].rank.points || 0) + toolPoints));
@@ -350,7 +345,7 @@
 		{ href: '/', text: '首页', title: 'TeeworldsCN' },
 		{ href: '/ddnet', text: 'DDNet' },
 		{ href: '/ddnet/players', text: '排名', title: 'DDNet 排名' },
-		{ text: data.player.player, title: data.player.player }
+		{ text: playerName, title: playerName }
 	]}
 />
 
@@ -371,7 +366,7 @@
 		<p class="mt-2 text-sm text-slate-400">{loadError}</p>
 		<button
 			class="mt-6 cursor-pointer rounded bg-blue-500 px-6 py-2 font-semibold text-white hover:bg-blue-600 active:bg-blue-500"
-			onclick={() => loadPlayerData(pageProps.name)}
+			onclick={() => loadPlayerData(playerName)}
 		>
 			重试
 		</button>
