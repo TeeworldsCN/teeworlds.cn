@@ -19,7 +19,7 @@ async function fetchWithTimeout(url: string, timeoutMs = DDNET_FETCH_TIMEOUT): P
 	return result;
 }
 
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, setHeaders }) => {
 	const param = params.name!;
 	const name = decodeAsciiURIComponent(param);
 
@@ -170,6 +170,11 @@ export const GET: RequestHandler = async ({ params }) => {
 	};
 
 	player.data_update_time = rankData.update_time;
+
+	// Cache response on client for 10 minutes
+	setHeaders({
+		'Cache-Control': 'public, max-age=600'
+	});
 
 	return json({
 		player,
