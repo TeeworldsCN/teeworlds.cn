@@ -8,6 +8,7 @@
 		faGamepad,
 		faGlobe,
 		faHeart,
+		faImage,
 		faInfoCircle,
 		faMap,
 		faRankingStar,
@@ -67,6 +68,13 @@
 				><Fa icon={faFaceSmile} class="inline"></Fa> 皮肤列表</ToolboxButton
 			>
 			<div class="text-semibold">浏览和复制 DDNet 皮肤</div>
+		</div>
+
+		<div class="mt-6">
+			<ToolboxButton href="/ddnet/skin-preview"
+				><Fa icon={faImage} class="inline"></Fa> 皮肤预览</ToolboxButton
+			>
+			<div class="text-semibold">上传并预览自定义 DDNet 皮肤</div>
 		</div>
 
 		<div class="mt-6">
