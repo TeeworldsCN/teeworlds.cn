@@ -108,6 +108,20 @@
 		}
 	}
 
+	function onZoneClick(event: MouseEvent) {
+		// 工具栏区域有自己的按钮，阻止冒泡避免重复触发文件选择。
+		if (event.target instanceof Element && event.target.closest('[data-toolbar]')) return;
+		pickFile();
+	}
+
+	function onZoneKey(event: KeyboardEvent) {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			if (event.target instanceof Element && event.target.closest('[data-toolbar]')) return;
+			pickFile();
+		}
+	}
+
 	onDestroy(() => {
 		// 释放本地文件创建的临时 URL，避免页面切换后继续占用内存。
 		loadSequence += 1;
@@ -143,9 +157,11 @@
 	<!--
 		整个 section 都是拖入热区：拖到预览图上也能换图。
 		空状态时占满宽度，加载后尺寸收缩到刚好容纳预览 + 工具栏。
+		外层用 div + role="button" 而非 button，避免工具栏里的按钮嵌套在 button 里。
 	-->
-	<button
-		type="button"
+	<div
+		role="button"
+		tabindex="0"
 		class="relative flex w-full cursor-pointer flex-col rounded-lg border-2 border-dashed text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 {dragging
 			? 'border-blue-400 bg-blue-500/10'
 			: 'border-slate-500 bg-slate-600/50 hover:border-blue-400 hover:bg-slate-600'}"
@@ -155,7 +171,8 @@
 		ondragover={onDragOver}
 		ondragleave={onDragLeave}
 		ondrop={onDrop}
-		onclick={pickFile}
+		onclick={onZoneClick}
+		onkeydown={onZoneKey}
 		aria-label="点击、拖入或选择皮肤图片"
 	>
 		<input
@@ -187,40 +204,32 @@
 			</div>
 		{:else}
 			<div class="flex flex-1 items-center justify-center py-4 sm:py-2">
-				<div style={`width: ${previewSize}px; height: ${previewSize * 2}px;`}>
+				<div style={`width: ${previewSize}px; height: ${previewSize}px;`}>
 					<TeeRender url={previewUrl} emote={selectedEmote} className="h-full w-full" />
 				</div>
 			</div>
 		{/if}
 
 		{#if errorMessage}
-			<p
-				class="mt-3 rounded-md bg-red-950/50 px-3 py-2 text-sm text-red-300"
-				role="alert"
-				onclick={(event) => event.stopPropagation()}
-			>
+			<p class="mt-3 rounded-md bg-red-950/50 px-3 py-2 text-sm text-red-300" role="alert">
 				{errorMessage}
 			</p>
 		{/if}
 
 		{#if warningMessage}
-			<p
-				class="mt-3 rounded-md bg-amber-950/50 px-3 py-2 text-sm text-amber-300"
-				role="status"
-				onclick={(event) => event.stopPropagation()}
-			>
+			<p class="mt-3 rounded-md bg-amber-950/50 px-3 py-2 text-sm text-amber-300" role="status">
 				{warningMessage}
 			</p>
 		{/if}
 
 		{#if previewUrl}
 			<!--
-				工具栏：阻止冒泡，避免点按钮触发整框的 pickFile。
-				桌面端额外显示"更换图片"，移动端依赖标题旁的"选择文件"按钮。
+				工具栏：data-toolbar 标记让外层 div 的 onZoneClick/onZoneKey 跳过工具栏区域，
+				避免点按钮时同时触发文件选择。桌面端额外显示"更换图片"，移动端依赖标题旁的"选择文件"。
 			-->
 			<div
+				data-toolbar
 				class="mt-4 flex flex-col gap-4 border-t border-slate-500/50 pt-4 sm:flex-row sm:items-center sm:justify-between"
-				onclick={(event) => event.stopPropagation()}
 				role="group"
 				aria-label="预览设置"
 			>
@@ -275,5 +284,5 @@
 				</div>
 			</div>
 		{/if}
-	</button>
+	</div>
 </section>
