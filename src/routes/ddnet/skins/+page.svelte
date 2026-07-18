@@ -1,12 +1,9 @@
 <script lang="ts">
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
-	import { tippy } from '$lib/tippy';
 	import Fa from 'svelte-fa';
 	import { faSearch, faCircleInfo } from '@fortawesome/free-solid-svg-icons';
-	import TeeRender from '$lib/components/TeeRender.svelte';
-	import Link from '$lib/components/Link.svelte';
+	import SkinCard from '$lib/components/SkinCard.svelte';
 	import VirtualScroll from 'svelte-virtual-scroll-list';
-	import { EMOTE } from '$lib/stores/skins.js';
 
 	const { data } = $props();
 
@@ -112,7 +109,7 @@
 >
 	<Fa icon={faCircleInfo} class="mt-0.5 shrink-0 text-blue-300" />
 	<p>
-		通常情况下，<strong class="font-semibold">复制皮肤名</strong>粘贴到 Teeworlds / DDNet 客户端即可自动下载，无需手动下载源文件。
+		通常情况下，<strong class="font-semibold">复制皮肤名</strong>粘贴到 DDNet 客户端即可自动下载，无需手动下载源文件。
 	</p>
 </div>
 
@@ -154,56 +151,12 @@
 			<div class="h-20 w-full overflow-hidden">
 				{#each data.skins as skin}
 					<div class="inline-block w-1/3 p-1">
-						<div class="flex rounded-lg bg-slate-700 p-1">
-							<button
-								type="button"
-								class="h-full cursor-pointer flex-col items-center rounded-lg bg-slate-600 transition-colors hover:bg-slate-500"
-								data-skin-name={skin.name}
-								use:tippy={{
-									content: getTooltipContent(skin.name),
-									placement: 'top',
-									hideOnClick: false
-								}}
-								onclick={(ev) => {
-									ev?.currentTarget?.blur();
-									copySkinName(skin.name);
-								}}
-								aria-label={`复制皮肤名称: ${skin.name}`}
-							>
-								<div class="relative h-16 w-16">
-									<TeeRender
-										name={skin.name}
-										className="w-full h-full"
-										emote={copiedSkin === skin.name ? EMOTE.hurt : EMOTE.normal}
-									/>
-								</div>
-							</button>
-							<div
-								class="ml-3 hidden h-full w-full flex-col justify-center self-center overflow-hidden sm:flex"
-							>
-								<Link
-									href={skin.url}
-									download={`${skin.name}.${skin.url.split('.').pop() ?? 'png'}`}
-									className="text-center text-sm"
-									title={`下载 ${skin.name} 源文件`}
-									onclick={(ev) => ev.stopPropagation()}
-								>
-									{skin.name}
-								</Link>
-								<div class="text-center text-sm">作者：{skin.creator}</div>
-								{#if skin.skinpack}
-									<div class="text-center text-sm">{skin.skinpack} 系列</div>
-								{/if}
-							</div>
-							<div
-								class="ml-3 hidden h-full w-full flex-col justify-center self-center overflow-hidden xl:flex"
-							>
-								<div class="text-center text-sm">
-									{skin.type == 'normal' ? '官方皮肤' : '社区皮肤'}
-								</div>
-								<div class="text-center text-sm">发布于：{skin.date}</div>
-							</div>
-						</div>
+						<SkinCard
+							{skin}
+							{copiedSkin}
+							{copySkinName}
+							{getTooltipContent}
+						/>
 					</div>
 				{/each}
 			</div>
