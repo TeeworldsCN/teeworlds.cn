@@ -2,8 +2,9 @@
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import { tippy } from '$lib/tippy';
 	import Fa from 'svelte-fa';
-	import { faSearch } from '@fortawesome/free-solid-svg-icons';
+	import { faSearch, faCircleInfo } from '@fortawesome/free-solid-svg-icons';
 	import TeeRender from '$lib/components/TeeRender.svelte';
+	import Link from '$lib/components/Link.svelte';
 	import VirtualScroll from 'svelte-virtual-scroll-list';
 	import { EMOTE } from '$lib/stores/skins.js';
 
@@ -105,6 +106,16 @@
 	]}
 />
 
+<div
+	class="mb-3 flex items-start gap-3 rounded-md border border-blue-700/60 bg-blue-900/30 p-3 text-sm text-blue-100"
+	role="note"
+>
+	<Fa icon={faCircleInfo} class="mt-0.5 shrink-0 text-blue-300" />
+	<p>
+		通常情况下，<strong class="font-semibold">复制皮肤名</strong>粘贴到 Teeworlds / DDNet 客户端即可自动下载，无需手动下载源文件。
+	</p>
+</div>
+
 <div class="mt-2">
 	<div class="mb-2 flex flex-col gap-4 sm:flex-row">
 		<!-- Search input -->
@@ -170,7 +181,15 @@
 							<div
 								class="ml-3 hidden h-full w-full flex-col justify-center self-center overflow-hidden sm:flex"
 							>
-								<div class="text-center text-sm">{skin.name}</div>
+								<Link
+									href={skin.url}
+									download={`${skin.name}.${skin.url.split('.').pop() ?? 'png'}`}
+									className="text-center text-sm"
+									title={`下载 ${skin.name} 源文件`}
+									onclick={(ev) => ev.stopPropagation()}
+								>
+									{skin.name}
+								</Link>
 								<div class="text-center text-sm">作者：{skin.creator}</div>
 								{#if skin.skinpack}
 									<div class="text-center text-sm">{skin.skinpack} 系列</div>
