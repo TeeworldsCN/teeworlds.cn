@@ -59,7 +59,7 @@
 		</div>
 	</a>
 
-	<div class="ml-3 hidden h-full w-full flex-col justify-center self-center overflow-hidden sm:flex">
+	<div class="ml-3 flex h-full w-full flex-col justify-center self-center overflow-hidden">
 		<a
 			href={skin.url}
 			download={downloadName}
@@ -79,7 +79,7 @@
 		{/if}
 	</div>
 
-	<div class="ml-3 hidden h-full w-full flex-col justify-center self-center overflow-hidden xl:flex">
+	<div class="ml-3 flex h-full w-full flex-col justify-center self-center overflow-hidden sm:hidden xl:flex">
 		<div class="text-center text-sm">
 			{skin.type == 'normal' ? '官方皮肤' : '社区皮肤'}
 		</div>

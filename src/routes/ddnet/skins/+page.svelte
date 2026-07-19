@@ -36,7 +36,10 @@
 			})
 			.sort((a, b) => -a.date.localeCompare(b.date));
 
-		// Split skins into three columns
+		// Group skins into rows of 3 for the desktop 3-column layout.
+		// The wrapper uses `block w-full sm:inline-block sm:w-1/3`, so on mobile
+		// each card stacks to its own line (single column) while on desktop
+		// three cards sit side-by-side per row.
 		const result = [];
 		for (let i = 0; i < filtered.length; i += 3) {
 			result.push({
@@ -146,11 +149,11 @@
 	</p>
 
 	<!-- Skins grid with virtual scrolling -->
-	<div class="scrollbar-subtle grid h-[calc(100svh-16rem)] w-full sm:h-[calc(100svh-14rem)]">
+	<div class="scrollbar-subtle h-[calc(100svh-16rem)] w-full sm:h-[calc(100svh-14rem)]">
 		<VirtualScroll keeps={20} data={filteredSkins} key="row" let:data>
 			<div class="h-20 w-full overflow-hidden">
 				{#each data.skins as skin}
-					<div class="inline-block w-1/3 p-1">
+					<div class="block w-full p-1 sm:inline-block sm:w-1/3">
 						<SkinCard
 							{skin}
 							{copiedSkin}
