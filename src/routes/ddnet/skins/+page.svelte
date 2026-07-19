@@ -11,7 +11,7 @@
 	let searchQuery = $state('');
 	let searchField = $state('');
 	let showCommunity = $state(false);
-	let filteredSkins = $state<{ row: number; skins: typeof data.skins }[]>([]);
+	let filteredSkins = $state([]);
 	let copiedSkin = $state<string | null>(null);
 
 	// Process skins data
@@ -30,22 +30,11 @@
 				const matchesSearch =
 					searchQuery === '' || skin.name.toLowerCase().includes(searchQuery.toLowerCase());
 
-				// For now, we don't have actual type information, so the toggle doesn't do anything
-				// In a real implementation, we would filter by skin.type here
 				return matchesSearch;
 			})
 			.sort((a, b) => -a.date.localeCompare(b.date));
 
-		// Split skins into three columns
-		const result = [];
-		for (let i = 0; i < filtered.length; i += 3) {
-			result.push({
-				row: i,
-				skins: filtered.slice(i, i + 3)
-			});
-		}
-
-		filteredSkins = result;
+		filteredSkins = filtered;
 	});
 
 	let updateTimer: NodeJS.Timeout;
@@ -142,23 +131,19 @@
 
 	<!-- Skins count -->
 	<p class="mb-2 text-slate-400">
-		共 {filteredSkins.reduce((sum, row) => sum + row.skins.length, 0)} 个皮肤
+		共 {filteredSkins.length} 个皮肤
 	</p>
 
-	<!-- Skins grid with virtual scrolling -->
-	<div class="scrollbar-subtle grid h-[calc(100svh-16rem)] w-full sm:h-[calc(100svh-14rem)]">
-		<VirtualScroll keeps={20} data={filteredSkins} key="row" let:data>
-			<div class="h-20 w-full overflow-hidden">
-				{#each data.skins as skin}
-					<div class="inline-block w-1/3 p-1">
-						<SkinCard
-							{skin}
-							{copiedSkin}
-							{copySkinName}
-							{getTooltipContent}
-						/>
-					</div>
-				{/each}
+	<!-- Skins list with virtual scrolling -->
+	<div class="scrollbar-subtle h-[calc(100svh-16rem)] w-full sm:h-[calc(100svh-14rem)]">
+		<VirtualScroll keeps={20} data={filteredSkins} key="name" let:data>
+			<div class="w-full p-1">
+				<SkinCard
+					skin={data}
+					{copiedSkin}
+					{copySkinName}
+					{getTooltipContent}
+				/>
 			</div>
 		</VirtualScroll>
 	</div>

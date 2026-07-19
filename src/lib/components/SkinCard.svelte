@@ -33,16 +33,17 @@
 	const linkClass = 'text-center text-sm text-orange-400 hover:text-orange-300';
 </script>
 
-<div class="flex rounded-lg bg-slate-700 p-1">
+<div class="flex flex-col rounded-lg bg-slate-700 p-1 sm:flex-row">
 	<!--
 		预览图也是 <a>，跟皮肤名行为一致：左键复制、右键走浏览器原生下载。
 		外层套一个 16x16 容器保持 1:1 比例，TeeRender 在内部填满容器。
+		移动端：预览图居中、独占一行；桌面：靠左、与文字横向排列。
 	-->
 	<a
 		href={skin.url}
 		download={downloadName}
 		aria-label={`复制皮肤名称: ${skin.name}`}
-		class="flex h-full w-16 cursor-pointer flex-col items-center justify-center rounded-lg bg-slate-600 transition-colors hover:bg-slate-500"
+		class="mx-auto flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-lg bg-slate-600 transition-colors hover:bg-slate-500 sm:mx-0"
 		use:tippy={{
 			content: getTooltipContent(skin.name),
 			placement: 'top',
@@ -59,7 +60,7 @@
 		</div>
 	</a>
 
-	<div class="ml-3 hidden h-full w-full flex-col justify-center self-center overflow-hidden sm:flex">
+	<div class="mt-1 flex w-full flex-col justify-center self-center overflow-hidden sm:mt-0 sm:ml-3">
 		<a
 			href={skin.url}
 			download={downloadName}
@@ -79,7 +80,7 @@
 		{/if}
 	</div>
 
-	<div class="ml-3 hidden h-full w-full flex-col justify-center self-center overflow-hidden xl:flex">
+	<div class="mt-1 flex w-full flex-col justify-center self-center overflow-hidden sm:mt-0 sm:ml-3">
 		<div class="text-center text-sm">
 			{skin.type == 'normal' ? '官方皮肤' : '社区皮肤'}
 		</div>
