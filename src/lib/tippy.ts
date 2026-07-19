@@ -54,7 +54,12 @@ export const tippy: Tippy = (element, props = {}) => {
 	let arrowElement: HTMLElement | null = null;
 	let cleanup: (() => void) | null = null;
 	let isVisible = false;
-	let currentProps = { arrow: true, appendTo: 'parent', touch: 'tap', ...props };
+	// Default appendTo: 'body' to avoid parent overflow:hidden clipping
+	// (e.g. virtual-scroll rows with fixed height). Floating UI's
+	// computePosition uses the absolute position of the reference element,
+	// so rendering at body level still positions correctly.
+	// Per-call `appendTo` can still override this.
+	let currentProps = { arrow: true, appendTo: 'body', touch: 'tap', ...props };
 	let appendTo: Element | null = null;
 
 	// Touch-specific state

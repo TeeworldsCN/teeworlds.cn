@@ -18,6 +18,65 @@
 	$effect(() => {
 		if (!data.skins) return;
 
+		// 解析搜索语法：
+		//   author:X       → 匹配作者 (X 大小写不敏感)
+		//   pack:X         → 匹配系列/skinpack
+		//   X              → 匹配皮肤名
+		// 多个 token 用空格分隔，AND 关系。
+		// 带空格的 pack/作者可用双引号包裹：pack:"The Rotting Halls"
+		// 用 shlex 风格 tokenizer 拆分（支持引号），避免 "The Rotting Halls" 被切碎。
+		function tokenize(query: string): string[] {
+			const tokens: string[] = [];
+			let buf = '';
+			let inQuote: '"' | "'" | null = null;
+			for (const ch of query) {
+				if (inQuote) {
+					if (ch === inQuote) {
+						inQuote = null;
+					} else {
+						buf += ch;
+					}
+				} else if (ch === '"' || ch === "'") {
+					inQuote = ch;
+				} else if (ch === ' ' || ch === '\t') {
+					if (buf) {
+						tokens.push(buf);
+						buf = '';
+					}
+				} else {
+					buf += ch;
+				}
+			}
+			if (buf) tokens.push(buf);
+			return tokens;
+		}
+
+		function buildMatcher(query: string) {
+			const tokens = tokenize(query);
+			if (tokens.length === 0) return () => true;
+
+			return (skin: typeof data.skins[number]) => {
+				return tokens.every((tok) => {
+					const lower = tok.toLowerCase();
+					if (lower.startsWith('author:')) {
+						const needle = lower.slice('author:'.length);
+						return needle !== '' && skin.creator.toLowerCase().includes(needle);
+					}
+					if (lower.startsWith('pack:')) {
+						const needle = lower.slice('pack:'.length);
+						return (
+							needle !== '' &&
+							!!skin.skinpack &&
+							skin.skinpack.toLowerCase().includes(needle)
+						);
+					}
+					return skin.name.toLowerCase().includes(lower);
+				});
+			};
+		}
+
+		const matcher = buildMatcher(searchQuery);
+
 		// Filter skins based on search query and community toggle
 		const filtered = data.skins
 			.filter((skin) => {
@@ -26,13 +85,7 @@
 					return false;
 				}
 
-				// Filter by search query
-				const matchesSearch =
-					searchQuery === '' || skin.name.toLowerCase().includes(searchQuery.toLowerCase());
-
-				// For now, we don't have actual type information, so the toggle doesn't do anything
-				// In a real implementation, we would filter by skin.type here
-				return matchesSearch;
+				return matcher(skin);
 			})
 			.sort((a, b) => -a.date.localeCompare(b.date));
 
@@ -86,6 +139,19 @@
 	function getTooltipContent(skinName: string) {
 		return copiedSkin === skinName ? `${skinName} 已复制！` : `${skinName} 点击复制`;
 	}
+
+	// 皮肤卡片点击作者/系列时调用：直接替换搜索框内容为对应的过滤 token。
+	// 替换而不是累加：用户点击即"我想按这个字段筛"，避免堆出无意义的 AND。
+	// 含空格的 pack/作者自动用双引号包裹，避免被 tokenizer 切碎。
+	function quoteIfNeeded(value: string): string {
+		return /\s/.test(value) ? `"${value}"` : value;
+	}
+	function searchByAuthor(name: string) {
+		searchField = `author:${quoteIfNeeded(name)}`;
+	}
+	function searchByPack(name: string) {
+		searchField = `pack:${quoteIfNeeded(name)}`;
+	}
 </script>
 
 <svelte:head>
@@ -126,9 +192,29 @@
 			<input
 				type="text"
 				bind:value={searchField}
-				placeholder="搜索皮肤..."
-				class="w-full rounded-md bg-slate-700 py-2 pr-4 pl-10 text-slate-300 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+				placeholder="搜索皮肤…"
+				class="w-full rounded-md bg-slate-700 py-2 pr-9 pl-10 text-slate-300 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 			/>
+			{#if searchField}
+				<button
+					type="button"
+					onclick={() => (searchField = '')}
+					aria-label="清空搜索"
+					title="清空搜索"
+					class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-200"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 20 20"
+						fill="currentColor"
+						class="h-4 w-4"
+					>
+						<path
+							d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+						/>
+					</svg>
+				</button>
+			{/if}
 		</div>
 
 		<!-- Community skins toggle -->
@@ -159,6 +245,8 @@
 							{copiedSkin}
 							{copySkinName}
 							{getTooltipContent}
+							{searchByAuthor}
+							{searchByPack}
 						/>
 					</div>
 				{/each}
