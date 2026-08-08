@@ -1,7 +1,7 @@
 <script>
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
 	import Fa from 'svelte-fa';
-	import { faGamepad, faHeart } from '@fortawesome/free-solid-svg-icons';
+	import { faDice, faGamepad, faHeart } from '@fortawesome/free-solid-svg-icons';
 
 	const { data } = $props();
 
@@ -53,6 +53,13 @@
 		<div class="text-semibold">管理员你好，点这里使用管理工具</div>
 	</div>
 {/if}
+
+<div class="mt-6">
+	<ToolboxButton href="/zhongqiu"
+		><Fa icon={faDice} class="inline text-amber-400"></Fa> 中秋博饼大会</ToolboxButton
+	>
+	<div class="text-semibold">中秋限定活动:带上你的 Tee 博月饼,每天 3 次机会</div>
+</div>
 
 <div class="mt-6">
 	<ToolboxButton href="/ddnet/nouis"

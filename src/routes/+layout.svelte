@@ -10,6 +10,7 @@
 	import { faGithub } from '@fortawesome/free-brands-svg-icons';
 	import { faArrowLeft, faCoins } from '@fortawesome/free-solid-svg-icons';
 	import { uaNeedBackButton } from '$lib/helpers';
+	import { layoutTheme } from '$lib/layoutTheme.svelte';
 
 	let { children, data } = $props();
 
@@ -93,7 +94,17 @@
 		</div>
 	</header>
 
-	<main class="flex grow bg-slate-800 p-2 text-slate-300">
+	<main
+		class="relative flex grow text-slate-300 {layoutTheme.pad === false
+			? ''
+			: 'p-2'} {layoutTheme.bg ? '' : 'bg-slate-800'}"
+	>
+		{#if layoutTheme.bg}
+			<div
+				class="pointer-events-none absolute inset-0"
+				style={`background:${layoutTheme.bg}`}
+			></div>
+		{/if}
 		<div class="relative container mx-auto grow">
 			{@render children()}
 		</div>

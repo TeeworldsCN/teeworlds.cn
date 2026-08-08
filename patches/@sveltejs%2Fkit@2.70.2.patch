@@ -1,0 +1,15 @@
+diff --git a/src/core/sync/create_manifest_data/index.js b/src/core/sync/create_manifest_data/index.js
+index 6e97903682f448a9c95a01527530bd0bdb545174..e05cae4698686855736970132d30bf1029b37970 100644
+--- a/src/core/sync/create_manifest_data/index.js
++++ b/src/core/sync/create_manifest_data/index.js
+@@ -222,7 +222,9 @@ function create_routes_and_nodes(cwd, config, fallback) {
+ 
+ 			// We can't use withFileTypes because of a NodeJs bug which returns wrong results
+ 			// with isDirectory() in case of symlinks: https://github.com/nodejs/node/issues/30646
+-			const files = fs.readdirSync(dir).map((name) => ({
++			const files = fs.readdirSync(dir)
++				.sort() // upstream fix for https://github.com/sveltejs/kit/issues/15313 (PR #16074)
++				.map((name) => ({
+ 				is_dir: fs.statSync(path.join(dir, name)).isDirectory(),
+ 				name
+ 			}));
