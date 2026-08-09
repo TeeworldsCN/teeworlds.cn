@@ -1,6 +1,7 @@
 // 月宫掷骰 · 游戏核心逻辑(关卡、Boss、计分、存档)
 import { getRollLevel, judgeRoll, type DiceMods } from './midautumn';
 import { CARDS, CARD_BY_ID, condHit, type TeeCard, type TeeEffect } from './teecards';
+import { BUFF_BY_ID, type AppliedBuff } from './items';
 
 // ---- 关卡 ----
 
@@ -64,6 +65,8 @@ export interface TeamTee {
 	lastScore: number;
 	lastLevelId: string;
 	lastDice: number[];
+	/** 身上挂载的加成卡(未消耗的回合) */
+	buffs: AppliedBuff[];
 }
 
 export const TEAM_LIMIT = 6;
@@ -97,16 +100,28 @@ export interface ScoreBreakdown {
  * score = (levelScore + chips) × mult
  * ownCard: 该 Tee 自己的卡(个人效果生效)
  * teamCards: 全队所有卡(team_chips 全队生效)
+ * buffs: 身上挂载的加成卡(掷骰前使用)
  */
 export const calcTeeScore = (
 	levelId: string,
 	ownCard: TeeCard | null,
 	teamCards: TeeCard[],
-	growth: GrowthMap
+	growth: GrowthMap,
+	buffs: AppliedBuff[] = []
 ): ScoreBreakdown => {
 	const level = getRollLevel(levelId);
 	let chips = 0;
 	let mult = 1;
+
+	// 加成卡: chips 累加, mult 连乘
+	let buffChips = 0;
+	let buffMult = 1;
+	for (const b of buffs) {
+		const eff = BUFF_BY_ID.get(b.cardId)?.effect;
+		if (!eff) continue;
+		if (eff.type === 'chips') buffChips += eff.value ?? 0;
+		else if (eff.type === 'mult') buffMult *= eff.value ?? 1;
+	}
 
 	const applyCard = (card: TeeCard) => {
 		const eff = card.effect;
@@ -141,8 +156,28 @@ export const calcTeeScore = (
 	}
 
 	const base = level.score;
-	const total = Math.max(0, Math.round((base + chips) * mult * 100) / 100);
-	return { base, chips, mult, teamMult: 1, total };
+	const total = Math.max(0, Math.round((base + chips + buffChips) * mult * buffMult * 100) / 100);
+	return { base, chips: chips + buffChips, mult: mult * buffMult, teamMult: 1, total };
+};
+
+/** 加成卡保底: 掷出"再接再厉"但有保底效果(满月祝福)时, 按一秀计 */
+export const applyBuffGuarantee = (levelId: string, buffs: AppliedBuff[]): string => {
+	if (
+		levelId === 'none' &&
+		buffs.some((b) => BUFF_BY_ID.get(b.cardId)?.effect.type === 'guarantee')
+	) {
+		return 'yi_xiu';
+	}
+	return levelId;
+};
+
+/** 过关后加成卡回合数 -1, 归零移除 */
+export const decayBuffs = (team: TeamTee[]): void => {
+	for (const t of team) {
+		t.buffs = t.buffs
+			.map((b) => ({ ...b, turnsLeft: b.turnsLeft - 1 }))
+			.filter((b) => b.turnsLeft > 0);
+	}
 };
 
 /** 计算全队总分(个人分之和 × 团队倍率) */

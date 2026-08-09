@@ -24,6 +24,10 @@
 		desc?: string;
 		/** tooltip 底部附加信息(队伍:卖出价值) */
 		tipExtra?: string;
+		/** tooltip 附加明细行(队伍:身上加成项目+剩余回合、成长卡当前数值) */
+		tipList?: { text: string; cls?: string }[];
+		/** 卡面角标(队伍:身上加成数量) */
+		badge?: string;
 		/** 卡牌下方的操作/结果区(队伍:结果;3 选 1:选择按钮;商店:购买按钮) */
 		actions?: Snippet;
 		/** 卡牌右上角角标(队伍:卖出 ×) */
@@ -44,6 +48,8 @@
 		pose,
 		desc,
 		tipExtra,
+		tipList,
+		badge,
 		actions,
 		sellBtn,
 		selected = false,
@@ -94,6 +100,13 @@
 		{#if sellBtn}
 			{@render sellBtn()}
 		{/if}
+		{#if badge}
+			<div
+				class="absolute -top-1.5 -left-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/90 px-1 text-[10px] font-bold text-amber-950 shadow"
+			>
+				{badge}
+			</div>
+		{/if}
 		<div class="mx-auto h-12 w-12">
 			<TeeRender name={teeSkin} {emote} {pose} className="h-full w-full" />
 		</div>
@@ -102,7 +115,7 @@
 		</div>
 	</div>
 
-	{#if desc}
+	{#if desc || tipExtra || tipList?.length}
 		<div
 			bind:this={tipEl}
 			class="tip pointer-events-none absolute bottom-full z-50 mb-2 w-max max-w-52 rounded-lg border px-2.5 py-1.5 text-center text-xs leading-snug text-slate-200 shadow-xl {tipLeft ===
@@ -114,6 +127,13 @@
 			{desc}
 			{#if tipExtra}
 				<div class="mt-1 text-[10px] font-semibold text-amber-300">{tipExtra}</div>
+			{/if}
+			{#if tipList?.length}
+				<div class="mt-1.5 space-y-0.5 border-t border-slate-600/50 pt-1 text-left text-[10px]">
+					{#each tipList as line}
+						<div class={line.cls ?? 'text-slate-400'}>{line.text}</div>
+					{/each}
+				</div>
 			{/if}
 		</div>
 	{/if}

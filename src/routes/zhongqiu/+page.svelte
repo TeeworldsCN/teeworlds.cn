@@ -9,15 +9,27 @@
 		hitIndices,
 		judgeRoll,
 		rollDice,
-		showPip
+		showPip,
+		type RollLevel
 	} from '$lib/midautumn';
 	import { RARITY_INFO, drawCards, type TeeCard, CARDS } from '$lib/teecards';
 	import {
+		BUFF_BY_ID,
+		BUFF_CARDS,
+		REWORK_BY_ID,
+		REWORK_CARDS,
+		drawItems,
+		type BuffCard,
+		type ReworkCard
+	} from '$lib/items';
+	import {
 		TEAM_LIMIT,
+		applyBuffGuarantee,
 		applyGrowth,
 		calcTeeScore,
 		calcTeamTotal,
 		cardById,
+		decayBuffs,
 		economyReward,
 		getBoss,
 		getSave,
@@ -74,7 +86,8 @@
 
 	// ---- 游戏状态 ----
 
-	type Phase = 'idle' | 'intro' | 'rolling' | 'round_end' | 'reward' | 'shop' | 'game_over';
+	type Phase =
+		'idle' | 'intro' | 'rolling' | 'round_confirm' | 'round_end' | 'reward' | 'shop' | 'game_over';
 	let phase = $state<Phase>('idle');
 
 	let round = $state(1);
@@ -90,6 +103,10 @@
 	let rerollAllUsed = $state(false);
 	let lastLevel = $state(getRollLevel('none'));
 	let lastBreakdown = $state({ base: 0, chips: 0, mult: 1, teamMult: 1, total: 0 });
+	// 结算动画: 一条一条弹出(Boss 效果 → 等级 → 加成卡 → 总分)
+	let settleSteps = $state<{ text: string; cls: string }[]>([]);
+	let settleIdx = $state(-1);
+	let settling = $state(false);
 
 	// 结算信息
 	let roundTotal = $state(0);
@@ -102,8 +119,85 @@
 
 	// 集市
 	let rewardChoices = $state<TeeCard[]>([]);
-	let shopCards = $state<TeeCard[]>([]);
+	let shopBuffs = $state<BuffCard[]>([]);
+	let shopReworks = $state<ReworkCard[]>([]);
 	let lastRewardIdx = $state(-1);
+
+	// 道具库存(加成卡 / 重构卡)
+	let buffInventory = $state<Record<string, number>>({});
+	let reworkInventory = $state<Record<string, number>>({});
+	let selectedBuff = $state<BuffCard | null>(null);
+	let rerollTarget = $state(-1); // 回合确认中重掷的 Tee 下标(-1 = 无)
+	// 团队结算动画(回合确认后: 团队倍率卡一条一条弹)
+	let teamSettleSteps = $state<{ text: string; cls: string }[]>([]);
+	let teamSettleIdx = $state(-1);
+	let teamSettling = $state(false);
+
+	// ---- 加成卡 / 重构卡工具 ----
+
+	const buffEntries = $derived(Object.entries(buffInventory) as [string, number][]);
+	const reworkEntries = $derived(Object.entries(reworkInventory) as [string, number][]);
+	const totalRework = () => Object.values(reworkInventory).reduce((a, b) => a + b, 0);
+
+	const onBuffDragStart = (e: DragEvent, card: BuffCard) => {
+		if (phase !== 'intro') {
+			e.preventDefault();
+			return;
+		}
+		e.dataTransfer?.setData('text/plain', card.id);
+		if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
+	};
+
+	const onTeeDrop = (e: DragEvent, idx: number) => {
+		e.preventDefault();
+		const id = e.dataTransfer?.getData('text/plain');
+		if (!id) return;
+		const card = BUFF_BY_ID.get(id);
+		if (card) applyBuffToTee(card, idx);
+	};
+
+	const toggleSelectBuff = (card: BuffCard) => {
+		if (phase !== 'intro') return;
+		selectedBuff = selectedBuff?.id === card.id ? null : card;
+	};
+
+	/** 掷骰前把加成卡挂到 Tee 身上(消耗 1 张库存) */
+	const applyBuffToTee = (card: BuffCard, idx: number) => {
+		if (phase !== 'intro') return;
+		const cur = buffInventory[card.id] ?? 0;
+		if (cur <= 0) return;
+		const next: Record<string, number> = {};
+		for (const [k, v] of Object.entries(buffInventory)) {
+			if (k === card.id) {
+				if (v > 1) next[k] = v - 1;
+			} else {
+				next[k] = v;
+			}
+		}
+		buffInventory = next;
+		team[idx].buffs = [...team[idx].buffs, { cardId: card.id, turnsLeft: card.turns }];
+		selectedBuff = null;
+	};
+
+	/** 队伍卡 tooltip 明细: 加成项目+剩余回合、成长卡当前数值 */
+	const teeTipList = (tee: TeamTee) => {
+		const lines: { text: string; cls?: string }[] = [];
+		const card = cardOf(tee);
+		if (card?.effect.type === 'scaling_mult') {
+			const layers = growth[card.id] ?? 0;
+			lines.push({ text: `成长: ×${1 + layers}(已叠 ${layers} 层)`, cls: 'text-emerald-300' });
+		}
+		for (const b of tee.buffs) {
+			const bc = BUFF_BY_ID.get(b.cardId);
+			if (bc) {
+				lines.push({
+					text: `${bc.name}: ${bc.desc} · 剩 ${b.turnsLeft} 回合`,
+					cls: 'text-amber-300'
+				});
+			}
+		}
+		return lines;
+	};
 
 	// 交互(改点/重掷)
 	type PendingAction =
@@ -161,6 +255,8 @@
 
 	onMount(() => {
 		loadSkin();
+		// 作弊引擎: DEV 或 URL 带 ?cheat 时启用
+		if (import.meta.env.DEV || new URLSearchParams(location.search).has('cheat')) enableCheat();
 	});
 
 	// ---- 工具 ----
@@ -170,6 +266,95 @@
 	const rarityOf = (c: TeeCard) => RARITY_INFO[c.rarity];
 
 	const rollSingle = () => 1 + Math.floor(Math.random() * 6);
+
+	// ---- 作弊引擎(测试用): URL 带 ?cheat 或 DEV 时启用, window.__cheat 可直接 JS 操纵 ----
+	let cheatNextRoll = $state<number[] | null>(null); // 强制下一次掷骰结果
+	let cheatNextDie = $state<number | null>(null); // 强制下一次单骰重掷结果
+	const cheatRoll = (): number[] => {
+		if (cheatNextRoll) {
+			const d = cheatNextRoll;
+			cheatNextRoll = null;
+			return d;
+		}
+		return rollDice();
+	};
+	const cheatSingle = (): number => {
+		if (cheatNextDie !== null) {
+			const v = cheatNextDie;
+			cheatNextDie = null;
+			return v;
+		}
+		return rollSingle();
+	};
+	const enableCheat = () => {
+		const api = {
+			/** 设置月饼币 */
+			mooncakes: (n: number) => (mooncakes = n),
+			/** 加成卡入库存 addBuff('yuefu', 2) */
+			addBuff: (id: string, n = 1) => {
+				buffInventory = { ...buffInventory, [id]: (buffInventory[id] ?? 0) + n };
+			},
+			/** 重构卡入库存 addRework('chongzhifu', 2) */
+			addRework: (id: string, n = 1) => {
+				reworkInventory = { ...reworkInventory, [id]: (reworkInventory[id] ?? 0) + n };
+			},
+			/** 直接把加成卡挂到 Tee(不耗库存) buff(0, 'manyuezhufu') */
+			buff: (teeIdx: number, buffId: string) => {
+				const bc = BUFF_BY_ID.get(buffId);
+				if (!bc) return;
+				team[teeIdx].buffs = [...team[teeIdx].buffs, { cardId: buffId, turnsLeft: bc.turns }];
+			},
+			/** 强制下一次掷骰结果 nextRoll([2,3,5,6,1,2]) */
+			nextRoll: (dice: number[]) => {
+				cheatNextRoll = dice;
+			},
+			/** 强制下一次单骰重掷结果 */
+			nextDie: (v: number) => {
+				cheatNextDie = v;
+			},
+			/** Tee 卡直接入队(可超 6 人) addCard('guanghangong') */
+			addCard: (cardId: string) => {
+				const c = cardById(cardId);
+				if (!c) return;
+				team = [
+					...team,
+					{
+						cardId: c.id,
+						lastScore: 0,
+						lastLevelId: 'none',
+						lastDice: [1, 1, 1, 1, 1, 1],
+						buffs: []
+					}
+				];
+			},
+			/** 成长卡层数 grow('guanghangong', 3) */
+			grow: (cardId: string, layers: number) => {
+				growth = { ...growth, [cardId]: layers };
+			},
+			/** 当前游戏状态快照 */
+			state: () => ({
+				phase,
+				round,
+				currentTee,
+				mooncakes,
+				target,
+				currentScore,
+				buffInventory,
+				reworkInventory,
+				team: team.map((t) => ({
+					cardId: t.cardId,
+					lastScore: t.lastScore,
+					lastLevelId: t.lastLevelId,
+					buffs: t.buffs
+				}))
+			})
+		};
+		(window as unknown as Record<string, unknown>).__cheat = api;
+		console.log(
+			"%c[作弊引擎] __cheat 已启用: nextRoll([2,3,5,6,1,2]) 强制骰子 · buff(0,'manyuezhufu') 挂卡 · addBuff/addRework 加库存",
+			'color:#fbbf24;font-weight:bold'
+		);
+	};
 
 	// ---- 游戏流程 ----
 
@@ -182,23 +367,83 @@
 				playerSkin: skin.trim() || 'x_spec',
 				lastScore: 0,
 				lastLevelId: 'none',
-				lastDice: [1, 1, 1, 1, 1, 1]
+				lastDice: [1, 1, 1, 1, 1, 1],
+				buffs: []
 			},
 			...starters.map((c) => ({
 				cardId: c.id,
 				lastScore: 0,
 				lastLevelId: 'none',
-				lastDice: [1, 1, 1, 1, 1, 1]
+				lastDice: [1, 1, 1, 1, 1, 1],
+				buffs: []
 			}))
 		];
 		growth = {};
 		mooncakes = 0;
+		buffInventory = {};
+		reworkInventory = {};
+		selectedBuff = null;
+		rerollTarget = -1;
+		teamSettleSteps = [];
+		teamSettleIdx = -1;
+		teamSettling = false;
 		round = 1;
 		phase = 'intro';
 		beginRound();
 	};
 
+	/** 每关开始: 加成卡回合数 -1, 归零移除 */
+	const decayBuffsForRound = () => {
+		decayBuffs(team);
+	};
+
+	/** 掷完展示后: 进入下一个 Tee / 回回合确认(重掷后) / 全队掷完 */
+	const advanceAfterTee = () => {
+		teeAnim = '';
+		if (rerollTarget >= 0) {
+			// 回合确认中重掷的人掷完了, 回到回合确认
+			rerollTarget = -1;
+			finishRound();
+			return;
+		}
+		if (currentTee + 1 < team.length) {
+			currentTee += 1;
+			dice = [1, 1, 1, 1, 1, 1];
+			teeEmote = EMOTE.normal;
+			rollCurrent();
+		} else {
+			finishRound();
+		}
+	};
+
+	/** 回合确认: 使用重掷符让指定 Tee 重新投掷(回退旧分) */
+	const rerollTee = (idx: number) => {
+		if (phase !== 'round_confirm' || teamSettling || totalRework() <= 0 || rolling) return;
+		const id = Object.keys(reworkInventory)[0];
+		if (!id) return;
+		const n = (reworkInventory[id] ?? 0) - 1;
+		if (n > 0) {
+			reworkInventory = { ...reworkInventory, [id]: n };
+		} else {
+			const rest: Record<string, number> = {};
+			for (const [k, v] of Object.entries(reworkInventory)) if (k !== id) rest[k] = v;
+			reworkInventory = rest;
+		}
+		rerollTarget = idx;
+		currentTee = idx;
+		const tee = team[idx];
+		currentScore -= tee.lastScore; // 回退旧分, 重掷后重新计入
+		tee.lastScore = 0;
+		tee.lastLevelId = 'none';
+		hitDice = [];
+		teamSettleSteps = [];
+		teamSettleIdx = -1;
+		phase = 'rolling';
+		rollCurrent();
+	};
+
 	const beginRound = () => {
+		decayBuffsForRound();
 		boss = isBossRound(round) ? getBoss(round) : null;
 		target = Math.round(roundTarget(round) * (boss?.targetMult ?? 1));
 		currentScore = 0;
@@ -213,11 +458,16 @@
 		dice = [1, 1, 1, 1, 1, 1];
 		pendingAction = null;
 		pointPicker = false;
+		rerollTarget = -1;
+		teamSettleSteps = [];
+		teamSettleIdx = -1;
+		teamSettling = false;
 		phase = 'intro';
 	};
 
 	const startRolling = () => {
 		phase = 'rolling';
+		selectedBuff = null;
 		rollCurrent();
 	};
 
@@ -240,7 +490,7 @@
 
 		setTimeout(() => {
 			clearInterval(timer);
-			dice = rollDice(); // 定格最终点数
+			dice = cheatRoll(); // 定格最终点数(nextRoll 在此消费)
 		}, rollTotal * 0.8);
 
 		setTimeout(() => {
@@ -280,7 +530,7 @@
 			pointPicker = true;
 			return;
 		} else if (act.kind === 'reroll') {
-			dice[i] = rollSingle();
+			dice[i] = cheatSingle();
 			act.count -= 1;
 		}
 
@@ -311,11 +561,72 @@
 	};
 
 	/** 判定 + 计分 + 下一个 Tee */
+	/** Boss 点效简写(结算动画第一步展示) */
+	const BOSS_EFFECT_SHORT: Record<string, string> = {
+		miyue: '6 视为 3',
+		yingyue: '4 视为 2',
+		shiyue: '点数 -1',
+		wuyue: '6 视为 1'
+	};
+
+	/** 简化得分公式: 加 0 / 乘 1 不显示 */
+	const formatScoreExpr = (base: number, chips: number, mult: number): string => {
+		const head = chips > 0 ? `(${base} + ${chips})` : `${base}`;
+		return mult !== 1 ? `${head} × ${mult}` : head;
+	};
+
+	/** 构建结算动画步骤链(Boss 效果 → 等级 → 加成卡 → 总分) */
+	const buildSettleSteps = (rawLevelId: string, level: RollLevel, tee: TeamTee) => {
+		const steps: { text: string; cls: string }[] = [];
+		// Boss 效果最先生效
+		if (boss?.mods) {
+			steps.push({
+				text: `${boss.emoji} ${boss.name}:${BOSS_EFFECT_SHORT[boss.id] ?? ''}`,
+				cls: 'text-red-300'
+			});
+		}
+		// 等级: 显示原始判定(满月祝福保底在加成卡行单独体现)
+		const rawLevel = getRollLevel(rawLevelId);
+		const lvlCls =
+			rawLevel.score >= 320
+				? 'text-amber-300'
+				: rawLevel.score > 0
+					? 'text-emerald-300'
+					: 'text-slate-400';
+		steps.push({ text: `${rawLevel.emoji} ${rawLevel.name}`, cls: lvlCls });
+		// 加成卡逐个生效(含满月祝福保底)
+		for (const b of tee.buffs) {
+			const bc = BUFF_BY_ID.get(b.cardId);
+			if (!bc) continue;
+			const eff = bc.effect;
+			if (eff.type === 'chips')
+				steps.push({ text: `${bc.name}:+${eff.value}`, cls: 'text-amber-300' });
+			else if (eff.type === 'mult')
+				steps.push({ text: `${bc.name}:×${eff.value}`, cls: 'text-purple-300' });
+			else if (eff.type === 'guarantee' && rawLevelId === 'none' && level.id === 'yi_xiu')
+				steps.push({ text: `${bc.name}:保底一秀`, cls: 'text-amber-300' });
+		}
+		// 总分
+		const hasMods = lastBreakdown.chips > 0 || lastBreakdown.mult !== 1;
+		steps.push({
+			text: hasMods
+				? `${formatScoreExpr(
+						lastBreakdown.base,
+						lastBreakdown.chips,
+						lastBreakdown.mult
+					)} = ${formatScore(lastBreakdown.total)} 分`
+				: `${formatScore(lastBreakdown.total)} 分`,
+			cls: 'font-bold text-amber-200'
+		});
+		return steps;
+	};
+
 	const finalizeTee = () => {
 		const tee = team[currentTee];
 		const card = cardOf(tee);
 
-		const level = judgeRoll(dice, boss?.mods);
+		const rawLevel = judgeRoll(dice, boss?.mods);
+		const level = getRollLevel(applyBuffGuarantee(rawLevel.id, tee.buffs));
 
 		// 后羿: 再接再厉时重掷全部(限一次)
 		if (level.id === 'none' && hasRerollAllOnNone(card) && !rerollAllUsed) {
@@ -329,7 +640,7 @@
 			}, 90 / speed);
 			setTimeout(() => {
 				clearInterval(timer);
-				dice = rollDice();
+				dice = cheatRoll();
 			}, rollTotal * 0.8);
 			setTimeout(() => {
 				rolling = false;
@@ -341,7 +652,7 @@
 
 		hitDice = hitIndices(dice, level.id, boss?.mods);
 		lastLevel = level;
-		lastBreakdown = calcTeeScore(level.id, card, allCards(), growth);
+		lastBreakdown = calcTeeScore(level.id, card, allCards(), growth, tee.buffs);
 
 		tee.lastDice = [...dice];
 		tee.lastLevelId = level.id;
@@ -361,39 +672,92 @@
 		}
 		resultFlash += 1;
 
-		setTimeout(() => {
-			teeAnim = '';
-			if (currentTee + 1 < team.length) {
-				currentTee += 1;
-				dice = [1, 1, 1, 1, 1, 1];
-				teeEmote = EMOTE.normal;
-				rollCurrent();
-			} else {
-				finishRound();
-			}
-		}, 1400 / speed);
+		// 结算动画: 一条一条弹出(Boss → 等级 → 加成卡 → 总分)
+		settleSteps = buildSettleSteps(rawLevel.id, level, tee);
+		settleIdx = -1;
+		settling = true;
+		const stepMs = 380 / speed;
+		settleSteps.forEach((_, i) => {
+			setTimeout(
+				() => {
+					settleIdx = i;
+				},
+				(i + 1) * stepMs
+			);
+		});
+		setTimeout(
+			() => {
+				settling = false;
+				teeAnim = '';
+				setTimeout(advanceAfterTee, 600 / speed);
+			},
+			(settleSteps.length + 1) * stepMs
+		);
 	};
 
-	/** 全队掷完: 结算本关 */
+	/** 全队掷完: 进入回合确认(可用重掷符, 或直接结算) */
 	const finishRound = () => {
+		phase = 'round_confirm';
+	};
+
+	/** 结算回合: 团队倍率卡一条一条弹, 然后判定过关/失败 */
+	const confirmRound = () => {
+		if (teamSettling || phase !== 'round_confirm') return;
 		const cards = allCards();
+		const steps: { text: string; cls: string }[] = [];
+		for (const c of cards) {
+			if (c.effect.type === 'team_mult') {
+				steps.push({ text: `${c.name}:团队总分 ×${c.effect.value}`, cls: 'text-cyan-300' });
+			}
+		}
+		const sum = team.reduce((s, t) => s + t.lastScore, 0);
 		const { total, teamMult } = calcTeamTotal(
 			team.map((t) => t.lastScore),
 			cards
 		);
 		roundTotal = total;
+		steps.push({
+			text:
+				teamMult !== 1
+					? `${formatScore(sum)} × ${teamMult} = ${formatScore(total)} 分`
+					: `${formatScore(total)} 分`,
+			cls: 'font-bold text-amber-200'
+		});
+		teamSettleSteps = steps;
+		teamSettleIdx = -1;
+		teamSettling = true;
+		const stepMs = 500 / speed;
+		steps.forEach((_, i) => {
+			setTimeout(
+				() => {
+					teamSettleIdx = i;
+				},
+				(i + 1) * stepMs
+			);
+		});
+		setTimeout(
+			() => {
+				teamSettling = false;
+				settleRound();
+			},
+			(steps.length + 1) * stepMs
+		);
+	};
 
+	/** 判定过关/失败(团队结算动画播完后) */
+	const settleRound = () => {
+		const total = roundTotal;
 		if (total >= target) {
 			// 过关
 			const base = roundReward(round);
 			const overflow = overflowReward(total, target);
-			const eco = economyReward(cards);
+			const eco = economyReward(allCards());
 			const gained = base + overflow + eco;
 			roundRewardGained = base;
 			overflowGained = overflow;
 			economyGained = eco;
 			mooncakes += gained;
-			growth = applyGrowth(cards, growth);
+			growth = applyGrowth(allCards(), growth);
 			phase = 'round_end';
 		} else {
 			// 失败
@@ -425,7 +789,13 @@
 		if (!card) return;
 		team = [
 			...team,
-			{ cardId: card.id, lastScore: 0, lastLevelId: 'none', lastDice: [1, 1, 1, 1, 1, 1] }
+			{
+				cardId: card.id,
+				lastScore: 0,
+				lastLevelId: 'none',
+				lastDice: [1, 1, 1, 1, 1, 1],
+				buffs: []
+			}
 		];
 		lastRewardIdx = idx;
 		// 选中后短暂展示选中效果,自动进入商店
@@ -434,25 +804,29 @@
 
 	const openShop = () => {
 		phase = 'shop';
-		shopCards = drawCards(4);
+		shopBuffs = drawItems(BUFF_CARDS, 3);
+		shopReworks = drawItems(REWORK_CARDS, 1);
 	};
 
 	const refreshShop = () => {
 		if (mooncakes < 2) return;
 		mooncakes -= 2;
-		shopCards = drawCards(4);
+		shopBuffs = drawItems(BUFF_CARDS, 3);
+		shopReworks = drawItems(REWORK_CARDS, 1);
 	};
 
-	const buyCard = (card: TeeCard) => {
-		if (team.length >= TEAM_LIMIT) return;
-		const price = rarityOf(card).price;
-		if (mooncakes < price) return;
-		mooncakes -= price;
-		team = [
-			...team,
-			{ cardId: card.id, lastScore: 0, lastLevelId: 'none', lastDice: [1, 1, 1, 1, 1, 1] }
-		];
-		shopCards = shopCards.filter((c) => c.id !== card.id);
+	const buyBuff = (card: BuffCard) => {
+		if (mooncakes < card.price) return;
+		mooncakes -= card.price;
+		buffInventory = { ...buffInventory, [card.id]: (buffInventory[card.id] ?? 0) + 1 };
+		shopBuffs = shopBuffs.filter((c) => c.id !== card.id);
+	};
+
+	const buyRework = (card: ReworkCard) => {
+		if (mooncakes < card.price) return;
+		mooncakes -= card.price;
+		reworkInventory = { ...reworkInventory, [card.id]: (reworkInventory[card.id] ?? 0) + 1 };
+		shopReworks = shopReworks.filter((c) => c.id !== card.id);
 	};
 
 	const sellTee = (idx: number) => {
@@ -579,12 +953,14 @@
 						</li>
 						<li>② 过关后获得<b class="text-amber-300">月饼币</b>奖励(剩分溢出也有奖励)</li>
 						<li>
-							③ 在中秋集市<b class="text-amber-300">免费 3 选 1</b> 兑换 Tee 卡,也可花钱刷新/额外购买
+							③ 过关后进<b class="text-amber-300">中秋集市</b>:免费 3 选 1 换 Tee 卡;商店出售<b
+								class="text-sky-300">加成卡</b
+							>与<b class="text-purple-300">重构卡</b>
 						</li>
 						<li>
-							④ Tee 卡各有特殊能力:加分、倍率、<b class="text-cyan-300">重掷骰子</b>、<b
-								class="text-cyan-300">修改点数</b
-							>……构筑你的最强队伍
+							④ <b class="text-sky-300">加成卡</b>掷骰前拖到 Tee 身上(持续 1~3 关);<b
+								class="text-purple-300">重构卡(重掷符)</b
+							>在<b>全队掷完后、结算回合前</b>点队伍 Tee 让它重掷,构筑你的最强队伍
 						</li>
 						<li>
 							⑤ 每 3 关出现<b class="text-red-300">月宫守卫(Boss)</b>,带来目标翻倍、点数变化等特效
@@ -665,6 +1041,61 @@
 				</div>
 			</div>
 
+			<!-- ================= 加成卡栏(队伍上方) ================= -->
+			<div class="mt-4 rounded-2xl border border-sky-500/25 bg-slate-900/60 p-3 backdrop-blur-sm">
+				<div class="flex items-center justify-between text-xs text-slate-400">
+					<span>
+						✨ 加成卡
+						{#if phase === 'intro'}
+							<span class="ml-1 text-sky-300">(掷骰前拖到 Tee 上,或点选后点 Tee)</span>
+						{/if}
+					</span>
+					<span class="text-slate-500">持续 1~3 关,过关后减 1</span>
+				</div>
+				{#if buffEntries.length === 0}
+					<div class="mt-2 text-xs text-slate-600">暂无加成卡,去中秋集市购买</div>
+				{:else}
+					<div class="mt-2 flex flex-wrap gap-2">
+						{#each buffEntries as [id, count]}
+							{@const card = BUFF_BY_ID.get(id)!}
+							<div
+								role="button"
+								tabindex={phase === 'intro' ? 0 : -1}
+								class="relative rounded-xl transition {selectedBuff?.id === card.id
+									? 'ring-2 ring-amber-400'
+									: ''} {phase === 'intro' ? 'cursor-grab hover:-translate-y-0.5' : 'opacity-70'}"
+								draggable={phase === 'intro'}
+								ondragstart={(e) => onBuffDragStart(e, card)}
+								onclick={() => toggleSelectBuff(card)}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										toggleSelectBuff(card);
+									}
+								}}
+								title="拖到队伍 Tee 上使用"
+							>
+								<TeeCardView
+									card={null}
+									skin={card.skin}
+									name={card.name}
+									desc={`${card.desc} · 持续 ${card.turns} 回合`}
+								>
+									{#snippet actions()}
+										<div class="text-[10px] font-bold text-amber-300">×{count}</div>
+									{/snippet}
+								</TeeCardView>
+							</div>
+						{/each}
+					</div>
+				{/if}
+				{#if selectedBuff && phase === 'intro'}
+					<div class="mt-2 text-xs font-semibold text-amber-300">
+						已选中「{selectedBuff.name}」,点击队伍中的 Tee 挂上
+					</div>
+				{/if}
+			</div>
+
 			<!-- ================= 队伍 ================= -->
 			<div class="mt-4 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-3 backdrop-blur-sm">
 				<div class="flex items-center justify-between text-xs text-slate-400">
@@ -673,42 +1104,110 @@
 				</div>
 				<div class="mt-2 flex flex-wrap gap-2">
 					{#each team as tee, i (i)}
-						{#snippet sellBtn()}
-							<button
-								class="absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/90 text-[10px] font-bold text-white shadow transition hover:bg-red-400"
-								title="卖出 {cardOf(tee)?.name},得 {rarityOf(cardOf(tee)!).sell} 🥮"
-								onclick={() => sellTee(i)}
-							>
-								×
-							</button>
-						{/snippet}
-						<TeeCardView
-							card={cardOf(tee)}
-							skin={tee.playerSkin ?? 'x_spec'}
-							name="我"
-							desc={cardOf(tee)?.desc}
-							tipExtra={tee.cardId ? `卖出得 ${rarityOf(cardOf(tee)!).sell} 🥮` : undefined}
-							emote={i === currentTee ? teeEmote : EMOTE.normal}
-							pose={i === currentTee ? teePose : IDLE_POSE}
-							active={i === currentTee && phase === 'rolling'}
-							animate={i === currentTee ? teeAnimClass : ''}
-							sellBtn={(phase === 'reward' || phase === 'shop') && i > 0 && tee.cardId
-								? sellBtn
-								: undefined}
+						<div
+							role="button"
+							tabindex={phase === 'intro' && selectedBuff ? 0 : -1}
+							class="rounded-xl p-1 transition {phase === 'intro' && selectedBuff
+								? 'bg-amber-400/5 ring-1 ring-amber-400/70'
+								: ''}"
+							ondragover={(e) => {
+								if (phase === 'intro') e.preventDefault();
+							}}
+							ondrop={(e) => onTeeDrop(e, i)}
+							onclick={() => selectedBuff && applyBuffToTee(selectedBuff, i)}
+							onkeydown={(e) => {
+								if ((e.key === 'Enter' || e.key === ' ') && selectedBuff) {
+									e.preventDefault();
+									applyBuffToTee(selectedBuff, i);
+								}
+							}}
 						>
-							{#snippet actions()}
-								{#if tee.lastScore > 0}
-									<div class="text-[10px] font-bold text-amber-300">
-										{formatScore(tee.lastScore)}
-									</div>
-									<div class="text-[9px] text-slate-500">{getRollLevel(tee.lastLevelId).name}</div>
-								{:else}
-									<div class="text-[10px] text-slate-600">待掷</div>
-								{/if}
+							{#snippet sellBtn()}
+								<button
+									class="absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/90 text-[10px] font-bold text-white shadow transition hover:bg-red-400"
+									title="卖出 {cardOf(tee)?.name},得 {rarityOf(cardOf(tee)!).sell} 🥮"
+									onclick={() => sellTee(i)}
+								>
+									×
+								</button>
 							{/snippet}
-						</TeeCardView>
+							<TeeCardView
+								card={cardOf(tee)}
+								skin={tee.playerSkin ?? 'x_spec'}
+								name="我"
+								desc={cardOf(tee)?.desc}
+								tipExtra={tee.cardId ? `卖出得 ${rarityOf(cardOf(tee)!).sell} 🥮` : undefined}
+								tipList={teeTipList(tee)}
+								badge={tee.buffs.length > 0 ? `✨${tee.buffs.length}` : undefined}
+								emote={i === currentTee ? teeEmote : EMOTE.normal}
+								pose={i === currentTee ? teePose : IDLE_POSE}
+								active={i === currentTee && phase === 'rolling'}
+								animate={i === currentTee ? teeAnimClass : ''}
+								sellBtn={(phase === 'reward' || phase === 'shop') && i > 0 && tee.cardId
+									? sellBtn
+									: undefined}
+							>
+								{#snippet actions()}
+									{#if tee.lastScore > 0}
+										<div class="text-[10px] font-bold text-amber-300">
+											{formatScore(tee.lastScore)}
+										</div>
+										<div class="text-[9px] text-slate-500">
+											{getRollLevel(tee.lastLevelId).name}
+										</div>
+									{:else}
+										<div class="text-[10px] text-slate-600">待掷</div>
+									{/if}
+									{#if phase === 'round_confirm' && !teamSettling && totalRework() > 0}
+										<button
+											class="mt-0.5 w-full rounded border border-purple-400/50 bg-purple-500/20 py-0.5 text-[10px] font-bold text-purple-200 transition hover:bg-purple-500/30"
+											onclick={() => rerollTee(i)}
+										>
+											🎲 重掷
+										</button>
+									{/if}
+								{/snippet}
+							</TeeCardView>
+						</div>
 					{/each}
 				</div>
+			</div>
+
+			<!-- ================= 重构卡栏(队伍下方) ================= -->
+			<div
+				class="mt-4 rounded-2xl border border-purple-500/25 bg-slate-900/60 p-3 backdrop-blur-sm"
+			>
+				<div class="flex items-center justify-between text-xs text-slate-400">
+					<span>
+						🔧 重构卡
+						{#if phase === 'round_confirm' && totalRework() > 0 && !teamSettling}
+							<span class="ml-1 text-purple-300">(点击队伍 Tee 使用)</span>
+						{/if}
+					</span>
+					<span class="text-slate-500">全队掷完后、结算前使用</span>
+				</div>
+				{#if reworkEntries.length === 0}
+					<div class="mt-2 text-xs text-slate-600">暂无重构卡,去中秋集市购买</div>
+				{:else}
+					<div class="mt-2 flex flex-wrap gap-2">
+						{#each reworkEntries as [id, count]}
+							{@const card = REWORK_BY_ID.get(id)!}
+							<div
+								class="rounded-xl transition {phase === 'round_confirm' &&
+								totalRework() > 0 &&
+								!teamSettling
+									? 'ring-2 ring-purple-400'
+									: ''}"
+							>
+								<TeeCardView card={null} skin={card.skin} name={card.name} desc={card.desc}>
+									{#snippet actions()}
+										<div class="text-[10px] font-bold text-amber-300">×{count}</div>
+									{/snippet}
+								</TeeCardView>
+							</div>
+						{/each}
+					</div>
+				{/if}
 			</div>
 
 			<!-- ================= 骰子区 ================= -->
@@ -792,28 +1291,56 @@
 							</div>
 						{/if}
 
-						<!-- 最近结果 -->
+						<!-- 最近结果: 结算动画逐条弹出 -->
 						{#if resultFlash > 0}
-							<div class="mt-3 flex items-center justify-center gap-3">
-								<span class="text-2xl">{lastLevel.emoji}</span>
-								<div class="text-center">
-									<div
-										class="font-bold {lastLevel.score >= 320
-											? 'text-amber-300'
-											: lastLevel.score > 0
-												? 'text-emerald-300'
-												: 'text-slate-400'}"
-									>
-										{lastLevel.name}
-										<span class="ml-1 text-xs font-normal text-slate-400">
-											({lastBreakdown.base} + {lastBreakdown.chips}) × {lastBreakdown.mult} = {formatScore(
-												lastBreakdown.total
-											)}
-										</span>
-									</div>
-								</div>
+							<div class="mt-3 flex flex-col items-center justify-center gap-1 text-sm">
+								{#each settleSteps as step, i (i)}
+									{#if i <= settleIdx}
+										<div class="settle-step {step.cls}">{step.text}</div>
+									{/if}
+								{/each}
 							</div>
 						{/if}
+
+						<!-- 重构卡: 回合确认中点击队伍 Tee 使用 -->
+					{/if}
+				</div>
+			{/if}
+
+			<!-- ================= 回合确认(全队掷完, 结算前) ================= -->
+			{#if phase === 'round_confirm'}
+				<div
+					class="mt-4 rounded-2xl border border-amber-500/25 bg-slate-900/70 p-4 text-center backdrop-blur-sm"
+				>
+					<div class="text-lg font-bold text-amber-200">🌕 回合结算</div>
+					<div class="mt-1 text-sm text-slate-400">
+						全队已掷完
+						{#if !teamSettling && totalRework() > 0}
+							· 点击队伍中的 Tee 可用<b class="text-purple-300">重掷符</b>({totalRework()} 张)让它重掷
+						{/if}
+					</div>
+					{#if teamSettleSteps.length === 0}
+						<div class="mt-2 text-xs text-slate-500">
+							个人得分合计 {formatScore(team.reduce((s, t) => s + t.lastScore, 0))} 分
+						</div>
+					{/if}
+					<!-- 团队结算动画: 团队倍率卡一条一条弹 -->
+					<div class="mt-3 flex flex-col items-center justify-center gap-1 text-sm">
+						{#each teamSettleSteps as step, i (i)}
+							{#if i <= teamSettleIdx}
+								<div class="settle-step {step.cls}">{step.text}</div>
+							{/if}
+						{/each}
+					</div>
+					{#if teamSettling}
+						<div class="mt-3 text-sm text-slate-500">结算中...</div>
+					{:else}
+						<button
+							class="mt-4 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-10 py-2.5 text-lg font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95"
+							onclick={confirmRound}
+						>
+							🥮 结算回合
+						</button>
 					{/if}
 				</div>
 			{/if}
@@ -917,19 +1444,42 @@
 						<div class="text-sm text-amber-300">🥮 {mooncakes}</div>
 					</div>
 					<div class="mt-1 text-xs text-slate-400">
-						花钱购买更多 Tee 卡 {team.length >= TEAM_LIMIT ? '· 队伍已满,先卖卡腾位' : ''}
+						加成卡:掷骰前拖到 Tee 身上 · 重构卡:掷完后让 Tee 重新投掷
 					</div>
 
-					<div class="mt-3 flex flex-wrap justify-center gap-3 sm:gap-4">
-						{#each shopCards as card}
-							<TeeCardView {card} desc={card.desc}>
+					<div class="mt-4 text-sm font-bold text-sky-300">✨ 加成卡</div>
+					<div class="mt-2 flex flex-wrap justify-center gap-3 sm:gap-4">
+						{#each shopBuffs as card}
+							<TeeCardView
+								card={null}
+								skin={card.skin}
+								name={card.name}
+								desc={`${card.desc} · 持续 ${card.turns} 回合`}
+							>
 								{#snippet actions()}
 									<button
 										class="w-full rounded-lg border border-amber-500/40 bg-amber-500/80 py-1 text-xs font-bold text-amber-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
-										onclick={() => buyCard(card)}
-										disabled={mooncakes < rarityOf(card).price || team.length >= TEAM_LIMIT}
+										onclick={() => buyBuff(card)}
+										disabled={mooncakes < card.price}
 									>
-										🥮 {rarityOf(card).price}
+										🥮 {card.price}
+									</button>
+								{/snippet}
+							</TeeCardView>
+						{/each}
+					</div>
+
+					<div class="mt-5 text-sm font-bold text-purple-300">🔧 重构卡</div>
+					<div class="mt-2 flex flex-wrap justify-center gap-3 sm:gap-4">
+						{#each shopReworks as card}
+							<TeeCardView card={null} skin={card.skin} name={card.name} desc={card.desc}>
+								{#snippet actions()}
+									<button
+										class="w-full rounded-lg border border-amber-500/40 bg-amber-500/80 py-1 text-xs font-bold text-amber-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
+										onclick={() => buyRework(card)}
+										disabled={mooncakes < card.price}
+									>
+										🥮 {card.price}
 									</button>
 								{/snippet}
 							</TeeCardView>
@@ -1308,6 +1858,22 @@
 	/* ---- 卡片样式已移入 TeeCard.svelte ---- */
 
 	/* ---- 结果横幅 ---- */
+	.settle-step {
+		animation: settle-pop 0.3s ease both;
+		text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+	}
+
+	@keyframes settle-pop {
+		from {
+			opacity: 0;
+			transform: translateY(6px) scale(0.92);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
 	.result-banner {
 		animation: banner-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 	}
