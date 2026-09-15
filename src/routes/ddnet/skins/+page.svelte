@@ -4,8 +4,13 @@
 	import { faSearch, faCircleInfo } from '@fortawesome/free-solid-svg-icons';
 	import SkinCard from '$lib/components/SkinCard.svelte';
 	import VirtualScroll from '$lib/components/virtual-scroll';
+	import { MediaQuery } from 'svelte/reactivity';
 
 	const { data } = $props();
+
+	// The grid is 3 columns from the `sm` breakpoint up and a single column below it.
+	// Row grouping follows the layout so every virtual row has the same 80px height.
+	const isDesktop = new MediaQuery('(min-width: 40rem)');
 
 	// State variables
 	let searchQuery = $state('');
@@ -85,15 +90,16 @@
 			})
 			.sort((a, b) => -a.date.localeCompare(b.date));
 
-		// Group skins into rows of 3 for the desktop 3-column layout.
-		// The wrapper uses `block w-full sm:inline-block sm:w-1/3`, so on mobile
-		// each card stacks to its own line (single column) while on desktop
-		// three cards sit side-by-side per row.
+		// Group skins into rows for the current layout: 3 per row on the desktop
+		// 3-column grid, 1 per row on the mobile single-column layout. Both make
+		// every row exactly 80px tall, which keeps the virtual list's scroll
+		// height stable while scrolling.
+		const columns = isDesktop.current ? 3 : 1;
 		const result = [];
-		for (let i = 0; i < filtered.length; i += 3) {
+		for (let i = 0; i < filtered.length; i += columns) {
 			result.push({
 				row: i,
-				skins: filtered.slice(i, i + 3)
+				skins: filtered.slice(i, i + columns)
 			});
 		}
 
@@ -160,96 +166,98 @@
 	<meta name="description" content="浏览和复制 DDraceNetwork 皮肤，包括官方皮肤和社区皮肤" />
 </svelte:head>
 
-<Breadcrumbs
-	breadcrumbs={[
-		{ href: '/', text: '首页', title: 'TeeworldsCN' },
-		{ href: '/ddnet', text: 'DDNet' },
-		{ text: '皮肤', title: 'DDNet 皮肤' }
-	]}
-/>
+<div class="flex h-[calc(100svh-5.75rem)] min-h-0 flex-col">
+	<Breadcrumbs
+		breadcrumbs={[
+			{ href: '/', text: '首页', title: 'TeeworldsCN' },
+			{ href: '/ddnet', text: 'DDNet' },
+			{ text: '皮肤', title: 'DDNet 皮肤' }
+		]}
+	/>
 
-<div
-	class="mb-3 flex items-start gap-3 rounded-md border border-blue-700/60 bg-blue-900/30 p-3 text-sm text-blue-100"
-	role="note"
->
-	<Fa icon={faCircleInfo} class="mt-0.5 shrink-0 text-blue-300" />
-	<p>
-		通常情况下，<strong class="font-semibold">复制皮肤名</strong>粘贴到 DDNet
-		客户端即可自动下载，无需手动下载源文件。
-	</p>
-</div>
-
-<div class="mt-2">
-	<div class="mb-2 flex flex-col gap-4 sm:flex-row">
-		<!-- Search input -->
-		<div class="relative flex-grow">
-			<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-				<Fa icon={faSearch} class="text-slate-400" />
-			</div>
-			<input
-				type="text"
-				bind:value={searchField}
-				placeholder="搜索皮肤…"
-				class="w-full rounded-md bg-slate-700 py-2 pr-9 pl-10 text-slate-300 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-			/>
-			{#if searchField}
-				<button
-					type="button"
-					onclick={() => (searchField = '')}
-					aria-label="清空搜索"
-					title="清空搜索"
-					class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-200"
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						viewBox="0 0 20 20"
-						fill="currentColor"
-						class="h-4 w-4"
-					>
-						<path
-							d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
-						/>
-					</svg>
-				</button>
-			{/if}
-		</div>
-
-		<!-- Community skins toggle -->
-		<div class="flex items-center">
-			<label class="inline-flex cursor-pointer items-center">
-				<input type="checkbox" bind:checked={showCommunity} class="peer sr-only" />
-				<div
-					class="peer relative h-6 w-11 rounded-full bg-slate-700 peer-checked:bg-blue-600 peer-focus:ring-2 peer-focus:ring-blue-500 peer-focus:outline-none after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white rtl:peer-checked:after:-translate-x-full"
-				></div>
-				<span class="ms-3 text-sm font-medium text-slate-300">显示社区皮肤</span>
-			</label>
-		</div>
+	<div
+		class="mb-2 flex shrink-0 items-start gap-2 rounded-md border border-blue-700/60 bg-blue-900/30 px-3 py-1.5 text-sm text-blue-100"
+		role="note"
+	>
+		<Fa icon={faCircleInfo} class="mt-0.5 shrink-0 text-blue-300" />
+		<p>
+			通常情况下，<strong class="font-semibold">复制皮肤名</strong>粘贴到 DDNet
+			客户端即可自动下载，无需手动下载源文件。
+		</p>
 	</div>
 
-	<!-- Skins count -->
-	<p class="mb-2 text-slate-400">
-		共 {filteredSkins.reduce((sum, row) => sum + row.skins.length, 0)} 个皮肤
-	</p>
-
-	<!-- Skins grid with virtual scrolling -->
-	<div class="scrollbar-subtle h-[calc(100svh-16rem)] w-full sm:h-[calc(100svh-14rem)]">
-		<VirtualScroll overflow={8} data={filteredSkins} key="row">
-			{#snippet children({ data })}
-				<div class="w-full sm:h-20 sm:overflow-hidden">
-					{#each data.skins as skin}
-						<div class="block w-full p-1 sm:inline-block sm:w-1/3">
-							<SkinCard
-								{skin}
-								{copiedSkin}
-								{copySkinName}
-								{getTooltipContent}
-								{searchByAuthor}
-								{searchByPack}
-							/>
-						</div>
-					{/each}
+	<div class="mt-2 flex min-h-0 flex-1 flex-col">
+		<div class="mb-2 flex shrink-0 flex-col gap-4 sm:flex-row">
+			<!-- Search input -->
+			<div class="relative flex-grow">
+				<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+					<Fa icon={faSearch} class="text-slate-400" />
 				</div>
-			{/snippet}
-		</VirtualScroll>
+				<input
+					type="text"
+					bind:value={searchField}
+					placeholder="搜索皮肤…"
+					class="w-full rounded-md bg-slate-700 py-2 pr-9 pl-10 text-slate-300 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+				/>
+				{#if searchField}
+					<button
+						type="button"
+						onclick={() => (searchField = '')}
+						aria-label="清空搜索"
+						title="清空搜索"
+						class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-200"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+							class="h-4 w-4"
+						>
+							<path
+								d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+							/>
+						</svg>
+					</button>
+				{/if}
+			</div>
+
+			<!-- Community skins toggle -->
+			<div class="flex items-center">
+				<label class="inline-flex cursor-pointer items-center">
+					<input type="checkbox" bind:checked={showCommunity} class="peer sr-only" />
+					<div
+						class="peer relative h-6 w-11 rounded-full bg-slate-700 peer-checked:bg-blue-600 peer-focus:ring-2 peer-focus:ring-blue-500 peer-focus:outline-none after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white rtl:peer-checked:after:-translate-x-full"
+					></div>
+					<span class="ms-3 text-sm font-medium text-slate-300">显示社区皮肤</span>
+				</label>
+			</div>
+		</div>
+
+		<!-- Skins count -->
+		<p class="mb-2 shrink-0 text-slate-400">
+			共 {filteredSkins.reduce((sum, row) => sum + row.skins.length, 0)} 个皮肤
+		</p>
+
+		<!-- Skins grid with virtual scrolling -->
+		<div class="scrollbar-subtle min-h-0 w-full flex-1">
+			<VirtualScroll overflow={8} data={filteredSkins} key="row" estimateSize={80}>
+				{#snippet children({ data })}
+					<div class="w-full sm:h-20 sm:overflow-hidden">
+						{#each data.skins as skin}
+							<div class="block w-full p-1 sm:inline-block sm:w-1/3">
+								<SkinCard
+									{skin}
+									{copiedSkin}
+									{copySkinName}
+									{getTooltipContent}
+									{searchByAuthor}
+									{searchByPack}
+								/>
+							</div>
+						{/each}
+					</div>
+				{/snippet}
+			</VirtualScroll>
+		</div>
 	</div>
 </div>

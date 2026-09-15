@@ -293,13 +293,12 @@
 	}
 
 	$effect(() => {
-		if (offset) {
-		}
+		// 0 is the default position: don't scroll (and don't call scrollToBottom on empty data)
+		if (!offset) return;
 		untrack(() => scrollToOffset(offset));
 	});
 	$effect(() => {
-		if (start) {
-		}
+		if (!start) return;
 		untrack(() => scrollToIndex(start));
 	});
 
@@ -317,7 +316,7 @@
 <div
 	bind:this={root}
 	onscroll={onDivScroll}
-	style="overflow-y: auto; height: inherit"
+	style="overflow-y: auto; height: 100%"
 	class="virtual-scroll-root"
 >
 	{#if header}
