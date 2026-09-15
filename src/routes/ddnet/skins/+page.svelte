@@ -3,7 +3,7 @@
 	import Fa from 'svelte-fa';
 	import { faSearch, faCircleInfo } from '@fortawesome/free-solid-svg-icons';
 	import SkinCard from '$lib/components/SkinCard.svelte';
-	import VirtualScroll from 'svelte-virtual-scroll-list';
+	import VirtualScroll from '$lib/components/virtual-scroll';
 
 	const { data } = $props();
 
@@ -233,21 +233,23 @@
 
 	<!-- Skins grid with virtual scrolling -->
 	<div class="scrollbar-subtle h-[calc(100svh-16rem)] w-full sm:h-[calc(100svh-14rem)]">
-		<VirtualScroll keeps={20} data={filteredSkins} key="row" let:data>
-			<div class="w-full sm:h-20 sm:overflow-hidden">
-				{#each data.skins as skin}
-					<div class="block w-full p-1 sm:inline-block sm:w-1/3">
-						<SkinCard
-							{skin}
-							{copiedSkin}
-							{copySkinName}
-							{getTooltipContent}
-							{searchByAuthor}
-							{searchByPack}
-						/>
-					</div>
-				{/each}
-			</div>
+		<VirtualScroll overflow={8} data={filteredSkins} key="row">
+			{#snippet children({ data })}
+				<div class="w-full sm:h-20 sm:overflow-hidden">
+					{#each data.skins as skin}
+						<div class="block w-full p-1 sm:inline-block sm:w-1/3">
+							<SkinCard
+								{skin}
+								{copiedSkin}
+								{copySkinName}
+								{getTooltipContent}
+								{searchByAuthor}
+								{searchByPack}
+							/>
+						</div>
+					{/each}
+				</div>
+			{/snippet}
 		</VirtualScroll>
 	</div>
 </div>

@@ -20,7 +20,7 @@
 	import { faCoins, faMap, faQuestionCircle, faSpinner } from '@fortawesome/free-solid-svg-icons';
 	import { Chart } from 'chart.js/auto';
 	import Fa from 'svelte-fa';
-	import VirtualScroll from 'svelte-virtual-scroll-list';
+	import VirtualScroll from '$lib/components/virtual-scroll';
 
 	type PlayerData = ReturnType<typeof transformPlayerData>;
 
@@ -831,71 +831,68 @@
 						</div>
 					</div>
 					<div class="h-[calc(100%-1.5rem)]" onscrollcapture={syncMapHeaderScroll}>
-						<VirtualScroll
-							keeps={75}
-							data={filteredMaps()}
-							key="name"
-							estimateSize={30}
-							let:data
-							let:index
-						>
-							<div slot="footer" class="rounded-lg bg-slate-800 text-center">到底了</div>
-							{@const isTeamTop10 = data.map.team_rank && data.map.team_rank <= 10}
-							{@const isRankTop10 = data.map.rank && data.map.rank <= 10}
-							<div
-								class="flex min-w-fit cursor-default justify-center text-center text-nowrap"
-								class:bg-slate-700={index % 2 == 1}
-								class:bg-slate-600={index % 2 == 0}
-							>
-								<span
-									class="sticky left-0 z-10 w-36 shrink-0 overflow-hidden border-r border-slate-500/40 bg-inherit pl-2 text-left shadow-[2px_0_4px_rgba(0,0,0,0.25)] sm:w-48 sm:border-r-0 sm:shadow-none"
-									><MapLink className="font-semibold" map={data.name}>{data.name}</MapLink></span
+						<VirtualScroll overflow={25} data={filteredMaps()} key="name" estimateSize={30}>
+							{#snippet children({ data, index })}
+								{@const isTeamTop10 = data.map.team_rank && data.map.team_rank <= 10}
+								{@const isRankTop10 = data.map.rank && data.map.rank <= 10}
+								<div
+									class="flex min-w-fit cursor-default justify-center text-center text-nowrap"
+									class:bg-slate-700={index % 2 == 1}
+									class:bg-slate-600={index % 2 == 0}
 								>
-								<span
-									class="order-5 w-20 shrink-0 overflow-hidden pl-2 text-left text-xs leading-6 sm:order-none sm:w-24 sm:text-base"
-									>{mapType(data.type)}</span
-								>
-								<span class="order-2 w-12 shrink-0 overflow-hidden sm:order-none sm:w-16"
-									>{data.map.points}</span
-								>
-								{#if data.map.pending}
 									<span
-										class="order-6 w-20 shrink-0 overflow-hidden text-right sm:order-none"
-										class:text-blue-300={data.map.pending}>......</span
+										class="sticky left-0 z-10 w-36 shrink-0 overflow-hidden border-r border-slate-500/40 bg-inherit pl-2 text-left shadow-[2px_0_4px_rgba(0,0,0,0.25)] sm:w-48 sm:border-r-0 sm:shadow-none"
+										><MapLink className="font-semibold" map={data.name}>{data.name}</MapLink></span
 									>
 									<span
-										class="order-7 w-20 shrink-0 overflow-hidden text-right sm:order-none"
-										class:text-blue-300={data.map.pending}>......</span
+										class="order-5 w-20 shrink-0 overflow-hidden pl-2 text-left text-xs leading-6 sm:order-none sm:w-24 sm:text-base"
+										>{mapType(data.type)}</span
 									>
-								{:else}
+									<span class="order-2 w-12 shrink-0 overflow-hidden sm:order-none sm:w-16"
+										>{data.map.points}</span
+									>
+									{#if data.map.pending}
+										<span
+											class="order-6 w-20 shrink-0 overflow-hidden text-right sm:order-none"
+											class:text-blue-300={data.map.pending}>......</span
+										>
+										<span
+											class="order-7 w-20 shrink-0 overflow-hidden text-right sm:order-none"
+											class:text-blue-300={data.map.pending}>......</span
+										>
+									{:else}
+										<span
+											class="order-6 w-20 shrink-0 overflow-hidden text-right sm:order-none"
+											class:text-orange-500={isTeamTop10}
+											>{data.map.team_rank ? data.map.team_rank + '.' : ''}</span
+										>
+										<span
+											class="order-7 w-20 shrink-0 overflow-hidden text-right sm:order-none"
+											class:text-orange-500={isRankTop10}
+											>{data.map.rank ? data.map.rank + '.' : ''}</span
+										>
+									{/if}
+									<span class="order-3 w-20 shrink-0 overflow-hidden text-right sm:order-none"
+										>{data.map.time ? secondsToTime(data.map.time) : ''}</span
+									>
+									<span class="order-8 w-16 shrink-0 overflow-hidden sm:order-none"
+										>{data.map.finishes}</span
+									>
 									<span
-										class="order-6 w-20 shrink-0 overflow-hidden text-right sm:order-none"
-										class:text-orange-500={isTeamTop10}
-										>{data.map.team_rank ? data.map.team_rank + '.' : ''}</span
+										class="order-4 w-36 shrink-0 overflow-hidden text-xs leading-6 sm:order-none sm:text-base"
+										class:text-blue-300={data.map.pending}
+										>{data.map.first_finish
+											? new Date(data.map.first_finish * 1000).toLocaleString('zh-CN', {
+													dateStyle: 'short',
+													timeStyle: 'short'
+												})
+											: ''}</span
 									>
-									<span
-										class="order-7 w-20 shrink-0 overflow-hidden text-right sm:order-none"
-										class:text-orange-500={isRankTop10}
-										>{data.map.rank ? data.map.rank + '.' : ''}</span
-									>
-								{/if}
-								<span class="order-3 w-20 shrink-0 overflow-hidden text-right sm:order-none"
-									>{data.map.time ? secondsToTime(data.map.time) : ''}</span
-								>
-								<span class="order-8 w-16 shrink-0 overflow-hidden sm:order-none"
-									>{data.map.finishes}</span
-								>
-								<span
-									class="order-4 w-36 shrink-0 overflow-hidden text-xs leading-6 sm:order-none sm:text-base"
-									class:text-blue-300={data.map.pending}
-									>{data.map.first_finish
-										? new Date(data.map.first_finish * 1000).toLocaleString('zh-CN', {
-												dateStyle: 'short',
-												timeStyle: 'short'
-											})
-										: ''}</span
-								>
-							</div>
+								</div>
+							{/snippet}
+							{#snippet footer()}
+								<div class="rounded-lg bg-slate-800 text-center">到底了</div>
+							{/snippet}
 						</VirtualScroll>
 					</div>
 				</div>

@@ -11,7 +11,7 @@
 	} from '$lib/ddnet/helpers';
 	import serverSearch, { type SortKey } from '$lib/stores/server-search.js';
 	import Fa from 'svelte-fa';
-	import VirtualScroll from 'svelte-virtual-scroll-list';
+	import VirtualScroll from '$lib/components/virtual-scroll';
 	import { faSteam } from '@fortawesome/free-brands-svg-icons';
 	import { faCrosshairs, faFlagCheckered } from '@fortawesome/free-solid-svg-icons';
 	import { addrToBase64, base64ToAddr } from '$lib/helpers.js';
@@ -401,63 +401,65 @@
 		</button>
 	</div>
 	<div class="w-ful scrollbar-subtle h-[calc(100svh-16.5rem)] sm:h-[calc(100svh-14rem)]">
-		<VirtualScroll keeps={75} data={servers()} key="key" estimateSize={32} let:data>
-			<button
-				class="flex h-[32px] w-full gap-1 rounded px-1 py-1 text-left hover:bg-slate-700 sm:gap-2"
-				onclick={() => {
-					showServerInfo(data);
-				}}
-			>
-				<span class="my-auto w-3 text-xs text-nowrap md:text-base"
-					>{data.info.passworded ? '🔒' : ''}</span
+		<VirtualScroll overflow={25} data={servers()} key="key" estimateSize={32}>
+			{#snippet children({ data })}
+				<button
+					class="flex h-[32px] w-full gap-1 rounded px-1 py-1 text-left hover:bg-slate-700 sm:gap-2"
+					onclick={() => {
+						showServerInfo(data);
+					}}
 				>
-				<span class="inline-block h-full w-8 px-0 text-center md:w-16 md:px-2">
-					{#if data.community_icon}
-						<div
-							class="h-full w-full bg-contain bg-no-repeat"
-							style="background-image: url({data.community_icon})"
-						></div>
-					{/if}
-				</span>
-				<span
-					class="my-auto flex-1 flex-grow overflow-hidden text-xs text-nowrap overflow-ellipsis sm:text-base"
-					>{data.info.name}</span
-				>
-				<span
-					class="my-auto w-8 overflow-hidden text-xs text-nowrap sm:w-16 sm:text-base lg:w-24 lg:overflow-ellipsis"
-					class:text-[#ff8080]={modes.isFreeze(data.info.game_type)}
-					class:text-[#ffff88]={modes.isCatch(data.info.game_type)}
-					class:text-[#7ffa7d]={modes.isStd(data.info.game_type)}
-					class:text-[#ff8b8a]={modes.isInsta(data.info.game_type)}
-					class:text-[#75b3ec]={modes.isDDNet(data.info.game_type)}
-					class:text-[#d38bff]={modes.isDDRace(data.info.game_type)}
-					class:text-[#85ffea]={modes.isRace(data.info.game_type)}
-					class:text-[#f29e7a]={modes.isBW(data.info.game_type)}
-					class:text-[#e976ec]={modes.isFng(data.info.game_type)}
-					class:text-[#78dff1]={modes.isGores(data.info.game_type)}
-				>
-					{data.info.game_type}
-				</span>
-				<span
-					class="my-auto w-16 overflow-hidden text-xs text-nowrap sm:text-base lg:w-48 lg:overflow-ellipsis"
-					>{#if finishedMaps}<span class="inline-block w-3 sm:w-6"
-							>{#if finishedMaps.has(data.info.map.name)}<Fa
-									class="inline"
-									icon={faFlagCheckered}
-								/>{/if}</span
-						>{/if}{data.info.map.name}</span
-				>
-				<span
-					class="my-auto w-12 overflow-hidden text-right text-xs text-nowrap md:w-16 md:text-sm lg:w-24 lg:text-base"
-					>{data.info.clients.length}/{data.info.max_players}</span
-				>
-				<span
-					class="my-auto w-6 overflow-hidden text-center text-xs text-nowrap md:w-16 md:text-base lg:w-24"
-					class:text-green-400={regionLevel(data.location) == 0}
-					class:text-green-600={regionLevel(data.location) == 1}
-					class:text-orange-600={regionLevel(data.location) == 2}>{data.region}</span
-				>
-			</button>
+					<span class="my-auto w-3 text-xs text-nowrap md:text-base"
+						>{data.info.passworded ? '🔒' : ''}</span
+					>
+					<span class="inline-block h-full w-8 px-0 text-center md:w-16 md:px-2">
+						{#if data.community_icon}
+							<div
+								class="h-full w-full bg-contain bg-no-repeat"
+								style="background-image: url({data.community_icon})"
+							></div>
+						{/if}
+					</span>
+					<span
+						class="my-auto flex-1 flex-grow overflow-hidden text-xs text-nowrap overflow-ellipsis sm:text-base"
+						>{data.info.name}</span
+					>
+					<span
+						class="my-auto w-8 overflow-hidden text-xs text-nowrap sm:w-16 sm:text-base lg:w-24 lg:overflow-ellipsis"
+						class:text-[#ff8080]={modes.isFreeze(data.info.game_type)}
+						class:text-[#ffff88]={modes.isCatch(data.info.game_type)}
+						class:text-[#7ffa7d]={modes.isStd(data.info.game_type)}
+						class:text-[#ff8b8a]={modes.isInsta(data.info.game_type)}
+						class:text-[#75b3ec]={modes.isDDNet(data.info.game_type)}
+						class:text-[#d38bff]={modes.isDDRace(data.info.game_type)}
+						class:text-[#85ffea]={modes.isRace(data.info.game_type)}
+						class:text-[#f29e7a]={modes.isBW(data.info.game_type)}
+						class:text-[#e976ec]={modes.isFng(data.info.game_type)}
+						class:text-[#78dff1]={modes.isGores(data.info.game_type)}
+					>
+						{data.info.game_type}
+					</span>
+					<span
+						class="my-auto w-16 overflow-hidden text-xs text-nowrap sm:text-base lg:w-48 lg:overflow-ellipsis"
+						>{#if finishedMaps}<span class="inline-block w-3 sm:w-6"
+								>{#if finishedMaps.has(data.info.map.name)}<Fa
+										class="inline"
+										icon={faFlagCheckered}
+									/>{/if}</span
+							>{/if}{data.info.map.name}</span
+					>
+					<span
+						class="my-auto w-12 overflow-hidden text-right text-xs text-nowrap md:w-16 md:text-sm lg:w-24 lg:text-base"
+						>{data.info.clients.length}/{data.info.max_players}</span
+					>
+					<span
+						class="my-auto w-6 overflow-hidden text-center text-xs text-nowrap md:w-16 md:text-base lg:w-24"
+						class:text-green-400={regionLevel(data.location) == 0}
+						class:text-green-600={regionLevel(data.location) == 1}
+						class:text-orange-600={regionLevel(data.location) == 2}>{data.region}</span
+					>
+				</button>
+			{/snippet}
 		</VirtualScroll>
 	</div>
 	<Modal bind:show={showModal}>
