@@ -135,6 +135,44 @@ export function transformPlayerData(data: { player: any; skin: any }) {
 		[] as typeof maps
 	);
 
+	// setup deleted ranks
+	const deletedRanks: {
+		map: string;
+		time: number;
+		timestamp: number;
+		country: string;
+		deleted_at: number;
+	}[] = Array.isArray(player.deleted_ranks) ? player.deleted_ranks : [];
+
+	const deletedMapNames = new Set(deletedRanks.map((rank) => rank.map));
+	const finishedMapNames = new Set<string>();
+	const countedDeletedMaps = new Set<string>();
+
+	// map finishes accumulated from types -> type -> maps -> map -> finishes
+	let mapFinishes = 0;
+	for (const type of Object.keys(player.types)) {
+		for (const [name, map] of Object.entries(player.types[type].maps as Record<string, any>)) {
+			mapFinishes += map.finishes || 0;
+			if (map.finishes) finishedMapNames.add(name);
+		}
+	}
+
+	// points of maps that exist in deleted ranks but are no longer finished
+	let deletedPoints = 0;
+	for (const type of Object.keys(player.types)) {
+		for (const [name, map] of Object.entries(player.types[type].maps as Record<string, any>)) {
+			if (
+				!deletedMapNames.has(name) ||
+				finishedMapNames.has(name) ||
+				countedDeletedMaps.has(name)
+			) {
+				continue;
+			}
+			countedDeletedMaps.add(name);
+			deletedPoints += map.points || 0;
+		}
+	}
+
 	// points of last 365 days
 	let currentPoints = 0;
 	const endOfDay = new Date().setHours(23, 59, 59, 0) / 1000;
@@ -176,6 +214,13 @@ export function transformPlayerData(data: { player: any; skin: any }) {
 		ranks,
 		growth,
 		endOfDay,
-		maps
+		maps,
+		deleted_ranks: deletedRanks,
+		deletedStats: {
+			deleted_ranks: deletedRanks.length,
+			map_finishes: mapFinishes,
+			deleted_points: deletedPoints,
+			points: player.points.points || 0
+		}
 	};
 }

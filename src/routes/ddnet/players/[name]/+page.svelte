@@ -2,6 +2,7 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+	import Link from '$lib/components/Link.svelte';
 	import MapLink from '$lib/components/ddnet/MapLink.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
@@ -47,7 +48,14 @@
 		endOfDay: 0,
 		growth: [] as number[],
 		last_finish: { timestamp: 0 },
-		activity: []
+		activity: [],
+		deleted_ranks: [],
+		deletedStats: {
+			deleted_ranks: 0,
+			map_finishes: 0,
+			deleted_points: 0,
+			points: 0
+		}
 	});
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
@@ -115,6 +123,7 @@
 	let explaination = $state(false);
 	let pointModal = $state(false);
 	let mapModal = $state(false);
+	let deletedModal = $state(false);
 	let searchMap = $state('');
 	let filterType = $state('all');
 	let sortType = $state('finish');
@@ -238,6 +247,29 @@
 	};
 
 	const playerDescription = $derived(`玩家信息：${data.player.points.points}pts`);
+
+	let mapHeaderEl = $state<HTMLDivElement | null>(null);
+
+	// keep the fixed header in sync when the map list scrolls horizontally
+	function syncMapHeaderScroll(event: Event) {
+		const target = event.target as HTMLElement;
+		if (mapHeaderEl && target.scrollLeft !== mapHeaderEl.scrollLeft) {
+			mapHeaderEl.scrollLeft = target.scrollLeft;
+		}
+	}
+
+	const deletedStats = $derived(() => {
+		const deletedRanks = data.deletedStats.deleted_ranks;
+		const totalFinishes = data.deletedStats.map_finishes + deletedRanks;
+		const deletedPoints = data.deletedStats.deleted_points;
+		const totalPoints = data.deletedStats.points + deletedPoints;
+		return {
+			totalFinishes,
+			totalPoints,
+			rankPercent: totalFinishes ? ((deletedRanks / totalFinishes) * 100).toFixed(2) : '0.00',
+			pointPercent: totalPoints ? ((deletedPoints / totalPoints) * 100).toFixed(2) : '0.00'
+		};
+	});
 
 	afterNavigate(() => {
 		share({
@@ -695,6 +727,19 @@
 		</div>
 	</div>
 
+	{#if data.deleted_ranks.length}
+		<div class="mt-4 mb-4 pr-2 text-right text-sm sm:pr-0">
+			<Link
+				href="#"
+				type="subtle"
+				onclick={(e: MouseEvent) => {
+					e.preventDefault();
+					deletedModal = true;
+				}}>{data.deleted_ranks.length} 条被删除的记录</Link
+			>
+		</div>
+	{/if}
+
 	{#if toolVersion() == 2025}
 		{#await import('$lib/components/tools/DDIdle.svelte') then { default: DDIdle }}
 			<DDIdle
@@ -717,7 +762,7 @@
 	</Modal>
 
 	<Modal bind:show={mapModal}>
-		<div class="container rounded-l-lg rounded-br-lg bg-slate-700 p-2 shadow-md md:p-4">
+		<div class="container max-w-svw rounded-l-lg rounded-br-lg bg-slate-700 p-2 shadow-md md:p-4">
 			<h2 class="mb-3 text-xl font-bold">过图数据</h2>
 			<div class="rounded-lg bg-slate-600 p-2">
 				<div class="mb-4 flex-col space-y-2 md:flex md:flex-row md:space-y-0 md:space-x-2">
@@ -759,27 +804,33 @@
 				<div
 					class="scrollbar-subtle h-[calc(100svh-15rem)] overflow-hidden md:h-[calc(100svh-13rem)]"
 				>
-					<div
-						class="hidden cursor-default rounded-t bg-slate-700 text-center text-nowrap sm:block"
-					>
-						<span class="inline-block w-32 overflow-hidden pl-2 text-left lg:w-48">地图</span>
-						<span class="hidden w-8 overflow-hidden text-left md:inline-block lg:w-16">类型</span>
-						<span class="inline-block w-8 overflow-hidden sm:w-16">里程</span>
-						<span class="hidden w-16 overflow-hidden text-right md:inline-block">团队排名</span>
-						<span class="hidden w-16 overflow-hidden text-right md:inline-block">个人排名</span>
-						<span class="inline-block w-16 overflow-hidden text-right sm:w-24">最短记录</span>
-						<span class="hidden w-16 overflow-hidden md:inline-block">次数</span>
-						<span class="inline-block w-32 overflow-hidden lg:w-40">首次完成</span>
+					<div class="h-6 overflow-hidden" bind:this={mapHeaderEl}>
+						<div
+							class="flex min-w-fit cursor-default justify-center rounded-t bg-slate-700 text-center text-nowrap"
+						>
+							<span
+								class="sticky left-0 z-10 w-36 shrink-0 overflow-hidden border-r border-slate-500/40 bg-slate-700 pl-2 text-left shadow-[2px_0_4px_rgba(0,0,0,0.25)] sm:w-48 sm:border-r-0 sm:shadow-none"
+								>地图</span
+							>
+							<span
+								class="order-5 w-20 shrink-0 overflow-hidden pl-2 text-left sm:order-none sm:w-24"
+								>类型</span
+							>
+							<span class="order-2 w-12 shrink-0 overflow-hidden sm:order-none sm:w-16">里程</span>
+							<span class="order-6 w-20 shrink-0 overflow-hidden text-right sm:order-none"
+								>团队排名</span
+							>
+							<span class="order-7 w-20 shrink-0 overflow-hidden text-right sm:order-none"
+								>个人排名</span
+							>
+							<span class="order-3 w-20 shrink-0 overflow-hidden text-right sm:order-none"
+								>最短记录</span
+							>
+							<span class="order-8 w-16 shrink-0 overflow-hidden sm:order-none">次数</span>
+							<span class="order-4 w-36 shrink-0 overflow-hidden sm:order-none">首次完成</span>
+						</div>
 					</div>
-					<div
-						class="block cursor-default rounded-t bg-slate-700 text-center text-nowrap sm:hidden"
-					>
-						<span class="inline-block">地图</span>
-						<span class="inline-block">里程</span>
-						<span class="inline-block">记录</span>
-						<span class="inline-block">完成</span>
-					</div>
-					<div class="h-[calc(100%-1rem)]">
+					<div class="h-[calc(100%-1.5rem)]" onscrollcapture={syncMapHeaderScroll}>
 						<VirtualScroll
 							keeps={75}
 							data={filteredMaps()}
@@ -792,44 +843,50 @@
 							{@const isTeamTop10 = data.map.team_rank && data.map.team_rank <= 10}
 							{@const isRankTop10 = data.map.rank && data.map.rank <= 10}
 							<div
-								class="min-w-fit cursor-default flex-col text-center text-nowrap"
+								class="flex min-w-fit cursor-default justify-center text-center text-nowrap"
 								class:bg-slate-700={index % 2 == 1}
 								class:bg-slate-600={index % 2 == 0}
 							>
-								<span class="inline-block w-32 overflow-hidden pl-2 text-left lg:w-48"
+								<span
+									class="sticky left-0 z-10 w-36 shrink-0 overflow-hidden border-r border-slate-500/40 bg-inherit pl-2 text-left shadow-[2px_0_4px_rgba(0,0,0,0.25)] sm:w-48 sm:border-r-0 sm:shadow-none"
 									><MapLink className="font-semibold" map={data.name}>{data.name}</MapLink></span
 								>
-								<span class="hidden w-8 overflow-hidden text-left md:inline-block lg:w-20"
+								<span
+									class="order-5 w-20 shrink-0 overflow-hidden pl-2 text-left text-xs leading-6 sm:order-none sm:w-24 sm:text-base"
 									>{mapType(data.type)}</span
 								>
-								<span class="inline-block w-8 overflow-hidden sm:w-16">{data.map.points}</span>
+								<span class="order-2 w-12 shrink-0 overflow-hidden sm:order-none sm:w-16"
+									>{data.map.points}</span
+								>
 								{#if data.map.pending}
 									<span
-										class="hidden w-16 overflow-hidden text-right md:inline-block"
+										class="order-6 w-20 shrink-0 overflow-hidden text-right sm:order-none"
 										class:text-blue-300={data.map.pending}>......</span
 									>
 									<span
-										class="hidden w-16 overflow-hidden text-right md:inline-block"
+										class="order-7 w-20 shrink-0 overflow-hidden text-right sm:order-none"
 										class:text-blue-300={data.map.pending}>......</span
 									>
 								{:else}
 									<span
-										class="hidden w-16 overflow-hidden text-right md:inline-block"
+										class="order-6 w-20 shrink-0 overflow-hidden text-right sm:order-none"
 										class:text-orange-500={isTeamTop10}
 										>{data.map.team_rank ? data.map.team_rank + '.' : ''}</span
 									>
 									<span
-										class="hidden w-16 overflow-hidden text-right md:inline-block"
+										class="order-7 w-20 shrink-0 overflow-hidden text-right sm:order-none"
 										class:text-orange-500={isRankTop10}
 										>{data.map.rank ? data.map.rank + '.' : ''}</span
 									>
 								{/if}
-								<span class="inline-block w-16 overflow-hidden text-right sm:w-24"
+								<span class="order-3 w-20 shrink-0 overflow-hidden text-right sm:order-none"
 									>{data.map.time ? secondsToTime(data.map.time) : ''}</span
 								>
-								<span class="hidden w-16 overflow-hidden md:inline-block">{data.map.finishes}</span>
+								<span class="order-8 w-16 shrink-0 overflow-hidden sm:order-none"
+									>{data.map.finishes}</span
+								>
 								<span
-									class="inline-block w-32 overflow-hidden lg:w-40"
+									class="order-4 w-36 shrink-0 overflow-hidden text-xs leading-6 sm:order-none sm:text-base"
 									class:text-blue-300={data.map.pending}
 									>{data.map.first_finish
 										? new Date(data.map.first_finish * 1000).toLocaleString('zh-CN', {
@@ -841,6 +898,60 @@
 							</div>
 						</VirtualScroll>
 					</div>
+				</div>
+			</div>
+		</div>
+	</Modal>
+
+	<Modal bind:show={deletedModal}>
+		<div
+			class="container min-w-[min(22rem,calc(100svw-2rem))] rounded-l-lg rounded-br-lg bg-slate-700 p-2 shadow-md md:p-4"
+		>
+			<h2 class="mb-3 text-xl font-bold">被删除的记录</h2>
+			<div class="mb-3 rounded-lg bg-slate-600 px-3 py-2 shadow-md">
+				<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+					<div class="rounded bg-slate-700 px-3 py-1">
+						<div class="text-sm text-slate-400">记录删除占比</div>
+						<div class="text-lg font-bold">
+							{data.deletedStats.deleted_ranks} / {deletedStats().totalFinishes}
+							<span class="text-sm font-normal">({deletedStats().rankPercent}%)</span>
+						</div>
+					</div>
+					<div class="rounded bg-slate-700 px-3 py-1">
+						<div class="text-sm text-slate-400">里程删除占比</div>
+						<div class="text-lg font-bold">
+							{data.deletedStats.deleted_points} / {deletedStats().totalPoints}
+							<span class="text-sm font-normal">({deletedStats().pointPercent}%)</span>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="rounded-lg bg-slate-600 p-2">
+				<div class="scrollbar-subtle max-h-[60svh] overflow-y-auto px-2">
+					{#each data.deleted_ranks as rank, i}
+						<div
+							class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 rounded px-2 py-1 text-sm sm:grid-cols-[minmax(0,1fr)_5rem_11rem_11rem] sm:text-base"
+							class:bg-slate-700={i % 2 == 0}
+						>
+							<span class="min-w-0 truncate">
+								<MapLink map={rank.map} className="font-semibold" title={rank.map}
+									>{rank.map}</MapLink
+								>
+							</span>
+							<span class="justify-self-end font-mono text-slate-200 sm:justify-self-center"
+								>{secondsToTime(rank.time)}</span
+							>
+							<span
+								class="col-span-2 flex items-center gap-1 text-xs text-slate-300 sm:col-span-1 sm:text-sm"
+							>
+								<FlagSpan flag={rank.country} />
+								<span class="sm:hidden">完成于</span>{secondsToDate(rank.timestamp)}
+							</span>
+							<span class="col-span-2 text-xs text-slate-400 sm:col-span-1 sm:text-sm">
+								<span class="sm:hidden">删除于</span>{secondsToDate(rank.deleted_at)}
+							</span>
+						</div>
+					{/each}
 				</div>
 			</div>
 		</div>
