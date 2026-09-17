@@ -13,6 +13,7 @@
 //   3. 经济按 roundReward 的近似曲线。
 
 import {
+	calcTeamTotal,
 	calcTeeScore,
 	collectSetOps,
 	selfDiceMods,
@@ -52,7 +53,7 @@ export interface Pref {
  *  纯 chips / 纯 mult / 队伍人数 / 月饼币 / 成长 / 卖卡 这类是「常数缩放」,
  *  V' = m·V + a 是单调变换,argmax 不变 → **不需要重建 DP**(实测 462 个状态零差异)。 */
 const POLICY_CHANGING =
-	/"(dice_mods|map_player_die|level_floor|extra_roll|reverse|own_face|cond|sum_chips|sum_mult|per_reroll|player_die|on_player|straight_chips|straight_ladder|face_ladder|levelCap|noSameFace|self_mods|void|map)"/;
+	/"(dice_mods|map_player_die|level_floor|extra_roll|reverse|own_face|face_floor|cond|sum_chips|sum_mult|per_reroll|player_die|on_player|straight_chips|straight_ladder|face_ladder|levelCap|noSameFace|self_mods|void|map)"/;
 const isPolicyChanging = (id: string): boolean => {
 	const b = BUFF_BY_ID.get(id);
 	return !!b && POLICY_CHANGING.test(JSON.stringify(b.effect));
@@ -145,6 +146,7 @@ const scoreTeam = (
 ): number => {
 	const cards = team.map((t) => (t.card ? CARD_BY_ID.get(t.card)! : null));
 	const allSelf = cards.map((c) => (c ? [{ eff: c.effect, srcId: c.id }] : []));
+	const scores: number[] = [];
 	let total = 0;
 	let prev = 0;
 	team.forEach((t, i) => {
@@ -174,9 +176,11 @@ const scoreTeam = (
 		};
 		const s = calcTeeScore(input).total;
 		prev = s;
+		scores.push(s);
 		total += s;
 	});
-	return total;
+	// 全队总分必须走游戏里的公式:接力回流 + 全队倍率都在里面
+	return calcTeamTotal(scores, cards).total;
 };
 
 export interface RunSimResult {
@@ -415,7 +419,7 @@ export const PREFS: Pref[] = [
 	effPref('成长流', ['growth_mult', 'scaling_mult']),
 	effPref('重掷流', ['per_reroll', 'extra_roll']),
 	effPref('复制流', ['copy_right']),
-	effPref('支援流', ['neighbor', 'relay_left'], 'hebi'),
+	effPref('支援流', ['neighbor', 'relay_left', 'relay_pct', 'team_mult'], 'hebi'),
 	effPref('主 Tee 联动', ['on_player', 'player_die']),
 	effPref('主 Tee 流', ['map_player_die'], 'yueyachi'),
 	effPref('和值流', ['sum_chips', 'sum_mult']),

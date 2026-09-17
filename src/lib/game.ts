@@ -554,6 +554,31 @@ export const calcTeeScore = ({
 		note(b.cardId, 'buff', buffChips - c0, m0 === 0 ? 1 : buffMult / m0);
 	}
 
+	/**
+	 * 同点基础分下限(face_floor):自己的 face 点有 n 颗时,基础分至少 base×per^(n-1)。
+	 * 不走判定层 —— 结算横幅继续显示真实牌型,这里只多一条卡牌贡献。
+	 */
+	let baseFloor = 0;
+	let floorSrcId = '';
+	let floorN = 0;
+	let floorFace = 0;
+	const collectFloor = (eff: TeeEffect, srcId: string) => {
+		if (eff.type === 'bundle') eff.parts.forEach((p) => collectFloor(p, srcId));
+		else if (eff.type === 'face_floor') {
+			const n = ownDice.filter((v) => v === eff.face).length;
+			const v = n > 0 ? eff.base * Math.pow(eff.per, n - 1) : 0;
+			if (v > baseFloor) {
+				baseFloor = v;
+				floorSrcId = srcId;
+				floorN = n;
+				floorFace = eff.face;
+			}
+		}
+	};
+	for (const { eff, srcId } of self) collectFloor(eff, srcId);
+	if (baseFloor > level.score)
+		note(floorSrcId, 'card', baseFloor - level.score, 1, `自己 ${floorN} 个${floorFace}`);
+
 	/** skipTeamWide: 跳过 team_chips(它由全队那一轮统一加,避免重复) */
 	const apply = (eff: TeeEffect, srcId: string, skipTeamWide = false) => {
 		switch (eff.type) {
@@ -795,7 +820,7 @@ export const calcTeeScore = ({
 		}
 	}
 
-	const base = level.score;
+	const base = Math.max(level.score, baseFloor);
 	const raw = Math.round((base + chips + buffChips) * mult * buffMult * 100) / 100;
 	// 普通卡夹到 0(避免机制意外产生负分);逆向卡 / 罚分卡导致净负分时放开
 	const netChips = chips + buffChips;
@@ -815,15 +840,37 @@ export const decayBuffs = (team: TeamTee[]): void => {
 /** 计算全队总分(个人分之和 × 团队倍率) */
 export const calcTeamTotal = (
 	scores: number[],
-	cards: TeeCard[]
-): { total: number; teamMult: number } => {
+	cards: (TeeCard | null)[]
+): {
+	total: number;
+	teamMult: number;
+	/** 接力回流加进来的总分(已含在 total 里,结算动画单独播一行) */
+	relay: number;
+	relayLines: { cardId: string; from: number[]; value: number }[];
+} => {
 	let teamMult = 1;
-	const walk = (eff: TeeEffect) => {
-		if (eff.type === 'team_mult') teamMult *= eff.value;
-		else if (eff.type === 'bundle') eff.parts.forEach(walk);
+	let relay = 0;
+	const relayLines: { cardId: string; from: number[]; value: number }[] = [];
+	/** 接力回流:所有人都掷完才算,所以只看位置、不看出手顺序 */
+	const addRelay = (eff: TeeEffect & { type: 'relay_pct' }, i: number, cardId: string) => {
+		const idx = eff.from === 'left' ? [i - 1] : eff.from === 'right' ? [i + 1] : [i - 1, i + 1];
+		const from = idx.filter((j) => j >= 0 && j < scores.length && j !== i);
+		const v = from.reduce((s, j) => s + scores[j] * eff.pct, 0);
+		if (v > 0) {
+			relay += v;
+			relayLines.push({ cardId, from, value: Math.round(v) });
+		}
 	};
-	for (const card of cards) walk(card.effect);
-	return { total: Math.round(scores.reduce((a, b) => a + b, 0) * teamMult), teamMult };
+	const walk = (eff: TeeEffect, i: number, cardId: string) => {
+		if (eff.type === 'team_mult') teamMult *= eff.value;
+		else if (eff.type === 'relay_pct') addRelay(eff, i, cardId);
+		else if (eff.type === 'bundle') eff.parts.forEach((p) => walk(p, i, cardId));
+	};
+	cards.forEach((card, i) => {
+		if (card) walk(card.effect, i, card.id);
+	});
+	const total = Math.round((scores.reduce((a, b) => a + b, 0) + relay) * teamMult);
+	return { total, teamMult, relay: Math.round(relay), relayLines };
 };
 
 // ---- 奖励 ----

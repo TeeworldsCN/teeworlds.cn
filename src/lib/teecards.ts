@@ -60,6 +60,8 @@ export type TeeEffect =
 	| { type: 'chips_mult'; chips: number; mult: number } // 加算 + 乘算
 	| { type: 'cond'; cond: Cond; chips?: number; mult?: number } // 条件触发
 	| { type: 'team_mult'; value: number } // 全队总分 ×mult
+	/** 接力回流:回合结算时把邻居本关得分的 pct 加进全队分(所有人都掷完才算,天然没有先后问题) */
+	| { type: 'relay_pct'; from: 'left' | 'right' | 'both'; pct: number }
 	| { type: 'team_chips'; value: number } // 全队每个 Tee 各 +chips
 	| { type: 'per_team_chips'; value: number } // 队伍每多 1 人,得分 +value
 	| { type: 'scaling_mult'; per: number } // 每过一关,该 Tee 的 mult 永久 +per
@@ -100,6 +102,7 @@ export type TeeEffect =
 	| { type: 'player_die'; face: number; chips?: number; mult?: number } // 「我」最终骰子里每个该点数
 	| { type: 'map_player_die'; from: number; to: number } // 「我」掷出的 from 点视为 to 点(团队规则,只作用于主 Tee)
 	| { type: 'face_ladder' } // 点数阶梯:非 4 点的同点 n 颗按 4 点线档位结算(一秀→六博红)
+	| { type: 'face_floor'; face: number; base: number; per: number } // 同点颗数的**基础分下限**:base × per^(n-1)(只升不降)
 	| { type: 'team_scale'; per: number; fullBonus?: number } // 队伍每多 1 人 ×per;满编再 ×fullBonus
 	| { type: 'sell_scale'; per: number } // 本局每卖出 1 个 Tee:得分 ×per(后期流派)
 	| { type: 'coin_mult'; perCoin: number; per: number } // 每 perCoin 月饼币:得分 ×per
@@ -325,46 +328,39 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guiying',
 		name: '桂影',
-		desc: '右侧 Tee 得分 ×1.45，自身 ×1.15',
+		desc: '回合结算时：右邻本关得分的 30% 加进全队分，自己 ×1.3',
 		rarity: 'common',
 		skin: 'greensward',
 		tag: '桂',
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'neighbor', side: 'right', mult: 1.45 },
-				{ type: 'mult', value: 1.15 }
+				{ type: 'relay_pct', from: 'right', pct: 0.3 },
+				{ type: 'mult', value: 1.3 }
 			]
 		}
 	},
 	{
 		id: 'bingdilian',
 		name: '并蒂莲',
-		desc: '左右相邻的 Tee 得分各 ×1.6，自身 ×1.15',
+		desc: '回合结算时：左右两人本关得分的 45% 加进全队分，自己 ×1.35',
 		rarity: 'rare',
 		skin: 'Sailormoon',
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'neighbor', side: 'both', mult: 1.6 },
-				{ type: 'mult', value: 1.15 }
+				{ type: 'relay_pct', from: 'both', pct: 0.45 },
+				{ type: 'mult', value: 1.35 }
 			]
 		}
 	},
 	{
 		id: 'qiansixi',
 		name: '牵丝戏',
-		desc: '左侧 Tee 得分 ×2.2，自身 ×1.15；左邻得分的 80% 也加到本 Tee',
+		desc: '全队总分 ×1.15',
 		rarity: 'rare',
 		skin: 'TeeDevil',
-		effect: {
-			type: 'bundle',
-			parts: [
-				{ type: 'neighbor', side: 'left', mult: 2.2 },
-				{ type: 'relay_left', share: 0.8 },
-				{ type: 'mult', value: 1.15 }
-			]
-		}
+		effect: { type: 'team_mult', value: 1.15 }
 	},
 	{
 		id: 'dengguan',
@@ -396,15 +392,15 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuexialaoren',
 		name: '月下老人',
-		desc: '左右相邻的 Tee 得分各 ×2，自身 ×1.2',
+		desc: '回合结算时：左右两人本关得分的 75% 加进全队分，自己 ×1.45',
 		rarity: 'legendary',
 		skin: 'pumpkin',
 		tag: '月',
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'neighbor', side: 'both', mult: 2 },
-				{ type: 'mult', value: 1.2 }
+				{ type: 'relay_pct', from: 'both', pct: 0.75 },
+				{ type: 'mult', value: 1.45 }
 			]
 		}
 	},
@@ -787,11 +783,11 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'jinghuashuiyue',
 		name: '镜花水月',
-		desc: '复制右侧 Tee 的卡牌，且得分 ×2',
+		desc: '复制右侧 Tee 的卡牌，且全队总分 ×1.25',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'IceWitch',
-		effect: { type: 'bundle', parts: [{ type: 'copy_right' }, { type: 'mult', value: 2 }] }
+		effect: { type: 'bundle', parts: [{ type: 'copy_right' }, { type: 'team_mult', value: 1.25 }] }
 	},
 	{
 		id: 'panlong',
@@ -870,49 +866,41 @@ export const CARDS: TeeCard[] = [
 		}
 	},
 
-	// ==== 点数线套装:每个点数一套(蓝=数量当倍率,橙=每颗翻倍) ====
+	// ==== 点数线套装:每个点数一套 ====
 	//
 	// 用途:让"非四点"也能成为主攻方向,而不是只能当保底。
-	// 计算模型(n 颗同点、无 4 点时):
-	//   4 点线规则分 = 10 / 20 / 80 / 320 / 640 / 1280   (一秀→六博红,n=1..6)
-	//   蓝卡(c 每颗 + 倍率 ×n) = c·n²          → n=4 时 c=20 正好 320,匹敌状元
-	//   橙卡(c 每颗 + 倍率 ×M 每颗) = c·n·M^n  → 超过 4 点线
+	// 蓝卡(2025-09 重做):自己的同点 n 颗把**基础分**抬到 base × 3^(n-1),只升不降。
+	//   base 按点数钉死:1/6 点 42、2/5 点 44、3 点 45(旧的 30/120/420/1600/3700/8400
+	//   用 base·3^(n-1) 拟合,最大偏差 30%)。文案一句话「同点每多一颗 ×3」,
+	//   玩家不用再去联想四点线的档位 —— 2025-09 收到「三秋看不懂」的反馈。
+	// 橙卡:仍是「4 点线档位 + 每颗 ×2」那一套(待定:要不要也换新阶梯)。
 	// 4 点自己那套**不乘**(牌型分已经是它的倍率,再乘就是给最强线发钱)。
 	{
 		id: 'hanxing',
 		name: '寒星',
-		desc: '自己每有 1 颗 1 点：得分 +20，得分再 × 该点数颗数；同点 n 颗按 4 点线档位结算',
+		desc: '投掷出 1 颗 1 点：获得 42 分；每多 1 颗 1 点，得分 ×3',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'snowflake',
-		effect: {
-			type: 'bundle',
-			parts: [{ type: 'face_ladder' }, { type: 'own_face', face: 1, chips: 20, multByCount: true }]
-		}
+		effect: { type: 'face_floor', face: 1, base: 42, per: 3 }
 	},
 	{
 		id: 'shuangli',
 		name: '双鲤',
-		desc: '自己每有 1 颗 2 点：得分 +20，得分再 × 该点数颗数；同点 n 颗按 4 点线档位结算',
+		desc: '投掷出 1 颗 2 点：获得 44 分；每多 1 颗 2 点，得分 ×3',
 		rarity: 'rare',
 		tag: '饼',
 		skin: 'GoldCat',
-		effect: {
-			type: 'bundle',
-			parts: [{ type: 'face_ladder' }, { type: 'own_face', face: 2, chips: 20, multByCount: true }]
-		}
+		effect: { type: 'face_floor', face: 2, base: 44, per: 3 }
 	},
 	{
 		id: 'sanqiu',
 		name: '三秋',
-		desc: '自己每有 1 颗 3 点：得分 +20，得分再 × 该点数颗数；同点 n 颗按 4 点线档位结算',
+		desc: '投掷出 1 颗 3 点：获得 45 分；每多 1 颗 3 点，得分 ×3',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'iceberg',
-		effect: {
-			type: 'bundle',
-			parts: [{ type: 'face_ladder' }, { type: 'own_face', face: 3, chips: 20, multByCount: true }]
-		}
+		effect: { type: 'face_floor', face: 3, base: 45, per: 3 }
 	},
 	{
 		id: 'mantanghong',
@@ -926,26 +914,20 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'wugeng',
 		name: '五更',
-		desc: '自己每有 1 颗 5 点：得分 +20，得分再 × 该点数颗数；同点 n 颗按 4 点线档位结算',
+		desc: '投掷出 1 颗 5 点：获得 44 分；每多 1 颗 5 点，得分 ×3',
 		rarity: 'rare',
 		tag: '桂',
 		skin: 'viking',
-		effect: {
-			type: 'bundle',
-			parts: [{ type: 'face_ladder' }, { type: 'own_face', face: 5, chips: 20, multByCount: true }]
-		}
+		effect: { type: 'face_floor', face: 5, base: 44, per: 3 }
 	},
 	{
 		id: 'liuhe',
 		name: '六合',
-		desc: '自己每有 1 颗 6 点：得分 +18，得分再 × 该点数颗数；同点 n 颗按 4 点线档位结算',
+		desc: '投掷出 1 颗 6 点：获得 42 分；每多 1 颗 6 点，得分 ×3',
 		rarity: 'rare',
 		tag: '仙',
 		skin: 'TeeAngel',
-		effect: {
-			type: 'bundle',
-			parts: [{ type: 'face_ladder' }, { type: 'own_face', face: 6, chips: 18, multByCount: true }]
-		}
+		effect: { type: 'face_floor', face: 6, base: 42, per: 3 }
 	},
 
 	// ==== 点数线套装(传说档):每颗翻倍,橙卡是这套的终点 ====

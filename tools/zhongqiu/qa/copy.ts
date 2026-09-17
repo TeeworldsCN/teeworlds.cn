@@ -64,6 +64,8 @@ function teeReq(e: TeeEffect): Group[] {
 				{ alts: condAlts(e.cond), why: `条件 ${lvName(e.cond.replace('_plus', ''))}` },
 				...partGroups(e.chips, e.mult)
 			];
+		case 'relay_pct':
+			return [];
 		case 'team_mult':
 			return [
 				{ alts: ['kw:team_total'], why: '全队总分' },
@@ -156,9 +158,18 @@ function teeReq(e: TeeEffect): Group[] {
 				{ alts: [`map:${e.from}>${e.to}`], why: '「我」的点数映射' }
 			];
 		case 'sell_scale':
-			return [{ alts: [`mul:${e.per}`], why: '每个卖出 Tee 的倍率' }];
+			return [
+				{ alts: ['kw:sellscale'], why: '卖出 1 个 Tee 计数' },
+				{ alts: [`mul:${e.per}`], why: '每个卖出 Tee 的倍率' }
+			];
 		case 'face_ladder':
 			return [{ alts: ['kw:faceladder', 'face:4'], why: '点数阶梯:同点 n 颗按 4 点线档位' }];
+		case 'face_floor':
+			return [
+				{ alts: [`floorbase:${e.base}`], why: `同点起步 ${e.base} 分` },
+				{ alts: [`mul:${e.per}`], why: `每多一颗 ×${e.per}` },
+				{ alts: [`face:${e.face}`], why: `统计自己的 ${e.face} 点` }
+			];
 		case 'team_scale':
 			return [
 				{ alts: ['kw:per_tee'], why: '按队伍人数' },
@@ -357,11 +368,14 @@ function textClaims(raw: string): Set<string> {
 	for (const m of t.matchAll(/每关\+(\d+)/g)) out.add(`perround:${+m[1]}`);
 	// 负分:「得分 −20」/「得分 -20」
 	for (const m of t.matchAll(/得分\s*[−-]\s*(\d+(?:\.\d+)?)/g)) out.add(`add:${-+m[1]}`);
+	// 点数线新版:「投掷出 1 颗 3 点：获得 45 分；每多 1 颗 3 点，得分 ×3」
+	// 「获得 N 分」是基础分起点,不是 +chips
+	for (const m of t.matchAll(/获得(\d+(?:\.\d+)?)分/g)) out.add(`floorbase:${+m[1]}`);
 	// 点数线蓝卡:倍率 = 该点数颗数
 	for (const m of t.matchAll(/(?:总分|得分)再?×(\d)点数量/g)) out.add(`mulbycount:${+m[1]}`);
 	for (const m of t.matchAll(/×(\d+(?:\.\d+)?)/g)) {
 		const before = t.slice(Math.max(0, m.index! - 5), m.index!);
-		if (/队伍人数|倍率\+?/.test(before)) continue; // 「人数×12」「倍率+2」不是 ×mult
+		if (/队伍人数|倍率\+?|掷骰分/.test(before)) continue; // 「人数×12」「倍率+2」「− 掷骰分×1.5」不是 ×mult
 		if (/点数量/.test(t.slice(m.index! + m[0].length, m.index! + m[0].length + 4))) continue; // 「×1 点数量」是颗数倍率
 		out.add(`mul:${+m[1]}`);
 	}
@@ -460,9 +474,11 @@ function textClaims(raw: string): Set<string> {
 	// 骰子颗数 / 点名(「每有 1 颗 6」「每重掷 1 颗」是计数对象,不是改点颗数)
 	for (const m of t.matchAll(/(\d+)颗/g)) {
 		const before = t.slice(Math.max(0, m.index! - 4), m.index!);
-		if (/每有|每$|重掷|颗$|连号/.test(before)) continue;
+		if (/每有|每多|每$|重掷|颗$|连号/.test(before)) continue;
 		// 「连号 3 颗算一秀」里的颗数是档位说明,不是改点颗数
 		if (/^算/.test(t.slice(m.index! + m[0].length))) continue;
+		// 「投掷出 1 颗 3 点」/「3 颗同点＝三红」也是计数说法(后面紧跟点数或同点)
+		if (/^(?:同点|\d点|点|＝|=)/.test(t.slice(m.index! + m[0].length))) continue;
 		out.add(`dice:${+m[1]}`);
 	}
 	for (const m of t.matchAll(/为(\d)点/g)) {
@@ -476,7 +492,11 @@ function textClaims(raw: string): Set<string> {
 		if (/为|成|视为/.test(around)) continue;
 		if (+m[1] >= 1 && +m[1] <= 6) out.add(`face:${+m[1]}`);
 	}
-	for (const m of t.matchAll(/每个(\d)|掷出(\d)/g)) out.add(`face:${+(m[1] ?? m[2])}`);
+	for (const m of t.matchAll(/每个(\d)|掷出(\d)/g)) {
+		// 「投掷出 1 颗 3 点」里的数字是颗数,不是牌面
+		if (/^颗/.test(t.slice(m.index! + m[0].length))) continue;
+		out.add(`face:${+(m[1] ?? m[2])}`);
+	}
 
 	// 月饼币
 	for (const m of t.matchAll(/每(?:持有)?(\d+)月饼币|每(?:持有)?(\d+)币/g))
@@ -531,9 +551,13 @@ function audit(label: string, desc: string, reqs: Group[]) {
 
 	// 文案里出现、但效果里找不到解释的数字/机制
 	const explained = new Set<string>([...reqs.flatMap((g) => g.alts), ...usedAlts]);
-	// 「N 作废」里的 N 是牌面,不算幽灵主张
+	// 「N 作废」里的 N 是牌面,不算幽灵主张;文案里的「作废」本身也已被这条效果解释
 	for (const g of reqs)
-		for (const a of g.alts) if (a.startsWith('void:')) explained.add(`face:${a.slice(5)}`);
+		for (const a of g.alts)
+			if (a.startsWith('void:')) {
+				explained.add(`face:${a.slice(5)}`);
+				explained.add('kw:void');
+			}
 	// 「每有 1 颗 6」里的 6 是统计对象,不算幽灵牌面
 	for (const g of reqs)
 		for (const a of g.alts) if (a.startsWith('ownface:')) explained.add(`face:${a.slice(8)}`);
