@@ -847,10 +847,13 @@ export const calcTeamTotal = (
 	/** 接力回流加进来的总分(已含在 total 里,结算动画单独播一行) */
 	relay: number;
 	relayLines: { cardId: string; from: number[]; value: number }[];
+	/** 压分辅助:全队倍率里来自「邻居分/自己分」的那部分(结算动画可单独播) */
+	ratioLines: { cardId: string; own: number; neighbor: number; mult: number }[];
 } => {
 	let teamMult = 1;
 	let relay = 0;
 	const relayLines: { cardId: string; from: number[]; value: number }[] = [];
+	const ratioLines: { cardId: string; own: number; neighbor: number; mult: number }[] = [];
 	/** 接力回流:所有人都掷完才算,所以只看位置、不看出手顺序 */
 	const addRelay = (eff: TeeEffect & { type: 'relay_pct' }, i: number, cardId: string) => {
 		const idx = eff.from === 'left' ? [i - 1] : eff.from === 'right' ? [i + 1] : [i - 1, i + 1];
@@ -864,13 +867,21 @@ export const calcTeamTotal = (
 	const walk = (eff: TeeEffect, i: number, cardId: string) => {
 		if (eff.type === 'team_mult') teamMult *= eff.value;
 		else if (eff.type === 'relay_pct') addRelay(eff, i, cardId);
-		else if (eff.type === 'bundle') eff.parts.forEach((p) => walk(p, i, cardId));
+		else if (eff.type === 'team_ratio') {
+			// 顺序:各人分 → 接力回流 → 这个比率 → 全队倍率(teamMult)
+			const own = Math.max(1, scores[i] ?? 0);
+			const nb = scores[i + 1] ?? 0;
+			if (nb > 0 && nb / own !== 1) {
+				teamMult *= nb / own;
+				ratioLines.push({ cardId, own, neighbor: nb, mult: nb / own });
+			}
+		} else if (eff.type === 'bundle') eff.parts.forEach((p) => walk(p, i, cardId));
 	};
 	cards.forEach((card, i) => {
 		if (card) walk(card.effect, i, card.id);
 	});
 	const total = Math.round((scores.reduce((a, b) => a + b, 0) + relay) * teamMult);
-	return { total, teamMult, relay: Math.round(relay), relayLines };
+	return { total, teamMult, relay: Math.round(relay), relayLines, ratioLines };
 };
 
 // ---- 奖励 ----

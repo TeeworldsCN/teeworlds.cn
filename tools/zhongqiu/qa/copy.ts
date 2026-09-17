@@ -64,6 +64,8 @@ function teeReq(e: TeeEffect): Group[] {
 				{ alts: condAlts(e.cond), why: `条件 ${lvName(e.cond.replace('_plus', ''))}` },
 				...partGroups(e.chips, e.mult)
 			];
+		case 'team_ratio':
+			return [];
 		case 'relay_pct':
 			return [];
 		case 'team_mult':

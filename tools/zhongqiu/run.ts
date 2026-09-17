@@ -109,7 +109,11 @@ const makeRoller = (cardId: string | null, buffIds: string[], skill: Skill) => {
 		dpCache.set(key, dp);
 	}
 	const { bestKeep } = dp;
-	const rolls = 2 + (card && card.effect.type === 'extra_roll' ? card.effect.count : 0);
+	// 持「压分辅助」的 Tee,模拟玩家故意压低自己输出:不重掷(留着烂牌)
+	const suppress = !!card && JSON.stringify(card.effect).includes('team_ratio');
+	const rolls = suppress
+		? 1
+		: 2 + (card && card.effect.type === 'extra_roll' ? card.effect.count : 0);
 	return () => {
 		const c = new Array(7).fill(0);
 		for (let k = 0; k < 6; k++) c[rnd()]++;
@@ -419,7 +423,7 @@ export const PREFS: Pref[] = [
 	effPref('成长流', ['growth_mult', 'scaling_mult']),
 	effPref('重掷流', ['per_reroll', 'extra_roll']),
 	effPref('复制流', ['copy_right']),
-	effPref('支援流', ['neighbor', 'relay_left', 'relay_pct', 'team_mult'], 'hebi'),
+	effPref('支援流', ['neighbor', 'relay_left', 'relay_pct', 'team_mult', 'team_ratio'], 'hebi'),
 	effPref('主 Tee 联动', ['on_player', 'player_die']),
 	effPref('主 Tee 流', ['map_player_die'], 'yueyachi'),
 	effPref('和值流', ['sum_chips', 'sum_mult']),
