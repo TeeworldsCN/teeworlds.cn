@@ -26,8 +26,10 @@
 		tipExtra?: string;
 		/** tooltip 附加明细行(队伍:身上加成项目+剩余回合、成长卡当前数值) */
 		tipList?: { text: string; cls?: string }[];
-		/** 卡面角标(队伍:身上加成数量) */
+		/** 卡面角标(队伍:身上加成数量;开局选卡:出战顺序) */
 		badge?: string;
+		/** 角标配色(默认琥珀;开局选卡用翠绿,与「已选」同色系) */
+		badgeClass?: string;
 		/** 卡牌下方的操作/结果区(队伍:结果;3 选 1:选择按钮;商店:购买按钮) */
 		actions?: Snippet;
 		/** 卡牌右上角角标(队伍:卖出 ×) */
@@ -50,6 +52,7 @@
 		tipExtra,
 		tipList,
 		badge,
+		badgeClass = 'bg-amber-500/90 text-amber-950',
 		actions,
 		sellBtn,
 		selected = false,
@@ -90,7 +93,7 @@
 	});
 </script>
 
-<div class="group relative w-[86px] shrink-0" bind:this={wrapEl}>
+<div class="group relative w-[86px] shrink-0 max-[365px]:w-[74px]" bind:this={wrapEl}>
 	<div
 		class="tee-card {selected ? 'ring-2 ring-emerald-400' : ''} {active
 			? '-translate-y-1 border-amber-400/70 bg-amber-400/10 shadow-lg shadow-amber-900/30'
@@ -102,15 +105,17 @@
 		{/if}
 		{#if badge}
 			<div
-				class="absolute -top-1.5 -left-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/90 px-1 text-[10px] font-bold text-amber-950 shadow"
+				class="absolute -top-1.5 -left-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold shadow {badgeClass}"
 			>
 				{badge}
 			</div>
 		{/if}
-		<div class="mx-auto h-12 w-12">
+		<div class="mx-auto h-12 w-12 max-[365px]:h-10 max-[365px]:w-10">
 			<TeeRender name={teeSkin} {emote} {pose} className="h-full w-full" />
 		</div>
-		<div class="mt-1 w-full truncate text-center text-xs font-semibold text-slate-200">
+		<div
+			class="mt-1 w-full truncate text-center text-xs font-semibold text-slate-200 max-[365px]:text-[11px]"
+		>
 			{teeName}
 		</div>
 	</div>
@@ -176,6 +181,15 @@
 		transition:
 			transform 0.15s ease,
 			box-shadow 0.15s ease;
+	}
+
+	/* 320px(初代 SE):卡片整体缩一档,否则 Boss 关 + 6 人满队会溢出约 15px */
+	@media (max-width: 365px) {
+		.tee-card {
+			width: 74px;
+			padding: 6px;
+			border-radius: 10px;
+		}
 	}
 
 	.tee-card:hover {
