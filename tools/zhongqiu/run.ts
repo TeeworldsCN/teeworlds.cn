@@ -181,10 +181,20 @@ const scoreTeam = (
 
 export interface RunSimResult {
 	name: string;
+	/** 一局打通 16 关的概率(含主动技救命) */
 	clearRate: number;
+	/** 本局结束的中位关数 —— 注意游戏里没有「阵亡」,一关没达标就是本局结束(记分重开) */
 	medianDeath: number;
 	/** 平均第几关达成「流派成型」(5 张同流派/目标) */
 	onlineRound: number;
+	/** 平均每局用掉几次主动技(时轮 / 补分) */
+	skillUses: number;
+	/** 平均每局用掉几次时轮 */
+	retryUses: number;
+	/** 平均每局靠主动技救回的关卡数(本来会本局结束) */
+	rescued: number;
+	/** 各关「第一次掷就过」的概率(不含主动技)· 难度曲线 */
+	passRate: number[];
 }
 
 const pickBest = <T>(opts: T[], score: (x: T) => number): T => {
@@ -218,6 +228,10 @@ export const simulateFullRun = (
 	let cleared = 0;
 	const deaths: number[] = [];
 	const online: number[] = [];
+	let skillUses = 0;
+	let retryUses = 0;
+	let rescued = 0;
+	const passCnt = new Array<number>(TARGETS.length).fill(0);
 	for (let t = 0; t < trials; t++) {
 		// 开局:5 张普通里挑 2 张
 		const draft = [...commons].sort(() => Math.random() - 0.5).slice(0, 5);
@@ -232,8 +246,13 @@ export const simulateFullRun = (
 		let onlineRound = 0;
 		let alive = true;
 		const buffStock: string[] = [];
+		/** 主动技冷却:`槽位|卡id` → 剩余关数(换卡即视为新卡,从 0 开始) */
+		const cdMap = new Map<string, number>();
+		const cdLeft = (i: number, id: string) => cdMap.get(`${i}|${id}`) ?? 0;
+		const useCd = (i: number, id: string, n: number) => cdMap.set(`${i}|${id}`, n);
 
 		for (let r = 0; r < TARGETS.length && alive; r++) {
+			for (const [k, v] of cdMap) if (v > 0) cdMap.set(k, v - 1); // 冷却按关推进
 			mooncakes += 10 + 4 * r; // 近似 roundReward + 溢出奖励
 			// 商店:买得起就买最贵的一张可用加成,挂给最需要的 Tee
 			if (pref.buffScore) {
@@ -261,8 +280,62 @@ export const simulateFullRun = (
 					`  R${String(r + 1).padStart(2)} 队${team.length} 币${mooncakes} 分${total.toFixed(0).padStart(7)} / 目标${String(TARGETS[r]).padStart(6)}  ${cards}`
 				);
 			}
-			if (total >= TARGETS[r]) reached = r + 1;
-			else {
+			// ---- 过关判定 + 主动技(掷完可发动) ----
+			// 只在「这一关本来会失败」时才动技能,所以热路径(能过关时)零开销。
+			const rawPass = total >= TARGETS[r];
+			let passed = rawPass;
+			if (rawPass) passCnt[r]++;
+			if (!passed) {
+				// ① 补分(chips / left_chips):能补满缺口才用,缺口从大往小凑
+				const gap = TARGETS[r] - total;
+				const cands: { i: number; id: string; value: number; cd: number }[] = [];
+				team.forEach((s, i) => {
+					if (!s.card) return;
+					const e = CARD_BY_ID.get(s.card)?.effect;
+					if (!e || e.type !== 'active' || (e.skill !== 'chips' && e.skill !== 'left_chips'))
+						return;
+					if (e.skill === 'left_chips' && i === 0) return; // 左边没人
+					const v = e.value ?? 0;
+					if (v > 0) cands.push({ i, id: s.card, value: v, cd: e.cooldown });
+				});
+				cands.sort((a, b) => b.value - a.value);
+				let gain = 0;
+				const used: typeof cands = [];
+				for (const c of cands) {
+					if (gain >= gap) break;
+					if (cdLeft(c.i, c.id) > 0) continue;
+					gain += c.value;
+					used.push(c);
+				}
+				if (used.length && gain >= gap) {
+					for (const c of used) {
+						useCd(c.i, c.id, c.cd);
+						skillUses++;
+					}
+					passed = true;
+				}
+			}
+			// ② 时轮:本关重掷(全队分数清零,目标/Boss 不变)。掷骰本身无记忆,
+			//    所以「重掷」= 用同一套 rollers 再算一次本关。
+			for (let k = 0; !passed && k < 3; k++) {
+				const slot = team.findIndex((s, i) => {
+					const e = s.card ? CARD_BY_ID.get(s.card)?.effect : undefined;
+					return !!e && e.type === 'active' && e.skill === 'retry' && cdLeft(i, s.card ?? '') <= 0;
+				});
+				if (slot < 0) break;
+				const id = team[slot].card ?? '';
+				const e = CARD_BY_ID.get(id)?.effect;
+				if (!e || e.type !== 'active') break;
+				useCd(slot, id, e.cooldown);
+				skillUses++;
+				retryUses++;
+				const again = scoreTeam(team, r + 1, mooncakes, soldTotal, rollers);
+				passed = again >= TARGETS[r];
+			}
+			if (passed) {
+				if (!rawPass) rescued++;
+				reached = r + 1;
+			} else {
 				alive = false;
 				deaths.push(r + 1);
 				break;
@@ -294,7 +367,11 @@ export const simulateFullRun = (
 		name: pref.name,
 		clearRate: cleared / trials,
 		medianDeath: sorted.length ? sorted[sorted.length >> 1] : 0,
-		onlineRound: online.reduce((a, b) => a + b, 0) / trials
+		onlineRound: online.reduce((a, b) => a + b, 0) / trials,
+		skillUses: skillUses / trials,
+		retryUses: retryUses / trials,
+		rescued: rescued / trials,
+		passRate: passCnt.map((n) => n / trials)
 	};
 };
 
@@ -392,16 +469,40 @@ if (import.meta.main) {
 		PREFS.forEach((p, i) => (results[i] = simulateFullRun(p, skill, trials)));
 	}
 
-	console.log('流派'.padEnd(16) + '通关率'.padStart(8) + '中位阵亡'.padStart(10) + '  流派成型');
+	const WALL = 12; // R13 = 目标曲线的墙
+	console.log(
+		'流派'.padEnd(16) +
+			'通关率'.padStart(8) +
+			`R${WALL + 1}一次过`.padStart(10) +
+			'救回/局'.padStart(9) +
+			'时轮/局'.padStart(9) +
+			'中位结束'.padStart(10) +
+			'  流派成型'
+	);
 	for (let i = 0; i < PREFS.length; i++) {
 		const r = results[i];
 		if (!r) continue;
 		console.log(
 			r.name.padEnd(16) +
 				`${(r.clearRate * 100).toFixed(0)}%`.padStart(8) +
+				`${((r.passRate[WALL] ?? 0) * 100).toFixed(0)}%`.padStart(10) +
+				r.rescued.toFixed(2).padStart(9) +
+				r.retryUses.toFixed(2).padStart(9) +
 				(r.medianDeath ? `R${r.medianDeath}` : '—').padStart(10) +
 				`        ${r.onlineRound < 17 ? `R${r.onlineRound.toFixed(1)}` : '从未成型'}`
 		);
 	}
+	// 难度曲线:全流派在各关的「第一次掷就过」率(重掷/技能都不帮忙)
+	const lv = [0, 4, 7, 10, 12, 15];
+	const rows = results.filter((r): r is RunSimResult => !!r);
+	console.log(
+		'\n一次过率(占全部开局 · 含没活到那关的失败局): ' +
+			lv
+				.map((k) => {
+					const v = rows.reduce((a, r) => a + (r.passRate[k] ?? 0), 0) / (rows.length || 1);
+					return `R${k + 1}=${(v * 100).toFixed(0)}%`;
+				})
+				.join('  ')
+	);
 	console.log(`\n耗时 ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 }
