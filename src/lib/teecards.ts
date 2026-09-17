@@ -61,7 +61,13 @@ export type TeeEffect =
 	| { type: 'cond'; cond: Cond; chips?: number; mult?: number } // 条件触发
 	| { type: 'team_mult'; value: number } // 全队总分 ×mult
 	/** 接力回流:回合结算时把邻居本关得分的 pct 加进全队分(所有人都掷完才算,天然没有先后问题) */
-	| { type: 'relay_pct'; from: 'left' | 'right' | 'both'; pct: number }
+	| {
+			type: 'relay_pct';
+			from: 'left' | 'right' | 'both';
+			pct: number;
+			/** 固定底分:前几关邻居分低,纯比例等于没有 */
+			flat?: number;
+	  }
 	| { type: 'team_chips'; value: number } // 全队每个 Tee 各 +chips
 	| { type: 'per_team_chips'; value: number } // 队伍每多 1 人,得分 +value
 	| { type: 'scaling_mult'; per: number } // 每过一关,该 Tee 的 mult 永久 +per
@@ -286,7 +292,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'tidengyinlu',
 		name: '提灯引路',
-		desc: '右侧 Tee 得分 +45，自身 +18',
+		desc: '右侧 Tee 得分 +45，自身 +45',
 		rarity: 'common',
 		skin: 'santa',
 		tag: '灯',
@@ -328,14 +334,14 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guiying',
 		name: '桂影',
-		desc: '回合结算时：右邻本关得分的 30% 加进全队分，自己 ×1.3',
+		desc: '回合结算时：右邻本关得分的 30% + 60 分加进全队分，自己 ×1.3',
 		rarity: 'common',
 		skin: 'greensward',
 		tag: '桂',
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'relay_pct', from: 'right', pct: 0.3 },
+				{ type: 'relay_pct', from: 'right', pct: 0.3, flat: 60 },
 				{ type: 'mult', value: 1.3 }
 			]
 		}
@@ -343,13 +349,13 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'bingdilian',
 		name: '并蒂莲',
-		desc: '回合结算时：左右两人本关得分的 45% 加进全队分，自己 ×1.35',
+		desc: '回合结算时：左右两人本关得分的 45% + 100 分加进全队分，自己 ×1.35',
 		rarity: 'rare',
 		skin: 'Sailormoon',
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'relay_pct', from: 'both', pct: 0.45 },
+				{ type: 'relay_pct', from: 'both', pct: 0.45, flat: 100 },
 				{ type: 'mult', value: 1.35 }
 			]
 		}
@@ -392,14 +398,14 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuexialaoren',
 		name: '月下老人',
-		desc: '回合结算时：左右两人本关得分的 75% 加进全队分，自己 ×1.45',
+		desc: '回合结算时：左右两人本关得分的 75% + 150 分加进全队分，自己 ×1.45',
 		rarity: 'legendary',
 		skin: 'pumpkin',
 		tag: '月',
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'relay_pct', from: 'both', pct: 0.75 },
+				{ type: 'relay_pct', from: 'both', pct: 0.75, flat: 150 },
 				{ type: 'mult', value: 1.45 }
 			]
 		}

@@ -855,7 +855,7 @@ export const calcTeamTotal = (
 	const addRelay = (eff: TeeEffect & { type: 'relay_pct' }, i: number, cardId: string) => {
 		const idx = eff.from === 'left' ? [i - 1] : eff.from === 'right' ? [i + 1] : [i - 1, i + 1];
 		const from = idx.filter((j) => j >= 0 && j < scores.length && j !== i);
-		const v = from.reduce((s, j) => s + scores[j] * eff.pct, 0);
+		const v = (eff.flat ?? 0) + from.reduce((s, j) => s + scores[j] * eff.pct, 0);
 		if (v > 0) {
 			relay += v;
 			relayLines.push({ cardId, from, value: Math.round(v) });

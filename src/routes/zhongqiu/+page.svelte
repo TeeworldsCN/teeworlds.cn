@@ -1187,10 +1187,14 @@
 		settleIdx = -1;
 		settling = true;
 		const stepMs = 380 / speed;
+		// 进度条跟着结算动画走(原来只改高亮行,分数要等动画播完才跳一下)
+		const barFrom = currentScore;
+		const barTo = currentScore + lastBreakdown.total;
 		settleSteps.forEach((_, i) => {
 			setTimeout(
 				() => {
 					settleIdx = i;
+					currentScore = Math.round(barFrom + (barTo - barFrom) * ((i + 1) / settleSteps.length));
 					const st = settleSteps[i];
 					if (!st) return;
 					if (st.kind === 'total') sfxTotal(lastBreakdown.total > 0);
@@ -1319,15 +1323,23 @@
 			}
 		}
 		const sum = team.reduce((s, t) => s + t.lastScore, 0);
-		const { total, teamMult } = calcTeamTotal(
+		const { total, teamMult, relay, relayLines } = calcTeamTotal(
 			team.map((t) => t.lastScore),
 			team.map(cardOf) // 同上:位置对齐
 		);
 		roundTotal = total;
+		// 接力回流:一张卡一行,数字由引擎算好(relayLines)
+		for (const rl of relayLines) {
+			steps.push({
+				text: `🔄 接力回流 ${cardById(rl.cardId)?.name ?? rl.cardId} +${formatScore(rl.value)} 分`,
+				cls: 'text-cyan-300',
+				kind: 'mult'
+			});
+		}
 		steps.push({
 			text:
 				teamMult !== 1
-					? `${formatScore(sum)} × ${teamMult} = ${formatScore(total)} 分`
+					? `${formatScore(sum + relay)} × ${teamMult} = ${formatScore(total)} 分`
 					: `${formatScore(total)} 分`,
 			cls: 'font-bold text-amber-200',
 			kind: 'total'
@@ -1340,6 +1352,8 @@
 			setTimeout(
 				() => {
 					teamSettleIdx = i;
+					// 回流/倍率播的时候进度条也往上走(终点正好是 total)
+					currentScore = Math.round(sum + (total - sum) * ((i + 1) / steps.length));
 				},
 				(i + 1) * stepMs
 			);
