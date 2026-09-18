@@ -1502,6 +1502,33 @@
 			advanceAfterTee();
 			return;
 		}
+		// 和值类主动技:参数在卡自己的效果里(per / from / mult),按当前点数和结算
+		if (sk.skill === 'sum') {
+			const eff = cardById(sk.srcId)?.effect;
+			const pr = eff && eff.type === 'active' && eff.skill === 'sum' ? eff : null;
+			const sum = scoreInput(i, tee.lastLevelId, tee.lastDice ?? []).diceSum;
+			const gain = Math.round(sum * (pr?.per ?? 1));
+			to.lastScore += gain;
+			currentScore += gain;
+			let m = 1;
+			if (pr?.mult && pr.from !== undefined && sum > pr.from) {
+				m = Math.pow(pr.mult, sum - pr.from);
+				currentScore += to.lastScore * (m - 1);
+				to.lastScore *= m;
+			}
+			settleSteps = [
+				...settleSteps,
+				{
+					text: `⚡ ${name} · 点数和 ${sum} → +${formatScore(gain)}${m > 1 ? ` ×${m.toFixed(2)}` : ''}`,
+					cls: 'text-fuchsia-300',
+					kind: 'chip'
+				}
+			];
+			settleIdx = settleSteps.length - 1;
+			sfxTotal(true);
+			setTimeout(advanceAfterTee, 700 / speed);
+			return;
+		}
 		to.lastScore += sk.value;
 		currentScore += sk.value;
 		const who = sk.skill === 'left_chips' ? `左侧 ${cardOf(to)?.name ?? '我'}` : '本 Tee';

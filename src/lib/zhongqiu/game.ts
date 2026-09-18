@@ -357,7 +357,8 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 
 export interface ActiveSkill {
 	srcId: string;
-	skill: 'chips' | 'left_chips' | 'retry';
+	skill: 'chips' | 'left_chips' | 'retry' | 'sum';
+	/** 固定加分(chips/left_chips 用);和值类(sum)在卡自己的效果里读参数,这里是 0 */
 	value: number;
 	cooldown: number;
 }
@@ -369,7 +370,7 @@ export const activeSkills = (self: EffectiveEffect[], buffs: AppliedBuff[] = [])
 			out.push({
 				srcId,
 				skill: eff.skill,
-				value: eff.value ?? 0,
+				value: 'value' in eff ? (eff.value ?? 0) : 0,
 				cooldown: eff.cooldown
 			});
 	}

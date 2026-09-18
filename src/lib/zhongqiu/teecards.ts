@@ -80,6 +80,8 @@ export type TeeEffect =
 	| { type: 'straight_ladder' } // 连号阶梯:123/234/345/456→一秀,1234 系→二举,12345 系→四进
 	| { type: 'straight_chips'; per: number } // 连号里每颗骰子 +per 分
 	| { type: 'active'; skill: 'chips' | 'left_chips' | 'retry'; value?: number; cooldown: number }
+	// 和值类主动技:发动时按**当前骰子点数和**结算,所以参数不是固定 value
+	| { type: 'active'; skill: 'sum'; per: number; from?: number; mult?: number; cooldown: number }
 	// ---- 联动类:不再只是「换个数字的 +X 分」 ----
 	| { type: 'neighbor'; side: 'left' | 'right' | 'both'; chips?: number; mult?: number } // 给相邻 Tee 加成(自己不吃)
 	| { type: 'per_buff'; per: number; as: 'chips' | 'mult' } // 该 Tee 身上每有 1 张加成卡
@@ -421,31 +423,19 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuechao',
 		name: '潮汐',
-		desc: '骰子点数和 ×4 计入得分；和值超过 10 后每点：得分 ×1.12',
+		desc: '掷完可发动：本 Tee 点数和 ×4 计入得分，和值超过 10 后每点 ×1.12（冷却 2 关）',
 		rarity: 'rare',
 		skin: 'Riptide',
-		effect: {
-			type: 'bundle',
-			parts: [
-				{ type: 'sum_chips', per: 4 },
-				{ type: 'sum_mult', from: 10, per: 1.12 }
-			]
-		}
+		effect: { type: 'active', skill: 'sum', per: 4, from: 10, mult: 1.12, cooldown: 2 }
 	},
 	{
 		id: 'wangyue',
 		name: '望月',
-		desc: '骰子点数和 ×10 计入得分；和值超过 15 后每点：得分 ×1.15',
+		desc: '掷完可发动：本 Tee 点数和 ×10 计入得分，和值超过 15 后每点 ×1.15（冷却 2 关）',
 		rarity: 'legendary',
 		tag: '月',
 		skin: 'star',
-		effect: {
-			type: 'bundle',
-			parts: [
-				{ type: 'sum_chips', per: 10 },
-				{ type: 'sum_mult', from: 15, per: 1.15 }
-			]
-		}
+		effect: { type: 'active', skill: 'sum', per: 10, from: 15, mult: 1.15, cooldown: 2 }
 	},
 
 	{
