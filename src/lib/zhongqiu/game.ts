@@ -956,7 +956,13 @@ export const calcTeamTotal = (
 // ---- 奖励 ----
 
 /** 过关奖励: 基础 + 关数递增 */
-export const roundReward = (n: number): number => 5 + Math.floor((n - 1) / 3) * 3;
+/**
+ * 每关基础收入。放缓过一版:原来每 3 关 +3,爬到 R16 就是 20 🥮/关,
+ * 而一关真正值得买的道具只要 8~12 🥮 —— 钱只进不出。现在每 4 关 +2,
+ * R16 只有 13 🥮/关(约原来的 2/3),买两张卡就要掂量一下。
+ * (溢出奖励 overflowReward 只在超目标时才给,曲线拉陡后基本拿不到了。)
+ */
+export const roundReward = (n: number): number => 5 + Math.floor((n - 1) / 4) * 2;
 
 export const overflowReward = (score: number, target: number): number =>
 	Math.min(8, Math.floor((Math.max(0, score - target) / Math.max(1, target)) * 2));
