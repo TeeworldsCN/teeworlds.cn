@@ -252,10 +252,9 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'denglong',
-		name: '红灯笼',
+		name: '高照',
 		desc: '三红及以上：得分 +150',
 		rarity: 'common',
-		tag: '灯',
 		skin: 'red_flame',
 		effect: { type: 'cond', cond: 'san_hong_plus', chips: 150 }
 	},
@@ -269,19 +268,17 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'huadeng',
-		name: '花灯',
+		name: '喜钱',
 		desc: '一秀及以上：得分 +50',
 		rarity: 'common',
-		tag: '灯',
 		skin: 'cutee_glow',
 		effect: { type: 'cond', cond: 'yi_xiu_plus', chips: 50 }
 	},
 	{
 		id: 'dengmi',
-		name: '灯谜',
+		name: '猜谜',
 		desc: '二举及以上：得分 +65',
 		rarity: 'common',
-		tag: '灯',
 		skin: 'glow_default',
 		effect: { type: 'cond', cond: 'er_ju_plus', chips: 65 }
 	},
@@ -305,11 +302,10 @@ export const CARDS: TeeCard[] = [
 	// ======== 联动流:支援 / 加持 / 流派 / 主 Tee ========
 	{
 		id: 'tidengyinlu',
-		name: '提灯引路',
+		name: '引路',
 		desc: '右侧 Tee 得分 +45，自身 +18',
 		rarity: 'common',
 		skin: 'glow_clafairy',
-		tag: '灯',
 		effect: {
 			type: 'bundle',
 			parts: [
@@ -320,11 +316,10 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'pengyue',
-		name: '捧月',
+		name: '承露',
 		desc: '该 Tee 身上每张加成卡，得分 +25',
 		rarity: 'common',
 		skin: 'Puffball',
-		tag: '月',
 		effect: { type: 'per_buff', per: 25, as: 'chips' }
 	},
 	{
@@ -338,11 +333,10 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'shiyue',
-		name: '拾月',
+		name: '拾遗',
 		desc: '「我」最终骰子里每个 4，该 Tee 得分 +40',
 		rarity: 'common',
 		skin: 'small_star',
-		tag: '月',
 		effect: { type: 'player_die', face: 4, chips: 40 }
 	},
 	{
@@ -405,8 +399,8 @@ export const CARDS: TeeCard[] = [
 		name: '望月怀远',
 		desc: '「我」掷出"三红"及以上时，该 Tee 得分 ×4.5',
 		rarity: 'rare',
-		skin: 'lunalovegood',
 		tag: '月',
+		skin: 'lunalovegood',
 		effect: { type: 'on_player', cond: 'san_hong_plus', mult: 4.5 }
 	},
 	{
@@ -455,10 +449,9 @@ export const CARDS: TeeCard[] = [
 	// ======== 稀有/传说:和值流(故意做得少,它会简化取舍) ========
 	{
 		id: 'yuechao',
-		name: '月潮',
+		name: '潮汐',
 		desc: '骰子点数和 ×4 计入得分；和值超过 10 后每点：得分 ×1.12',
 		rarity: 'rare',
-		tag: '月',
 		skin: 'Riptide',
 		effect: {
 			type: 'bundle',
@@ -519,10 +512,9 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'zhideng',
-		name: '纸灯',
+		name: '串珠',
 		desc: '连号里每颗骰子：得分 +15',
 		rarity: 'common',
-		tag: '灯',
 		skin: 'generic_glow',
 		effect: { type: 'straight_chips', per: 15 }
 	},
@@ -624,37 +616,33 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'yinhe',
-		name: '银河月色',
+		name: '星河',
 		desc: '状元及以上：得分 ×3',
 		rarity: 'rare',
-		tag: '月',
 		skin: 'astronaut',
 		effect: { type: 'cond', cond: 'zhuang_yuan_plus', mult: 3 }
 	},
 	{
 		id: 'yueya',
-		name: '月牙',
+		name: '银钩',
 		desc: '对堂及以上：得分 +700',
 		rarity: 'rare',
-		tag: '月',
 		skin: 'stargirl',
 		effect: { type: 'cond', cond: 'dui_tang_plus', chips: 700 }
 	},
 	{
 		id: 'changong',
-		name: '蟾宫清月',
+		name: '蟾魄',
 		desc: '自己的 6 点视为 4 点',
 		rarity: 'rare',
-		tag: '月',
 		skin: 'IceWitch_Frozen',
 		effect: { type: 'self_mods', mods: { map: { 6: 4 } } }
 	},
 	{
 		id: 'yuelao',
-		name: '月老',
+		name: '红线',
 		desc: '复制右侧 Tee 的卡牌',
 		rarity: 'common',
-		tag: '月',
 		skin: 'dark_chao',
 		effect: { type: 'copy_right' }
 	},
@@ -851,28 +839,25 @@ export const CARDS: TeeCard[] = [
 	// ==== 点数统计流:自己骰子里的点数越多越强,和改点/视为类配装联动 ====
 	{
 		id: 'dianjiang',
-		name: '灯下点将',
+		name: '点将',
 		desc: '自己每有 1 颗 6 点：得分 +30',
 		rarity: 'common',
-		tag: '灯',
 		skin: 'glow_brownbear',
 		effect: { type: 'own_face', face: 6, chips: 30 }
 	},
 	{
 		id: 'guyue',
-		name: '孤月',
+		name: '孤影',
 		desc: '自己每有 1 颗 1 点：得分 +28',
 		rarity: 'common',
-		tag: '月',
 		skin: 'White',
 		effect: { type: 'own_face', face: 1, chips: 28 }
 	},
 	{
 		id: 'duiying',
-		name: '对影邀月',
+		name: '对影',
 		desc: '自己每有 1 颗 2 点：得分 +35',
 		rarity: 'common',
-		tag: '月',
 		skin: 'Shadowtee',
 		effect: { type: 'own_face', face: 2, chips: 35 }
 	},
@@ -896,10 +881,9 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'zhaixing',
-		name: '月下摘星',
+		name: '摘星',
 		desc: '自己每有 1 颗 6 点：得分 +65；每有 1 颗 1 点：得分 −10',
 		rarity: 'common',
-		tag: '月',
 		skin: 'glow_mermyfox',
 		effect: {
 			type: 'bundle',
@@ -921,10 +905,9 @@ export const CARDS: TeeCard[] = [
 	// 4 点自己那套**不乘**(牌型分已经是它的倍率,再乘就是给最强线发钱)。
 	{
 		id: 'hanxing',
-		name: '冷月寒星',
+		name: '寒星',
 		desc: '投掷出 1 颗 1 点：获得 42 分；每多 1 颗 1 点，得分 ×3',
 		rarity: 'rare',
-		tag: '月',
 		skin: 'IceWitch_Dark',
 		effect: { type: 'face_floor', face: 1, base: 42, per: 3 }
 	},
@@ -948,10 +931,9 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'mantanghong',
-		name: '月满堂红',
+		name: '满堂红',
 		desc: '自己每有 1 颗 4 点：得分 +45',
 		rarity: 'rare',
-		tag: '月',
 		skin: 'Red',
 		effect: { type: 'own_face', face: 4, chips: 45 }
 	},
@@ -1266,10 +1248,9 @@ export const CARDS: TeeCard[] = [
 	// ==== 重掷流:重掷越多越强,和「多投掷」配装联动 ====
 	{
 		id: 'kuaiyu',
-		name: '快雨挑灯',
+		name: '快雨',
 		desc: '本回合每重掷 1 颗骰子：得分 ×1.25',
 		rarity: 'rare',
-		tag: '灯',
 		skin: 'mermydon_glow',
 		effect: { type: 'per_reroll', mult: 1.25 }
 	},
