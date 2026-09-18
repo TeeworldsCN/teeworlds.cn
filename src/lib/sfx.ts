@@ -285,3 +285,14 @@ export const sfxClick = () => {
 	click(t0, { freq: 2600, q: 2, dur: 0.03, gain: 0.1 });
 	tone(note(12), t0, 0.05, { type: 'sine', gain: 0.06 });
 };
+
+/** 买东西:两枚硬币的"叮——叮↑",零钱落袋 */
+export const sfxCoin = () => {
+	log('coin');
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.005;
+	click(t0, { freq: 5400, q: 3, dur: 0.02, gain: 0.05 });
+	tone(note(19), t0, 0.06, { type: 'square', gain: 0.085 });
+	tone(note(26), t0 + 0.055, 0.16, { type: 'square', gain: 0.095 });
+};

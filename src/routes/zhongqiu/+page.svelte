@@ -70,6 +70,7 @@
 		loadSfxPref,
 		setSfxEnabled,
 		sfxClick,
+		sfxCoin,
 		sfxEnabled,
 		sfxLog,
 		sfxLevel,
@@ -1413,7 +1414,9 @@
 	/** 判定过关/失败(团队结算动画播完后) */
 	const settleRound = () => {
 		const total = roundTotal;
-		runScore += total;
+		// 本局总分按「关卡内数值」算:每关最多只计它的目标分(爆发流刷出来的溢出分不进纪录),
+		// 最后一关没达标就只计它实际拿到的分。于是最高分 = 打过的各关目标之和 + 最后一关的残分。
+		runScore += Math.min(total, target);
 		if (total >= target) {
 			// 过关
 			const base = roundReward(round);
@@ -1501,6 +1504,7 @@
 	const buyBuff = (card: BuffCard) => {
 		if (mooncakes < card.price) return;
 		mooncakes -= card.price;
+		if (sfxOn) sfxCoin();
 		buffInventory = { ...buffInventory, [card.id]: (buffInventory[card.id] ?? 0) + 1 };
 		shopSold = [...shopSold, card.id];
 		// 买走之后这格自动解锁：免得「已买」永远占着货架
@@ -1852,8 +1856,7 @@
 						<div class="mb-1.5 text-sm font-bold text-amber-200">📜 玩法说明</div>
 						<ul class="space-y-1 text-xs leading-snug text-slate-400 sm:space-y-1.5 sm:text-sm">
 							<li>
-								① 开局 <b class="text-slate-200">5 选 2</b>、<b class="text-slate-200">3 人成队</b
-								>；全队轮流掷 6 骰，总分达标即过关
+								① 开局 <b class="text-slate-200">3 人成队</b>；全队轮流掷 6 骰，总分达标即过关
 							</li>
 							<li>
 								② 每人每回合掷 <b class="text-cyan-300">2 次</b>：第一掷后可挑骰子<b>重掷</b>
@@ -1887,10 +1890,9 @@
 					class="panel-fill panel-auto mt-2.5 rounded-xl border border-amber-500/30 bg-slate-900/80 px-2.5 py-2.5 backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-6"
 				>
 					<div class="text-center">
-						<div class="text-base font-bold text-amber-200 sm:text-xl">🎲 挑 2 张 Tee 卡开局</div>
+						<div class="text-base font-bold text-amber-200 sm:text-xl">🎲 选择初始 Tee</div>
 						<div class="mt-0.5 text-[11px] text-slate-400 sm:text-xs">
-							点卡查看效果 · 已选 <b class="text-amber-300">{draftPicked.length}</b>/2 · 角标 =
-							出战顺序(左→右)
+							点卡查看效果 · 已选 <b class="text-amber-300">{draftPicked.length}</b>/2
 						</div>
 					</div>
 					<div class="mt-2.5 flex flex-wrap justify-center gap-2 sm:mt-4 sm:gap-3">
@@ -1923,7 +1925,7 @@
 							onclick={confirmDraft}
 							disabled={draftPicked.length !== 2}
 						>
-							开始博饼 →
+							{draftPicked.length === 2 ? '开始博饼 →' : '请选择两个 Tee'}
 						</button>
 					</div>
 				</div>
@@ -2414,6 +2416,7 @@
 											? 'opacity-50'
 											: ''}"
 										onclick={() => !sold && (shopPick = picked ? null : card)}
+										ondblclick={() => !sold && buyBuff(card)}
 										disabled={sold}
 									>
 										<span class="h-4 w-4 shrink-0"
@@ -2575,7 +2578,7 @@
 					</button>
 				</div>
 				<div class="mt-1 text-xs text-slate-400">
-					每次掷 6 颗骰子,按骰型得分。队伍轮流掷骰,总分达到目标即过关,掷出越高等级得分越多 🥮
+					每次掷 6 颗骰子，按骰型得分。队伍轮流掷骰，总分达到目标即过关，掷出越高等级得分越多 🥮
 				</div>
 				<div class="mt-3 space-y-2">
 					{#each ROLL_LEVELS as lvl}
@@ -2604,14 +2607,6 @@
 				</div>
 				<div class="mt-3 text-center text-[11px] text-slate-500">
 					红色点数为 4 点 🎯 掷中 4 点是博饼的关键
-				</div>
-				<div
-					class="mt-2 rounded-xl border border-slate-700/60 bg-slate-800/40 p-2.5 text-xs leading-snug text-slate-400"
-				>
-					Boss 关可能让某个点数
-					<b class="text-red-300">作废</b>（骰面上打红叉）：作废的骰子<b class="text-slate-200"
-						>不算任何牌型</b
-					> —— 4 点系、同点组合、对堂都不算,就当它没掷出来。
 				</div>
 			</div>
 		</div>
