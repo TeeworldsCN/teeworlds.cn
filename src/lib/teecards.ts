@@ -794,7 +794,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'guanghan',
-		name: '广寒',
+		name: '月上广寒',
 		desc: '该 Tee 得分 +20，掷出的 1、6 视为 4；回合结算时：全队总分 ×（相邻 Tee 本关得分 / 该 Tee 得分），右邻优先',
 		rarity: 'rare',
 		tag: '月',
