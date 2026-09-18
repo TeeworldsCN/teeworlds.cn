@@ -30,6 +30,8 @@
 		badge?: string;
 		/** 角标配色(默认琥珀;开局选卡用翠绿,与「已选」同色系) */
 		badgeClass?: string;
+		/** 技能角标(主动技剩余冷却 / 可发动),固定卡片左下角、紫红色 —— 和加成卡角标分开 */
+		skillBadge?: string;
 		/** 卡牌下方的操作/结果区(队伍:结果;3 选 1:选择按钮;商店:购买按钮) */
 		actions?: Snippet;
 		/** 卡牌右上角角标(队伍:卖出 ×) */
@@ -53,6 +55,7 @@
 		tipList,
 		badge,
 		badgeClass = 'bg-amber-500/90 text-amber-950',
+		skillBadge,
 		actions,
 		sellBtn,
 		selected = false,
@@ -196,9 +199,16 @@
 		{/if}
 		{#if badge}
 			<div
-				class="absolute -bottom-1.5 -left-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold shadow {badgeClass}"
+				class="absolute -right-1.5 -bottom-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold shadow {badgeClass}"
 			>
 				{badge}
+			</div>
+		{/if}
+		{#if skillBadge}
+			<div
+				class="absolute -bottom-1.5 -left-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-fuchsia-500/90 px-1 text-[10px] font-bold text-fuchsia-950 shadow"
+			>
+				{skillBadge}
 			</div>
 		{/if}
 		<div class="mx-auto h-12 w-12 max-[365px]:h-10 max-[365px]:w-10">

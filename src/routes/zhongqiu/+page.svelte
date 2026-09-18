@@ -311,9 +311,8 @@
 							? '按本 Tee 点数和结算'
 							: '本关重掷';
 			lines.push({
-				// 主动技一律是「本 Tee 掷完结算后」才给发动机会(见 DESIGN.md),
-				// 技能行里写清楚,免得玩家以为是掷前释放
-				text: `⚡ ${nm}:${what}${(tee.charge ?? 0) > 0 ? `(冷却 ${tee.charge} 关)` : '(掷完可发动)'}`,
+				// 时机(掷完可发动)卡牌 desc 里已经写全,这里只说还能不能发动
+				text: `⚡ ${nm}:${what}${(tee.charge ?? 0) > 0 ? `(冷却 ${tee.charge} 关)` : '（可发动）'}`,
 				cls: (tee.charge ?? 0) > 0 ? 'text-slate-400' : 'text-fuchsia-300'
 			});
 		}
@@ -2397,16 +2396,12 @@
 										desc={cardOf(tee)?.desc}
 										tipExtra={tee.cardId ? `卖出得 ${rarityOf(cardOf(tee)).sell} 🥮` : undefined}
 										tipList={teeTipList(tee)}
-										badge={[
-											tee.buffs.length > 0 ? `✨${tee.buffs.length}` : '',
-											activeSkills(effectiveEffects(teamCards, i), tee.buffs).length > 0
-												? (tee.charge ?? 0) > 0
-													? `⚡${tee.charge}`
-													: '⚡'
-												: ''
-										]
-											.filter(Boolean)
-											.join(' ') || undefined}
+										badge={tee.buffs.length > 0 ? `✨${tee.buffs.length}` : undefined}
+										skillBadge={activeSkills(effectiveEffects(teamCards, i), tee.buffs).length > 0
+											? (tee.charge ?? 0) > 0
+												? `⚡${tee.charge}`
+												: '⚡'
+											: undefined}
 										emote={i === currentTee ? teeEmote : EMOTE.normal}
 										pose={i === currentTee ? teePose : IDLE_POSE}
 										active={i === currentTee && phase === 'rolling'}
