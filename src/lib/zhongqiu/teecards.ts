@@ -1093,56 +1093,56 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutulinfan',
 		name: '玉兔临凡',
-		desc: '每拥有一个独特的「兔」系角色：所有「兔」系 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「兔」系角色：所有「兔」系 Tee 得分 ×1.45（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '兔',
 		skin: 'usagi',
-		effect: { type: 'per_tag', tag: '兔', per: 2.3, as: 'mult', chipsPerFour: 1, teamWide: true }
+		effect: { type: 'per_tag', tag: '兔', per: 1.45, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	{
 		id: 'guidian',
 		name: '桂殿',
-		desc: '每拥有一个独特的「桂」系角色：所有「桂」系 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「桂」系角色：所有「桂」系 Tee 得分 ×1.2（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '桂',
 		skin: 'ghost_greensward',
-		effect: { type: 'per_tag', tag: '桂', per: 2.3, as: 'mult', chipsPerFour: 1, teamWide: true }
+		effect: { type: 'per_tag', tag: '桂', per: 1.2, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	{
 		id: 'tuanyuanbing',
 		name: '团圆饼',
-		desc: '每拥有一个独特的「饼」系角色：所有「饼」系 Tee 得分 ×3（叠乘）；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「饼」系角色：所有「饼」系 Tee 得分 ×1.35（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '饼',
 		skin: 'Mint Choco',
-		effect: { type: 'per_tag', tag: '饼', per: 3.0, as: 'mult', chipsPerFour: 1, teamWide: true }
+		effect: { type: 'per_tag', tag: '饼', per: 1.35, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	{
 		id: 'changmingdeng',
 		name: '长明灯',
-		desc: '每拥有一个独特的「灯」系角色：所有「灯」系 Tee 得分 ×2.1（叠乘）；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「灯」系角色：所有「灯」系 Tee 得分 ×1.25（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '灯',
 		skin: 'glow_cammo',
-		effect: { type: 'per_tag', tag: '灯', per: 2.1, as: 'mult', chipsPerFour: 1, teamWide: true }
+		effect: { type: 'per_tag', tag: '灯', per: 1.25, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	{
 		id: 'taiyin',
 		name: '太阴素月',
-		desc: '每拥有一个独特的「月」系角色：所有「月」系 Tee 得分 ×2（叠乘）；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「月」系角色：所有「月」系 Tee 得分 ×1.15（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '月',
 		skin: 'IceWitch_Queen',
-		effect: { type: 'per_tag', tag: '月', per: 2.0, as: 'mult', chipsPerFour: 1, teamWide: true }
+		effect: { type: 'per_tag', tag: '月', per: 1.15, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	{
 		id: 'qunxianhui',
 		name: '群仙会',
-		desc: '每拥有一个独特的「仙」系角色：所有「仙」系 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「仙」系角色：所有「仙」系 Tee 得分 ×1.3（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'Drag Queen',
-		effect: { type: 'per_tag', tag: '仙', per: 2.3, as: 'mult', chipsPerFour: 1, teamWide: true }
+		effect: { type: 'per_tag', tag: '仙', per: 1.3, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	// ==== 主 Tee 流:队友给「我」改骰子规则 ====
 	//
