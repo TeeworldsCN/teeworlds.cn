@@ -196,6 +196,12 @@
 	let settleSteps = $state<{ text: string; cls: string; kind: SettleKind }[]>([]);
 	let settleIdx = $state(-1);
 	let stepsEl: HTMLElement | undefined = $state();
+	/** 骰子面板(测结算区能放几行用) */
+	let dicePanelEl: HTMLElement | undefined = $state();
+	/** 结算区实测能放下的行数(矮屏少放、高屏多放;由 measureStepsFit 刷新) */
+	let stepsFitLines = $state(3);
+	/** 结算区的 max-height(布局 px):实际行数超过就滚动,不超过就全部展开 */
+	let stepsMaxH = $state(0);
 	/** 「当前行可见」应处的 scrollTop —— 用它回弹用户的手动滚动 */
 	let settleScrollTarget = 0;
 	let settling = $state(false);
@@ -1852,8 +1858,45 @@
 	const showBuffShelf = $derived((phase === 'intro' || phase === 'shop') && buffEntries.length > 0);
 	const showItemBar = $derived(phase === 'round_end' && buffEntries.length > 0);
 	const settleReserveLines = $derived(
-		(boss?.mods ? 1 : 0) + 1 + Math.max(0, ...team.map((_, i) => potentialSources(i))) + 1
+		Math.min(
+			(boss?.mods ? 1 : 0) + 1 + Math.max(0, ...team.map((_, i) => potentialSources(i))) + 1,
+			stepsFitLines
+		)
 	);
+
+	/**
+	 * 结算区能放几行:按面板高度实测。
+	 * 内容在面板里是上下居中的 —— 结算区多一行,上下留白各少半行,
+	 * 所以能放的行数 = (面板内容高 - 固定部分 - 上下各留的 minGap) / 行高。
+	 * 「固定部分」= 标题行顶到结算区顶的距离,和结算行数无关。
+	 */
+	const measureStepsFit = () => {
+		const p = dicePanelEl;
+		const s = stepsEl;
+		if (!p || !s) return;
+		const row = p.querySelector('.order-first');
+		if (!(row instanceof HTMLElement)) return;
+		const cs = getComputedStyle(p);
+		// 全部用布局 px(offsetHeight 不受祖先 transform: scale 影响)
+		const innerH = p.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+		const fixed = s.offsetTop - row.offsetTop + parseFloat(getComputedStyle(row).marginTop);
+		const lineH =
+			(s.firstElementChild instanceof HTMLElement && s.firstElementChild.offsetHeight) || 13;
+		const minGap = 8; // 上下各自留白(布局 px)
+		stepsFitLines = Math.max(1, Math.floor((innerH - 2 * minGap - fixed) / lineH));
+		// 实际行数(带加成卡时会多于预留)超过能放的就滚动,否则全展开
+		stepsMaxH = stepsFitLines * lineH;
+	};
+
+	$effect(() => {
+		if (!dicePanelEl || !stepsEl) return;
+		measureStepsFit();
+		// 面板尺寸(矮屏缩放 / 旋转 / 换断点)和内容高度(换卡、加 Boss)变了都要重测
+		const ro = new ResizeObserver(measureStepsFit);
+		ro.observe(dicePanelEl);
+		ro.observe(stepsEl);
+		return () => ro.disconnect();
+	});
 
 	const potentialSources = (i: number): number => {
 		let n = 0;
@@ -2392,6 +2435,7 @@
 				<!-- ================= 骰子区 ================= -->
 				{#if phase === 'intro' || phase === 'rolling'}
 					<div
+						bind:this={dicePanelEl}
 						class="panel-fill mt-2.5 rounded-xl border border-amber-500/25 bg-slate-900/70 px-2.5 py-2 backdrop-blur-sm max-[365px]:mt-1.5 max-[365px]:py-1.5 sm:mt-4 sm:rounded-2xl sm:p-4"
 					>
 						{#if phase === 'intro'}
@@ -2407,7 +2451,7 @@
 						{:else}
 							<!-- 单颗骰子封顶 56px(行宽 = 6×56 + 5×间隙):手机宽屏/平板/PC 都不再放大 -->
 							<div
-								class="mx-auto mt-1.5 grid w-full max-w-[22.25rem] grid-cols-6 gap-1 sm:mt-2 sm:max-w-[23.5rem] sm:gap-2"
+								class="mx-auto mt-2 grid w-full max-w-[22.25rem] grid-cols-6 gap-1 max-[365px]:mt-1.5 sm:mt-2.5 sm:max-w-[23.5rem] sm:gap-2"
 							>
 								{#each [0, 1, 2, 3, 4, 5] as i}
 									<button
@@ -2452,7 +2496,7 @@
 							     发动 / 重掷的标题和按钮紧贴骰子,拇指按下去不会盖住骰面。
 							     高度按最高的状态预留(min-h),换状态时骰子不会上下跳。 -->
 							<div
-								class="order-first flex min-h-6 items-center justify-center gap-2 text-center text-xs max-[365px]:text-[10px] sm:min-h-8 sm:text-sm"
+								class="order-first mt-1.5 flex min-h-6 items-center justify-center gap-2 text-center text-xs max-[365px]:text-[10px] sm:mt-2 sm:min-h-8 sm:text-sm"
 							>
 								{#if pointPicker}
 									<!-- 点数选择直接顶掉标题行:不占下方布局,骰子一动不动 -->
@@ -2546,7 +2590,8 @@
 							<div
 								bind:this={stepsEl}
 								onscroll={keepSettleScroll}
-								class="no-scrollbar mt-2 flex max-h-[4.8rem] shrink-0 flex-col items-center justify-start gap-0 overflow-y-auto overscroll-contain text-xs leading-[1.1] max-[365px]:mt-1.5 max-[365px]:max-h-[4rem] max-[365px]:text-[10px] max-[365px]:leading-[1.1] sm:mt-2.5 sm:max-h-none sm:overflow-visible sm:text-sm sm:leading-normal"
+								class="no-scrollbar mt-2 flex shrink-0 flex-col items-center justify-start gap-0 overflow-y-auto overscroll-contain text-xs leading-[1.1] max-[365px]:mt-1.5 max-[365px]:text-[10px] max-[365px]:leading-[1.1] sm:mt-2.5 sm:overflow-visible sm:text-sm sm:leading-normal"
+								style={stepsMaxH ? `max-height: ${stepsMaxH}px` : ''}
 							>
 								{#each Array.from({ length: Math.max(settleReserveLines, settleSteps.length) }, (_, i) => i) as i (i)}
 									{#if i <= settleIdx && settleSteps[i]}
