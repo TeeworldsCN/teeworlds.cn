@@ -48,26 +48,26 @@ export const BOSSES: Boss[] = [
 		id: 'heiyue',
 		name: '黑月',
 		emoji: '🌑',
-		desc: '目标 ×1.05',
-		targetMult: 1.05,
+		desc: '本关不设额外规则',
+		targetMult: 1,
 		mild: true
 	},
 	{
 		id: 'miyue',
 		name: '迷月',
 		emoji: '🌫️',
-		desc: '本关掷出的 6 作废；目标 ×0.93',
+		desc: '本关掷出的 6 作废；目标 ×0.9',
 		mods: { void: [6] },
-		targetMult: 0.93,
+		targetMult: 0.9,
 		mild: true
 	},
 	{
 		id: 'yingyue',
 		name: '影月',
 		emoji: '🌒',
-		desc: '本关掷出的 3 作废；目标 ×0.97',
+		desc: '本关掷出的 3 作废；目标 ×0.95',
 		mods: { void: [3] },
-		targetMult: 0.97,
+		targetMult: 0.95,
 		mild: true
 	},
 	// ---- 第 7 关起 ----
@@ -75,9 +75,9 @@ export const BOSSES: Boss[] = [
 		id: 'wuyue',
 		name: '雾月',
 		emoji: '🌁',
-		desc: '本关黑色同点不作数；目标 ×0.97',
+		desc: '本关黑色同点不作数；目标 ×0.95',
 		mods: { noSameFace: true },
-		targetMult: 0.97
+		targetMult: 0.95
 	},
 	{
 		id: 'xianyue',
@@ -91,18 +91,18 @@ export const BOSSES: Boss[] = [
 		id: 'shiyue',
 		name: '蚀月',
 		emoji: '🌘',
-		desc: '本关掷出的 4 作废；目标 ×0.42',
+		desc: '本关掷出的 4 作废；目标 ×0.4',
 		mods: { void: [4] },
-		targetMult: 0.42,
+		targetMult: 0.4,
 		weight: 0.5
 	},
 	{
 		id: 'xueyue',
 		name: '血月',
 		emoji: '🔴',
-		desc: '等级封顶到状元；目标 ×1.05',
+		desc: '等级封顶到状元',
 		mods: { levelCap: 'zhuang_yuan' },
-		targetMult: 1.05
+		targetMult: 1
 	},
 	{
 		id: 'haoyue',
