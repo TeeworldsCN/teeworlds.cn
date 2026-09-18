@@ -65,58 +65,54 @@
 	const teeSkin = $derived(card?.skin ?? (skin || 'x_spec'));
 	const teeName = $derived(card?.name ?? name);
 
-	// ---- tooltip 防溢出屏幕两侧:默认居中,靠边时自动钳制 ----
+	// ---- tooltip 挂到 body 下:脱离所有 overflow:hidden / transform 的祖先 ----
 	let wrapEl: HTMLElement | undefined = $state();
 	let tipEl: HTMLElement | undefined = $state();
-	/** null = 居中模式(left 50% + translateX);否则为相对卡容器的 left px(布局 px,不含缩放) */
-	let tipLeft = $state<number | null>(null);
-	/** 上方空间不够时把提示框翻到卡片下方 */
-	let tipBelow = $state(false);
+	/** 视口坐标(position: fixed)。null = 还没量过,先挪到屏幕外 */
+	let tipPos = $state<{ left: number; top: number } | null>(null);
+	/** 挂到 body 后 CSS 的 .group:hover 够不着了,用 JS 开关 */
+	let tipOpen = $state(false);
+	/** 触屏上的固定显示:点别处才收(触摸指针抬指后立刻 pointerleave) */
+	let touchHold = false;
 
 	/**
-	 * 可规范围(视觉坐标):视口 ∩ 所有会裁切的祖先。
-	 * 矮屏会把整个活动区 `transform: scale(fitScale)` —— 那种情况下
-	 * 「出界」其实是撞上祖先的 overflow:hidden 被切掉,所以只看视口不够。
+	 * 提示框已经是 body 的直接子节点,所以这里算的全是**视口坐标** ——
+	 * 既不用折算祖先的 transform: scale,也不会被 overflow: hidden 切掉。
 	 */
-	const clipBox = () => {
-		// visualViewport 才是「真正看得见」的区域:桌面版网站 / 捻合缩放时它会窄于 innerWidth,
-		// 只钳 innerWidth 的话提示框会跑到屏幕外看不到
-		const vv = window.visualViewport;
-		const box = {
-			left: vv ? vv.offsetLeft : 0,
-			right: vv ? vv.offsetLeft + vv.width : window.innerWidth,
-			top: vv ? vv.offsetTop : 0
-		};
-		let el: HTMLElement | null = wrapEl ?? null;
-		while (el) {
-			const cs = getComputedStyle(el);
-			if (cs.overflowX === 'hidden' || cs.overflowX === 'clip') {
-				const r = el.getBoundingClientRect();
-				box.left = Math.max(box.left, r.left);
-				box.right = Math.min(box.right, r.right);
-				box.top = Math.max(box.top, r.top);
-			}
-			el = el.parentElement;
-		}
-		return box;
-	};
-
 	const positionTip = () => {
 		if (!tipEl || !wrapEl) return;
-		// 祖先可能有 transform: scale(矮屏整体缩放)。
-		// offsetWidth 是布局 px、getBoundingClientRect 是视觉 px —— 两套坐标不能混着减,
-		// 否则换算出来的 left 在缩放后偏掉(右边的卡就会撞出容器被切)。
+		// visualViewport 才是「真正看得见」的区域:桌面版网站 / 双指缩放时它会窄于 innerWidth,
+		// 只钳 innerWidth 的话提示框会跑到屏幕外看不到
+		const vv = window.visualViewport;
+		const vLeft = vv ? vv.offsetLeft : 0;
+		const vTop = vv ? vv.offsetTop : 0;
+		const vRight = vLeft + (vv ? vv.width : window.innerWidth);
+		const vBottom = vTop + (vv ? vv.height : window.innerHeight);
 		const wr = wrapEl.getBoundingClientRect();
-		const scale = wr.width / wrapEl.offsetWidth || 1;
-		const tipW = tipEl.offsetWidth * scale; // 视觉宽
-		const box = clipBox();
+		const tw = tipEl.offsetWidth;
+		const th = tipEl.offsetHeight;
 		const pad = 8;
-		const want = wr.left + wr.width / 2 - tipW / 2; // 先当居中
-		const left = Math.max(box.left + pad, Math.min(want, box.right - pad - tipW));
-		// left 写在缩放层内部,是布局 px —— 把视觉位移折算回去
-		tipLeft = Math.round((left - wr.left) / scale);
-		// 上方放不下(第一行的卡会顶到 HUD/header)就翻到卡片下方
-		tipBelow = wr.top - pad - tipEl.offsetHeight * scale < box.top;
+		// 水平:先当居中,贴边就钳进来
+		const left = Math.max(
+			vLeft + pad,
+			Math.min(wr.left + wr.width / 2 - tw / 2, vRight - pad - tw)
+		);
+		// 垂直:优先放卡片上方;上方不够翻到下方;下方也放不下就贴住可视区顶部
+		let top = wr.top - pad - th;
+		if (top < vTop + pad) {
+			const below = wr.bottom + pad;
+			top = below + th > vBottom - pad ? vTop + pad : below;
+		}
+		tipPos = { left: Math.round(left), top: Math.round(top) };
+	};
+
+	/** 把提示框节点搬到 body 下:不受任何祖先的 overflow / transform 影响 */
+	const portal = (node: HTMLElement) => {
+		document.body.appendChild(node);
+		scheduleTip();
+		return {
+			destroy: () => node.remove()
+		};
 	};
 
 	/**
@@ -145,9 +141,18 @@
 		// 手机「桌面版网站」+ 双指缩放:变的是 visualViewport,window 的 resize 不一定触发
 		window.visualViewport?.addEventListener('resize', scheduleTip);
 		window.visualViewport?.addEventListener('scroll', scheduleTip);
+		// 触屏:点卡片以外的地方收掉固定显示的提示框
+		const onDocDown = (e: PointerEvent) => {
+			if (!touchHold) return;
+			if (e.target instanceof Node && wrapEl?.contains(e.target)) return;
+			touchHold = false;
+			tipOpen = false;
+		};
+		document.addEventListener('pointerdown', onDocDown);
 		return () => {
 			ro.disconnect();
 			roWrap.disconnect();
+			document.removeEventListener('pointerdown', onDocDown);
 			window.removeEventListener('resize', scheduleTip);
 			window.visualViewport?.removeEventListener('resize', scheduleTip);
 			window.visualViewport?.removeEventListener('scroll', scheduleTip);
@@ -156,7 +161,30 @@
 	});
 </script>
 
-<div class="group relative w-[86px] shrink-0 max-[365px]:w-[74px]" bind:this={wrapEl}>
+<div
+	class="group relative w-[86px] shrink-0 max-[365px]:w-[74px]"
+	role="group"
+	bind:this={wrapEl}
+	onpointerenter={() => {
+		tipOpen = true;
+		scheduleTip();
+	}}
+	onpointerleave={() => {
+		if (!touchHold) tipOpen = false;
+	}}
+	onpointerdown={(e) => {
+		// 触屏没有 hover:点一下固定显示,点别处再收 —— 和接管前的 CSS :hover 行为一致
+		if (e.pointerType !== 'touch') return;
+		touchHold = true;
+		tipOpen = true;
+		scheduleTip();
+	}}
+	onfocusin={() => {
+		tipOpen = true;
+		scheduleTip();
+	}}
+	onfocusout={() => (tipOpen = false)}
+>
 	<div
 		class="tee-card {selected ? 'ring-2 ring-emerald-400' : ''} {active
 			? '-translate-y-1 border-amber-400/70 bg-amber-400/10 shadow-lg shadow-amber-900/30'
@@ -186,10 +214,13 @@
 	{#if desc || tipExtra || tipList?.length}
 		<div
 			bind:this={tipEl}
-			class="tip pointer-events-none absolute z-50 w-max max-w-[min(13rem,calc(100vw-2.5rem))] rounded-lg border px-2.5 py-1.5 text-center text-xs leading-snug text-slate-200 shadow-xl {tipBelow
-				? 'top-full mt-2'
-				: 'bottom-full mb-2'} {tipLeft === null ? 'centered' : ''}"
-			style={`border-color: color-mix(in srgb, var(--rarity, #94a3b8) 50%, transparent); background: rgba(2, 6, 23, 0.95);${tipLeft !== null ? `left: ${tipLeft}px;` : ''}`}
+			use:portal
+			class="tip pointer-events-none fixed z-40 w-max max-w-[min(13rem,calc(100vw-2.5rem))] rounded-lg border px-2.5 py-1.5 text-center text-xs leading-snug text-slate-200 shadow-xl {tipOpen
+				? 'tip-open'
+				: ''}"
+			style={`border-color: color-mix(in srgb, var(--rarity, #94a3b8) 50%, transparent); background: rgba(2, 6, 23, 0.95);${
+				tipPos ? `left: ${tipPos.left}px; top: ${tipPos.top}px;` : 'left: -9999px; top: -9999px;'
+			}`}
 		>
 			{desc}
 			{#if tipExtra}
@@ -213,21 +244,14 @@
 </div>
 
 <style>
-	/* hover 说明淡入淡出。手写 .group:hover 而非 Tailwind group-hover:
-	 * 当前 Chromium 样式引擎不应用 Tailwind v4 的 :is(:where(.group):hover *) 写法 */
+	/* hover 说明淡入淡出。节点挂在 body 下,祖先选择器(.group:hover)够不着,
+	 * 所以开关由 JS 的 onpointerenter / onfocusin 控制 */
 	.tip {
 		opacity: 0;
 		transition: opacity 0.15s ease;
-		left: 50%;
-		transform: translateX(-50%);
 	}
 
-	/* JS 钳制定位时取消居中 translate */
-	.tip:not(.centered) {
-		transform: none;
-	}
-
-	.group:hover .tip {
+	.tip.tip-open {
 		opacity: 1;
 	}
 
