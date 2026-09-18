@@ -791,6 +791,8 @@
 	let settledDice = [1, 1, 1, 1, 1, 1];
 	/** 读档后要补做的动作:自动重掷一次 / 恢复待确认的主动技 */
 	let pendingAutoRoll = false;
+	/** 正在播的是哪种翻滚:整手掷 / 局部重掷 / 后羿自动重掷后再判定 */
+	let pendingRollKind: 'roll' | 'reroll' | 'finalize' = 'roll';
 	let pendingActiveKey: string | null = null;
 
 	const runSnapshot = (): Omit<RunSave, 'v'> => {
@@ -851,7 +853,8 @@
 			shopPickId: shopPick?.id ?? null,
 			selectedBuffId: selectedBuff?.id ?? null,
 			speedIdx,
-			wasRolling: rolling
+			wasRolling: rolling,
+			rollKind: pendingRollKind
 		};
 	};
 
@@ -929,6 +932,7 @@
 		phase = d.phase as Phase;
 		// 这两个要等脚本剩下的常量都初始化完再处理(onMount 里做)
 		pendingAutoRoll = d.wasRolling === true;
+		pendingRollKind = (d.rollKind as typeof pendingRollKind) ?? 'roll';
 		pendingActiveKey = d.pendingActiveKey;
 	};
 
@@ -960,7 +964,21 @@
 		// 存盘时掷骰动画正在播:让一帧,等恢复后的骰子渲染出来再重掷这个 Tee
 		if (pendingAutoRoll) {
 			pendingAutoRoll = false;
-			setTimeout(() => rollCurrent(), 60);
+			const kind = pendingRollKind;
+			console.log(
+				'[resume] kind =',
+				kind,
+				'| rollMask =',
+				JSON.stringify(rollMask),
+				'| rollsLeft =',
+				rollsLeft
+			);
+			setTimeout(() => {
+				// 局部重掷:只重播动画,rollsLeft/rerollCount 用刷新前的值(不重记账)
+				if (kind === 'reroll') playRerollAnim(rollMask, afterRoll);
+				else if (kind === 'finalize') playRerollAnim(rollMask, finalizeTee);
+				else rollCurrent();
+			}, 60);
 			return;
 		}
 		resumeRun();
@@ -1143,6 +1161,7 @@
 	/** 掷一次骰子(动画 + 定格) */
 	const rollCurrent = () => {
 		if (rolling) return;
+		pendingRollKind = 'roll';
 		rolling = true;
 		hitDice = [];
 		optedDice = [];
@@ -1211,8 +1230,20 @@
 		rollsLeft -= 1;
 		rerollCount += n;
 		choosing = false;
+		playRerollAnim(sel, afterRoll);
+	};
+
+	/**
+	 * 播一次「局部重掷」动画(只翻滚 sel 选中的骰子),播完调 done()。
+	 *
+	 * 记账(rollsLeft / rerollCount / choosing)由调用方负责,这个函数只管动画 ——
+	 * 因为恢复存档时这些数字是刷新前已经算好的,重算会白送一次重掷
+	 * (重掷动画中途刷新,原来会变成"6 颗全掷且不消耗次数")。
+	 */
+	const playRerollAnim = (sel: boolean[], done: () => void) => {
+		pendingRollKind = 'reroll';
 		rolling = true;
-		rollMask = [...sel]; // 只有选中的骰子播翻滚动画
+		rollMask = [...sel];
 		teeEmote = EMOTE.angry;
 		teePose = THROW_POSE;
 		teeAnim = 'throw';
@@ -1230,11 +1261,11 @@
 			dice = dice.map((v, i) => (sel[i] ? cheatSingle() : v));
 		}, rollTotal * 0.8);
 
-		sfxRoll(rollTotal / 1000, n);
+		sfxRoll(rollTotal / 1000, sel.filter(Boolean).length);
 		setTimeout(() => {
 			rolling = false;
 			teePose = IDLE_POSE;
-			afterRoll();
+			done();
 		}, rollTotal);
 	};
 
@@ -1426,23 +1457,7 @@
 		if (level.id === 'none' && hasRerollAllOnNone(self) && !rerollAllUsed) {
 			rerollAllUsed = true;
 			rerollCount += 6;
-			rolling = true;
-			rollMask = Array(6).fill(true);
-			rollDur = Math.min(0.6, 0.6 / speed);
-			rollIter = speed < 1 ? 1 / speed : 1;
-			rollTotal = 250 + rollDur * rollIter * 1000;
-			const timer = setInterval(() => {
-				dice = rollDice();
-			}, 90 / speed);
-			setTimeout(() => {
-				clearInterval(timer);
-				dice = cheatRoll();
-			}, rollTotal * 0.8);
-			setTimeout(() => {
-				rolling = false;
-				teePose = IDLE_POSE;
-				finalizeTee();
-			}, rollTotal);
+			playRerollAnim(Array(6).fill(true), finalizeTee);
 			return;
 		}
 

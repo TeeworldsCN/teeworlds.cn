@@ -1051,7 +1051,7 @@ export const clearSave = () => {
 // 避免把动画中途的半成品状态写进去(重新进就是重掷本关,单机游戏不亏)。
 const RUN_KEY = 'midautumn:run';
 /** 结构变了就 +1:旧档直接作废,不尝试迁移 */
-const RUN_VERSION = 3;
+const RUN_VERSION = 4;
 
 export type RunTeamSlot = {
 	cardId: string | null;
@@ -1133,8 +1133,10 @@ export type RunSave = {
 	shopPickId: string | null;
 	selectedBuffId: string | null;
 	speedIdx: number;
-	/** 存盘时掷骰动画正在播:恢复后自动把这个 Tee 重掷一次 */
+	/** 存盘时掷骰动画正在播:恢复后自动补做 */
 	wasRolling: boolean;
+	/** 补做哪种:'roll' 整手掷 / 'reroll' 局部重掷(不重记账) / 'finalize' 判定 */
+	rollKind: string;
 };
 
 export const saveRun = (data: Omit<RunSave, 'v'>) => {
