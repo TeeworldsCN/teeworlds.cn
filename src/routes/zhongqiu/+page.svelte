@@ -235,6 +235,8 @@
 	// 道具库存（加成卡）
 	let buffInventory = $state<Record<string, number>>({});
 	let selectedBuff = $state<BuffCard | null>(null);
+	/** 仅查看说明的加成卡(没选中的芯片 hover / 点按):仓库里的卡不能拖,但说明得看得到 */
+	let peekBuff = $state<BuffCard | null>(null);
 	// 团队结算动画（回合确认后： 团队倍率卡一条一条弹）
 	let teamSettleSteps = $state<{ text: string; cls: string; kind: SettleKind }[]>([]);
 	let teamSettleIdx = $state(-1);
@@ -292,6 +294,7 @@
 		buffInventory = next;
 		team[idx].buffs = [...team[idx].buffs, { cardId: card.id, turnsLeft: card.turns }];
 		selectedBuff = null;
+		peekBuff = null;
 	};
 
 	const teeTipList = (tee: TeamTee) => {
@@ -679,6 +682,7 @@
 		mooncakes = 0;
 		buffInventory = {};
 		selectedBuff = null;
+		peekBuff = null;
 		round = 1;
 		soldTees = 0;
 		soldThisRound = 0;
@@ -1084,6 +1088,7 @@
 		sfxClick();
 		phase = 'rolling';
 		selectedBuff = null;
+		peekBuff = null;
 		rollCurrent();
 	};
 
@@ -2028,7 +2033,26 @@
 		{:else}
 			<div
 				class="flex shrink-0 items-center gap-1 rounded-lg border px-1.5 py-0.5 transition sm:gap-1.5 sm:px-2 sm:py-1 {state}"
+				role="button"
+				tabindex="0"
 				title={`${card.name}:${card.desc} · 持续 ${card.turns} 关`}
+				onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
+				onpointerenter={(e) => {
+					if (e.pointerType !== 'touch') peekBuff = card;
+				}}
+				onpointerleave={(e) => {
+					if (e.pointerType !== 'touch' && peekBuff?.id === card.id) peekBuff = null;
+				}}
+				onclick={() => {
+					// 触屏没 hover:点一下看说明,再点收起(鼠标已经有 hover 了,不抢点击)
+					if (!lastPointerWasMouse) peekBuff = peekBuff?.id === card.id ? null : card;
+				}}
+				onkeydown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						peekBuff = peekBuff?.id === card.id ? null : card;
+					}
+				}}
 			>
 				{@render inner()}
 			</div>
@@ -2336,7 +2360,7 @@
 											{@const card = BUFF_BY_ID.get(id)!}
 											<div class="relative shrink-0">
 												{@render buffChip(card, count, phase === 'intro')}
-												{#if selectedBuff?.id === card.id}
+												{#if selectedBuff?.id === card.id || peekBuff?.id === card.id}
 													<!-- 桌面:说明浮在选中的芯片上方 -->
 													{@render buffPop(
 														card,
@@ -2346,10 +2370,10 @@
 											</div>
 										{/each}
 									</div>
-									{#if selectedBuff}
+									{#if selectedBuff || peekBuff}
 										<!-- 手机:横滑容器会裁掉芯片内的绝对定位,说明居中挂在容器上 -->
 										{@render buffPop(
-											selectedBuff,
+											selectedBuff ?? peekBuff!,
 											'absolute bottom-full left-1/2 mb-1 -translate-x-1/2 sm:hidden'
 										)}
 									{/if}
@@ -2437,13 +2461,26 @@
 
 				<!-- ================= 精简道具条(不需要操作道具的阶段) ================= -->
 				{#if showItemBar}
-					<div
-						class="mt-2.5 flex items-center gap-1.5 overflow-x-auto rounded-xl border border-sky-500/20 bg-slate-900/60 px-2.5 py-1.5 backdrop-blur-sm sm:mt-4 sm:flex-wrap sm:overflow-visible sm:rounded-2xl"
-					>
-						{#each buffEntries as [id, count]}
-							{@const card = BUFF_BY_ID.get(id)!}
-							{@render buffChip(card, count)}
-						{/each}
+					<div class="relative mt-2.5">
+						<div
+							class="flex items-center gap-1.5 overflow-x-auto rounded-xl border border-sky-500/20 bg-slate-900/60 px-2.5 py-1.5 backdrop-blur-sm sm:flex-wrap sm:overflow-visible sm:rounded-2xl"
+						>
+							{#each buffEntries as [id, count]}
+								{@const card = BUFF_BY_ID.get(id)!}
+								<div class="relative shrink-0">
+									{@render buffChip(card, count)}
+									{#if peekBuff?.id === card.id}
+										{@render buffPop(card, 'absolute bottom-full left-0 mb-1 hidden sm:block')}
+									{/if}
+								</div>
+							{/each}
+						</div>
+						{#if peekBuff}
+							{@render buffPop(
+								peekBuff,
+								'absolute bottom-full left-1/2 mb-1 -translate-x-1/2 sm:hidden'
+							)}
+						{/if}
 					</div>
 				{/if}
 
