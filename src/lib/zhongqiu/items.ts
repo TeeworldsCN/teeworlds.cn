@@ -618,7 +618,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guxing',
 		name: '孤星',
-		desc: '自己每有 1 颗 1 点：得分 +80；每有 1 颗 4 点：得分 −35',
+		desc: '自己每有 1 颗 1 点：得分 +80；每有 1 颗 3 点：得分 −35',
 		rarity: 'common',
 		skin: 'Blue ray',
 		price: 3,
@@ -627,7 +627,7 @@ export const BUFF_CARDS: BuffCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'own_face', face: 1, chips: 80 },
-				{ type: 'own_face', face: 4, chips: -35 }
+				{ type: 'own_face', face: 3, chips: -35 }
 			]
 		}
 	},
