@@ -114,6 +114,7 @@ export const BOSSES: Boss[] = [
 		// 所以目标抬得比其他 Boss 高(和疾月的 ×2 同一档意思)。
 		desc: '本关掷出的 1、2 视为 4；目标 ×1.5',
 		mods: { map: { 1: 4, 2: 4 } },
+		weight: 0.5,
 		targetMult: 1.5
 	},
 	{
