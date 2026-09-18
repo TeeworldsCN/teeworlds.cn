@@ -196,7 +196,7 @@
 		{/if}
 		{#if badge}
 			<div
-				class="absolute -top-1.5 -left-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold shadow {badgeClass}"
+				class="absolute -bottom-1.5 -left-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold shadow {badgeClass}"
 			>
 				{badge}
 			</div>
@@ -256,6 +256,9 @@
 	}
 
 	.tee-card {
+		/* 角标(⚡/✨)和卖出 ✕ 都 absolute 在卡内,锚点必须是卡片本体,
+		 * 否则会锚到外层容器(卡 + 分数行),左下角标会掉到分数行下面 */
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
