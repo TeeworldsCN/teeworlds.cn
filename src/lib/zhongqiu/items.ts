@@ -51,6 +51,10 @@ export interface BuffCard {
 	name: string;
 	/** 效果描述(同时用于 tooltip) */
 	desc: string;
+	/**
+	 * ⚠️ 加成卡**没有 tag**:不参与 per_tag 计数,也不做流派归类 —— 名字里出现的
+	 * 流派字只是风味道具名(最多一个,见 qa/copy.ts)。别在这里加 tag 字段。
+	 */
 	rarity: Rarity;
 	/** 卡面 Tee 皮肤 */
 	skin: string;
@@ -75,7 +79,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	// ======== 加算(+chips) 14 ========
 	{
 		id: 'yuefu',
-		name: '月兔护符',
+		name: '玉兔护符',
 		desc: '得分 +30',
 		rarity: 'common',
 		skin: 'Cute_Blue_Bunny',
@@ -155,7 +159,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	},
 	{
 		id: 'xianrou',
-		name: '鲜肉月饼',
+		name: '鲜肉月团',
 		desc: '得分 +100',
 		rarity: 'rare',
 		skin: 'Red Tomato',
@@ -165,7 +169,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	},
 	{
 		id: 'yunniang',
-		name: '云腿月饼',
+		name: '云腿月团',
 		desc: '得分 +120',
 		rarity: 'rare',
 		skin: 'Red Coke',
@@ -435,7 +439,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	// ======== 多投掷(×2.33,压高稀有度) 4 ========
 	{
 		id: 'tueye',
-		name: '兔爷灯',
+		name: '余兴',
 		desc: '可多投掷 1 次',
 		rarity: 'rare',
 		skin: 'rabbit_Judy',
@@ -465,7 +469,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	},
 	{
 		id: 'yuegui',
-		name: '月桂神枝',
+		name: '蟾宫神枝',
 		desc: '可多投掷 2 次',
 		rarity: 'legendary',
 		skin: 'HTF_greenberg',

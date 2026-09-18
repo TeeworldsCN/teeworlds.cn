@@ -508,7 +508,10 @@ const tagPref = (tag: Tag): Pref => ({
 	family: 'tag',
 	score: (c) =>
 		(c.tag === tag ? 100 : 0) + (c.rarity === 'legendary' ? 20 : c.rarity === 'rare' ? 10 : 0),
-	buffScore: (b) => (b.tag === tag ? 10 : 1)
+	// 加成卡没有 tag(名字里那一个字只是风味,见 items.ts BuffCard)——
+	// 所以这里给不了「同系加成」,一律同分,由价格决定买哪张。
+	// (以前写的是 b.tag === tag,而 b.tag 永远 undefined,等于死代码,还挂着类型错。)
+	buffScore: () => 1
 });
 
 const effPref = (name: string, needles: string[], buffId?: string): Pref => ({

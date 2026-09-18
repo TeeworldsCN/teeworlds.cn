@@ -649,24 +649,36 @@ bad += dupIds.length;
 console.log(`\n=== Tee 卡 (${CARDS.length}) ===`);
 // ---------- tag ↔ 名字(固化的硬规则) ----------
 // 玩家只看卡名就得能判断它吃哪一系的倍率,所以:
-//   ① 有 tag 的卡:名字里必须出现该 tag 字,且不能出现别的 tag 字
-//   ② 没有 tag 的卡:名字里不能出现任何 tag 字
-// tag 字表从卡池数据里推导,不写死 —— 以后加新系自动生效。
+//   ① 名字里**最多一种流派字** —— 出现两个(如「兔爷灯」)等于同时暗示两系
+//   ② 有 tag 的卡:名字里必须有且**只有**该 tag 字
+//   ③ 没有 tag 的 Tee 卡:名字里不能出现任何流派字
+//   ④ 加成卡不挂 tag(挂了会改变流派收集的难度平衡),名字里允许一个风味字,
+//      但同样不许两个 —— 踩过:「兔爷灯」
+// 检查覆盖 Tee 卡**和加成卡**:以前只扫 CARDS,62 张加成卡的名字从没被查过,
+// 「兔爷灯」就是这么漏过去的。
 {
 	const TAG_CHARS = [...new Set(CARDS.flatMap((c) => (c.tag ? [c.tag] : [])))];
 	const rows: string[] = [];
-	for (const c of CARDS) {
+	const all: { c: { id: string; name: string; tag?: Tag }; kind: string }[] = [
+		...CARDS.map((c) => ({ c, kind: 'Tee' })),
+		...BUFF_CARDS.map((c) => ({ c, kind: '加成' }))
+	];
+	for (const { c, kind } of all) {
 		const hit = TAG_CHARS.filter((t) => c.name.includes(t));
-		if (c.tag && !hit.includes(c.tag))
-			rows.push(`✗ 「${c.name}」(${c.id}) 有 tag「${c.tag}」,名字里却没有这个字`);
-		else if (c.tag && hit.some((t) => t !== c.tag))
+		if (hit.length > 1)
 			rows.push(
-				`✗ 「${c.name}」(${c.id}) 名字里出现了别的系字:${hit.filter((t) => t !== c.tag).join('/')}`
+				`✗ ${kind}「${c.name}」(${c.id}) 名字里有 ${hit.length} 种流派字:${hit.join('/')} —— 最多只许一种`
 			);
-		else if (!c.tag && hit.length)
-			rows.push(`✗ 「${c.name}」(${c.id}) 没有 tag,名字里却出现了 ${hit.join('/')}`);
+		else if (c.tag && hit[0] !== c.tag)
+			rows.push(
+				`✗ ${kind}「${c.name}」(${c.id}) 有 tag「${c.tag}」,名字里则${hit.length ? `是「${hit[0]}」` : '一个字都没有'}`
+			);
+		else if (kind === 'Tee' && !c.tag && hit.length)
+			rows.push(`✗ ${kind}「${c.name}」(${c.id}) 没有 tag,名字里却出现了 ${hit.join('/')}`);
 	}
-	console.log(`\n=== tag ↔ 名字 (${CARDS.length} 张 · tag 字:${TAG_CHARS.join(' ')}) ===`);
+	console.log(
+		`\n=== tag ↔ 名字 (Tee ${CARDS.length} + 加成 ${BUFF_CARDS.length} = ${all.length} 张 · tag 字:${TAG_CHARS.join(' ')}) ===`
+	);
 	if (!rows.length) console.log('全部通过 ✓');
 	else for (const r of rows) console.log(r);
 	bad += rows.length;
