@@ -117,7 +117,7 @@ export type TeeEffect =
 	| { type: 'map_player_die'; from: number; to: number } // 「我」掷出的 from 点视为 to 点(团队规则,只作用于主 Tee)
 	/**
 	 * 重复牌倍率:本关「我」的**原始**骰面里有几颗 face,主 Tee 得分就 ×(颗数 + 1)(命中一颗就 ×2)。
-	 * perHit = 2 时改成每颗都 ×2(可叠乘)—— 传说档:很吃掷骰,但加成卡影响相对小。
+	 * perHit = 2 时改成每颗都 ×2(叠乘)—— 传说档:很吃掷骰,但加成卡影响相对小。
 	 * 注意数的是原始点数 —— 已经变成 4 的骰子数不出来,所以引擎需要 playerRawDice。
 	 */
 	| { type: 'face_count_mult'; face: number; perHit?: number }
@@ -1049,7 +1049,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutuhui',
 		name: '兔儿满堂',
-		desc: '每拥有一个独特的「兔」系角色：该 Tee 得分 ×2.3；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「兔」系角色：该 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '兔',
 		skin: 'tuzi',
@@ -1058,7 +1058,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guiyuan',
 		name: '桂苑',
-		desc: '每拥有一个独特的「桂」系角色：该 Tee 得分 ×2.3；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「桂」系角色：该 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '桂',
 		skin: 'brownbear',
@@ -1067,7 +1067,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuebingfang',
 		name: '饼坊',
-		desc: '每拥有一个独特的「饼」系角色：该 Tee 得分 ×3；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「饼」系角色：该 Tee 得分 ×3（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '饼',
 		skin: 'GoldCat',
@@ -1076,7 +1076,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'dengzhen',
 		name: '灯阵',
-		desc: '每拥有一个独特的「灯」系角色：该 Tee 得分 ×2.1；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「灯」系角色：该 Tee 得分 ×2.1（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'iceberg',
@@ -1085,7 +1085,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuelun',
 		name: '月轮',
-		desc: '每拥有一个独特的「月」系角色：该 Tee 得分 ×2；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「月」系角色：该 Tee 得分 ×2（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'Sailormoon',
@@ -1094,7 +1094,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'xianlv',
 		name: '仙侣',
-		desc: '每拥有一个独特的「仙」系角色：该 Tee 得分 ×2.3；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「仙」系角色：该 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '仙',
 		skin: 'White_tee',
@@ -1103,7 +1103,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutulinfan',
 		name: '玉兔临凡',
-		desc: '每拥有一个独特的「兔」系角色：所有「兔」系 Tee 得分 ×2.3；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「兔」系角色：所有「兔」系 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '兔',
 		skin: 'tuzi',
@@ -1112,7 +1112,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guidian',
 		name: '桂殿',
-		desc: '每拥有一个独特的「桂」系角色：所有「桂」系 Tee 得分 ×2.3；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「桂」系角色：所有「桂」系 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '桂',
 		skin: 'brownbear',
@@ -1121,7 +1121,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'tuanyuanbing',
 		name: '团圆饼',
-		desc: '每拥有一个独特的「饼」系角色：所有「饼」系 Tee 得分 ×3；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「饼」系角色：所有「饼」系 Tee 得分 ×3（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '饼',
 		skin: 'GoldCat',
@@ -1130,7 +1130,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'changmingdeng',
 		name: '长明灯',
-		desc: '每拥有一个独特的「灯」系角色：所有「灯」系 Tee 得分 ×2.1；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「灯」系角色：所有「灯」系 Tee 得分 ×2.1（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '灯',
 		skin: 'iceberg',
@@ -1139,7 +1139,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'taiyin',
 		name: '太阴素月',
-		desc: '每拥有一个独特的「月」系角色：所有「月」系 Tee 得分 ×2；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「月」系角色：所有「月」系 Tee 得分 ×2（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '月',
 		skin: 'Sailormoon',
@@ -1148,7 +1148,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'qunxianhui',
 		name: '群仙会',
-		desc: '每拥有一个独特的「仙」系角色：所有「仙」系 Tee 得分 ×2.3；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「仙」系角色：所有「仙」系 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'TeeAngel',
@@ -1186,7 +1186,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'xinyue',
 		name: '朔日',
-		desc: '「我」掷出的 3 点视为 4 点；本关「我」每有 1 颗 3，得分就 ×2（可叠乘）',
+		desc: '「我」掷出的 3 点视为 4 点；本关「我」每有 1 颗 3，得分就 ×2（叠乘）',
 		rarity: 'legendary',
 		skin: 'TeeAngel',
 		effect: {
@@ -1249,7 +1249,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'dazhanggui',
 		name: '饼铺掌柜',
-		desc: '每卖出 1 个 Tee：得分 ×2（每回合最多计 2 个）',
+		desc: '每累计卖出 1 个 Tee：得分 ×2（每回合最多计 2 个，叠乘）',
 		rarity: 'legendary',
 		tag: '饼',
 		skin: 'White_tee',
