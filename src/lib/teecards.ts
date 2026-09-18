@@ -724,7 +724,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'guihuashu',
-		name: '桂花神树',
+		name: '金粟神树',
 		desc: '全队总分 ×1.5',
 		rarity: 'legendary',
 		skin: 'greensward',
@@ -741,7 +741,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'changepair',
-		name: '嫦娥奔月',
+		name: '嫦娥飞天',
 		desc: '改 2 颗骰子为 4 点，但得分 ×0.5',
 		rarity: 'legendary',
 		tag: '仙',
@@ -771,7 +771,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'chijin',
-		name: '赤金月',
+		name: '赤金丹',
 		desc: '得分 ×1.5；三红及以上再 ×2.5',
 		rarity: 'legendary',
 		tag: '仙',
@@ -786,7 +786,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'yueying',
-		name: '月影',
+		name: '霜影',
 		desc: '自己的 1 点视为 4 点',
 		rarity: 'legendary',
 		skin: 'Golden Shroom',
@@ -810,7 +810,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'jinghuashuiyue',
-		name: '镜花水月',
+		name: '镜花缘',
 		desc: '复制右侧 Tee 的卡牌，且全队总分 ×1.25',
 		rarity: 'legendary',
 		tag: '仙',
@@ -819,7 +819,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'panlong',
-		name: '蟠龙月饼',
+		name: '蟠龙礼盒',
 		desc: '全队总分 ×1.3，每关 +4 月饼币；每 10 月饼币：该 Tee 得分 ×1.2',
 		rarity: 'legendary',
 		skin: 'TeeDevil',
@@ -1153,7 +1153,7 @@ export const CARDS: TeeCard[] = [
 	// 作废优先于映射(判定看原始点数),所以 Boss 迷月的 6 作废会直接打断这条线。
 	{
 		id: 'xiaoyue',
-		name: '晓月',
+		name: '破晓',
 		desc: '「我」掷出的 1 点视为 4 点',
 		rarity: 'common',
 		skin: 'Panda',
@@ -1161,7 +1161,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'meiyue',
-		name: '眉月',
+		name: '柳眉',
 		desc: '「我」掷出的 2 点视为 4 点',
 		rarity: 'rare',
 		skin: 'GoldCat',
@@ -1169,7 +1169,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'xinyue',
-		name: '新月',
+		name: '朔日',
 		desc: '「我」掷出的 3 点视为 4 点',
 		rarity: 'legendary',
 		skin: 'TeeAngel',
