@@ -423,19 +423,19 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuechao',
 		name: '潮汐',
-		desc: '掷完可发动：本 Tee 点数和 ×4 计入得分，和值超过 10 后每点 ×1.12（冷却 2 关）',
+		desc: '掷完可发动：本 Tee 点数和 ×4 计入得分，和值超过 18 后每点 ×1.12（冷却 2 关）',
 		rarity: 'rare',
 		skin: 'Riptide',
-		effect: { type: 'active', skill: 'sum', per: 4, from: 10, mult: 1.12, cooldown: 2 }
+		effect: { type: 'active', skill: 'sum', per: 4, from: 18, mult: 1.12, cooldown: 2 }
 	},
 	{
 		id: 'wangyue',
 		name: '望月',
-		desc: '掷完可发动：本 Tee 点数和 ×10 计入得分，和值超过 15 后每点 ×1.15（冷却 2 关）',
+		desc: '掷完可发动：本 Tee 点数和 ×10 计入得分，和值超过 18 后每点 ×1.15（冷却 2 关）',
 		rarity: 'legendary',
 		tag: '月',
 		skin: 'star',
-		effect: { type: 'active', skill: 'sum', per: 10, from: 15, mult: 1.15, cooldown: 2 }
+		effect: { type: 'active', skill: 'sum', per: 10, from: 18, mult: 1.15, cooldown: 2 }
 	},
 
 	{
