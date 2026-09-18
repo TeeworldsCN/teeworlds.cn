@@ -1277,7 +1277,7 @@ export const CARDS: TeeCard[] = [
 		// 「空四」(自己 4 点作废,便宜普通、能囤)。
 		id: 'canyue',
 		name: '残月',
-		desc: '基础分替换为（320，每关 +100 − 基础分）；掷完后把 1 颗骰子改为 3 点；自己掷出的 3 视为 4',
+		desc: '基础分替换为（320，每关 +100 − 基础分）；掷完后把 1 颗骰子改为 3 点；自己掷出的 5 视为 4',
 		rarity: 'legendary',
 		tag: '月',
 		skin: 'IceWitch_Halloween',
@@ -1286,7 +1286,7 @@ export const CARDS: TeeCard[] = [
 			parts: [
 				{ type: 'reverse', base: 320, perRound: 100 },
 				{ type: 'set_point', count: 1, point: 3 },
-				{ type: 'self_mods', mods: { map: { 3: 4 } } }
+				{ type: 'self_mods', mods: { map: { 5: 4 } } }
 			]
 		}
 	},
