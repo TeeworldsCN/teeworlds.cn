@@ -31,6 +31,14 @@
 		if (r.ok) map = (await r.json()).map;
 	});
 
+	// ?only=Tea,tea_tee,... 直接把任意皮肤拉出来对比(挑皮时用)
+	const only = page.url.searchParams.get('only');
+	if (only) {
+		all.length = 0;
+		for (const sk of only.split(',').filter(Boolean))
+			all.push({ id: sk, name: sk, skin: sk, kind: '皮肤', rarity: '—' });
+	}
+
 	const size = Number(page.url.searchParams.get('size') ?? 40);
 	const p = Math.max(1, Number(page.url.searchParams.get('p') ?? 1));
 	const pages = Math.ceil(all.length / size);

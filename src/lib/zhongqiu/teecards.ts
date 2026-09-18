@@ -222,7 +222,7 @@ export const CARDS: TeeCard[] = [
 		name: '茶壶',
 		desc: '二举及以上：得分 ×1.75',
 		rarity: 'common',
-		skin: 'FoxTea',
+		skin: 'Tea',
 		effect: { type: 'cond', cond: 'er_ju_plus', mult: 1.75 }
 	},
 	{
