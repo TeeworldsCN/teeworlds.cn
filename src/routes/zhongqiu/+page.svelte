@@ -1853,27 +1853,24 @@
 						<ul class="space-y-1 text-xs leading-snug text-slate-400 sm:space-y-1.5 sm:text-sm">
 							<li>
 								① 开局 <b class="text-slate-200">5 选 2</b>、<b class="text-slate-200">3 人成队</b
-								>；全队轮流掷 6 骰,总分达标即过关
+								>；全队轮流掷 6 骰，总分达标即过关
 							</li>
 							<li>
-								② 每人每回合掷 <b class="text-cyan-300">2 次</b>:第一掷后可挑骰子<b>重掷</b>
-								,卡牌能加到 3 次以上
+								② 每人每回合掷 <b class="text-cyan-300">2 次</b>：第一掷后可挑骰子<b>重掷</b>
+								，卡牌能加到 3 次以上
 							</li>
 							<li>
-								③ 有<b class="text-emerald-300">改点</b>的卡,掷完可点骰子改点数(如把 1 颗改成 4 点)
-							</li>
-							<li>
-								④ 过关进<b class="text-amber-300">中秋集市</b>:免费 3 选 1 换卡,商店买<b
+								③ 过关进<b class="text-amber-300">中秋集市</b>：免费 3 选 1 换卡，商店买<b
 									class="text-sky-300">加成卡</b
 								>
 							</li>
 							<li>
-								⑤ <b class="text-sky-300">加成卡</b>掷骰前挂到 Tee 上,持续 1~3 关,可叠加
+								④ <b class="text-sky-300">加成卡</b>掷骰前挂到 Tee 上，持续 1~3 关，可叠加
 							</li>
 							<li>
-								⑥ 每 3 关一位<b class="text-red-300">月宫守卫</b>:目标翻倍、点数生变
+								⑤ 每 3 关一位<b class="text-red-300">月宫守卫</b>：目标翻倍、点数生变
 							</li>
-							<li>⑦ 队伍最多 {TEAM_LIMIT} 人,不限局数,冲击无限高分</li>
+							<li>⑥ 队伍最多 {TEAM_LIMIT} 人</li>
 						</ul>
 						<button
 							class="mt-2 w-full rounded-lg border border-amber-500/30 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-400/20 active:scale-[0.98] sm:text-sm"
