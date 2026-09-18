@@ -2099,9 +2099,7 @@
 						<div
 							class="mb-2.5 rounded-xl border border-amber-400/25 bg-amber-400/5 px-3 py-2.5 text-center"
 						>
-							<div class="text-[11px] text-amber-100/85 sm:text-xs">
-								如果很喜欢这个游戏，请考虑打赏给我
-							</div>
+							<div class="text-[11px] text-amber-100/85 sm:text-xs">如果很喜欢，请考虑打赏</div>
 							<a
 								class="mt-2 inline-block rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-5 py-2 text-sm font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 sm:px-6 sm:py-2.5 sm:text-base"
 								href={DONATE_URL}
