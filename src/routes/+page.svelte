@@ -56,7 +56,7 @@
 
 <div class="mt-6">
 	<ToolboxButton href="/minigames"><Fa icon={faGamepad} class="inline"></Fa> 小游戏</ToolboxButton>
-	<div class="text-semibold">中秋博饼大会 · 合成超大Tee —— 点这里挑一个玩</div>
+	<div class="text-semibold">游玩 Tee 主题相关的小游戏</div>
 </div>
 
 <div class="mt-6 flex items-start">
