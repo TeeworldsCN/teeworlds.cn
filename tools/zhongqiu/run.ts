@@ -221,6 +221,10 @@ export interface RunSimResult {
 	winnerMedian: number[];
 	/** P5 最远关卡:95% 的局至少能打到这里 */
 	p5Reached: number;
+	/** P95 最远关卡:上游 5% 的局能打到这里(= 这个流派的上界) */
+	p95Reached: number;
+	/** 单局最远(该流派跑得最远的那一局) */
+	maxReached: number;
 	/** GATE=0 时给出的建议目标序列(其余情况为空) */
 	suggested: number[];
 }
@@ -298,7 +302,7 @@ export const simulateFullRun = (
 			mooncakes += 10 + 4 * r; // 近似 roundReward + 溢出奖励
 			// 商店:买得起就买最贵的一张可用加成,挂给最需要的 Tee
 			// CARRY=1:所有流派都只买倍率加成卡(养主 C 实验)
-			if (pref.buffScore || process.env.CARRY === '1') {
+			if (pref.buffScore || process.env.CARRY === '1' || process.env.CARRY === 'me') {
 				const price = (b: BuffCard) => b.price;
 				const isMult = (b: BuffCard) => /"mult"/.test(JSON.stringify(b.effect));
 				const affordable = BUFF_CARDS.filter((b) => b.price <= mooncakes);
@@ -314,8 +318,14 @@ export const simulateFullRun = (
 			}
 			// 挂加成:平均分给队伍(简化)
 			buffStock.forEach((id, k) => {
-				// CARRY=1:所有加成卡全堆给最后一个 Tee
-				const slot = process.env.CARRY === '1' ? team[team.length - 1] : team[k % team.length];
+				// CARRY=1 → 全堆最后一个 Tee;CARRY=me → 全堆主 Tee(「我」),
+				// 主 Tee 联动那类卡全靠「我」触发,加成给「我」才是它的正解打法。
+				const slot =
+					process.env.CARRY === 'me'
+						? team[0]
+						: process.env.CARRY === '1'
+							? team[team.length - 1]
+							: team[k % team.length];
 				if (slot && !slot.buffs.includes(id)) slot.buffs.push(id);
 			});
 			const rollers = team.map((s) => makeRoller(s.card, s.buffs, skill));
@@ -441,6 +451,7 @@ export const simulateFullRun = (
 		: [];
 	for (let i = 1; i < suggested.length; i++)
 		suggested[i] = Math.max(suggested[i], suggested[i - 1]);
+	const sortedReached = [...reachedAll].sort((a, b) => a - b);
 	const sorted = [...deaths].sort((a, b) => a - b);
 	return {
 		name: pref.name,
@@ -454,7 +465,11 @@ export const simulateFullRun = (
 		/** 通过者在该关的中位总分(目标曲线标定用) */
 		winnerMedian: scoreSum.map((s, i) => (scoreCnt[i] ? s / scoreCnt[i] : 0)),
 		/** P5 最远关卡:95% 的局至少能打到这里 */
-		p5Reached: [...reachedAll].sort((a, b) => a - b)[Math.floor(reachedAll.length * 0.05)] ?? 0,
+		p5Reached: sortedReached[Math.floor(sortedReached.length * 0.05)] ?? 0,
+		p95Reached:
+			sortedReached[Math.min(sortedReached.length - 1, Math.floor(sortedReached.length * 0.95))] ??
+			0,
+		maxReached: sortedReached[sortedReached.length - 1] ?? 0,
 		suggested
 	};
 };
@@ -561,7 +576,9 @@ if (import.meta.main) {
 			'救回/局'.padStart(9) +
 			'时轮/局'.padStart(9) +
 			'中位结束'.padStart(10) +
-			'P5关卡'.padStart(9) +
+			'P5'.padStart(5) +
+			'P95'.padStart(6) +
+			'最远'.padStart(7) +
 			'  流派成型'
 	);
 	for (let i = 0; i < PREFS.length; i++) {
@@ -574,7 +591,9 @@ if (import.meta.main) {
 				r.rescued.toFixed(2).padStart(9) +
 				r.retryUses.toFixed(2).padStart(9) +
 				(r.medianDeath ? `R${r.medianDeath}` : '—').padStart(10) +
-				`R${r.p5Reached}`.padStart(9) +
+				`R${r.p5Reached}`.padStart(5) +
+				`R${r.p95Reached}`.padStart(6) +
+				`R${r.maxReached}`.padStart(7) +
 				`        ${r.onlineRound < 17 ? `R${r.onlineRound.toFixed(1)}` : '从未成型'}`
 		);
 	}
