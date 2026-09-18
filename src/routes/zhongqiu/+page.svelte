@@ -2545,7 +2545,7 @@
 							<div
 								bind:this={stepsEl}
 								onscroll={keepSettleScroll}
-								class="no-scrollbar mt-0.5 flex max-h-[4.8rem] shrink-0 flex-col items-center justify-start gap-0 overflow-y-auto overscroll-contain text-xs leading-[1.1] max-[365px]:mt-0.5 max-[365px]:max-h-[4rem] max-[365px]:text-[10px] max-[365px]:leading-[1.1] sm:max-h-none sm:overflow-visible sm:text-sm sm:leading-normal"
+								class="no-scrollbar mt-2 flex max-h-[4.8rem] shrink-0 flex-col items-center justify-start gap-0 overflow-y-auto overscroll-contain text-xs leading-[1.1] max-[365px]:mt-1.5 max-[365px]:max-h-[4rem] max-[365px]:text-[10px] max-[365px]:leading-[1.1] sm:mt-2.5 sm:max-h-none sm:overflow-visible sm:text-sm sm:leading-normal"
 							>
 								{#each Array.from({ length: Math.max(settleReserveLines, settleSteps.length) }, (_, i) => i) as i (i)}
 									{#if i <= settleIdx && settleSteps[i]}
