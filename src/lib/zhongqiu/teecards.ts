@@ -1242,14 +1242,14 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'kuiyue',
 		name: '亏月',
-		desc: '得分 = 100 + 每关 +5 − 本次掷骰分；自己掷出的 1 视为 4',
+		desc: '基础分替换为（100，每关 +5 − 基础分）；自己掷出的 1 视为 4',
 		rarity: 'common',
 		tag: '月',
 		skin: 'Whitetee Small',
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'reverse', base: 100, perRound: 5, per: 2 },
+				{ type: 'reverse', base: 100, perRound: 5 },
 				{ type: 'self_mods', mods: { map: { 1: 4 } } }
 			]
 		}
@@ -1259,14 +1259,14 @@ export const CARDS: TeeCard[] = [
 		// 罚分 ×1.5:净系数 −1.5(per = 1 + 1.5)
 		id: 'queyue',
 		name: '缺月',
-		desc: '得分 = 170 + 每关 +50 − 掷骰分 ×1.5；掷完后把 1 颗骰子改为 1 点；自己掷出的 2 视为 4',
+		desc: '基础分替换为（170，每关 +50 − 基础分）；掷完后把 1 颗骰子改为 1 点；自己掷出的 2 视为 4',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'darkforce',
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'reverse', base: 170, perRound: 50, per: 2.5 },
+				{ type: 'reverse', base: 170, perRound: 50 },
 				{ type: 'set_point', count: 1, point: 1 },
 				{ type: 'self_mods', mods: { map: { 2: 4 } } }
 			]
@@ -1277,14 +1277,14 @@ export const CARDS: TeeCard[] = [
 		// 「空四」(自己 4 点作废,便宜普通、能囤)。
 		id: 'canyue',
 		name: '残月',
-		desc: '得分 = 320 + 每关 +100 − 掷骰分 ×2.5；掷完后把 1 颗骰子改为 3 点；自己掷出的 3 视为 4',
+		desc: '基础分替换为（320，每关 +100 − 基础分）；掷完后把 1 颗骰子改为 3 点；自己掷出的 3 视为 4',
 		rarity: 'legendary',
 		tag: '月',
 		skin: 'IceWitch_Halloween',
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'reverse', base: 320, perRound: 100, per: 3.5 },
+				{ type: 'reverse', base: 320, perRound: 100 },
 				{ type: 'set_point', count: 1, point: 3 },
 				{ type: 'self_mods', mods: { map: { 3: 4 } } }
 			]

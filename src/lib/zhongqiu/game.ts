@@ -433,6 +433,9 @@ export const calcTeeScore = ({
 
 	const level = getRollLevel(levelId);
 	let chips = 0;
+	/** 逆向卡收集到的基础分:chips 全部结算完后统一替换(多张相加,只减一次) */
+	let reverseBase = 0;
+	let reverseSrc = '';
 	let mult = 1;
 	let allowNegative = false;
 
@@ -476,8 +479,9 @@ export const calcTeeScore = ({
 					if (be.mult) buffMult *= Math.pow(be.mult, n);
 				}
 			} else if (be.type === 'reverse') {
-				// 逆向加成卡:和 Tee 卡同公式
-				buffChips += (be.base ?? 0) - level.score * (be.per ?? 1);
+				// 逆向加成卡:并入同一个替换步骤
+				reverseBase += be.base ?? 0;
+				if (!reverseSrc) reverseSrc = b.cardId;
 			} else if (be.type === 'bundle') {
 				be.parts?.forEach(applyBuff);
 			}
@@ -645,18 +649,10 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'reverse': {
-				const before = { chips, mult };
-				// 逆向基础分可以随关卡成长(让负分流后期不掉队)
-				const base = eff.base + (eff.perRound ?? 0) * ((round ?? 1) - 1);
-				chips += base - level.score * (eff.per ?? 1);
-				allowNegative = true;
-				note(
-					srcId,
-					'card',
-					chips - before.chips,
-					before.mult === 0 ? 1 : mult / before.mult,
-					`${base} − ${level.name}`
-				);
+				// 逆向:这里只登记基础分,不动 chips ——
+				// chips 全部结算完之后、mult 之前再统一替换(见函数末尾)
+				reverseBase += eff.base + (eff.perRound ?? 0) * ((round ?? 1) - 1);
+				if (!reverseSrc) reverseSrc = srcId;
 				break;
 			}
 			case 'face_ladder':
@@ -759,9 +755,18 @@ export const calcTeeScore = ({
 	}
 
 	const base = Math.max(level.score, baseFloor);
+	// 逆向:chips 全部结算完、mult 之前,把「本回合已得的净值」整个替换掉 ——
+	// chips = reverseBase − 净值。掷得越漂亮(净值越高)逆向分越低,反之吃惩罚。
+	const net = base + chips + buffChips;
+	const swapped = reverseBase > 0 ? reverseBase - net : null;
+	if (swapped !== null) {
+		const bc = chips;
+		chips = swapped - base - buffChips; // 代进下面的算式后正好等于 swapped
+		note(reverseSrc, 'card', chips - bc, 1, `基础分 ← ${reverseBase} − 之前的 ${net}`);
+	}
 	const raw = Math.round((base + chips + buffChips) * mult * buffMult * 100) / 100;
 	const netChips = chips + buffChips;
-	const total = allowNegative || netChips < 0 ? raw : Math.max(0, raw);
+	const total = swapped !== null || allowNegative || netChips < 0 ? raw : Math.max(0, raw);
 	return { base, chips: chips + buffChips, mult: mult * buffMult, teamMult: 1, total, sources };
 };
 

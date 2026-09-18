@@ -544,14 +544,14 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'niyuefu',
 		name: '逆月符',
-		desc: '该 Tee 本关得分 = 160 − 本次掷骰分',
+		desc: '该 Tee 本关基础分替换为（160 − 基础分）',
 		rarity: 'rare',
 		skin: 'Dark Default',
 		price: 7,
 		turns: 2,
 		// per = 1 + 1:引擎在外面已经加过一次等级分,这里要把它抵掉,
 		// 卡面的「− 本次掷骰分」才逐字成立
-		effect: { type: 'reverse', base: 160, per: 2 }
+		effect: { type: 'reverse', base: 160 }
 	},
 
 	// ======== 抗 Boss:解除点数作废 ========
