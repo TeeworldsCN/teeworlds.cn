@@ -1939,9 +1939,7 @@
 				>
 					<div class="flex items-center gap-x-2 text-xs sm:gap-x-3 sm:text-sm">
 						<div class="font-bold text-amber-200">
-							第 {round} 关<span class="ml-1 text-[10px] font-normal text-slate-500"
-								>A{Math.ceil(round / 3)}</span
-							>
+							第 {round} 关
 						</div>
 						<div class="ml-auto flex items-center gap-2 sm:gap-3">
 							<span class="text-slate-400"
