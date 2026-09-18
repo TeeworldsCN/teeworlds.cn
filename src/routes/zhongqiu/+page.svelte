@@ -790,6 +790,9 @@
 		rerolled: rerollCount,
 		playerLevelId: i === 0 ? levelId : (team[0]?.lastLevelId ?? 'none'),
 		playerDice: i === 0 ? diceForSum : (team[0]?.lastDice ?? []),
+		// 重复牌倍率要数**原始**骰面(已变成 4 的数不出来)。只有主 Tee 用得上,
+		// 所以 i > 0 时传什么都无所谓,这里用主 Tee 存下来的骰子兼顶。
+		playerRawDice: i === 0 ? [...dice] : (team[0]?.lastDice ?? []),
 		// 新机制的上下文：经济流用币、成长/负分用关数、支援流用左邻已结算的分
 		coins: mooncakes,
 		round,

@@ -106,6 +106,8 @@ const makeRoller = (
 				allSelf: [],
 				index: 0,
 				teamCards: card ? [card] : [null],
+				// DP 也要看到队友的卡,否则算不出「重复牌倍率」的价值(会去重掷本该留的重复牌)
+				allSelf: (playerCards ?? []).map((c) => (c ? [{ eff: c.effect, srcId: c.id }] : [])),
 				growth: {},
 				buffs: policyBuffs.map((id) => ({ cardId: id, turnsLeft: 1 })),
 				teamSize: 6,
@@ -113,7 +115,9 @@ const makeRoller = (
 				ownDice: applyDiceMods(dice, mods),
 				rerolled: 0,
 				playerLevelId: judgeRoll(dice, mods).id,
-				playerDice: dice
+				playerDice: dice,
+				// DP 里的 dice 就是原始骰面(还没映射),直接给 face_count_mult 用
+				playerRawDice: dice
 			}).total;
 		});
 		dpCache.set(key, dp);
@@ -195,6 +199,8 @@ const scoreTeam = (
 			ownDice: applyDiceMods(dice, mods),
 			rerolled: 0,
 			playerLevelId: i === 0 ? lid : mainLid,
+			// 重复牌倍率要数**原始**骰面(已变成 4 的数不出来),只有主 Tee 用得上
+			playerRawDice: i === 0 ? dice : mainDice,
 			playerDice: i === 0 ? dice : mainDice,
 			coins,
 			round,

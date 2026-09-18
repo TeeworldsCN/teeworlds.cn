@@ -66,6 +66,8 @@ function teeReq(e: TeeEffect): Group[] {
 			];
 		case 'team_ratio':
 			return [];
+		case 'face_count_mult':
+			return [];
 		case 'relay_pct':
 			return [];
 		case 'team_mult':

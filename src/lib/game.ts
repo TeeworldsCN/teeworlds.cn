@@ -465,6 +465,11 @@ export interface ScoreInput {
 	/** 主 Tee(「我」,位置 0)本关的等级与最终骰子 */
 	playerLevelId: string;
 	playerDice: number[];
+	/**
+	 * 主 Tee(「我」)的原始骰面(未做映射)。
+	 * face_count_mult 要数「有几颗被改的点数」—— 已经变成 4 的骰子数不出来。
+	 */
+	playerRawDice?: number[];
 	/** 当前月饼币(coin_mult 用) */
 	coins?: number;
 	/** 当前关卡数(reverse.perRound / growth_mult 用) */
@@ -489,6 +494,7 @@ export const calcTeeScore = ({
 	rerolled = 0,
 	playerLevelId,
 	playerDice,
+	playerRawDice,
 	coins = 0,
 	round = 1,
 	leftScore = 0,
@@ -594,6 +600,23 @@ export const calcTeeScore = ({
 				const before = { chips, mult };
 				chips += eff.value;
 				note(srcId, 'card', chips - before.chips, before.mult === 0 ? 1 : mult / before.mult);
+				break;
+			}
+			case 'face_count_mult': {
+				// 重复牌倍率:本关「我」掷出几颗这个点数,主 Tee 就 ×几。
+				// 这是**跨位置**规则(卡长在队友身上也算),所以只在全队那一轮结算、
+				// 且只作用于主 Tee(index 0);自己那一轮(skipTeamWide)跳过,免得算两遍。
+				// 数的是原始骰面(已经变成 4 的骰子数不出来);拿不到原始骰子时按 ×1,绝不能 ×0。
+				if (skipTeamWide || index !== 0) break;
+				{
+					const raw = playerRawDice ?? playerDice ?? [];
+					const n = Math.max(1, raw.filter((d) => d === eff.face).length);
+					if (n > 1) {
+						const bm = mult;
+						mult *= n;
+						note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `${n} 颗 ${eff.face}`);
+					}
+				}
 				break;
 			}
 			case 'mult': {
@@ -802,6 +825,11 @@ export const calcTeeScore = ({
 			else if (eff.type === 'on_player' && eff.teamWide) apply(eff, srcId, false);
 			// 流派流的传说档:一张卡把全队同流派都抬起来
 			else if (eff.type === 'per_tag' && eff.teamWide) apply(eff, srcId, false);
+			// 重复牌倍率:卡在谁身上都生效,但只抬主 Tee(自己那一轮已跳过)
+			else if (eff.type === 'face_count_mult') apply(eff, srcId, false);
+			// 上面那几种可能被包在 bundle 里(改点卡的「重复牌倍率」就是)
+			else if (eff.type === 'bundle')
+				for (const p of eff.parts) if (p.type === 'face_count_mult') apply(p, srcId, false);
 		}
 	}
 	// 相邻 Tee 是指向别人的支援卡:站在我左边/右边的人给我加成
