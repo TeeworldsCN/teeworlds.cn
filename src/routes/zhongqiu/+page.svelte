@@ -2488,7 +2488,7 @@
 							{teamSettling ? '结算中...' : '🥮 结算回合'}
 						</button>
 						<!-- 放弃：小一号字 + 右下角 + 宽度自适应（不铺满），免得点「结算回合」时误触 -->
-						<div class="mt-1.5 flex w-full justify-end">
+						<div class="mt-5 flex w-full justify-end sm:mt-6">
 							<button
 								class="rounded-lg px-2 py-1 text-[11px] text-slate-500 transition hover:bg-slate-800/70 hover:text-slate-300 active:scale-95 disabled:opacity-40 sm:text-xs"
 								onclick={abandonRun}
