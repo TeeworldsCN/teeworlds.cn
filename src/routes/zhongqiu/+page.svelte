@@ -1825,12 +1825,12 @@
 	<meta property="og:url" content="https://teeworlds.cn/zhongqiu" />
 	<meta
 		property="og:description"
-		content="月宫掷骰：带队 Tee 排队博饼，兑换 Tee 卡构筑队伍，冲击无限高分！"
+		content="中秋博饼大会：带上你的 Tee 排队搏饼，兑换 Tee 卡构筑队伍，冲击无限高分！"
 	/>
 	<meta property="og:image" content="https://teeworlds.cn/shareicon.png" />
 	<meta
 		name="description"
-		content="月宫掷骰：带队 Tee 排队博饼，兑换 Tee 卡构筑队伍，冲击无限高分！"
+		content="中秋博饼大会：带上你的 Tee 排队搏饼，兑换 Tee 卡构筑队伍，冲击无限高分！"
 	/>
 </svelte:head>
 
@@ -2019,9 +2019,9 @@
 					<h1
 						class="mt-1 text-2xl font-bold text-amber-200 drop-shadow-[0_0_12px_rgba(251,191,36,0.35)] sm:mt-2 sm:text-4xl"
 					>
-						月宫掷骰
+						中秋博饼大会
 					</h1>
-					<p class="mt-1 text-xs text-slate-300 sm:mt-2 sm:text-sm">中秋博饼大会</p>
+					<p class="mt-1 text-xs text-slate-300 sm:mt-2 sm:text-sm">带上你的 Tee，博一个状元</p>
 
 					<div
 						class="mt-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-amber-200/90 sm:mt-4 sm:text-sm"
