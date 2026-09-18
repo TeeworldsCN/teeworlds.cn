@@ -1854,38 +1854,35 @@
 						<div class="mb-1.5 text-sm font-bold text-amber-200">📜 玩法说明</div>
 						<ul class="space-y-1 text-xs leading-snug text-slate-400 sm:space-y-1.5 sm:text-sm">
 							<li>
-								① 开局从 5 张普通 Tee 卡里挑 2 张,<b class="text-slate-200">3 人队伍</b
-								>起步;每关有目标分数,全队轮流博饼(每人掷 6 骰),总得分达标即过关
+								① 开局 <b class="text-slate-200">5 选 2</b>、<b class="text-slate-200">3 人成队</b
+								>；全队轮流掷 6 骰,总分达标即过关
 							</li>
 							<li>
-								② 每个 Tee 每回合可投掷 <b class="text-cyan-300">2 次</b
-								>：第一次掷完，点骰子挑出想<b>重掷</b>的那几颗再掷一次;卡牌与加成卡能让它投掷 3
-								次甚至更多
+								② 每人每回合掷 <b class="text-cyan-300">2 次</b>:第一掷后可挑骰子<b>重掷</b>
+								,卡牌能加到 3 次以上
 							</li>
 							<li>
-								③ 掷完后,有<b class="text-emerald-300">改点</b>能力的卡牌可以点骰子操作(如把 1
-								颗骰子改成 4 点)
+								③ 有<b class="text-emerald-300">改点</b>的卡,掷完可点骰子改点数(如把 1 颗改成 4 点)
 							</li>
 							<li>
-								④ 过关后进<b class="text-amber-300">中秋集市</b>：免费 3 选 1 换 Tee 卡；商店出售<b
+								④ 过关进<b class="text-amber-300">中秋集市</b>:免费 3 选 1 换卡,商店买<b
 									class="text-sky-300">加成卡</b
 								>
 							</li>
 							<li>
-								⑤ <b class="text-sky-300">加成卡</b>掷骰前挂到 Tee 身上(持续 1~3 关,可叠加)
+								⑤ <b class="text-sky-300">加成卡</b>掷骰前挂到 Tee 上,持续 1~3 关,可叠加
 							</li>
 							<li>
-								⑥ 每 3 关出现<b class="text-red-300">月宫守卫（Boss）</b
-								>,带来目标翻倍、点数变化等特效
+								⑥ 每 3 关一位<b class="text-red-300">月宫守卫</b>:目标翻倍、点数生变
 							</li>
-							<li>⑦ 队伍最多 {TEAM_LIMIT} 人,不限制游玩次数,冲击无限高分!</li>
+							<li>⑦ 队伍最多 {TEAM_LIMIT} 人,不限局数,冲击无限高分</li>
 						</ul>
-						<div
-							class="mt-2 border-t border-slate-700/60 pt-2 text-[11px] leading-snug text-slate-500"
+						<button
+							class="mt-2 w-full rounded-lg border border-amber-500/30 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-400/20 active:scale-[0.98] sm:text-sm"
+							onclick={() => (showRules = true)}
 						>
-							博饼等级:一秀 10 分 → 二举 20 → 四进 40 → 三红 80 → 对堂 160 → 状元 320 → 五子登科 480
-							→ 五王 640 → 六博黑 960 → 六博红 1280 → 状元插金花 2560
-						</div>
+							🎲 博饼等级一览
+						</button>
 					</div>
 				</div>
 			{:else if phase === 'draft'}
