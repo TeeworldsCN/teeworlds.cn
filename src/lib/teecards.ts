@@ -108,6 +108,8 @@ export type TeeEffect =
 			per: number;
 			as: 'chips' | 'mult';
 			chips?: number;
+			/** 底分改成「四点颗数 × 该系数」:0 分的手牌不再被垫起来(玩法不变,只是不再绕开掷骰) */
+			chipsPerFour?: number;
 			teamWide?: boolean;
 	  } // 队伍里每有 1 张同流派卡(teamWide: 全队同流派 Tee 都吃;chips: 额外底分)
 	| { type: 'on_player'; cond: Cond; chips?: number; mult?: number; teamWide?: boolean } // 主 Tee(「我」)掷出该等级及以上时(teamWide = 全队都吃)
@@ -1041,110 +1043,110 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutuhui',
 		name: '兔儿满堂',
-		desc: '每拥有一个独特的「兔」系角色：该 Tee 得分 ×2.3；得分 +20',
+		desc: '每拥有一个独特的「兔」系角色：该 Tee 得分 ×2.3；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '兔',
 		skin: 'tuzi',
-		effect: { type: 'per_tag', tag: '兔', per: 2.3, as: 'mult', chips: 20 }
+		effect: { type: 'per_tag', tag: '兔', per: 2.3, as: 'mult', chipsPerFour: 1 }
 	},
 	{
 		id: 'guiyuan',
 		name: '桂苑',
-		desc: '每拥有一个独特的「桂」系角色：该 Tee 得分 ×2.3；得分 +20',
+		desc: '每拥有一个独特的「桂」系角色：该 Tee 得分 ×2.3；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '桂',
 		skin: 'brownbear',
-		effect: { type: 'per_tag', tag: '桂', per: 2.3, as: 'mult', chips: 20 }
+		effect: { type: 'per_tag', tag: '桂', per: 2.3, as: 'mult', chipsPerFour: 1 }
 	},
 	{
 		id: 'yuebingfang',
 		name: '饼坊',
-		desc: '每拥有一个独特的「饼」系角色：该 Tee 得分 ×3；得分 +20',
+		desc: '每拥有一个独特的「饼」系角色：该 Tee 得分 ×3；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '饼',
 		skin: 'GoldCat',
-		effect: { type: 'per_tag', tag: '饼', per: 3.0, as: 'mult', chips: 20 }
+		effect: { type: 'per_tag', tag: '饼', per: 3.0, as: 'mult', chipsPerFour: 1 }
 	},
 	{
 		id: 'dengzhen',
 		name: '灯阵',
-		desc: '每拥有一个独特的「灯」系角色：该 Tee 得分 ×2.1；得分 +20',
+		desc: '每拥有一个独特的「灯」系角色：该 Tee 得分 ×2.1；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'iceberg',
-		effect: { type: 'per_tag', tag: '灯', per: 2.1, as: 'mult', chips: 20 }
+		effect: { type: 'per_tag', tag: '灯', per: 2.1, as: 'mult', chipsPerFour: 1 }
 	},
 	{
 		id: 'yuelun',
 		name: '月轮',
-		desc: '每拥有一个独特的「月」系角色：该 Tee 得分 ×2；得分 +20',
+		desc: '每拥有一个独特的「月」系角色：该 Tee 得分 ×2；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'Sailormoon',
-		effect: { type: 'per_tag', tag: '月', per: 2.0, as: 'mult', chips: 20 }
+		effect: { type: 'per_tag', tag: '月', per: 2.0, as: 'mult', chipsPerFour: 1 }
 	},
 	{
 		id: 'xianlv',
 		name: '仙侣',
-		desc: '每拥有一个独特的「仙」系角色：该 Tee 得分 ×2.3；得分 +20',
+		desc: '每拥有一个独特的「仙」系角色：该 Tee 得分 ×2.3；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '仙',
 		skin: 'White_tee',
-		effect: { type: 'per_tag', tag: '仙', per: 2.3, as: 'mult', chips: 20 }
+		effect: { type: 'per_tag', tag: '仙', per: 2.3, as: 'mult', chipsPerFour: 1 }
 	},
 	{
 		id: 'yutulinfan',
 		name: '玉兔临凡',
-		desc: '每拥有一个独特的「兔」系角色：所有「兔」系 Tee 得分 ×2.3；得分 +20',
+		desc: '每拥有一个独特的「兔」系角色：所有「兔」系 Tee 得分 ×2.3；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '兔',
 		skin: 'tuzi',
-		effect: { type: 'per_tag', tag: '兔', per: 2.3, as: 'mult', chips: 20, teamWide: true }
+		effect: { type: 'per_tag', tag: '兔', per: 2.3, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	{
 		id: 'guidian',
 		name: '桂殿',
-		desc: '每拥有一个独特的「桂」系角色：所有「桂」系 Tee 得分 ×2.3；得分 +20',
+		desc: '每拥有一个独特的「桂」系角色：所有「桂」系 Tee 得分 ×2.3；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '桂',
 		skin: 'brownbear',
-		effect: { type: 'per_tag', tag: '桂', per: 2.3, as: 'mult', chips: 20, teamWide: true }
+		effect: { type: 'per_tag', tag: '桂', per: 2.3, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	{
 		id: 'tuanyuanbing',
 		name: '团圆饼',
-		desc: '每拥有一个独特的「饼」系角色：所有「饼」系 Tee 得分 ×3；得分 +20',
+		desc: '每拥有一个独特的「饼」系角色：所有「饼」系 Tee 得分 ×3；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '饼',
 		skin: 'GoldCat',
-		effect: { type: 'per_tag', tag: '饼', per: 3.0, as: 'mult', chips: 20, teamWide: true }
+		effect: { type: 'per_tag', tag: '饼', per: 3.0, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	{
 		id: 'changmingdeng',
 		name: '长明灯',
-		desc: '每拥有一个独特的「灯」系角色：所有「灯」系 Tee 得分 ×2.1；得分 +20',
+		desc: '每拥有一个独特的「灯」系角色：所有「灯」系 Tee 得分 ×2.1；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '灯',
 		skin: 'iceberg',
-		effect: { type: 'per_tag', tag: '灯', per: 2.1, as: 'mult', chips: 20, teamWide: true }
+		effect: { type: 'per_tag', tag: '灯', per: 2.1, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	{
 		id: 'taiyin',
 		name: '太阴素月',
-		desc: '每拥有一个独特的「月」系角色：所有「月」系 Tee 得分 ×2；得分 +20',
+		desc: '每拥有一个独特的「月」系角色：所有「月」系 Tee 得分 ×2；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '月',
 		skin: 'Sailormoon',
-		effect: { type: 'per_tag', tag: '月', per: 2.0, as: 'mult', chips: 20, teamWide: true }
+		effect: { type: 'per_tag', tag: '月', per: 2.0, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	{
 		id: 'qunxianhui',
 		name: '群仙会',
-		desc: '每拥有一个独特的「仙」系角色：所有「仙」系 Tee 得分 ×2.3；得分 +20',
+		desc: '每拥有一个独特的「仙」系角色：所有「仙」系 Tee 得分 ×2.3；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'TeeAngel',
-		effect: { type: 'per_tag', tag: '仙', per: 2.3, as: 'mult', chips: 20, teamWide: true }
+		effect: { type: 'per_tag', tag: '仙', per: 2.3, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	// ==== 主 Tee 流:队友给「我」改骰子规则 ====
 	//

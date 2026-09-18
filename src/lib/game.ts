@@ -498,6 +498,18 @@ export const calcTeeScore = ({
 	leftScore = 0,
 	soldCount = 0
 }: ScoreInput): ScoreBreakdown => {
+	// 同 id 的 per_tag 引擎卡只生效一份:卡面写的是「每拥有一个独特的 X 系角色」,
+	// 「独特」应当同时约束 n 和这张卡自己 —— 拿 3 份「饼坊」不该乘 3 次。
+	{
+		const seenEngine = new Set<string>();
+		self = self.filter(({ eff, srcId }) => {
+			if (eff.type !== 'per_tag') return true;
+			if (seenEngine.has(srcId)) return false;
+			seenEngine.add(srcId);
+			return true;
+		});
+	}
+
 	const level = getRollLevel(levelId);
 	let chips = 0;
 	let mult = 1;
@@ -645,7 +657,9 @@ export const calcTeeScore = ({
 				if (eff.as === 'chips') chips += eff.per * n;
 				else mult *= Math.pow(eff.per, n);
 				// 底分:没有它,5 张同流派时一秀正好 320 = 状元(等于不算大于)
-				if (eff.chips) chips += eff.chips;
+				// 底分 = 四点颗数(用最终骰子,「1、6 视为 4」已算进去):
+				// 原来的固定 +20 会把 0 分手牌也垫起来,等于绕开掷骰这个核心动作。
+				if (eff.chipsPerFour) chips += ownDice.filter((d) => d === 4).length * eff.chipsPerFour;
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `${eff.tag}系 ${n} 张`);
 				break;
 			}

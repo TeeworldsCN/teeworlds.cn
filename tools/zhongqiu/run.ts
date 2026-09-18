@@ -16,13 +16,15 @@ import {
 	calcTeamTotal,
 	calcTeeScore,
 	collectSetOps,
+	mergeMods,
+	playerDiceMods,
 	selfDiceMods,
 	TARGETS,
 	type ScoreInput
 } from '../../src/lib/game';
 import { BUFF_BY_ID, BUFF_CARDS, type AppliedBuff, type BuffCard } from '../../src/lib/items';
 import { CARDS, CARD_BY_ID, drawCards, type Tag, type TeeCard } from '../../src/lib/teecards';
-import { judgeRoll } from '../../src/lib/midautumn';
+import { applyDiceMods, judgeRoll } from '../../src/lib/midautumn';
 import {
 	FILLS,
 	makeOptimal,
@@ -151,6 +153,10 @@ const scoreTeam = (
 	const cards = team.map((t) => (t.card ? CARD_BY_ID.get(t.card)! : null));
 	const allSelf = cards.map((c) => (c ? [{ eff: c.effect, srcId: c.id }] : []));
 	const scores: number[] = [];
+	// 「我」= 主 Tee(0 号位)。其余 Tee 原来各自把自己的骰子当成「我」的,
+	// 等于主 Tee 流的卡(拾月/望月怀远/明月共照)人人都在吃。
+	let mainLid = '';
+	let mainDice: number[] = [];
 	let total = 0;
 	let prev = 0;
 	team.forEach((t, i) => {
@@ -159,8 +165,14 @@ const scoreTeam = (
 		const dice = sup ? [1, 1, 2, 3, 5, 6] : rollers[i]();
 		const self = allSelf[i];
 		const buffs: AppliedBuff[] = t.buffs.map((id) => ({ cardId: id, turnsLeft: 1 }));
-		const mods = i === 0 ? selfDiceMods(self, buffs) : selfDiceMods(self, buffs);
+		// 只有主 Tee 吃队友的「我掷出的 X 视为 4」(和页面 modsFor 一致);
+		// 原来这句是 i===0?a:b 两边一模一样的空操作,等于这条规则从未生效。
+		const mods = mergeMods(selfDiceMods(self, buffs), i === 0 ? playerDiceMods(cards) : undefined);
 		const lid = judgeRoll(dice, mods).id;
+		if (i === 0) {
+			mainLid = lid;
+			mainDice = dice;
+		}
 		const input: ScoreInput = {
 			levelId: lid,
 			self,
@@ -171,10 +183,11 @@ const scoreTeam = (
 			buffs,
 			teamSize: team.length,
 			diceSum: dice.reduce((a, b) => a + b, 0),
-			ownDice: dice,
+			// 数点数类效果(拾月/own_face)看的是映射后的实际点数,和引擎一致
+			ownDice: applyDiceMods(dice, mods),
 			rerolled: 0,
-			playerLevelId: judgeRoll(dice, mods).id,
-			playerDice: dice,
+			playerLevelId: i === 0 ? lid : mainLid,
+			playerDice: i === 0 ? dice : mainDice,
 			coins,
 			round,
 			leftScore: prev,
@@ -270,18 +283,25 @@ export const simulateFullRun = (
 			for (const [k, v] of cdMap) if (v > 0) cdMap.set(k, v - 1); // 冷却按关推进
 			mooncakes += 10 + 4 * r; // 近似 roundReward + 溢出奖励
 			// 商店:买得起就买最贵的一张可用加成,挂给最需要的 Tee
-			if (pref.buffScore) {
+			// CARRY=1:所有流派都只买倍率加成卡(养主 C 实验)
+			if (pref.buffScore || process.env.CARRY === '1') {
 				const price = (b: BuffCard) => b.price;
+				const isMult = (b: BuffCard) => /"mult"/.test(JSON.stringify(b.effect));
 				const affordable = BUFF_CARDS.filter((b) => b.price <= mooncakes);
 				if (affordable.length) {
-					const buy = pickBest(affordable, (b) => pref.buffScore!(b) * 100 - price(b));
+					const buy = pickBest(affordable, (b) =>
+						process.env.CARRY === '1'
+							? (isMult(b) ? 1e6 : 0) + b.price // 只买倍率卡,同档挑贵的
+							: pref.buffScore!(b) * 100 - price(b)
+					);
 					mooncakes -= buy.price;
 					buffStock.push(buy.id);
 				}
 			}
 			// 挂加成:平均分给队伍(简化)
 			buffStock.forEach((id, k) => {
-				const slot = team[k % team.length];
+				// CARRY=1:所有加成卡全堆给最后一个 Tee
+				const slot = process.env.CARRY === '1' ? team[team.length - 1] : team[k % team.length];
 				if (slot && !slot.buffs.includes(id)) slot.buffs.push(id);
 			});
 			const rollers = team.map((s) => makeRoller(s.card, s.buffs, skill));
