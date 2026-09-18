@@ -1,4 +1,5 @@
 // 月宫掷骰 · 游戏核心逻辑(关卡、Boss、计分、存档)
+// 设计与玩法说明见本地 tools/zhongqiu/DESIGN.md（未入库；代码里只留"干什么"，"为什么"在那份文档）
 import { getRollLevel, hasClearVoid, judgeRoll, stripVoid, type DiceMods } from './midautumn';
 import { LEVEL_LADDER, CARD_BY_ID, CARDS, condHit, type TeeCard, type TeeEffect } from './teecards';
 import { longestRun } from './midautumn';
@@ -6,21 +7,7 @@ import { BUFF_BY_ID, type AppliedBuff } from './items';
 
 // ---- 关卡 ----
 //
-// 每个 Tee 默认可投掷 2 次(之间可自选保留哪些骰子重投),玩家侧基线期望分 ≈ 82。
-// 目标曲线在「2 次投掷基线」上重新标定:第 1 关 80 分,之后每关 ×2。
-// (旧版是 1 次投掷、基线 21.5 分,目标从 20 起 —— 新基线是它的 3.8 倍)
 
-/**
- * 每关目标分数。
- *
- * 由通过率模拟标定(`bun run tools/zhongqiu/balance.ts run`),不是拍脑袋的指数曲线。
- * 关键教训:过关看的是**分位数**不是均值 —— 均值被状元/插花那几把大奖拉得很高,
- * 但玩家实际是靠中位数附近的成绩过关的。旧曲线(R1=150)落在 p28 上,
- * 意味着第 1 关就有 28% 概率暴死。
- *
- * 当前曲线对应的目标过关率:R1 93% → R5 82% → R10 58% → R13 36% → R16 17%
- * (第 1 关故意压到「随便掷都能过」,当作教学关;真正的墙在 R13 之后)
- */
 export const TARGETS = [
 	60, 180, 360, 560, 750, 885, 1045, 1235, 1460, 1725, 2035, 2400, 2835, 3345, 3950, 4660
 ];
@@ -38,7 +25,6 @@ export const anteOf = (n: number) => Math.ceil(n / 3);
 /** 是否 Boss 关(每 Ante 的第 3 关) */
 export const isBossRound = (n: number) => n % 3 === 0;
 
-/** 每个 Tee 的基础投掷次数(掷一次 + 自选保留后重掷一次) */
 export const BASE_ROLLS = 2;
 
 // ---- Boss ----
@@ -52,28 +38,11 @@ export interface Boss {
 	targetMult?: number;
 	/** 骰子点数修饰 */
 	mods?: DiceMods;
-	/** 本关每个 Tee 的投掷次数加成(负数 = 少掷) */
 	rollsBonus?: number;
-	/** 温和池:第 1~6 关(前两个 Ante)只会遇到这些 */
 	mild?: boolean;
-	/**
-	 * 抽中权重(默认 1)。彩蛋类守卫调低它 —— 权重是按比例分配的,
-	 * 所以降低一个不影响其余守卫之间的相对概率。
-	 */
 	weight?: number;
 }
 
-/**
- * Boss 设计口径(重要):
- *
- * **骰子特效本身只会是中性或增益** —— 平移是所有面的置换,同点分布不变(恒 ×1.00);
- * 「视为」把两个面合并,同点组合概率暴涨。所以每个 Boss 的难度一律靠 `targetMult`
- * 校准到同一条线上(见 tools/zhongqiu/boss.ts 的「等难度目标」列),
- * 骰子特效只负责「换个玩法」。
- *
- * 伪点规则(见 midautumn.ts): 由「视为」改写来的点数不能凑同点组合,
- * 所以「6 视为 3」是真的减益(×0.93),而不是 ×1.78 的礼包。
- */
 export const BOSSES: Boss[] = [
 	// ---- 温和池:第 1~6 关 ----
 	{
@@ -126,7 +95,6 @@ export const BOSSES: Boss[] = [
 		desc: '本关掷出的 4 作废；目标 ×0.42',
 		mods: { void: [4] },
 		targetMult: 0.42,
-		// 彩蛋:R16 之后才可能碰到;权重 0.5 = 出现率约为其他守卫的一半(见 getBoss)
 		weight: 0.5
 	},
 	{
@@ -150,11 +118,6 @@ export const BOSSES: Boss[] = [
 /** 温和池 id(第 1~6 关) */
 export const MILD_BOSS_IDS = BOSSES.filter((b) => b.mild).map((b) => b.id);
 
-/** 第 n 关的 Boss: 前 2 个 Ante 用温和池,之后全池 */
-/**
- * 抽守卫:前两个 Ante 只出温和池;「蚀月」是 R16 之后的彩蛋(R16 前永不出现),
- * 而且权重低(0.25 → 在全部 8 个里只占约 3.4%)。
- */
 export const getBoss = (n: number): Boss => {
 	const pool = BOSSES.filter((b) => (n <= 6 ? b.mild : b.id !== 'shiyue' || n > 16));
 	const weight = (b: Boss) => b.weight ?? 1;
@@ -180,25 +143,20 @@ export interface TeamTee {
 	lastScore: number;
 	lastLevelId: string;
 	lastDice: number[];
-	/** 身上挂载的加成卡(未消耗的回合) */
 	buffs: AppliedBuff[];
-	/** 主动技能剩余冷却回合(0/未定义 = 可用) */
 	charge?: number;
 }
 
 export const TEAM_LIMIT = 6;
 
-/** 成长卡(广寒宫/桂树)的成长值: cardId -> 已叠加层数 */
 export type GrowthMap = Record<string, number>;
 
 /** 过关后成长卡叠层 */
 export const applyGrowth = (cards: TeeCard[], growth: GrowthMap): GrowthMap => {
 	const next = { ...growth };
 	const walk = (eff: TeeEffect, id: string) => {
-		// scaling_mult 记的是「每关 +per」的累加值(线性),计分时 mult *= 1 + growth
 		if (eff.type === 'scaling_mult') next[id] = (next[id] ?? 0) + eff.per;
 		// growth_mult 是复利,记的是**关数**,计分时 mult *= (1+per)^growth
-		// —— 两者语义不同,混用会让复利卡永远停在 ×1(踩过:桂树/广寒宫不生效)
 		else if (eff.type === 'growth_mult') next[id] = (next[id] ?? 0) + 1;
 		else if (eff.type === 'bundle') eff.parts.forEach((p) => walk(p, id));
 	};
@@ -208,18 +166,11 @@ export const applyGrowth = (cards: TeeCard[], growth: GrowthMap): GrowthMap => {
 
 // ---- 效果解析(copy_right / bundle) ----
 
-/** 一条生效中的效果,附带它来自哪张卡(成长卡的层数按来源卡 id 查) */
 export interface EffectiveEffect {
 	eff: TeeEffect;
 	srcId: string;
 }
 
-/**
- * 解析第 i 个 Tee 实际生效的效果列表:
- * - bundle 展开
- * - copy_right 就地替换成右侧 Tee 的卡牌效果(只复制一层,避免互相复制无限递归)
- * - 最右侧的 copy_right 复制不到东西,等于空
- */
 export const effectiveEffects = (
 	cards: (TeeCard | null)[],
 	i: number,
@@ -253,7 +204,6 @@ export const effectiveEffects = (
 export const rollsAllowed = (
 	self: EffectiveEffect[],
 	buffs: AppliedBuff[] = [],
-	/** 关卡级加成(Boss 的 rollsBonus,负数=少掷),至少保留 1 次 */
 	bonus = 0
 ): number => {
 	let extra = 0;
@@ -265,7 +215,6 @@ export const rollsAllowed = (
 	return Math.max(1, BASE_ROLLS + extra + bonus);
 };
 
-/** 判定等级提升 count 档(一秀 → 二举 → 四进 …) */
 export const upgradeLevel = (levelId: string, count: number): string => {
 	if (count <= 0) return levelId;
 	const i = LEVEL_LADDER.indexOf(levelId as (typeof LEVEL_LADDER)[number]);
@@ -273,7 +222,6 @@ export const upgradeLevel = (levelId: string, count: number): string => {
 	return LEVEL_LADDER[Math.min(LEVEL_LADDER.length - 1, i + count)];
 };
 
-/** 加成卡等级保底: 取所有保底里最高的那个 */
 export const applyBuffLevelFloor = (levelId: string, buffs: AppliedBuff[] = []): string => {
 	let best = LEVEL_LADDER.indexOf(levelId as (typeof LEVEL_LADDER)[number]);
 	for (const b of buffs) {
@@ -285,22 +233,16 @@ export const applyBuffLevelFloor = (levelId: string, buffs: AppliedBuff[] = []):
 	return LEVEL_LADDER[Math.max(0, best)];
 };
 
-/** 该 Tee 的全部改点操作(卡牌 + 加成卡),按顺序执行 */
 export interface SetOp {
 	kind: 'point' | 'any' | 'bump';
 	count: number;
 	point?: number;
-	/** 来源(卡牌/加成卡 id)——「未使用就归还」的道具靠它记账 */
 	srcId?: string;
 }
 
 export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []): SetOp[] => {
-	// （连号流:骰子点数的「+1」改法见 BuffEffect.bump_point —— 结算完由玩家点一颗骰子）
 	const ops: SetOp[] = [];
-	/** 结构化的效果节点(卡牌效果与加成卡效果共用字段,bundle 递归用) */
 	type AnyEff = { type: string; parts?: AnyEff[]; count?: number; point?: number };
-	/** bundle 必须递归:藏在复合效果里的 set_point/set_any 也要收,
-	 *  否则「缺月/残月」这类 card = bundle[reverse, set_point] 会在游戏里静默没有操作 */
 	const walk = (e: AnyEff, srcId: string) => {
 		if (e.type === 'bundle') {
 			(e.parts ?? []).forEach((p) => walk(p, srcId));
@@ -319,7 +261,6 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 	return ops;
 };
 
-/** 该 Tee 的充能主动技能(卡牌 + 加成卡) */
 export interface ActiveSkill {
 	srcId: string;
 	skill: 'chips' | 'left_chips' | 'retry';
@@ -346,12 +287,10 @@ export const activeSkills = (self: EffectiveEffect[], buffs: AppliedBuff[] = [])
 export const activeReady = (tee: TeamTee | undefined, skill: ActiveSkill): boolean =>
 	(tee?.charge ?? 0) <= 0;
 
-/** 回合开始:冷却 -1(和加成卡一起结算) */
 export const tickCharge = (team: TeamTee[]): void => {
 	for (const t of team) t.charge = Math.max(0, (t.charge ?? 0) - 1);
 };
 
-/** 该 Tee 自己的骰子变换(卡牌 + 加成卡),与 Boss 修饰叠加 */
 export const selfDiceMods = (
 	self: EffectiveEffect[],
 	buffs: AppliedBuff[] = []
@@ -360,7 +299,6 @@ export const selfDiceMods = (
 	// bundle 要拆开看,否则「连珠灯」这种复合卡里的阶梯挂不上(踩过)
 	const collect = (eff: TeeEffect) => {
 		if (eff.type === 'self_mods') mods.push(eff.mods);
-		// 连号阶梯:判定层的规则,挂在 DiceMods 上一起传给 judgeRoll
 		else if (eff.type === 'straight_ladder') mods.push({ straightFloor: true });
 		// 点数阶梯:非 4 点的同点也按 4 点线的档位结算
 		else if (eff.type === 'face_ladder') mods.push({ faceFloor: true });
@@ -377,17 +315,12 @@ export const selfDiceMods = (
 	return mods.length === 1 ? mods[0] : { chain: mods };
 };
 
-/** 合并两段骰子修饰(任意一段为空就返回另一段) */
 export const mergeMods = (a?: DiceMods, b?: DiceMods): DiceMods | undefined => {
 	if (!a) return b;
 	if (!b) return a;
 	return { chain: [a, b] };
 };
 
-/**
- * 主 Tee(「我」)的**团队骰子规则**:队友手里的「我掷出的 X 视为 4」类卡。
- * 只对位置 0 生效 —— 5 张集齐就能把「我」的骰子全变成 4,是主 Tee 流的核。
- */
 export const playerDiceMods = (cards: (TeeCard | null)[]): DiceMods | undefined => {
 	const map: Record<number, number> = {};
 	const walk = (eff: TeeEffect) => {
@@ -398,12 +331,6 @@ export const playerDiceMods = (cards: (TeeCard | null)[]): DiceMods | undefined 
 	return Object.keys(map).length ? { map } : undefined;
 };
 
-/**
- * 与 Boss 修饰合成(角色改造先结算,再吃 Boss 的)。
- * 带「解除作废」(月食卡)时,先把 Boss 的作废点数摘掉 —— 顺序反过来的话
- * 作废就已经生效了,卡就没意义了。
- */
-/** 空修饰(摘下作废后可能只剩空壳) */
 const isEmptyMods = (m?: DiceMods): boolean =>
 	!m ||
 	(!m.map &&
@@ -424,21 +351,17 @@ export const withBossMods = (self?: DiceMods, boss?: DiceMods): DiceMods | undef
 	return { chain: [cleanSelf!, clearedBoss!] };
 };
 
-/** 掷出"再接再厉"时是否触发自动重掷全部(后羿) */
 export const hasRerollAllOnNone = (self: EffectiveEffect[]): boolean =>
 	self.some(({ eff }) => eff.type === 'reroll_all_on_none');
 
 // ---- 计分 ----
 
-/** 一条得分来源(结算逐条展示用) */
 export interface ScoreSource {
 	/** 来源 id: 卡牌 id 或加成卡 id */
 	srcId: string;
-	/** 来源类型,决定展示时的取名字方式 */
 	kind: 'card' | 'buff';
 	chips: number;
 	mult: number;
-	/** 加成来自别处(相邻 Tee / 主 Tee 联动)时标注一下 */
 	from?: string;
 }
 
@@ -452,49 +375,30 @@ export interface ScoreBreakdown {
 	sources: ScoreSource[];
 }
 
-/**
- * 计算单个 Tee 的得分
- * score = (等级分 + chips) × mult
- *
- * self:  该 Tee 生效的效果(已解析 copy_right / bundle)
- * team:  全队所有 Tee 的效果(只有 team_chips 这类全队效果会被采用)
- * buffs: 身上挂载的加成卡
- */
 export interface ScoreInput {
 	/** 本次判定的等级 */
 	levelId: string;
 	/** 该 Tee 生效的效果 */
 	self: EffectiveEffect[];
-	/** 全队每个 Tee 生效的效果(按位置),相邻/团队统计要用 */
 	allSelf: EffectiveEffect[][];
 	/** 该 Tee 在队伍里的位置 */
 	index: number;
-	/** 全队卡牌(按位置),流派标签统计要用 */
 	teamCards: (TeeCard | null)[];
 	growth: GrowthMap;
 	buffs: AppliedBuff[];
 	teamSize: number;
 	/** 判定用的骰子点数和 */
 	diceSum: number;
-	/** 该 Tee 自己的最终骰子(own_face 类效果用) */
 	ownDice?: number[];
-	/** 本回合这个 Tee 重掷了几颗骰子(per_reroll 类效果用) */
 	rerolled?: number;
-	/** 主 Tee(「我」,位置 0)本关的等级与最终骰子 */
 	playerLevelId: string;
 	playerDice: number[];
-	/**
-	 * 主 Tee(「我」)的原始骰面(未做映射)。
-	 * face_count_mult 要数「有几颗被改的点数」—— 已经变成 4 的骰子数不出来。
-	 */
 	playerRawDice?: number[];
 	/** 当前月饼币(coin_mult 用) */
 	coins?: number;
 	/** 当前关卡数(reverse.perRound / growth_mult 用) */
 	round?: number;
-	/** 左侧相邻 Tee 本回合已结算的得分(relay_left 用) */
 	leftScore?: number;
-	/** 本局**累计计入**的卖出数:每回合最多往里加 2(卖爆被限住,但倍率仍可累积) */
 	soldCount?: number;
 }
 
@@ -518,8 +422,6 @@ export const calcTeeScore = ({
 	leftScore = 0,
 	soldCount = 0
 }: ScoreInput): ScoreBreakdown => {
-	// 同 id 的 per_tag 引擎卡只生效一份:卡面写的是「每拥有一个独特的 X 系角色」,
-	// 「独特」应当同时约束 n 和这张卡自己 —— 拿 3 份「饼坊」不该乘 3 次。
 	{
 		const seenEngine = new Set<string>();
 		self = self.filter(({ eff, srcId }) => {
@@ -533,7 +435,6 @@ export const calcTeeScore = ({
 	const level = getRollLevel(levelId);
 	let chips = 0;
 	let mult = 1;
-	/** 出现逆向卡时允许负分(否则总分为负会被夹到 0,逆向流就没意义了) */
 	let allowNegative = false;
 
 	const sources: ScoreSource[] = [];
@@ -586,10 +487,6 @@ export const calcTeeScore = ({
 		note(b.cardId, 'buff', buffChips - c0, m0 === 0 ? 1 : buffMult / m0);
 	}
 
-	/**
-	 * 同点基础分下限(face_floor):自己的 face 点有 n 颗时,基础分至少 base×per^(n-1)。
-	 * 不走判定层 —— 结算横幅继续显示真实牌型,这里只多一条卡牌贡献。
-	 */
 	let baseFloor = 0;
 	let floorSrcId = '';
 	let floorN = 0;
@@ -611,7 +508,6 @@ export const calcTeeScore = ({
 	if (baseFloor > level.score)
 		note(floorSrcId, 'card', baseFloor - level.score, 1, `自己 ${floorN} 个${floorFace}`);
 
-	/** skipTeamWide: 跳过 team_chips(它由全队那一轮统一加,避免重复) */
 	const apply = (eff: TeeEffect, srcId: string, skipTeamWide = false) => {
 		switch (eff.type) {
 			case 'chips': {
@@ -621,17 +517,12 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'face_count_mult': {
-				// 重复牌倍率:本关「我」掷出 n 颗这个点数,主 Tee 就 ×(n+1)(稀有档)或 ×perHit^n(传说档)。
-				// 这是**跨位置**规则(卡长在队友身上也算),所以只在全队那一轮结算、
-				// 且只作用于主 Tee(index 0);自己那一轮(skipTeamWide)跳过,免得算两遍。
-				// 数的是原始骰面(已经变成 4 的骰子数不出来);一颗都没有时不加也不显示。
 				if (skipTeamWide || index !== 0) break;
 				{
 					const raw = playerRawDice ?? playerDice ?? [];
 					const hits = raw.filter((d) => d === eff.face).length;
 					if (hits > 0) {
 						const bm = mult;
-						// perHit = 2 → 每颗都 ×2(可叠乘,传说档);否则 ×(颗数 + 1)(稀有档)
 						mult *= eff.perHit ? Math.pow(eff.perHit, hits) : hits + 1;
 						note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `${hits} 颗 ${eff.face}`);
 					}
@@ -687,23 +578,18 @@ export const calcTeeScore = ({
 				if (eff.teamWide && skipTeamWide) break;
 				// 全队版只落到**同流派**的 Tee 身上,别的流派不吃
 				if (eff.teamWide && teamCards[index]?.tag !== eff.tag) break;
-				// 重复角色只算一个:3 张桂影不该给 3 份倍率(那会变成 ×2.3^3)
 				const n = new Set(teamCards.filter((c) => c?.tag === eff.tag).map((c) => c!.id)).size;
 				if (n <= 0) break;
 				const bc = chips;
 				const bm = mult;
 				if (eff.as === 'chips') chips += eff.per * n;
 				else mult *= Math.pow(eff.per, n);
-				// 底分:没有它,5 张同流派时一秀正好 320 = 状元(等于不算大于)
 				// 底分 = 四点颗数(用最终骰子,「1、6 视为 4」已算进去):
-				// 原来的固定 +20 会把 0 分手牌也垫起来,等于绕开掷骰这个核心动作。
 				if (eff.chipsPerFour) chips += ownDice.filter((d) => d === 4).length * eff.chipsPerFour;
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `${eff.tag}系 ${n} 张`);
 				break;
 			}
 			case 'on_player': {
-				// teamWide 的由「全队那一轮」统一发(自己那轮要跳过,否则源头自己吃两次);
-				// 非 teamWide 的只有「我」以外的人吃,「我」自己那轮直接跳过
 				if (eff.teamWide ? skipTeamWide : index === 0) break;
 				const pl = getRollLevel(playerLevelId);
 				if (!condHit(eff.cond, playerLevelId, pl.score)) break;
@@ -738,7 +624,6 @@ export const calcTeeScore = ({
 				const bm = mult;
 				if (eff.chips) chips += eff.chips * n;
 				if (eff.mult) mult *= Math.pow(eff.mult, n);
-				// 蓝卡:倍率 = 该点数颗数(让「点数数量」本身成为流派,而不是只当保底)
 				if (eff.multByCount) mult *= n;
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `自己 ${n} 个${eff.face}`);
 				break;
@@ -799,7 +684,6 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'sell_scale': {
-				// 累积倍率,但每回合最多只往里加 2 个(计数在页面累加,这里直接用总数)
 				if (soldCount <= 0) break;
 				const bm = mult;
 				mult *= Math.pow(eff.per, soldCount);
@@ -836,11 +720,9 @@ export const calcTeeScore = ({
 
 	// 自己卡牌的效果(跳过全队效果,免得和下面那轮重复计算)
 	for (const { eff, srcId } of self) apply(eff, srcId, true);
-	// 全队效果: 只有 team_chips 会作用于每个 Tee(包括自己那一份)
 	for (const list of allSelf) {
 		for (const { eff, srcId } of list) {
 			if (eff.type === 'team_chips') apply(eff, srcId, false);
-			// 主 Tee 联动里标记了 teamWide 的:全队都吃(含主 Tee 自己)
 			else if (eff.type === 'on_player' && eff.teamWide) apply(eff, srcId, false);
 			// 流派流的传说档:一张卡把全队同流派都抬起来
 			else if (eff.type === 'per_tag' && eff.teamWide) apply(eff, srcId, false);
@@ -860,7 +742,6 @@ export const calcTeeScore = ({
 		for (const { eff, srcId } of allSelf[j]) {
 			if (eff.type !== 'neighbor') continue;
 			const want = eff.side === 'both' ? true : eff.side === 'left' ? isRight : isLeft;
-			// 他给「他的左边/右边」加成:我在他右边 → 他要 side='left' 才轮到我
 			if (!want) continue;
 			const bc = chips;
 			const bm = mult;
@@ -880,13 +761,11 @@ export const calcTeeScore = ({
 
 	const base = Math.max(level.score, baseFloor);
 	const raw = Math.round((base + chips + buffChips) * mult * buffMult * 100) / 100;
-	// 普通卡夹到 0(避免机制意外产生负分);逆向卡 / 罚分卡导致净负分时放开
 	const netChips = chips + buffChips;
 	const total = allowNegative || netChips < 0 ? raw : Math.max(0, raw);
 	return { base, chips: chips + buffChips, mult: mult * buffMult, teamMult: 1, total, sources };
 };
 
-/** 过关后加成卡回合数 -1, 归零移除 */
 export const decayBuffs = (team: TeamTee[]): void => {
 	for (const t of team) {
 		t.buffs = t.buffs
@@ -895,17 +774,14 @@ export const decayBuffs = (team: TeamTee[]): void => {
 	}
 };
 
-/** 计算全队总分(个人分之和 × 团队倍率) */
 export const calcTeamTotal = (
 	scores: number[],
 	cards: (TeeCard | null)[]
 ): {
 	total: number;
 	teamMult: number;
-	/** 接力回流加进来的总分(已含在 total 里,结算动画单独播一行) */
 	relay: number;
 	relayLines: { cardId: string; from: number[]; value: number }[];
-	/** 压分辅助加进来的总分(已含在 total 里):「我」的得分 ×(邻居分/自己分) */
 	ratioBonus: number;
 	ratioLines: { cardId: string; own: number; neighbor: number; mult: number; bonus: number }[];
 } => {
@@ -920,7 +796,6 @@ export const calcTeamTotal = (
 		mult: number;
 		bonus: number;
 	}[] = [];
-	/** 接力回流:所有人都掷完才算,所以只看位置、不看出手顺序 */
 	const addRelay = (eff: TeeEffect & { type: 'relay_pct' }, i: number, cardId: string) => {
 		const idx = eff.from === 'left' ? [i - 1] : eff.from === 'right' ? [i + 1] : [i - 1, i + 1];
 		const from = idx.filter((j) => j >= 0 && j < scores.length && j !== i);
@@ -935,9 +810,7 @@ export const calcTeamTotal = (
 		else if (eff.type === 'relay_pct') addRelay(eff, i, cardId);
 		else if (eff.type === 'team_ratio') {
 			// 只放大「我」这一份再加进总分,不再乘全队总分:
-			// 分母(该 Tee 自己的分)再低,也只会放大「我」一个人的得分,不会把整队总分抬爆。
 			const own = Math.max(1, scores[i] ?? 0);
-			// 右邻优先;他在 6 号位(没有右邻)时用左邻 —— 不然这张卡得先卖个 Tee 才活
 			const nb =
 				eff.from === 'right' ? (scores[i + 1] ?? 0) : (scores[i + 1] ?? scores[i - 1] ?? 0);
 			if (nb > 0 && nb / own !== 1) {
@@ -967,11 +840,9 @@ export const calcTeamTotal = (
 /** 过关奖励: 基础 + 关数递增 */
 export const roundReward = (n: number): number => 5 + Math.floor((n - 1) / 3) * 3;
 
-/** 溢出奖励: 每超出目标 50% +1 币(上限 8) —— 与目标同步增长,不会越到后期越白给 */
 export const overflowReward = (score: number, target: number): number =>
 	Math.min(8, Math.floor((Math.max(0, score - target) / Math.max(1, target)) * 2));
 
-/** 经济卡加成(含「每 N 月饼币 +M」的利息卡) */
 export const economyReward = (cards: TeeCard[], mooncakes = 0): number =>
 	cards.reduce((s, c) => {
 		const walk = (eff: TeeEffect): number => {
@@ -1047,10 +918,8 @@ export const clearSave = () => {
 // ---- 局内存档:退出页面重进还能接着打 ----
 //
 // 与上面的最高分/局数分开存(那个是跨局战绩,这个是当前这一局)。
-// 只存**回合边界**的状态:掷骰/结算中途退出会被页面归一到「本关还没掷」再存,
 // 避免把动画中途的半成品状态写进去(重新进就是重掷本关,单机游戏不亏)。
 const RUN_KEY = 'midautumn:run';
-/** 结构变了就 +1:旧档直接作废,不尝试迁移 */
 const RUN_VERSION = 5;
 
 export type RunTeamSlot = {
@@ -1063,20 +932,11 @@ export type RunTeamSlot = {
 	charge?: number;
 };
 
-/** 改点操作(与页面的 PendingAction 同形,存一份快照) */
 export type RunOp =
 	| { kind: 'set_point'; count: number; point: number; srcId?: string }
 	| { kind: 'set_any'; count: number; pick?: number; srcId?: string }
 	| { kind: 'bump'; count: number; srcId?: string };
 
-/**
- * 一局游戏的**全量快照**。
- *
- * 设计:玩家随时可以退出,回来要接在**同一个画面**上。所以除了动画/布局这类
- * 纯瞬时的东西,其余状态全存;真·瞬间(掷骰动画播到一半、结算动画播到一半)
- * 由页面用 `wasRolling` / `midAnim` 两个标记记下来,恢复时回到那个动作开始前 ——
- * 骰子重掷一次、结算重按一次,结果本来就一样。
- */
 export type RunSave = {
 	v: number;
 	phase: string;
@@ -1098,14 +958,11 @@ export type RunSave = {
 	rewardChoices: string[];
 
 	// ---- v2:回合内的细节状态 ----
-	/** 当前球面上的 6 颗骰(动画期间存的是上一次落定的那套) */
 	dice: number[];
 	/** 正在掷的是第几个 Tee */
 	currentTee: number;
 	currentScore: number;
-	/** 本关总分(过关/失败屏的"本关得分"就是它) */
 	roundTotal: number;
-	/** 已经计过分的 Tee 下标(-1 = 本关还没有人结算) */
 	countedTee: number;
 	settlePreview: number;
 	diceSum: number;
@@ -1120,7 +977,6 @@ export type RunSave = {
 	optedDice: number[];
 	pendingAction: RunOp | null;
 	pointPicker: boolean;
-	/** 改点操作队列(与页面的 setQueue 同形) */
 	setQueue: SetOp[];
 	/** 待确认的主动技(srcId|skill) */
 	pendingActiveKey: string | null;
@@ -1135,9 +991,7 @@ export type RunSave = {
 	shopPickId: string | null;
 	selectedBuffId: string | null;
 	speedIdx: number;
-	/** 存盘时掷骰动画正在播:恢复后自动补做 */
 	wasRolling: boolean;
-	/** 补做哪种:'roll' 整手掷 / 'reroll' 局部重掷(不重记账) / 'finalize' 判定 */
 	rollKind: string;
 };
 

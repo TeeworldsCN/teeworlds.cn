@@ -5,13 +5,9 @@
 //   - 音调/复杂度可以跟着分数动态变化(这是「越刺激」的关键)
 //
 // 设计:
-//   sfxRoll      骰子翻滚 —— 一串带通滤过的噪声脉冲 + 低频隆隆声
-//   sfxLevel     牌型揭晓 —— 分数越高,琶音越长、音区越高、越亮
 //   sfxStep      结算逐行 —— 音高随行号递升
-//   sfxTotal     合计揭晓 —— 达标是明亮大三和弦,没达标是闷的
 //   sfxWin/Lose  过关 / 结束
 //
-// 浏览器自动播放策略要求 AudioContext 必须由用户手势创建,所以 initSfx()
 // 只在点击「开始博饼」等动作时调用。
 
 let ctx: AudioContext | null = null;
@@ -19,7 +15,6 @@ let master: GainNode | null = null;
 let bus: DynamicsCompressorNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
 let enabled = true;
-/** 动画速度倍率(2 = 3x 档):音效时长按 1/rate 压缩,免得快进时糊成一团 */
 let rate = 1;
 
 export const sfxSetRate = (r: number) => {
@@ -29,7 +24,6 @@ const R = () => 1 / rate;
 
 const KEY = 'midautumn:sfx';
 
-/** 调试用:记录播放过的音效(DEV 下 QA 可以断言) */
 export const sfxLog: string[] = [];
 
 export const sfxEnabled = () => enabled;
@@ -53,7 +47,6 @@ export const loadSfxPref = () => {
 	return enabled;
 };
 
-/** 建立音频上下文(必须在用户手势里调用一次) */
 export const initSfx = () => {
 	if (typeof window === 'undefined') return;
 	if (!ctx) {
@@ -124,7 +117,6 @@ function click(at: number, opts: { freq?: number; q?: number; dur?: number; gain
 
 // ---- 各音效 ----
 
-/** 骰子翻滚:一串抖动撞击 + 低频隆隆。dur 跟动画时长对齐 */
 export const sfxRoll = (dur = 0.75, diceCount = 6) => {
 	log('roll');
 	initSfx();
@@ -158,7 +150,6 @@ export const sfxRoll = (dur = 0.75, diceCount = 6) => {
 	}
 };
 
-/** 牌型揭晓:分数越高,琶音越长、音区越高、越亮 */
 export const sfxLevel = (score: number) => {
 	log('level:' + score);
 	initSfx();
@@ -242,7 +233,6 @@ export const sfxStep = (
 	});
 };
 
-/** 合计揭晓:达标明亮,未达标闷 */
 export const sfxTotal = (reached: boolean) => {
 	log('total:' + (reached ? 'ok' : 'no'));
 	initSfx();
@@ -286,7 +276,6 @@ export const sfxClick = () => {
 	tone(note(12), t0, 0.05, { type: 'sine', gain: 0.06 });
 };
 
-/** 买东西:两枚硬币的"叮——叮↑",零钱落袋 */
 export const sfxCoin = () => {
 	log('coin');
 	initSfx();

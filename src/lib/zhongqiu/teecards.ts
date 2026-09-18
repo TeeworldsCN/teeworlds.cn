@@ -1,9 +1,6 @@
 // Tee 卡系统(类 Balatro 的 Joker 构筑)
 // 每个 Tee 卡 = 一个入队角色,带固定皮肤和特殊能力
 //
-// 数值设计依据见 scripts/balance.ts 的报告(2 次投掷为基线):
-//   平均等级分 82.7;多 1 次投掷 ×2.33;改 1 颗为 4 点 ×2.90;改任意点 ×4.48
-//   ×mult 不随等级分衰减,+chips 会(等级分 320 时 +60 只剩 ×1.19)
 
 export type Rarity = 'common' | 'rare' | 'legendary';
 
@@ -39,15 +36,12 @@ export type Cond =
 	| 'wu_zi_plus'
 	| 'wu_wang_plus';
 
-/** 点数变换(与自己骰子相乘的 Boss 修饰同构) */
 export interface DiceMods {
 	map?: Record<number, number>;
 	shift?: number;
-	/** 作废点数:掷出这些点数的骰子不参与任何判定 */
 	void?: number[];
 	/** 连号阶梯(与 midautumn.ts 的解释一致) */
 	straightFloor?: boolean;
-	/** 点数阶梯(非 4 点同点也算档位) */
 	faceFloor?: boolean;
 	/** 多段变换叠加 */
 	chain?: DiceMods[];
@@ -60,20 +54,13 @@ export type TeeEffect =
 	| { type: 'chips_mult'; chips: number; mult: number } // 加算 + 乘算
 	| { type: 'cond'; cond: Cond; chips?: number; mult?: number } // 条件触发
 	| { type: 'team_mult'; value: number } // 全队总分 ×mult
-	/** 接力回流:回合结算时把邻居本关得分的 pct 加进全队分(所有人都掷完才算,天然没有先后问题) */
 	| {
 			type: 'relay_pct';
 			from: 'left' | 'right' | 'both';
 			pct: number;
-			/** 固定底分:前几关邻居分低,纯比例等于没有 */
 			flat?: number;
 	  }
 	| { type: 'team_chips'; value: number } // 全队每个 Tee 各 +chips
-	/**
-	 * 压分辅助:全队总分 ×(邻居分 / 该 Tee 分)。自己分越低,全队倍率越高 ——
-	 * 全池唯一一张「玩家想压低自己输出」的卡,所以故意不 clamp(先试放开)。
-	 * 分母用自己本关得分(卡里带 +20,保证不为 0);邻居没人或没分时按 ×1 处理。
-	 */
 	| { type: 'team_ratio'; from: 'right' | 'side' }
 	| { type: 'per_team_chips'; value: number } // 队伍每多 1 人,得分 +value
 	| { type: 'scaling_mult'; per: number } // 每过一关,该 Tee 的 mult 永久 +per
@@ -92,12 +79,6 @@ export type TeeEffect =
 	| { type: 'reverse'; base: number; per?: number; perRound?: number } // 逆向:得分 = base(+每关 perRound×关数) − 等级分×per(可为负)
 	| { type: 'straight_ladder' } // 连号阶梯:123/234/345/456→一秀,1234 系→二举,12345 系→四进
 	| { type: 'straight_chips'; per: number } // 连号里每颗骰子 +per 分
-	/**
-	 * 充能主动技能:掷完结算后由玩家决定是否发动,发动后进入 cooldown 回合冷却。
-	 * - chips:      本次得分 +value(结算后直接加,不吃倍率)
-	 * - left_chips: 左侧 Tee 的**已结算分数** +value(结算动画早就播完了,所以不走公式)
-	 * - retry:      本关重新开始(全队重掷,分数清零,目标/Boss 不变)
-	 */
 	| { type: 'active'; skill: 'chips' | 'left_chips' | 'retry'; value?: number; cooldown: number }
 	// ---- 联动类:不再只是「换个数字的 +X 分」 ----
 	| { type: 'neighbor'; side: 'left' | 'right' | 'both'; chips?: number; mult?: number } // 给相邻 Tee 加成(自己不吃)
@@ -108,18 +89,12 @@ export type TeeEffect =
 			per: number;
 			as: 'chips' | 'mult';
 			chips?: number;
-			/** 底分改成「四点颗数 × 该系数」:0 分的手牌不再被垫起来(玩法不变,只是不再绕开掷骰) */
 			chipsPerFour?: number;
 			teamWide?: boolean;
 	  } // 队伍里每有 1 张同流派卡(teamWide: 全队同流派 Tee 都吃;chips: 额外底分)
 	| { type: 'on_player'; cond: Cond; chips?: number; mult?: number; teamWide?: boolean } // 主 Tee(「我」)掷出该等级及以上时(teamWide = 全队都吃)
 	| { type: 'player_die'; face: number; chips?: number; mult?: number } // 「我」最终骰子里每个该点数
 	| { type: 'map_player_die'; from: number; to: number } // 「我」掷出的 from 点视为 to 点(团队规则,只作用于主 Tee)
-	/**
-	 * 重复牌倍率:本关「我」的**原始**骰面里有几颗 face,主 Tee 得分就 ×(颗数 + 1)(命中一颗就 ×2)。
-	 * perHit = 2 时改成每颗都 ×2(叠乘)—— 传说档:很吃掷骰,但加成卡影响相对小。
-	 * 注意数的是原始点数 —— 已经变成 4 的骰子数不出来,所以引擎需要 playerRawDice。
-	 */
 	| { type: 'face_count_mult'; face: number; perHit?: number }
 	| { type: 'face_ladder' } // 点数阶梯:非 4 点的同点 n 颗按 4 点线档位结算(一秀→六博红)
 	| { type: 'face_floor'; face: number; base: number; per: number } // 同点颗数的**基础分下限**:base × per^(n-1)(只升不降)
@@ -131,7 +106,6 @@ export type TeeEffect =
 	| { type: 'sum_mult'; from: number; per: number } // 和值每超过 from 一点:得分 ×per
 	| { type: 'bundle'; parts: TeeEffect[] }; // 复合:多个效果同时生效
 
-/** 流派标签:让「队伍里带什么」产生联动 */
 export type Tag = '兔' | '桂' | '饼' | '灯' | '月' | '仙';
 
 export const TAG_INFO: Record<Tag, { emoji: string; label: string }> = {
@@ -149,7 +123,6 @@ export interface TeeCard {
 	desc: string;
 	rarity: Rarity;
 	skin: string; // DDNet 皮肤名
-	/** 流派标签(部分卡有):被 per_tag 类效果统计 */
 	tag?: Tag;
 	effect: TeeEffect;
 }
@@ -180,7 +153,6 @@ const COND_EXACT: Partial<Record<Cond, string>> = {
 	zhuang_yuan_chajinhua: 'zhuang_yuan_chajinhua'
 };
 
-/** 等级分阶梯(升序),用于"及以上"判定与升级效果 */
 export const LEVEL_LADDER = [
 	'none',
 	'yi_xiu',
@@ -446,7 +418,6 @@ export const CARDS: TeeCard[] = [
 		effect: { type: 'on_player', cond: 'si_jin_plus', chips: 300, mult: 3, teamWide: true }
 	},
 
-	// ======== 稀有/传说:和值流(故意做得少,它会简化取舍) ========
 	{
 		id: 'yuechao',
 		name: '潮汐',
@@ -477,7 +448,6 @@ export const CARDS: TeeCard[] = [
 		}
 	},
 
-	// ======== 稀有:连号流(攻对堂的另一条路:不靠 4,靠连号) ========
 	{
 		id: 'lianzhudeng',
 		name: '连珠灯',
@@ -836,7 +806,6 @@ export const CARDS: TeeCard[] = [
 			]
 		}
 	},
-	// ==== 点数统计流:自己骰子里的点数越多越强,和改点/视为类配装联动 ====
 	{
 		id: 'dianjiang',
 		name: '点将',
@@ -897,12 +866,7 @@ export const CARDS: TeeCard[] = [
 	// ==== 点数线套装:每个点数一套 ====
 	//
 	// 用途:让"非四点"也能成为主攻方向,而不是只能当保底。
-	// 蓝卡(2025-09 重做):自己的同点 n 颗把**基础分**抬到 base × 3^(n-1),只升不降。
 	//   base 按点数钉死:1/6 点 42、2/5 点 44、3 点 45(旧的 30/120/420/1600/3700/8400
-	//   用 base·3^(n-1) 拟合,最大偏差 30%)。文案一句话「同点每多一颗 ×3」,
-	//   玩家不用再去联想四点线的档位 —— 2025-09 收到「三秋看不懂」的反馈。
-	// 橙卡:仍是「4 点线档位 + 每颗 ×2」那一套(待定:要不要也换新阶梯)。
-	// 4 点自己那套**不乘**(牌型分已经是它的倍率,再乘就是给最强线发钱)。
 	{
 		id: 'hanxing',
 		name: '寒星',
@@ -1027,15 +991,11 @@ export const CARDS: TeeCard[] = [
 		}
 	},
 
-	// ==== 流派流:同流派越多越强(蓝=只加自己,橙=全队同流派都吃) ====
 	//
 	// 两种档位,机制只差一个 teamWide:
-	//   蓝(稀有):每拥有一个独特的「X」系角色,该 Tee 得分 ×2(叠乘),外加 +20 底分
-	//   橙(传说):同样的 ×2 和 +20,但**所有「X」系 Tee 都吃** —— 一张橙卡
 	//             就能把全队同流派摊开,不需要人手一张
 	//
 	// 5 张同流派时 ×(2^5)=32 → 一秀 (10+20)×32 = 960 > 状元 320。
-	// 底分 +20 是必需的:只靠 ×2 时一秀正好 320 = 状元(等于不算大于)。
 	{
 		id: 'yutuhui',
 		name: '兔儿满堂',
@@ -1146,11 +1106,7 @@ export const CARDS: TeeCard[] = [
 	},
 	// ==== 主 Tee 流:队友给「我」改骰子规则 ====
 	//
-	// 「我掷出的 X 点视为 4」——五张集齐(1/2/3/5/6)时,「我」的骰子全是 4 = 100% 六博红。
 	// 稀有度按「凑齐难度」排:1/6 普通、2/3/5 稀有。
-	// 稀有档额外带「重复牌倍率」:本关「我」掷出几颗这个点数,得分就 ×几 ——
-	// 奖励的正是本来该重掷掉的重复牌(掷出 1,1,1 不再是烂牌,而是 ×3)。
-	// 作废优先于映射(判定看原始点数),所以 Boss 迷月的 6 作废会直接打断这条线。
 	{
 		id: 'xiaoyue',
 		name: '破晓',
@@ -1225,7 +1181,6 @@ export const CARDS: TeeCard[] = [
 	},
 	// ==== 团队流 · 卖卡攒倍率(后期) ====
 	//
-	// 卖 Tee 是"把已经拿到的东西换成倍率"——R6 之前队伍没满,根本舍不得卖;
 	// R6 之后每卖一个都变成永久倍率,所以是典型的后期流派(越晚越强)。
 	{
 		id: 'yeshi',
@@ -1254,7 +1209,6 @@ export const CARDS: TeeCard[] = [
 		skin: 'mermydon_glow',
 		effect: { type: 'per_reroll', mult: 1.25 }
 	},
-	// ==== 充能角色:掷完结算动画播完,由玩家决定是否发动,发动后进冷却 ====
 	{
 		id: 'jinchan',
 		name: '仙蟾',
@@ -1283,13 +1237,8 @@ export const CARDS: TeeCard[] = [
 		effect: { type: 'active', skill: 'retry', cooldown: 7 }
 	},
 
-	// ==== 逆向流:得分 = base − 本次掷骰分 × per(可以为负) ====
 	//
-	// 引擎里等级分在外面已经加过一次,所以卡里的 per 是**叠在它上面**的:
-	// 等级分净系数 = 1 − per。原来 per = 1 恰好把等级分整项抵消 ⇒ 掷骰完全不影响
-	// 分数(和卡面写的「− 本次掷骰分」不符)。所以这里统一 +1:净系数 = −per_text,
 	// 卡面文字逐字成立,「掷得越烂越赚」才是真的。
-	// 稀有度 = 压制难度:普通罚 1 倍、稀有一半、传说 2.5 倍,越狠越需要空四/改点压制。
 	{
 		id: 'kuiyue',
 		name: '亏月',
@@ -1317,7 +1266,6 @@ export const CARDS: TeeCard[] = [
 		}
 	},
 	{
-		// 传说 = 改点型(比缺月多改一个方向):罚分 ×2.5(净系数 −2.5)意味着高等级牌型
 		// 会把你打成负分,所以给你一颗可以自己挑的骰子去压等级。真正的压制仍然靠
 		// 「空四」(自己 4 点作废,便宜普通、能囤)。
 		id: 'canyue',
@@ -1334,7 +1282,6 @@ export const CARDS: TeeCard[] = [
 			]
 		}
 	},
-	// 负分流的「零件」:4 点是分数引擎,逆向流却要你把等级压低 —— 两张稀有卡少了它
 	// 就是自伤卡,所以它刻意做成便宜普通,让玩家前期就能囤起来等后期。
 	{
 		id: 'kongsi',
@@ -1354,7 +1301,6 @@ export const CARDS: TeeCard[] = [
 
 export const CARD_BY_ID = new Map(CARDS.map((c) => [c.id, c]));
 
-/** 按稀有度加权抽卡,返回不重复的 n 张 */
 export function drawCards(n: number, excludeIds: Set<string> = new Set()): TeeCard[] {
 	const pool = CARDS.filter((c) => !excludeIds.has(c.id));
 	const weight: Record<Rarity, number> = { common: 7, rare: 3, legendary: 1 };

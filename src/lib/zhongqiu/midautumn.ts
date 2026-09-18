@@ -1,17 +1,11 @@
 // 中秋博饼游戏规则(纯前端,客户端/服务端共用)
 
-// ---- 等级与得分(×10 放大,便于 score attack 滚雪球) ----
-
 export interface RollLevel {
 	id: string;
 	name: string;
 	score: number;
 	emoji: string;
 	desc: string;
-	/**
-	 * 范例骰子组合(6 颗)。`'X'` = 与这个牌型无关的散牌(玩法说明里就显示 X)。
-	 * 需要真实手牌时用 `sampleDice()` 补全 —— 别直接拿去计分。
-	 */
 	example: (number | 'X')[];
 }
 
@@ -117,11 +111,6 @@ export const ROLL_LEVELS: RollLevel[] = [
 
 const BY_ID = new Map(ROLL_LEVELS.map((l) => [l.id, l]));
 
-/**
- * 把示例里的 `'X'` 补成真实点数,得到一手**确实判定为该等级**的牌。
- * 作弊引擎(jump)塞「已掷完」结果、以及任何需要真实骰子的地方都走这里 ——
- * 直接把带 X 的 example 丢进计分函数会算出 NaN。
- */
 export function sampleDice(level: RollLevel): number[] {
 	const cached = SAMPLE_CACHE.get(level.id);
 	if (cached) return cached;
@@ -146,31 +135,19 @@ const SAMPLE_CACHE = new Map<string, number[]>();
 
 export const getRollLevel = (id: string): RollLevel => BY_ID.get(id) ?? BY_ID.get('none')!;
 
-/** 点数变换 / 作废修饰(用于 Boss 特效与卡牌) */
 export interface DiceMods {
-	/** 每个骰子掷出后: 原始点数 -> 目标点数 */
 	map?: Record<number, number>;
-	/** 简易移位: 点数 +shift(1~6 循环,如 -1 表示 4 变 3)。平移是面的置换,不改概率 */
 	shift?: number;
-	/** 作废点数:掷出这些点数的骰子不参与任何判定(4 点系/同点组合/对堂都不算) */
 	void?: number[];
-	/** 同点组合(四进/五子登科/六博黑)本关不作数 */
 	noSameFace?: boolean;
-	/** 本关等级封顶(血月:再好的牌也只算到这一档) */
 	levelCap?: string;
-	/** 解除作废:月食卡挂上后,该 Tee 本关不受「点数作废」影响 */
 	clearVoid?: boolean;
-	/** 依次叠加多段变换(先 chain[0],再 chain[1]…),用于「角色自身改造 + Boss 改造」叠加 */
 	chain?: DiceMods[];
-	/** 连号阶梯:123/234/345/456 按一秀、1234 系按二举、12345 系按四进结算(只抬不压) */
 	straightFloor?: boolean;
-	/** 点数阶梯:非 4 点的同点 n 颗按 4 点线同档位结算(只抬不压) */
 	faceFloor?: boolean;
-	/** 玩家手动改过的骰子下标:豁免「视为」映射(改点 > 视为 > 原始点数) */
 	fixed?: number[];
 }
 
-/** 最长连续点数长度(只看出现过哪些点数):123 → 3、3456 → 4、123456 → 6 */
 export function longestRun(values: number[]): number {
 	const has = [false, false, false, false, false, false, false];
 	for (const v of values) if (v >= 1 && v <= 6) has[v] = true;
@@ -183,7 +160,6 @@ export function longestRun(values: number[]): number {
 	return best;
 }
 
-/** 点数阶梯:非 4 点报点数 n 颗对应的档位(和 4 点线同一张表) */
 export function faceFloorLevel(counts: number[]): string | null {
 	let best = 0;
 	for (let v = 1; v <= 6; v++) if (v !== 4 && counts[v] > best) best = counts[v];
@@ -196,7 +172,6 @@ export function faceFloorLevel(counts: number[]): string | null {
 	return null;
 }
 
-/** 连号阶梯对应的等级(不足 3 连返回 null) */
 export function straightFloorLevel(run: number): string | null {
 	if (run >= 5) return 'si_jin';
 	if (run >= 4) return 'er_ju';
@@ -204,7 +179,6 @@ export function straightFloorLevel(run: number): string | null {
 	return null;
 }
 
-/** 应用点数变换(判定与和值都要用变换后的点数) */
 export const fixedOf = (mods?: DiceMods): number[] => {
 	if (!mods) return [];
 	const out: number[] = [];
@@ -230,7 +204,6 @@ export const applyDiceMods = (dice: number[], mods?: DiceMods): number[] => {
 	});
 };
 
-/** 作废点数(chain 各段取并集)。看的是**掷出的原始点数**,玩家一眼能对上骰面 */
 export const voidFacesOf = (mods?: DiceMods): number[] => {
 	if (!mods) return [];
 	if (mods.chain?.length) return [...new Set(mods.chain.flatMap(voidFacesOf))];
@@ -266,11 +239,6 @@ const hasMod = (
 	return mods[key] !== undefined;
 };
 
-/**
- * 取 mods 里最严格的等级封顶(chain 里任一段设了就生效)。
- * **按分数比,不能按数组下标** —— ROLL_LEVELS 是分数从高到低排的,
- * 用下标会把「低档」当成高档,封顶变成白送(踩过一次)。
- */
 export const levelCapOf = (mods?: DiceMods): string | undefined => {
 	if (!mods) return undefined;
 	if (mods.chain?.length) {
@@ -284,7 +252,6 @@ export const levelCapOf = (mods?: DiceMods): string | undefined => {
 	return mods.levelCap;
 };
 
-/** 按封顶降级:超过 cap 的一律算 cap 那档 */
 const applyLevelCap = (level: RollLevel, mods?: DiceMods): RollLevel => {
 	const cap = levelCapOf(mods);
 	if (!cap) return level;
@@ -292,7 +259,6 @@ const applyLevelCap = (level: RollLevel, mods?: DiceMods): RollLevel => {
 	return level.score <= capLevel.score ? level : capLevel;
 };
 
-/** 封顶后的等级 id(升级卡/保底结算之后再套一次,避免越过封顶) */
 export const cappedLevelId = (levelId: string, mods?: DiceMods): string =>
 	applyLevelCap(getRollLevel(levelId), mods).id;
 
@@ -300,7 +266,6 @@ export const cappedLevelId = (levelId: string, mods?: DiceMods): string =>
 const stripLevelCap = (mods: DiceMods): DiceMods =>
 	mods.chain ? { chain: mods.chain.map(stripLevelCap) } : { ...mods, levelCap: undefined };
 
-/** 参与判定的骰子(作废点数直接剔除,对堂也会因此被拆掉) */
 const liveDice = (dice: number[], mods?: DiceMods): { values: number[]; faces: number[] } => {
 	const shown = applyDiceMods(dice, mods);
 	const values: number[] = [];
@@ -313,16 +278,6 @@ const liveDice = (dice: number[], mods?: DiceMods): { values: number[]; faces: n
 	return { values, faces };
 };
 
-/**
- * 判定 6 颗骰子的博饼等级(可带 Boss 修饰)
- * 骰子点数为 1~6
- *
- * 规则:
- *   ① 「视为」类修饰直接改点数后按正常规则判定(玩家可自行验算);
- *   ② 「作废」点数的骰子不参与任何判定(4 点系/同点组合/对堂都不算);
- *   ③ 暗月: noSameFace 时同点组合整档不作数;
- *   ④ 月食: levelCap 时等级封顶。
- */
 export function judgeRoll(dice: number[], mods?: DiceMods): RollLevel {
 	let res = judgeRollRaw(dice, mods);
 	const { values: d } = liveDice(dice, mods);
@@ -380,10 +335,6 @@ export function rollDice(): number[] {
 	return Array.from({ length: 6 }, () => 1 + Math.floor(Math.random() * 6));
 }
 
-/**
- * 判定后命中的骰子索引(用于掷骰结果高亮展示)
- * 四点系: 所有 4;四进/五子/六博黑: 相同非四点组;对堂: 全部;再接再厉: 无
- */
 export function hitIndices(dice: number[], levelId: string, mods?: DiceMods): number[] {
 	const shown = applyDiceMods(dice, mods);
 	// 作废的骰子永不参与高亮

@@ -104,8 +104,6 @@
 		faTrophy
 	} from '@fortawesome/free-solid-svg-icons';
 
-	// ---- 自定义 layout 背景（夜空渐变铺满、去掉默认内边距） ----
-
 	onMount(() => {
 		setLayoutTheme({
 			bg: 'linear-gradient(180deg, #070b1f 0%, #101a3f 45%, #1d2a5c 75%, #2c2a55 100%)',
@@ -116,14 +114,6 @@
 
 	// ---- 极端矮屏:整体等比缩放（不再挤面板/换布局） ----
 
-	/**
-	 * 各宽度下「全阶段零溢出」需要的可用高度（实测,已向上取整）。
-	 * 三档与布局断点一致，因为需求由布局决定:
-	 * - 手机(≤639):矮屏(≤624)时队伍单行横滑 → 590；否则 660（集市/商店 6 张卡换行,最费）
-	 * - 平板(640~767):6 张队伍卡一定换行 + 商店面板 → 800
-	 * - 桌面(≥768):卡片一行放得下 → 700（商店面板最大）
-	 * 可用高度低于这值时，不压面板，直接把整个活动区等比缩小。
-	 */
 	const minHeightFor = (w: number, h: number) =>
 		w >= 768 ? 700 : w >= 640 ? 800 : h <= 624 ? 590 : 660;
 	/** 活动区可用高度(px,不含 header/footer) */
@@ -131,7 +121,6 @@
 	let minH = $state(660);
 	const fitScale = $derived(availH > 0 && availH < minH ? availH / minH : 1);
 
-	// 可用高度必须从视口量:父容器(main)是 flex 项,min-height:auto 会被内容撑着不缩,
 	// 量它只会量到内容自己的自然高度 → 缩放比例会自己吃掉自己。
 	$effect(() => {
 		const measure = () => {
@@ -152,7 +141,6 @@
 
 	// ---- 皮肤（主 Tee） ----
 
-	/** 「我」固定用兔子皮肤(不再让玩家填 DDNet 皮肤名) */
 	const SELF_SKIN = 'tuzi';
 
 	// ---- 存档 ----
@@ -178,9 +166,7 @@
 	let boss = $state<Boss | null>(null);
 	let target = $state(0);
 	let currentScore = $state(0);
-	/** 结算动画期间的显示偏移(负数 → 0):让进度条跟着动画往上走,而不污染真实分数 */
 	let settlePreview = $state(0);
-	/** 界面上显示的分数 = 真实分 + 动画偏移 */
 	const displayScore = $derived(currentScore + settlePreview);
 	let team = $state<TeamTee[]>([]);
 	let growth = $state<GrowthMap>({});
@@ -199,9 +185,7 @@
 		sources: []
 	});
 	let diceSum = $state(0); // 本回合判定用的骰子点数和
-	/** 结算文字容器(行数多时可滚动,弹出新行要自动跟到底) */
 	let stepsEl: HTMLElement | undefined = $state();
-	// 结算动画： 一条一条弹出（Boss 效果 → 等级 → 加成卡 → 总分）
 	type SettleKind = 'level' | 'chip' | 'mult' | 'total';
 	let settleSteps = $state<{ text: string; cls: string; kind: SettleKind }[]>([]);
 	let settleIdx = $state(-1);
@@ -209,21 +193,12 @@
 
 	// 结算信息
 	let roundTotal = $state(0);
-	/**
-	 * 已经**把分数计进 currentScore** 的那个 Tee 的下标(-1 = 本关还没有人结算过)。
-	 *
-	 * 不能用「等级 ≠ none」当"已判定"的标志:再接再厉的等级正好就是 none,
-	 * 而它照样可能加分(加成卡的 chips)。以前拿等级判断,恢复存档时会把自动它
-	 * 当成"没判过"再判一次 —— 每次刷新都白赚一次分。
-	 */
 	let countedTee = $state(-1);
-	/** 本局累计总分(每关结算后累加)—— 最高纪录记的是它,不是单关分 */
 	let runScore = $state(0);
 	let roundRewardGained = $state(0);
 	let overflowGained = $state(0);
 	let economyGained = $state(0);
 	let finalScore = $state(0);
-	/** 本局累计总分(结算画面展示用) */
 	let finalRunScore = $state(0);
 	let finalRound = $state(0);
 	let isNewBest = $state(false);
@@ -235,16 +210,8 @@
 	// 集市
 	let rewardChoices = $state<TeeCard[]>([]);
 	let shopBuffs = $state<BuffCard[]>([]);
-	/** 商店里选中的加成卡(先看说明再买,避免误点) */
 	let shopPick = $state<BuffCard | null>(null);
-	/** 本轮货架已经买掉的格子:留占位不删,避免后面的芯片往上跳(位移) */
 	let shopSold = $state<string[]>([]);
-	/**
-	 * 商店锁定:每格存「锁住的加成卡 id」(null = 没锁)。
-	 * 锁住的格子**刷新和下次进商店都不变** —— 卡池越来越厚之后,
-	 * 「看到想要但买不起」不会白丢,玩家可以攒钱回头买。
-	 * 一次新开一局才清(局内跨关保留)。
-	 */
 	let shopLocks = $state<(string | null)[]>([null, null, null, null, null, null]);
 	let lastRewardIdx = $state(-1);
 
@@ -254,7 +221,6 @@
 	// 团队结算动画（回合确认后： 团队倍率卡一条一条弹）
 	let teamSettleSteps = $state<{ text: string; cls: string; kind: SettleKind }[]>([]);
 	let teamSettleIdx = $state(-1);
-	/** 骰面九个点位在 24×24 viewBox 里的坐标(与旧 CSS 的格心一致:4/12/20) */
 	const PIP_POS: [number, number][] = [
 		[4, 4],
 		[12, 4],
@@ -294,7 +260,6 @@
 		selectedBuff = selectedBuff?.id === card.id ? null : card;
 	};
 
-	/** 掷骰前把加成卡挂到 Tee 身上(消耗 1 张库存) */
 	const applyBuffToTee = (card: BuffCard, idx: number) => {
 		if (phase !== 'intro' && phase !== 'shop') return;
 		const cur = buffInventory[card.id] ?? 0;
@@ -312,7 +277,6 @@
 		selectedBuff = null;
 	};
 
-	/** 队伍卡 tooltip 明细: 加成项目+剩余回合、成长卡当前数值 */
 	const teeTipList = (tee: TeamTee) => {
 		const lines: { text: string; cls?: string }[] = [];
 		const card = cardOf(tee);
@@ -355,23 +319,16 @@
 		| { kind: 'bump'; count: number; srcId?: string }; // 月牙尺:点一颗骰子,它的点数 +1
 	let pendingAction = $state<PendingAction | null>(null);
 	let pointPicker = $state(false); // set_any 的点数选择
-	/** 待执行的改点操作队列(卡牌 + 加成卡) */
 	let setQueue: SetOp[] = [];
 
-	// ---- 投掷次数（每 Tee 默认 2 次，之间可自选保留重掷） ----
 	let rollsLeft = $state(0); // 还能重掷几次
-	/** 本回合当前 Tee 重掷了几颗骰子(per_reroll 类卡牌用),换人/开新回合清零 */
 	let rerollCount = $state(0);
-	/** 本回合当前 Tee 真正用掉的改点来源(未使用的可归还道具要还回去) */
 	let usedOpSrc = $state<string[]>([]);
-	/** 结算动画播完、等玩家决定是否发动主动技能 */
 	let pendingActive = $state<ActiveSkill | null>(null);
 	let choosing = $state(false); // 正在选要重掷的骰子
 	let rerollSel = $state<boolean[]>(Array(6).fill(false));
-	/** 本次动画里真正在翻滚的骰子(整轮掷骰时 6 颗全转,重掷时只转选中的) */
 	let rollMask = $state<boolean[]>(Array(6).fill(true));
 	const dieRolling = (i: number) => rolling && rollMask[i];
-	/** 波浪延迟只按「参与翻滚的骰子」排号,避免留下空档 */
 	const dieDelay = (i: number) => {
 		let n = 0;
 		for (let k = 0; k < i; k++) if (rollMask[k]) n++;
@@ -385,10 +342,8 @@
 	let speedIdx = $state(0);
 	let speed = $derived(SPEEDS[speedIdx]); // 默认 0.5x(当前默认速度的一半)
 	let hitDice = $state<number[]>([]);
-	/** 卖卡攒倍率:本局累计(永久)与「本回合已计入」——每回合最多往累计里加 2 */
 	let soldTees = $state(0);
 	let soldThisRound = $state(0);
-	/** 本回合被玩家手动改过点的骰子(豁免「视为」,并在骰面上标 overlay) */
 	let optedDice = $state<number[]>([]); // 本次判定命中的骰子索引
 	let showRules = $state(false);
 	/** 音效开关(状态存 localStorage) */
@@ -454,7 +409,6 @@
 
 	const rollSingle = () => 1 + Math.floor(Math.random() * 6);
 
-	// ---- 作弊引擎（测试用）： URL 带 ？cheat 或 DEV 时启用， window.__cheat 可直接 JS 操纵 ----
 	let cheatNextRoll = $state<number[] | null>(null); // 强制下一次掷骰结果
 	let cheatNextDie = $state<number | null>(null); // 强制下一次单骰重掷结果
 	const cheatRoll = (): number[] => {
@@ -474,11 +428,6 @@
 		return rollSingle();
 	};
 	const enableCheat = () => {
-		/**
-		 * 作弊接口的 id 校验:传错卡 id 会让 TeeCard 的 tooltip 在渲染时抛
-		 * `null.rarity`,整个页面直接卡死(DOM 停在上一帧、状态却还在变),极难排查。
-		 * 所以这里一律先校验,不合法就 warn + 忽略。
-		 */
 		const warnId = (kind: string, id: string) => {
 			console.warn(`[作弊引擎] 未知${kind} id: ${id}(已忽略)`);
 		};
@@ -487,16 +436,12 @@
 			mooncakes: (n: number) => (mooncakes = n),
 			/** 所有 Boss id(scan 用,免得手抄清单漂移) */
 			bossIds: () => BOSSES.map((b) => b.id),
-			/** 当前 3 选 1 的三张卡 id(自检用:点了第几张、进队伍的是不是同一张) */
 			rewardIds: () => rewardChoices.map((c) => c.id),
-			/** 本局累计总分(自检用:最高纪录记的是它) */
 			runScore: () => runScore,
-			/** 直接设主动技能冷却(0 = 立即可发动) */
 			charge: (i: number, n: number) => {
 				if (!team[i]) return warnId('Tee（下标）', String(i));
 				team[i].charge = n;
 			},
-			/** 队伍里所有带主动技能的 Tee 立刻可用 */
 			readyActives: () => {
 				team.forEach((t, i) => {
 					if (activeSkills(effectiveEffects(teamCards, i), t.buffs).length > 0) t.charge = 0;
@@ -507,7 +452,6 @@
 				if (!BUFF_BY_ID.has(id)) return warnId('加成卡', id);
 				buffInventory = { ...buffInventory, [id]: (buffInventory[id] ?? 0) + n };
 			},
-			/** 直接把加成卡挂到 Tee(不耗库存) buff(0, 'manyuezhufu') */
 			buff: (teeIdx: number, buffId: string) => {
 				const bc = BUFF_BY_ID.get(buffId);
 				if (!bc) return warnId('加成卡', buffId);
@@ -553,7 +497,6 @@
 				if (!cardById(cardId)) return warnId('Tee 卡', cardId);
 				growth = { ...growth, [cardId]: layers };
 			},
-			/** 直接覆盖队伍(首位 null = 玩家自己): setTeam([null,'yutu','yupan']) */
 			setTeam: (ids: (string | null)[]) => {
 				ids.forEach((id) => {
 					if (id !== null && !cardById(id)) warnId('Tee 卡', id);
@@ -568,15 +511,6 @@
 				}));
 				currentTee = 0;
 			},
-			/**
-			 * 直接跳到某个阶段,不用真打一遍:
-			 *   jump('intro', { round: 3, boss: 'miyue' })
-			 *   jump('rolling', { settleLines: 0 })  // 结果区一条都不弹
-			 *   jump('rolling', { choosing: true })  // 停在「选骰子重掷」那一步
-			 *   jump('draft', { picked: [0, 2] })    // 开局选卡界面
-			 * boss: 指定 Boss id(或 null 表示无 Boss),不传则用随机的那个。
-			 * settleLines: rolling 阶段显示几条结算文字,默认全显示。
-			 */
 			jump: (
 				p: Phase,
 				opts: {
@@ -717,10 +651,6 @@
 	// ---- 游戏流程 ----
 
 	/** 重置一局的公共状态 */
-	/**
-	 * 跨局数据:只有开新一局才清(主菜单「开始博饼」、结算页「再来一局」)。
-	 * 本关数据不要写这里 —— 那是 resetRoundState 的职责。
-	 */
 	const resetRunState = () => {
 		growth = {};
 		runScore = 0;
@@ -733,14 +663,6 @@
 		shopLocks = [null, null, null, null, null, null]; // 局内保留,跨局清空
 	};
 
-	/**
-	 * 本关数据:每关开头都要清。**两个入口都必须调它** ——
-	 * ① beginRound():正常过关、选完卡开打、作弊 jump;
-	 * ② resetRun():重开直接落到 draft,不经过 beginRound。
-	 * ②漏清过一次真 bug:上一局的 Boss 横幅(「迷月:本关骰子的 6 视为 3」)挂到了
-	 * 新一局的开局 HUD 上,因为 boss 只在 beginRound 里清。
-	 * scan 里有对应回归检查(qa.sh scan →「重开清场」)。
-	 */
 	const resetRoundState = () => {
 		boss = null; // 第 1 关没有 Boss;beginRound 会按 round 重新指派
 		target = roundTarget(1); // 开局 HUD 显示第 1 关目标;beginRound 会按 round 覆盖
@@ -772,14 +694,12 @@
 		sfxClick();
 		resetRun();
 		clearRun(); // 新开一局:把上一局的存档清掉
-		// 开局先抽 5 张普通卡给玩家挑 2 张 —— 3 人队伍起步，避免第一关纯看运气
 		draftChoices = shuffle(CARDS.filter((c) => c.rarity === 'common')).slice(0, 5);
 		draftPicked = [];
 		team = [];
 		phase = 'draft';
 	};
 
-	/** 从选卡屏回标题:这一局不要了(存档一并清掉) */
 	const backToTitle = () => {
 		sfxClick();
 		clearRun();
@@ -793,14 +713,8 @@
 
 	// ---- 局内存档:全量快照 ----
 	//
-	// 玩家随时可以退出,回来接在**同一个画面**上。除了动画/布局这类纯瞬时的东西,
-	// 其余状态全存。真·瞬间(掷骰动画播到一半)用 `wasRolling` 记下来,
-	// 恢复时回到那个动作开始前:骰子重掷一次,结果本来就一样(单机游戏不吃亏)。
-	/** 非动画期间的骰面(动画期间 dice 每 90ms 变一次,直接存下来是垃圾) */
 	let settledDice = [1, 1, 1, 1, 1, 1];
-	/** 读档后要补做的动作:自动重掷一次 / 恢复待确认的主动技 */
 	let pendingAutoRoll = false;
-	/** 正在播的是哪种翻滚:整手掷 / 局部重掷 / 后羿自动重掷后再判定 */
 	let pendingRollKind: 'roll' | 'reroll' | 'finalize' = 'roll';
 	let pendingActiveKey: string | null = null;
 
@@ -902,8 +816,6 @@
 		currentScore = d.currentScore;
 		roundTotal = d.roundTotal;
 		countedTee = d.countedTee ?? -1;
-		// 结算动画会把显示分倒扣一段(settlePreview 从 -total 渐升到 0),这个值不能存 ——
-		// 存了之后动画不会重播,那一扣就永远补不回来(表现为 HUD 的"当前"停在 0)
 		settlePreview = 0;
 		diceSum = d.diceSum;
 		lastLevel = getRollLevel(d.lastLevelId);
@@ -947,7 +859,6 @@
 		pendingActiveKey = d.pendingActiveKey;
 	};
 
-	// 实时存(200ms 防抖)。$effect 读了上面所有字段 → 任何一处变了都会重跑。
 	$effect(() => {
 		const snap = runSnapshot();
 		if (snap.phase === 'idle') return; // 标题页没有进度可存
@@ -955,7 +866,6 @@
 		return () => clearTimeout(timer);
 	});
 
-	// 页面是 ssr=false,可以直接在初始化时读档(不必等 onMount)
 	{
 		const saved = loadRun();
 		if (saved && saved.phase !== 'idle') restoreRun(saved);
@@ -963,7 +873,6 @@
 
 	// 读档后的收尾:此时脚本里剩下的函数/常量都已就绪
 	onMount(() => {
-		// 待确认的主动技(要靠 activeSkills/allCards 反查,不能在 restoreRun 里做)
 		if (pendingActiveKey) {
 			const key = pendingActiveKey;
 			pendingActiveKey = null;
@@ -985,7 +894,6 @@
 				rollsLeft
 			);
 			setTimeout(() => {
-				// 局部重掷:只重播动画,rollsLeft/rerollCount 用刷新前的值(不重记账)
 				if (kind === 'reroll') playRerollAnim(rollMask, afterRoll);
 				else if (kind === 'finalize') playRerollAnim(rollMask, finalizeTee);
 				else rollCurrent();
@@ -995,19 +903,11 @@
 		resumeRun();
 	});
 
-	/**
-	 * 把停在半路上的回合接回去。
-	 *
-	 * 一关里有好几个"正在进行"的瞬间,刷新后计时器全没了。恢复时按当前 Tee 的状态
-	 * 决定接在哪里:已判完就重放结算再推进,没判完就回到该玩家的决定点(重掷/改点)。
-	 * 其余阶段(选卡、集市、商店、结算回合、结束屏)本来就是稳定的等待态。
-	 */
 	const resumeRun = () => {
 		if (phase !== 'rolling') return;
 		const tee = team[currentTee];
 		if (!tee) return;
 
-		// ① 这个 Tee 的分数已经计过了,只是结算/推进被打断 → 重放结算列,然后照常前进
 		if (countedTee >= currentTee) {
 			const level = getRollLevel(tee.lastLevelId);
 			dice = [...tee.lastDice];
@@ -1067,12 +967,10 @@
 		beginRound();
 	};
 
-	/** 每关开始: 加成卡回合数 -1, 归零移除 */
 	const decayBuffsForRound = () => {
 		decayBuffs(team);
 	};
 
-	/** 掷完展示后: 进入下一个 Tee / 回回合确认(重掷后) / 全队掷完 */
 	/** 队伍卡牌(null = 主 Tee),用于解析 copy_right / bundle */
 	const teamCards = $derived(team.map((t) => (t.cardId ? cardById(t.cardId) : null)));
 	/** 第 i 个 Tee 实际生效的效果 */
@@ -1080,7 +978,6 @@
 	/** 全队效果(team_chips 之类) */
 	const allEffects = (): EffectiveEffect[] =>
 		teamCards.flatMap((_, i) => effectiveEffects(teamCards, i));
-	/** 组装一次计分所需的全部上下文(联动类效果需要位置/队友/主 Tee 信息) */
 	const scoreInput = (i: number, levelId: string, diceForSum: number[]): ScoreInput => ({
 		levelId,
 		self: selfEffects(i),
@@ -1095,8 +992,6 @@
 		rerolled: rerollCount,
 		playerLevelId: i === 0 ? levelId : (team[0]?.lastLevelId ?? 'none'),
 		playerDice: i === 0 ? diceForSum : (team[0]?.lastDice ?? []),
-		// 重复牌倍率要数**原始**骰面(已变成 4 的数不出来)。只有主 Tee 用得上,
-		// 所以 i > 0 时传什么都无所谓,这里用主 Tee 存下来的骰子兼顶。
 		playerRawDice: i === 0 ? [...dice] : (team[0]?.lastDice ?? []),
 		// 新机制的上下文：经济流用币、成长/负分用关数、支援流用左邻已结算的分
 		coins: mooncakes,
@@ -1108,7 +1003,6 @@
 	/** 该 Tee 本回合可投掷几次 */
 	const rollsFor = (i: number) =>
 		rollsAllowed(selfEffects(i), team[i]?.buffs ?? [], boss?.rollsBonus ?? 0);
-	/** 该 Tee 判定用的点数修饰(自己的改造 + Boss 的) */
 	const modsFor = (i: number) =>
 		withBossMods(
 			mergeMods(
@@ -1122,16 +1016,11 @@
 			boss?.mods
 		);
 
-	/** 骰面覆盖用:变换后的「实际点数」(与判定/和值同一个 applyDiceMods) */
 	const shownDice = $derived(applyDiceMods(dice, modsFor(currentTee)));
-	/** 第 i 颗骰子是不是被本关作废的点数(骰面打红叉) */
 	const dieVoid = (i: number) => !dieRolling(i) && isVoidFace(dice[i], modsFor(currentTee));
-	/** 第 i 颗骰子的点数是否被 Boss/卡牌改造过 */
 	const diceModded = (i: number) =>
 		optedDice.includes(i) || (!dieRolling(i) && (dieVoid(i) || shownDice[i] !== dice[i]));
-	/** 手动改过点的骰子也要标 overlay(它豁免了「视为」,和自动映射不是一回事) */
 
-	/** 一个 Tee 掷完: 换下一个人;全队掷完则进回合确认 */
 	const advanceAfterTee = () => {
 		teeAnim = '';
 		if (currentTee + 1 < team.length) {
@@ -1151,7 +1040,6 @@
 		decayBuffsForRound();
 		tickCharge(team); // 主动技能冷却 -1
 		resetRoundState();
-		// 本关专属：按 round 指派 Boss 与目标（可能带 Boss 倍率）
 		boss = isBossRound(round) ? getBoss(round) : null;
 		target = Math.round(roundTarget(round) * (boss?.targetMult ?? 1));
 		for (const t of team) {
@@ -1177,7 +1065,6 @@
 		hitDice = [];
 		optedDice = [];
 		soldThisRound = 0;
-		// 清掉上一个 Tee 的结算文字，否则新人掷骰时会误以为那是当前骰子的结果
 		settleSteps = [];
 		settleIdx = -1;
 		rollsLeft = rollsFor(currentTee) - 1;
@@ -1190,7 +1077,6 @@
 		teePose = THROW_POSE;
 		teeAnim = 'throw';
 
-		// 旋转角速度恒定（0.75s 转 540°）；慢速档重复播放更多圈，总时长随之变长
 		rollDur = Math.min(0.75, 0.75 / speed);
 		rollIter = speed < 1 ? 1 / speed : 1;
 		rollTotal = 250 + rollDur * rollIter * 1000; // 250ms = 波浪延迟预算(5×50ms)
@@ -1212,7 +1098,6 @@
 		}, rollTotal);
 	};
 
-	/** 掷出后: 还有重掷机会就先让玩家挑骰子,否则进入改点/判定 */
 	const afterRoll = () => {
 		if (rollsLeft > 0) {
 			choosing = true;
@@ -1222,7 +1107,6 @@
 		beginSetOps();
 	};
 
-	/** 点骰子: 选/取消要重掷的那几颗 */
 	const toggleReroll = (i: number) => {
 		if (!choosing) return;
 		sfxClick();
@@ -1231,7 +1115,6 @@
 		rerollSel = next;
 	};
 
-	/** 确认重掷: 只重投被选中的骰子 */
 	const confirmReroll = () => {
 		if (!choosing || rolling) return;
 		sfxClick();
@@ -1244,13 +1127,6 @@
 		playRerollAnim(sel, afterRoll);
 	};
 
-	/**
-	 * 播一次「局部重掷」动画(只翻滚 sel 选中的骰子),播完调 done()。
-	 *
-	 * 记账(rollsLeft / rerollCount / choosing)由调用方负责,这个函数只管动画 ——
-	 * 因为恢复存档时这些数字是刷新前已经算好的,重算会白送一次重掷
-	 * (重掷动画中途刷新,原来会变成"6 颗全掷且不消耗次数")。
-	 */
 	const playRerollAnim = (sel: boolean[], done: () => void) => {
 		pendingRollKind = 'reroll';
 		rolling = true;
@@ -1280,7 +1156,6 @@
 		}, rollTotal);
 	};
 
-	/** 不再重掷: 直接进入改点/判定 */
 	const skipReroll = () => {
 		if (!choosing) return;
 		sfxClick();
@@ -1289,7 +1164,6 @@
 		beginSetOps();
 	};
 
-	/** 改点阶段: 依次执行卡牌/加成卡带来的改点操作 */
 	const beginSetOps = () => {
 		setQueue = collectSetOps(selfEffects(currentTee), team[currentTee]?.buffs ?? []);
 		nextSetOp();
@@ -1363,7 +1237,6 @@
 	};
 
 	/** 判定 + 计分 + 下一个 Tee */
-	/** Boss 点效简写(结算动画第一步展示) */
 	const BOSS_EFFECT_SHORT: Record<string, string> = {
 		miyue: '6 视为 3',
 		yingyue: '4 视为 2',
@@ -1371,10 +1244,6 @@
 		wuyue: '6 视为 1'
 	};
 
-	/**
-	 * 低压道具:本关没用掉的「可归还」加成卡回到库存(回合数不减,不进 decay)。
-	 * 返回归还的道具名,交给结算动画播出来。
-	 */
 	const refundUnusedItems = (i: number): string[] => {
 		const tee = team[i];
 		if (!tee) return [];
@@ -1393,7 +1262,6 @@
 		return back.map((b) => BUFF_BY_ID.get(b.cardId)?.name ?? b.cardId);
 	};
 
-	/** 构建结算步骤:每条得分来源各占一行,一眼能看出分从哪来 */
 	const buildSettleSteps = (
 		rawLevelId: string,
 		level: RollLevel,
@@ -1401,7 +1269,6 @@
 		refunds: string[] = []
 	) => {
 		const steps: { text: string; cls: string; kind: SettleKind }[] = [];
-		// 1） 牌型 + 固定分（Boss 有改点时加前缀，不单占一行 —— 完整说明在 HUD 上常驻）
 		const prefix = boss?.mods ? `${boss.emoji} ${boss.name} · ` : '';
 		steps.push({
 			text: `${prefix}${level.emoji} ${level.name} ${formatScore(level.score)}`,
@@ -1414,7 +1281,6 @@
 			kind: 'level'
 		});
 		// 3） 卡牌 / 加成卡逐条
-		// 引擎是「先加完再乘完」((base + chips) x mult),所以结算也分两段播:
 		// 加算行全部先出现,乘算行跟在后面 —— 播放顺序 = 真实计算顺序。
 		const nameOf = (src: (typeof lastBreakdown.sources)[number]) =>
 			src.kind === 'card'
@@ -1497,15 +1363,12 @@
 			teeAnim = 'sad';
 		}
 
-		// 结算动画： 一条一条弹出（Boss → 等级 → 加成卡 → 归还 → 总分）
 		settleSteps = buildSettleSteps(rawLevel.id, level, tee, refundUnusedItems(currentTee));
 		settleIdx = -1;
 		settling = true;
 		const stepMs = 380 / speed;
 		// 进度条跟着结算动画走。
 		// 注意:分数在 finalizeTee 里**已经加过**了(currentScore += lastBreakdown.total),
-		// 所以这里只做一个「倒着补」的显示偏移:从 -total 渐升到 0 —— 进度条会一行一行
-		// 往上走,动画结束时正好落在真实分数上,而不是把分数再加一遍(那样会翻倍)。
 		const settleTotal = lastBreakdown.total;
 		settlePreview = -settleTotal;
 		settleSteps.forEach((_, i) => {
@@ -1536,7 +1399,6 @@
 		);
 	};
 
-	/** 本关该 Tee 可发动的主动技能(「调分左侧 Tee」在 0 号位没有目标) */
 	const usableActive = (i: number): ActiveSkill | null => {
 		const tee = team[i];
 		if (!tee) return null;
@@ -1548,7 +1410,6 @@
 		return null;
 	};
 
-	/** 结算动画结束后:能发技能就停下来等玩家决定,否则直接换人 */
 	const afterSettle = () => {
 		const sk = usableActive(currentTee);
 		if (sk) {
@@ -1601,7 +1462,6 @@
 		advanceAfterTee();
 	};
 
-	/** 重试本关(时轮):全队重掷,分数清零 */
 	const retryRound = () => {
 		for (const t of team) {
 			t.lastScore = 0;
@@ -1621,12 +1481,10 @@
 		rollCurrent();
 	};
 
-	/** 全队掷完: 进入回合确认(可买加成卡再重开, 或直接结算) */
 	const finishRound = () => {
 		phase = 'round_confirm';
 	};
 
-	/** 结算回合: 团队倍率卡一条一条弹, 然后判定过关/失败 */
 	const confirmRound = () => {
 		sfxClick();
 		if (teamSettling || phase !== 'round_confirm') return;
@@ -1694,11 +1552,8 @@
 		);
 	};
 
-	/** 判定过关/失败(团队结算动画播完后) */
 	const settleRound = () => {
 		const total = roundTotal;
-		// 本局总分按「关卡内数值」算:每关最多只计它的目标分(爆发流刷出来的溢出分不进纪录),
-		// 最后一关没达标就只计它实际拿到的分。于是最高分 = 打过的各关目标之和 + 最后一关的残分。
 		runScore += Math.min(total, target);
 		if (total >= target) {
 			// 过关
@@ -1719,7 +1574,6 @@
 			finalRound = round;
 			finalRunScore = runScore;
 			const prevBest = save.bestScore;
-			// 记的是**本局累计总分**（单关分会让"前面掷得再多、最后一把掷少了"不算数）
 			save = saveResult(runScore, round);
 			isNewBest = runScore > prevBest && runScore > 0;
 			sfxLose();
@@ -1780,7 +1634,6 @@
 		shopSold = [];
 	};
 
-	/** 锁/解锁一格:锁上时记住是哪张卡,解锁后下次刷新就会换掉它 */
 	const toggleLock = (i: number) => {
 		sfxClick();
 		shopLocks = shopLocks.map((id, k) => (k === i ? (id ? null : (shopBuffs[i]?.id ?? null)) : id));
@@ -1828,16 +1681,10 @@
 
 	// ---- 展示 ----
 
-	/** 真实进度(可以 >1):目标达成后继续堆分时,让玩家看到 340% 这种数字 */
 	const rawProgress = $derived(target > 0 ? displayScore / target : 0);
 	const moonPhase = $derived(Math.min(1, rawProgress));
-	/** 月相遮罩位移(0-100%,100% 即遮罩完全移出=满月)。
-	 *  幂函数 p^1.5 压缩低进度:10% 进度时位移仅 3%(细月牙),
-	 *  50% 接近上弦,100% 满月 */
 	const moonShiftPct = $derived(Math.min(100, Math.pow(Math.max(0, moonPhase), 1.5) * 100));
-	/** 进度条填充宽度:永远夹在 100,条子不许溢出 */
 	const progressFillPct = $derived(Math.min(100, Math.round(rawProgress * 100)));
-	/** 显示用的百分比:不夹上限(超了就显示 340%),负数/无目标时按 0 */
 	const progressPct = $derived(Math.max(0, Math.round(rawProgress * 100)));
 	const currentTeeCard = $derived(cardOf(team[currentTee] ?? team[0]));
 	const canPickReward = $derived(team.length < TEAM_LIMIT);
@@ -1860,22 +1707,14 @@
 	// 手机屏幕只有 ~590px 可用高度，一律铺开必然要滚动。
 	// 按阶段只保留该阶段真正要用的面板，其余收成一行道具条。
 
-	/** 集市/商店阶段:矮屏放不下 6 张普通卡换行 → 单行横滑 */
 	const marketTeam = $derived(phase === 'reward' || phase === 'shop');
-	/** 加成卡货架(掷骰前要拖/点应用,完整展示) */
 	// 商店阶段也显示（只看不用：挂卡只在掷骰前），否则卖掉/买卡的决策少了信息
 	const showBuffShelf = $derived((phase === 'intro' || phase === 'shop') && buffEntries.length > 0);
-	/** 精简道具条:不可操作但需要知道手里有什么的阶段 */
 	const showItemBar = $derived(phase === 'round_end' && buffEntries.length > 0);
-	/**
-	 * 本轮结算文字最多几行(Boss 效果 + 等级 + 各 Tee 身上的加成 + 总分)。
-	 * 用最长的那个 Tee 做上界,给结果区占位,逐条弹出时骰子才不会被顶上去。
-	 */
 	const settleReserveLines = $derived(
 		(boss?.mods ? 1 : 0) + 1 + Math.max(0, ...team.map((_, i) => potentialSources(i))) + 1
 	);
 
-	/** 该 Tee 最多能产生几条得分来源(等级 1 条 + 总分 1 条另算) */
 	const potentialSources = (i: number): number => {
 		let n = 0;
 		const count = (eff: TeeEffect) => {
@@ -1910,7 +1749,6 @@
 		return n;
 	};
 
-	/** 团队结算文字最多几行(团队倍率卡 + 接力回流 各占一行,+ 总分一行) */
 	const teamSettleReserveLines = $derived(
 		Math.max(
 			1,
@@ -1921,7 +1759,6 @@
 		)
 	);
 
-	/** 队伍面板只在真正需要操作/看结果的阶段完整展示 */
 	const showTeamPanel = $derived(phase !== 'round_end' && phase !== 'game_over');
 </script>
 
@@ -2935,7 +2772,6 @@
 
 <style>
 	/* ---- 夜空 ---- */
-	/* 渐变背景由 layout 提供(main 自定义背景),这里只留装饰 */
 
 	.star {
 		position: absolute;
@@ -2957,7 +2793,6 @@
 
 	.moon {
 		position: absolute;
-		/* 贴右上角:再往下就会跟主菜单标题/副标题迭在一起 */
 		top: 0;
 		right: 5%;
 		width: 72px;
@@ -3061,15 +2896,11 @@
 	}
 
 	/* ---- 骰子 ---- */
-	/* 6 颗骰子排一行:交给 grid 六等分,靠 aspect-ratio 自适应;
-	   小屏(320px)也绝不换行/溢出 */
 	.die {
 		position: relative;
-		/* 骰面是一整块 SVG,不需要 3×3 网格;覆盖数字用 rem,也不需要 container-query */
 		display: block;
 		width: 100%;
 		aspect-ratio: 1;
-		/* 没有 aspect-ratio 的老浏览器:至少给个高度,别让骰子塌成 0 */
 		min-height: 2.75rem;
 		padding: 12%;
 		border-radius: 10px;
@@ -3090,8 +2921,6 @@
 		animation: dice-shake 0.75s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 	}
 
-	/* 集市/商店阶段的队伍:矮屏放不下 6 张普通卡换行(2015 年的 375×667 就是矮屏),
-	 * 改为单行横滑;高屏(如 419×942)有富余空间,直接换行铺开全部可见 */
 	@media (max-width: 639px) and (max-height: 700px) {
 		.market-team {
 			flex-wrap: nowrap;
@@ -3100,24 +2929,18 @@
 		}
 	}
 
-	/* 点数被改造(Boss 特效 / 卡牌 / 加成卡)的骰子:
-	 * 骰面仍显示真实掷出的点阵(淡化),上面透明覆盖「实际算几」——
-	 * 「4 视为 2」「点数 -1」这类效果以前只能看 HUD 文字,现在骰子自己会说 */
 	.die.moded .die-face circle {
 		opacity: 0.28;
 	}
 
-	/* 作废的骰子点阵压淡,但还看得出原来是几点,红叉是主角(:has 在旧浏览器不可用,改用类名) */
 	.die.voided .die-face circle {
 		opacity: 0.22;
 	}
 
-	/* 算成 4 点时用 4 的红,和骰面红点同色:一眼看出「这颗现在算 4」 */
 	.die-mod.is-four {
 		color: rgb(214 50 50 / 0.78);
 	}
 
-	/* 作废点数:整颗打红叉,一眼看出「这颗不算」—— 贴底居中,不再盖住中间的骰点 */
 	.die-void {
 		position: absolute;
 		inset: 0;
@@ -3136,7 +2959,6 @@
 		user-select: none;
 	}
 
-	/* 实际点数:贴底居中(原来正居中,把中间的骰点盖住 —— 3 看成 2、5 看成 4) */
 	.die-mod {
 		position: absolute;
 		inset: 0;
@@ -3155,7 +2977,6 @@
 		user-select: none;
 	}
 
-	/* 标记「待重掷」的骰子:斜纹 + 角标,不动尺寸也不会 shift */
 	.die.marked {
 		background: repeating-linear-gradient(45deg, #e8f4ff 0 6px, #cfe6ff 6px 12px);
 		box-shadow:
@@ -3220,7 +3041,6 @@
 		}
 	}
 
-	/* 骰面:内联 SVG,不依赖 ::after / container-query(旧浏览器里 CSS 点阵会整片消失) */
 	.die-face {
 		display: block;
 		width: 100%;
@@ -3253,7 +3073,6 @@
 		color: #d63232;
 	}
 
-	/* 示例里的「X」= 与牌型无关的散牌 */
 	.mini-die.mini-any {
 		color: #64748b;
 		background: rgba(100, 116, 139, 0.12);
@@ -3262,8 +3081,6 @@
 	/* ---- Tee 动画(已移入 TeeCard.svelte) ---- */
 	/* ---- 卡片样式已移入 TeeCard.svelte ---- */
 
-	/* 阶段面板吃满剩余高度、内容垂直居中。
-	 * 用 safe center:内容比容器高时退化成 flex-start,不会把顶部裁到滚不到 */
 	.panel-fill {
 		display: flex;
 		flex: 1 1 0%;
@@ -3271,9 +3088,6 @@
 		justify-content: safe center;
 	}
 
-	/* 结算/结束这类「信息型」面板不跟着屏幕无限长高:撑满会变成中间一块内容、
-	 * 上下各几百像素的空盒子,所以回到内容高度再整体居中。
-	 * (集市/商店不在此列 —— 它们跟游戏阶段一样铺满剩余高度) */
 	.panel-auto {
 		flex: 0 1 auto;
 		margin-block: auto;

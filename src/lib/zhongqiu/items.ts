@@ -1,9 +1,7 @@
 // 道具系统: 加成卡(掷骰前挂到 Tee 上,持续数关)
 //
-// 定价依据 scripts/balance.ts(2 次投掷基线,平均等级分 82.7):
 //   +chips 的等效倍率 = (82.7 + N) / 82.7   → +30≈×1.36  +60≈×1.73  +120≈×2.45  +200≈×3.42
 //   ×mult 与等级分无关                        → ×1.5 / ×2 / ×2.5 / ×3
-//   多 1 次投掷 ×2.33、改 1 颗为 4 点 ×2.90、改任意点 ×4.48(强,压传说档)
 
 import type { Cond, DiceMods, Rarity } from './teecards';
 
@@ -51,20 +49,11 @@ export interface BuffCard {
 	name: string;
 	/** 效果描述(同时用于 tooltip) */
 	desc: string;
-	/**
-	 * ⚠️ 加成卡**没有 tag**:不参与 per_tag 计数,也不做流派归类 —— 名字里出现的
-	 * 流派字只是风味道具名(最多一个,见 qa/copy.ts)。别在这里加 tag 字段。
-	 */
 	rarity: Rarity;
 	/** 卡面 Tee 皮肤 */
 	skin: string;
 	price: number;
-	/** 激活关卡数(1~3): 挂上后每过一关 -1,归零消失 */
 	turns: number;
-	/**
-	 * 低压道具:本关**没用掉**就归还库存(不算消耗,回合数也不减)。
-	 * 只会用在「改点」这类需要玩家主动决定的道具上 —— 会归还的定价贵一点。
-	 */
 	refund?: boolean;
 	effect: BuffEffect;
 }
@@ -577,9 +566,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: { type: 'clear_void' }
 	},
 
-	// ======== 取舍卡:点数加成 + 点数惩罚(强效果配副作用)========
 	// 玩法:带上去之后重掷/改点的目标会变(追高的那个点数、躲低的那个),
-	// 所以普通档是主力(经常能碰到才谈得上取舍),高稀有度的是「点数很高」的赌狗版。
 	{
 		id: 'shibei',
 		name: '拾贝',
@@ -677,7 +664,6 @@ export const BUFF_CARDS: BuffCard[] = [
 		}
 	},
 
-	// ======== 低压道具(未使用即归还,定价比同类贵 40%~50%) ========
 	{
 		id: 'yaochu',
 		name: '玉兔药杵',
@@ -768,11 +754,6 @@ export const BUFF_CARDS: BuffCard[] = [
 export const BUFF_BY_ID = new Map(BUFF_CARDS.map((c) => [c.id, c]));
 
 /** 从池中抽 n 张不重复(商店用) */
-/**
- * 商店货架:5 张普通 + **最后 1 格**给稀有/传说。
- * 也就是「普通道具每次刷新 5 个,高稀有度每次只出 1 个」——
- * 稀有度不是纯随机权重,而是固定槽位,玩家一眼知道最后那格是惊喜位。
- */
 export const drawShopItems = (locks: (string | null)[] = []): BuffCard[] => {
 	// 锁定的槽位保留原商品(不参与重抽),并且从池子里排除,免得同一张占两格
 	const held = locks.filter((id): id is string => !!id);
