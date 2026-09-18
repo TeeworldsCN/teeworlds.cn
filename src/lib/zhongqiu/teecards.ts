@@ -1097,7 +1097,7 @@ export const CARDS: TeeCard[] = [
 		desc: '每拥有一个独特的「仙」系角色：该 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '仙',
-		skin: 'IceWitch_FairyCat',
+		skin: 'cammostripeangel',
 		effect: { type: 'per_tag', tag: '仙', per: 2.3, as: 'mult', chipsPerFour: 1 }
 	},
 	{
@@ -1230,7 +1230,7 @@ export const CARDS: TeeCard[] = [
 		name: '望舒',
 		desc: '「我」掷出的 6 点视为 4 点',
 		rarity: 'common',
-		skin: 'mistgan',
+		skin: 'Littlewhite',
 		effect: { type: 'map_player_die', from: 6, to: 4 }
 	},
 	// ==== 团队流 · 卖卡攒倍率(后期) ====

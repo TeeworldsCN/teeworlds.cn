@@ -310,7 +310,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月神面纱',
 		desc: '得分 ×2.4',
 		rarity: 'legendary',
-		skin: 'Drag King',
+		skin: 'pinkcrystal',
 		price: 8,
 		turns: 2,
 		effect: { type: 'mult', value: 2.4 }
@@ -362,7 +362,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '金桂流心',
 		desc: '得分 +80，×1.6',
 		rarity: 'legendary',
-		skin: 'glow_greensward',
+		skin: 'OnyxNanami_Yellow',
 		price: 8,
 		turns: 2,
 		effect: { type: 'chips_mult', chips: 80, mult: 1.6 }

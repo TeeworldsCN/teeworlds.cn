@@ -56,12 +56,12 @@
 		{/each}
 	</div>
 
-	<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+	<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
 		{#each rows as r (r.id)}
 			<div
 				style="border:1px solid #334155;background:#0f172a;border-radius:10px;padding:8px;text-align:center"
 			>
-				<div style="width:112px;height:112px;margin:0 auto">
+				<div style="width:140px;height:140px;margin:0 auto">
 					<TeeRender name={r.skin} className="h-full w-full" />
 				</div>
 				<div style="margin-top:6px;font-size:13px;font-weight:600">{r.name}</div>
