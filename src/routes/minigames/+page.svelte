@@ -10,8 +10,7 @@
 
 <div class="mt-6 grid gap-6 md:grid-cols-2">
 	<div class="rounded-lg border border-slate-600 p-6">
-		<span class="flex h-14 items-center text-4xl">🥮</span>
-		<div class="mt-4">
+		<div>
 			<ToolboxButton href="/zhongqiu"
 				><Fa icon={faDice} class="inline text-amber-400"></Fa> 中秋博饼大会</ToolboxButton
 			>
@@ -20,8 +19,7 @@
 	</div>
 
 	<div class="rounded-lg border border-slate-600 p-6">
-		<span class="flex h-14 items-center text-4xl">🐰</span>
-		<div class="mt-4">
+		<div>
 			<ToolboxButton href="/ddnet/nouis"
 				><Fa icon={faGamepad} class="inline"></Fa> 合成超大Tee</ToolboxButton
 			>
