@@ -388,11 +388,11 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutuzuqun',
 		name: '玉兔族群',
-		desc: '每拥有一个独特的「兔」系角色，该 Tee 得分 ×1.25',
+		desc: '每拥有一个独特的「兔」系角色，该 Tee 得分 +75',
 		rarity: 'rare',
 		skin: 'whitebunny',
 		tag: '兔',
-		effect: { type: 'per_tag', tag: '兔', per: 1.25, as: 'mult' }
+		effect: { type: 'per_tag', tag: '兔', per: 75, as: 'chips' }
 	},
 	{
 		id: 'wangyuehuaiyuan',
@@ -430,11 +430,11 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuebingshijia',
 		name: '饼香世家',
-		desc: '每拥有一个独特的「饼」系角色，该 Tee 得分 ×1.4',
+		desc: '每拥有一个独特的「饼」系角色，该 Tee 得分 ×3',
 		rarity: 'legendary',
 		skin: 'cupcakecherry',
 		tag: '饼',
-		effect: { type: 'per_tag', tag: '饼', per: 1.4, as: 'mult' }
+		effect: { type: 'per_tag', tag: '饼', per: 3.0, as: 'mult' }
 	},
 	{
 		id: 'mingyuegongzhao',
@@ -1039,56 +1039,56 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutuhui',
 		name: '兔儿满堂',
-		desc: '每拥有一个独特的「兔」系角色：该 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「兔」系角色：该 Tee 得分 ×1.8（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '兔',
 		skin: 'BunnyViVi',
-		effect: { type: 'per_tag', tag: '兔', per: 2.3, as: 'mult', chipsPerFour: 1 }
+		effect: { type: 'per_tag', tag: '兔', per: 1.8, as: 'mult', chipsPerFour: 1 }
 	},
 	{
 		id: 'guiyuan',
 		name: '桂苑',
-		desc: '每拥有一个独特的「桂」系角色：该 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「桂」系角色：该 Tee 得分 ×1.4（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '桂',
 		skin: 'flower_crown_ghost',
-		effect: { type: 'per_tag', tag: '桂', per: 2.3, as: 'mult', chipsPerFour: 1 }
+		effect: { type: 'per_tag', tag: '桂', per: 1.4, as: 'mult', chipsPerFour: 1 }
 	},
 	{
 		id: 'yuebingfang',
 		name: '饼坊',
-		desc: '每拥有一个独特的「饼」系角色：该 Tee 得分 ×3（叠乘）；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「饼」系角色：该 Tee 得分 ×1.7（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '饼',
 		skin: 'buni',
-		effect: { type: 'per_tag', tag: '饼', per: 3.0, as: 'mult', chipsPerFour: 1 }
+		effect: { type: 'per_tag', tag: '饼', per: 1.7, as: 'mult', chipsPerFour: 1 }
 	},
 	{
 		id: 'dengzhen',
 		name: '灯阵',
-		desc: '每拥有一个独特的「灯」系角色：该 Tee 得分 ×2.1（叠乘）；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「灯」系角色：该 Tee 得分 ×1.5（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_axolotl',
-		effect: { type: 'per_tag', tag: '灯', per: 2.1, as: 'mult', chipsPerFour: 1 }
+		effect: { type: 'per_tag', tag: '灯', per: 1.5, as: 'mult', chipsPerFour: 1 }
 	},
 	{
 		id: 'yuelun',
 		name: '月轮',
-		desc: '每拥有一个独特的「月」系角色：该 Tee 得分 ×2（叠乘）；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「月」系角色：该 Tee 得分 ×1.2（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'cloud',
-		effect: { type: 'per_tag', tag: '月', per: 2.0, as: 'mult', chipsPerFour: 1 }
+		effect: { type: 'per_tag', tag: '月', per: 1.2, as: 'mult', chipsPerFour: 1 }
 	},
 	{
 		id: 'xianlv',
 		name: '仙侣',
-		desc: '每拥有一个独特的「仙」系角色：该 Tee 得分 ×2.3（叠乘）；每有 1 颗四点，得分 +1',
+		desc: '每拥有一个独特的「仙」系角色：该 Tee 得分 ×1.6（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '仙',
 		skin: 'cammostripeangel',
-		effect: { type: 'per_tag', tag: '仙', per: 2.3, as: 'mult', chipsPerFour: 1 }
+		effect: { type: 'per_tag', tag: '仙', per: 1.6, as: 'mult', chipsPerFour: 1 }
 	},
 	{
 		id: 'yutulinfan',
