@@ -297,7 +297,9 @@
 					? `${sk.value < 0 ? '−' : '+'}${formatScore(Math.abs(sk.value))} 分`
 					: sk.skill === 'left_chips'
 						? `左侧 +${formatScore(sk.value)} 分`
-						: '本关重掷';
+						: sk.skill === 'sum'
+							? '按本 Tee 点数和结算'
+							: '本关重掷';
 			lines.push({
 				text: `⚡ ${nm}:${what}${(tee.charge ?? 0) > 0 ? `(冷却 ${tee.charge} 关)` : '（可发动）'}`,
 				cls: (tee.charge ?? 0) > 0 ? 'text-slate-400' : 'text-fuchsia-300'
@@ -2446,6 +2448,8 @@
 											+{formatScore(pendingActive.value)} 分
 										{:else if pendingActive.skill === 'left_chips'}
 											左侧 +{formatScore(pendingActive.value)} 分
+										{:else if pendingActive.skill === 'sum'}
+											按本 Tee 点数和结算
 										{:else}
 											本关重掷
 										{/if}
