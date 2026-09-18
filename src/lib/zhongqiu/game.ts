@@ -362,6 +362,8 @@ export interface ScoreSource {
 	chips: number;
 	mult: number;
 	from?: string;
+	/** 逆向:这一条不是加算,而是把基础分「改写」掉 —— chips 存改写后的基础分,swap.from 是被替换掉的净值 */
+	swap?: { from: number };
 }
 
 export interface ScoreBreakdown {
@@ -760,9 +762,15 @@ export const calcTeeScore = ({
 	const net = base + chips + buffChips;
 	const swapped = reverseBase > 0 ? reverseBase - net : null;
 	if (swapped !== null) {
-		const bc = chips;
 		chips = swapped - base - buffChips; // 代进下面的算式后正好等于 swapped
-		note(reverseSrc, 'card', chips - bc, 1, `基础分 ← ${reverseBase} − 之前的 ${net}`);
+		// 不写进 chips 加算行:它语义上是「改写」,单独带 swap 给界面渲染
+		sources.push({
+			srcId: reverseSrc,
+			kind: 'card',
+			chips: reverseBase,
+			mult: 1,
+			swap: { from: net }
+		});
 	}
 	const raw = Math.round((base + chips + buffChips) * mult * buffMult * 100) / 100;
 	const netChips = chips + buffChips;

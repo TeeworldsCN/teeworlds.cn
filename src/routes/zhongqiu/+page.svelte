@@ -1295,6 +1295,15 @@
 				: (BUFF_BY_ID.get(src.srcId)?.name ?? src.srcId);
 		// 3a) 加算阶段
 		for (const src of lastBreakdown.sources) {
+			// 逆向:不是加算,是「改写」—— 写清改写成了多少、替换掉了什么
+			if (src.swap) {
+				steps.push({
+					text: `${nameOf(src)} 基础分改写为 ${formatScore(src.chips)}（原 ${formatScore(src.swap.from)}）`,
+					cls: 'text-fuchsia-300',
+					kind: 'chip'
+				});
+				continue;
+			}
 			if (!src.chips) continue;
 			steps.push({
 				text: `${nameOf(src)} ${src.chips < 0 ? '−' : '+'}${formatScore(Math.abs(src.chips))}`,
