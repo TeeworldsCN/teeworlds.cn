@@ -75,7 +75,7 @@ export const BOSSES: Boss[] = [
 		id: 'wuyue',
 		name: '雾月',
 		emoji: '🌁',
-		desc: '本关同点组合不作数；目标 ×0.97',
+		desc: '本关黑色同点不作数；目标 ×0.97',
 		mods: { noSameFace: true },
 		targetMult: 0.97
 	},
