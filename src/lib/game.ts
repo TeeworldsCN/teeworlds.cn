@@ -603,18 +603,19 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'face_count_mult': {
-				// 重复牌倍率:本关「我」掷出几颗这个点数,主 Tee 就 ×几。
+				// 重复牌倍率:本关「我」掷出 n 颗这个点数,主 Tee 就 ×(n+1)(稀有档)或 ×perHit^n(传说档)。
 				// 这是**跨位置**规则(卡长在队友身上也算),所以只在全队那一轮结算、
 				// 且只作用于主 Tee(index 0);自己那一轮(skipTeamWide)跳过,免得算两遍。
-				// 数的是原始骰面(已经变成 4 的骰子数不出来);拿不到原始骰子时按 ×1,绝不能 ×0。
+				// 数的是原始骰面(已经变成 4 的骰子数不出来);一颗都没有时不加也不显示。
 				if (skipTeamWide || index !== 0) break;
 				{
 					const raw = playerRawDice ?? playerDice ?? [];
-					const n = Math.max(1, raw.filter((d) => d === eff.face).length);
-					if (n > 1) {
+					const hits = raw.filter((d) => d === eff.face).length;
+					if (hits > 0) {
 						const bm = mult;
-						mult *= n;
-						note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `${n} 颗 ${eff.face}`);
+						// perHit = 2 → 每颗都 ×2(可叠乘,传说档);否则 ×(颗数 + 1)(稀有档)
+						mult *= eff.perHit ? Math.pow(eff.perHit, hits) : hits + 1;
+						note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `${hits} 颗 ${eff.face}`);
 					}
 				}
 				break;

@@ -116,11 +116,11 @@ export type TeeEffect =
 	| { type: 'player_die'; face: number; chips?: number; mult?: number } // 「我」最终骰子里每个该点数
 	| { type: 'map_player_die'; from: number; to: number } // 「我」掷出的 from 点视为 to 点(团队规则,只作用于主 Tee)
 	/**
-	 * 重复牌倍率:本关「我」的**原始**骰面里有几颗 face,主 Tee 得分就 ×几。
-	 * 只给稀有档改点卡(普通档只改点)。注意数的是原始点数 ——
-	 * 已经变成 4 的骰子数不出来,所以引擎需要 playerRawDice。
+	 * 重复牌倍率:本关「我」的**原始**骰面里有几颗 face,主 Tee 得分就 ×(颗数 + 1)(命中一颗就 ×2)。
+	 * perHit = 2 时改成每颗都 ×2(可叠乘)—— 传说档:很吃掷骰,但加成卡影响相对小。
+	 * 注意数的是原始点数 —— 已经变成 4 的骰子数不出来,所以引擎需要 playerRawDice。
 	 */
-	| { type: 'face_count_mult'; face: number }
+	| { type: 'face_count_mult'; face: number; perHit?: number }
 	| { type: 'face_ladder' } // 点数阶梯:非 4 点的同点 n 颗按 4 点线档位结算(一秀→六博红)
 	| { type: 'face_floor'; face: number; base: number; per: number } // 同点颗数的**基础分下限**:base × per^(n-1)(只升不降)
 	| { type: 'team_scale'; per: number; fullBonus?: number } // 队伍每多 1 人 ×per;满编再 ×fullBonus
@@ -1172,7 +1172,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'meiyue',
 		name: '柳眉',
-		desc: '「我」掷出的 2 点视为 4 点；本关「我」骰子里有几颗 2，得分就 ×几',
+		desc: '「我」掷出的 2 点视为 4 点；本关「我」骰子里有几颗 2，得分就 ×（颗数 + 1）',
 		rarity: 'rare',
 		skin: 'GoldCat',
 		effect: {
@@ -1186,21 +1186,21 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'xinyue',
 		name: '朔日',
-		desc: '「我」掷出的 3 点视为 4 点；本关「我」骰子里有几颗 3，得分就 ×几',
-		rarity: 'rare',
+		desc: '「我」掷出的 3 点视为 4 点；本关「我」每有 1 颗 3，得分就 ×2（可叠乘）',
+		rarity: 'legendary',
 		skin: 'TeeAngel',
 		effect: {
 			type: 'bundle',
 			parts: [
 				{ type: 'map_player_die', from: 3, to: 4 },
-				{ type: 'face_count_mult', face: 3 }
+				{ type: 'face_count_mult', face: 3, perHit: 2 }
 			]
 		}
 	},
 	{
 		id: 'sanxingzhao',
 		name: '三星照',
-		desc: '「我」掷出的 3 点视为 4 点；本关「我」骰子里有几颗 3，得分就 ×几',
+		desc: '「我」掷出的 3 点视为 4 点；本关「我」骰子里有几颗 3，得分就 ×（颗数 + 1）',
 		rarity: 'rare',
 		skin: 'tuzi',
 		effect: {
@@ -1214,7 +1214,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'shangxian',
 		name: '上弦',
-		desc: '「我」掷出的 5 点视为 4 点；本关「我」骰子里有几颗 5，得分就 ×几',
+		desc: '「我」掷出的 5 点视为 4 点；本关「我」骰子里有几颗 5，得分就 ×（颗数 + 1）',
 		rarity: 'rare',
 		skin: 'viking',
 		effect: {

@@ -494,6 +494,17 @@
 				if (!team[teeIdx]) return warnId('Tee（下标）', String(teeIdx));
 				team[teeIdx].buffs = [...team[teeIdx].buffs, { cardId: buffId, turnsLeft: bc.turns }];
 			},
+			/** 直接换掉某个 Tee 的卡 card(1, 'shangxian') —— 自检用 */
+			card: (teeIdx: number, cardId: string | null) => {
+				if (cardId !== null && !CARDS.some((c) => c.id === cardId)) return warnId('Tee 卡', cardId);
+				const slot = team[teeIdx];
+				if (!slot) return warnId('Tee（下标）', String(teeIdx));
+				slot.cardId = cardId;
+				// 清掉这个 Tee 上次的结果,免得看着旧分数误判
+				slot.lastScore = 0;
+				slot.lastLevelId = 'none';
+				slot.lastDice = [1, 1, 1, 1, 1, 1];
+			},
 			/** 强制下一次掷骰结果 nextRoll([2,3,5,6,1,2]) */
 			nextRoll: (dice: number[]) => {
 				cheatNextRoll = dice;
