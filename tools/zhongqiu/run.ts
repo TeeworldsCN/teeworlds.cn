@@ -81,15 +81,23 @@ export const seedRandomFor = (key: string) => {
 const dpCache = new Map<string, ReturnType<typeof makeOptimal>>();
 
 /** 一个 Tee 在当前配置下的「掷一次」函数(DP 按 卡+加成 缓存) */
-const makeRoller = (cardId: string | null, buffIds: string[], skill: Skill) => {
+const makeRoller = (
+	cardId: string | null,
+	buffIds: string[],
+	skill: Skill,
+	/** 只有主 Tee 用得上:队友的「我掷出的 X 视为 4」—— 不算进去,「我」会去重掷本该留的骰子 */
+	playerCards?: (TeeCard | null)[]
+) => {
 	const card = cardId ? CARD_BY_ID.get(cardId)! : null;
 	// 只有「会改策略」的加成进 key:纯数值加成不重建表
 	const policyBuffs = buffIds.filter(isPolicyChanging);
-	const key = `${cardId ?? '-'}|${policyBuffs.join(',')}`;
+	// 队友给的「我掷出的 X 视为 4」也要进 DP 和缓存 key,否则「我」会去重掷本该留的骰子
+	const playerMods = playerCards ? playerDiceMods(playerCards) : undefined;
+	const key = `${cardId ?? '-'}|${policyBuffs.join(',')}|${playerMods ? JSON.stringify(playerMods) : ''}`;
 	let dp = dpCache.get(key);
 	if (!dp) {
 		const self = card ? [{ eff: card.effect, srcId: card.id }] : [];
-		const mods = selfDiceMods(self);
+		const mods = mergeMods(selfDiceMods(self), playerMods);
 		dp = makeOptimal(mods, (st) => {
 			const dice = toDice(st);
 			return calcTeeScore({
@@ -102,7 +110,7 @@ const makeRoller = (cardId: string | null, buffIds: string[], skill: Skill) => {
 				buffs: policyBuffs.map((id) => ({ cardId: id, turnsLeft: 1 })),
 				teamSize: 6,
 				diceSum: dice.reduce((a, b) => a + b, 0),
-				ownDice: dice,
+				ownDice: applyDiceMods(dice, mods),
 				rerolled: 0,
 				playerLevelId: judgeRoll(dice, mods).id,
 				playerDice: dice
@@ -328,7 +336,11 @@ export const simulateFullRun = (
 							: team[k % team.length];
 				if (slot && !slot.buffs.includes(id)) slot.buffs.push(id);
 			});
-			const rollers = team.map((s) => makeRoller(s.card, s.buffs, skill));
+			// 按位置对齐的卡数组:主 Tee 的 DP 要知道队友给的「我掷出的 X 视为 4」
+			const alignedCards = team.map((s) => (s.card ? CARD_BY_ID.get(s.card)! : null));
+			const rollers = team.map((s, i) =>
+				makeRoller(s.card, s.buffs, skill, i === 0 ? alignedCards : undefined)
+			);
 			const total = scoreTeam(team, r + 1, mooncakes, soldTotal, rollers);
 			if (process.env.TRACE && pref.name === process.env.TRACE && t === 0) {
 				const cards = team
@@ -402,9 +414,11 @@ export const simulateFullRun = (
 				deaths.push(r + 1);
 				break;
 			}
-			// 奖励:3 选 1
+			// 奖励:3 选 1(真人不会拿重复卡 —— 重复的改点卡/引擎卡纯浪费一个卡位)
 			const opts = drawCards(3);
-			const take = pickBest(opts, pref.score);
+			const owned = new Set(team.map((s) => s.card).filter(Boolean));
+			const fresh = opts.filter((o) => !owned.has(o.id));
+			const take = pickBest(fresh.length ? fresh : opts, pref.score);
 			if (team.length < teamLimit) team.push({ card: take.id, buffs: [] });
 			else {
 				// 队伍满了:换掉最差的(按偏好),被换下的算"卖出"

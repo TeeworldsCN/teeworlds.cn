@@ -1173,8 +1173,16 @@ export const CARDS: TeeCard[] = [
 		id: 'xinyue',
 		name: '朔日',
 		desc: '「我」掷出的 3 点视为 4 点',
-		rarity: 'legendary',
+		rarity: 'rare',
 		skin: 'TeeAngel',
+		effect: { type: 'map_player_die', from: 3, to: 4 }
+	},
+	{
+		id: 'sanxingzhao',
+		name: '三星照',
+		desc: '「我」掷出的 3 点视为 4 点',
+		rarity: 'rare',
+		skin: 'tuzi',
 		effect: { type: 'map_player_die', from: 3, to: 4 }
 	},
 	{
