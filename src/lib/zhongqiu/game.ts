@@ -1,5 +1,4 @@
 // 月宫掷骰 · 游戏核心逻辑(关卡、Boss、计分、存档)
-// 设计与玩法说明见本地 tools/zhongqiu/DESIGN.md（未入库；代码里只留"干什么"，"为什么"在那份文档）
 import { getRollLevel, hasClearVoid, judgeRoll, stripVoid, type DiceMods } from './midautumn';
 import { LEVEL_LADDER, CARD_BY_ID, CARDS, condHit, type TeeCard, type TeeEffect } from './teecards';
 import { longestRun } from './midautumn';
