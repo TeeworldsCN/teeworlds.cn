@@ -311,7 +311,9 @@
 							? '按本 Tee 点数和结算'
 							: '本关重掷';
 			lines.push({
-				text: `⚡ ${nm}:${what}${(tee.charge ?? 0) > 0 ? `(冷却 ${tee.charge} 关)` : '（可发动）'}`,
+				// 主动技一律是「本 Tee 掷完结算后」才给发动机会(见 DESIGN.md),
+				// 技能行里写清楚,免得玩家以为是掷前释放
+				text: `⚡ ${nm}:${what}${(tee.charge ?? 0) > 0 ? `(冷却 ${tee.charge} 关)` : '(掷完可发动)'}`,
 				cls: (tee.charge ?? 0) > 0 ? 'text-slate-400' : 'text-fuchsia-300'
 			});
 		}
@@ -1898,6 +1900,10 @@
 		return () => ro.disconnect();
 	});
 
+	/**
+	 * 本 Tee 结算时可能出现几行(结算区按它预留高度,少算了动画半途会被顶上去)。
+	 * 三块加起来:自己卡的效果 + 别人卡上的「全队效果」+ 身上每张加成卡。
+	 */
 	const potentialSources = (i: number): number => {
 		let n = 0;
 		const count = (eff: TeeEffect) => {
@@ -1925,9 +1931,23 @@
 			}
 		};
 		for (const { eff } of selfEffects(i)) count(eff);
+		// 别人的「全队效果」也会在我这轮被我记上一行(引擎里在 allSelf 那一轮落下来)
+		const teamWide = (e: TeeEffect) =>
+			e.type === 'team_chips' ||
+			e.type === 'per_team_chips' ||
+			(e.type === 'on_player' && e.teamWide) ||
+			(e.type === 'per_tag' && e.teamWide) ||
+			e.type === 'face_count_mult';
+		for (let j = 0; j < team.length; j++) {
+			if (j === i) continue;
+			for (const { eff } of selfEffects(j)) {
+				if (teamWide(eff)) n += 1;
+				else if (eff.type === 'bundle') for (const p of eff.parts) if (teamWide(p)) n += 1;
+			}
+		}
+		// 加成卡:只要有实际效果,结算里就占 1 行(以前只数了加算/乘算三种)
 		for (const b of team[i]?.buffs ?? []) {
-			const e = BUFF_BY_ID.get(b.cardId)?.effect;
-			if (e && (e.type === 'chips' || e.type === 'mult' || e.type === 'chips_mult')) n += 1;
+			if (BUFF_BY_ID.get(b.cardId)?.effect) n += 1;
 		}
 		return n;
 	};

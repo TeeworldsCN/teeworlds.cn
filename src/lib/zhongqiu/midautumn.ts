@@ -194,12 +194,20 @@ export const fixedOf = (mods?: DiceMods): number[] => {
 	return out;
 };
 
-export const applyDiceMods = (dice: number[], mods?: DiceMods): number[] => {
+export const applyDiceMods = (dice: number[], mods?: DiceMods): number[] =>
+	applyMods(dice, mods, new Set(fixedOf(mods)));
+
+/**
+ * fixed(手动改过点的骰子)要**跨层**生效。
+ * modsFor 会把 {fixed} 和卡牌/道具的 {map,shift} 用 mergeMods 拼成 chain,
+ * 而 fixed 只在它自己那一层被读到 —— 于是往 chain 里一拼就失效:
+ * 玩家用玉玺/银针点出的 5,会被「寛月符:5 视为 4」这类效果又改回 4(踩过)。
+ * 所以先把整条 chain 的 fixed 收齐,再逐层套用。
+ */
+const applyMods = (dice: number[], mods: DiceMods | undefined, fixed: Set<number>): number[] => {
 	if (!mods) return dice;
-	if (mods.chain?.length) return mods.chain.reduce((d, m) => applyDiceMods(d, m), dice);
+	if (mods.chain?.length) return mods.chain.reduce((d, m) => applyMods(d, m, fixed), dice);
 	const { map, shift = 0 } = mods;
-	// 改点盖过视为:玩家手动改过的骰子不再吃映射
-	const fixed = new Set(mods.fixed ?? []);
 	return dice.map((d, i) => {
 		if (fixed.has(i)) return d;
 		let v = map && map[d] !== undefined ? map[d] : d;
