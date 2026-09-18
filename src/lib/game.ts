@@ -22,7 +22,7 @@ import { BUFF_BY_ID, type AppliedBuff } from './items';
  * (第 1 关故意压到「随便掷都能过」,当作教学关;真正的墙在 R13 之后)
  */
 export const TARGETS = [
-	70, 140, 220, 405, 500, 590, 640, 680, 705, 705, 1005, 1090, 1150, 1440, 1480, 1630
+	65, 160, 280, 475, 610, 725, 820, 915, 1015, 1105, 1430, 1615, 1805, 2195, 2420, 2755
 ];
 
 export const roundTarget = (n: number): number => {

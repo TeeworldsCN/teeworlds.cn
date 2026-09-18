@@ -166,6 +166,10 @@
 	let boss = $state<Boss | null>(null);
 	let target = $state(0);
 	let currentScore = $state(0);
+	/** 结算动画期间的显示偏移(负数 → 0):让进度条跟着动画往上走,而不污染真实分数 */
+	let settlePreview = $state(0);
+	/** 界面上显示的分数 = 真实分 + 动画偏移 */
+	const displayScore = $derived(currentScore + settlePreview);
 	let team = $state<TeamTee[]>([]);
 	let growth = $state<GrowthMap>({});
 
@@ -230,6 +234,18 @@
 	// 团队结算动画（回合确认后： 团队倍率卡一条一条弹）
 	let teamSettleSteps = $state<{ text: string; cls: string; kind: SettleKind }[]>([]);
 	let teamSettleIdx = $state(-1);
+	/** 骰面九个点位在 24×24 viewBox 里的坐标(行优先,和 midautumn 的 DICE_PIPS 对应) */
+	const PIP_POS: [number, number][] = [
+		[6, 6],
+		[12, 6],
+		[18, 6],
+		[6, 12],
+		[12, 12],
+		[18, 12],
+		[6, 18],
+		[12, 18],
+		[18, 18]
+	];
 	let teamSettling = $state(false);
 
 	// ---- 加成卡 / 重构卡工具 ----
@@ -1199,14 +1215,17 @@
 		settleIdx = -1;
 		settling = true;
 		const stepMs = 380 / speed;
-		// 进度条跟着结算动画走(原来只改高亮行,分数要等动画播完才跳一下)
-		const barFrom = currentScore;
-		const barTo = currentScore + lastBreakdown.total;
+		// 进度条跟着结算动画走。
+		// 注意:分数在 finalizeTee 里**已经加过**了(currentScore += lastBreakdown.total),
+		// 所以这里只做一个「倒着补」的显示偏移:从 -total 渐升到 0 —— 进度条会一行一行
+		// 往上走,动画结束时正好落在真实分数上,而不是把分数再加一遍(那样会翻倍)。
+		const settleTotal = lastBreakdown.total;
+		settlePreview = -settleTotal;
 		settleSteps.forEach((_, i) => {
 			setTimeout(
 				() => {
 					settleIdx = i;
-					currentScore = Math.round(barFrom + (barTo - barFrom) * ((i + 1) / settleSteps.length));
+					settlePreview = -settleTotal + Math.round(settleTotal * ((i + 1) / settleSteps.length));
 					const st = settleSteps[i];
 					if (!st) return;
 					if (st.kind === 'total') sfxTotal(lastBreakdown.total > 0);
@@ -1222,6 +1241,7 @@
 		setTimeout(
 			() => {
 				settling = false;
+				settlePreview = 0;
 				teeAnim = '';
 				setTimeout(afterSettle, 600 / speed);
 			},
@@ -1509,7 +1529,7 @@
 	// ---- 展示 ----
 
 	/** 真实进度(可以 >1):目标达成后继续堆分时,让玩家看到 340% 这种数字 */
-	const rawProgress = $derived(target > 0 ? currentScore / target : 0);
+	const rawProgress = $derived(target > 0 ? displayScore / target : 0);
 	const moonPhase = $derived(Math.min(1, rawProgress));
 	/** 月相遮罩位移(0-100%,100% 即遮罩完全移出=满月)。
 	 *  幂函数 p^1.5 压缩低进度:10% 进度时位移仅 3%(细月牙),
@@ -1590,9 +1610,15 @@
 		return n;
 	};
 
-	/** 团队结算文字最多几行(团队倍率卡各占一行 + 总分一行) */
+	/** 团队结算文字最多几行(团队倍率卡 + 接力回流 各占一行,+ 总分一行) */
 	const teamSettleReserveLines = $derived(
-		Math.max(1, allCards().filter((c) => c.effect.type === 'team_mult').length + 1)
+		Math.max(
+			1,
+			allCards().filter((c) => {
+				const j = JSON.stringify(c.effect);
+				return j.includes('team_mult') || j.includes('relay_pct');
+			}).length + 1
+		)
 	);
 
 	/** 队伍面板只在真正需要操作/看结果的阶段完整展示 */
@@ -1709,7 +1735,7 @@
 								>目标 <b class="text-slate-100">{formatScore(target)}</b></span
 							>
 							<span class="text-slate-400"
-								>当前 <b class="text-emerald-300">{formatScore(currentScore)}</b></span
+								>当前 <b class="text-emerald-300">{formatScore(displayScore)}</b></span
 							>
 							<span class="rounded-full bg-amber-400/15 px-2 py-0.5 font-bold text-amber-300"
 								>🥮 {mooncakes}</span
@@ -2082,13 +2108,16 @@
 										style={`animation-duration: ${rollDur}s; animation-delay: ${dieDelay(i)}s; animation-iteration-count: ${rollIter}`}
 										onclick={() => (choosing ? toggleReroll(i) : pendingAction && onDieClick(i))}
 										disabled={!choosing && !pendingAction}
+										class:voided={dieVoid(i)}
 									>
-										{#each [1, 2, 3, 4, 5, 6, 7, 8, 9] as pos}
-											<span
-												class="pip {showPip(dice[i], pos) ? 'on' : ''}"
-												class:red={!dieRolling(i) && dice[i] === 4 && showPip(dice[i], pos)}
-											></span>
-										{/each}
+										<!-- 骰面用内联 SVG:不依赖 ::after/container-query/:has(),老浏览器也能渲染 -->
+										<svg class="die-face" viewBox="0 0 24 24" aria-hidden="true">
+											{#each PIP_POS as [cx, cy], idx}
+												{#if showPip(dice[i], idx + 1)}
+													<circle {cx} {cy} r="2.4" class:red={!dieRolling(i) && dice[i] === 4} />
+												{/if}
+											{/each}
+										</svg>
 										{#if diceModded(i)}
 											<!-- 点数被改造:原始点阵淡化,叠一个半透明的「实际点数」 -->
 											{#if dieVoid(i)}
@@ -2224,7 +2253,7 @@
 						<!-- 结算区按本轮行数预先占位(未弹的行用不可见空行顶着):
 					     否则团队倍率卡一条条弹出时,下面的按钮会被顶下去 -->
 						<div class="mt-1 flex flex-col items-center justify-center gap-0.5 text-xs sm:text-sm">
-							{#each Array.from({ length: teamSettleReserveLines }, (_, i) => i) as i (i)}
+							{#each Array.from({ length: Math.max(teamSettleReserveLines, teamSettleSteps.length) }, (_, i) => i) as i (i)}
 								{#if teamSettleSteps.length === 0 && i === 0}
 									<div class="text-[11px] text-slate-400 sm:text-xs">
 										全队已掷完,各 Tee 得分合计
@@ -2724,12 +2753,15 @@
 	   小屏(320px)也绝不换行/溢出 */
 	.die {
 		position: relative;
-		container-type: inline-size; /* 让覆盖数字用 cqw 跟着骰子缩放 */
+		/* container-type 只是为了旧的 cqw 字号,现在覆盖数字用 rem 了,保留无害 */
+		container-type: inline-size;
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
 		grid-template-rows: repeat(3, 1fr);
 		width: 100%;
 		aspect-ratio: 1;
+		/* 没有 aspect-ratio 的老浏览器:至少给个高度,别让骰子塌成 0 */
+		min-height: 2.75rem;
 		padding: 12%;
 		border-radius: 10px;
 		background: linear-gradient(145deg, #fdfbf5 0%, #ece4d0 100%);
@@ -2762,12 +2794,12 @@
 	/* 点数被改造(Boss 特效 / 卡牌 / 加成卡)的骰子:
 	 * 骰面仍显示真实掷出的点阵(淡化),上面透明覆盖「实际算几」——
 	 * 「4 视为 2」「点数 -1」这类效果以前只能看 HUD 文字,现在骰子自己会说 */
-	.die.moded .pip.on {
+	.die.moded .die-face circle {
 		opacity: 0.28;
 	}
 
-	/* 作废的骰子点阵压淡,但还看得出原来是几点,红叉是主角 */
-	.die.moded:has(.die-void) .pip.on {
+	/* 作废的骰子点阵压淡,但还看得出原来是几点,红叉是主角(:has 在旧浏览器不可用,改用类名) */
+	.die.voided .die-face circle {
 		opacity: 0.22;
 	}
 
@@ -2776,18 +2808,18 @@
 		color: rgb(214 50 50 / 0.78);
 	}
 
-	/* 作废点数:整颗打红叉,一眼看出「这颗不算」 */
+	/* 作废点数:整颗打红叉,一眼看出「这颗不算」—— 贴底居中,不再盖住中间的骰点 */
 	.die-void {
 		position: absolute;
 		inset: 0;
 		display: flex;
-		align-items: center;
+		align-items: flex-end;
 		justify-content: center;
-		font-size: 1.6rem;
-		font-size: 66cqw;
+		padding-bottom: 2%;
+		font-size: 1.5rem;
 		font-weight: 900;
 		line-height: 1;
-		color: rgb(220 38 38 / 0.82);
+		color: rgb(220 38 38 / 0.85);
 		text-shadow:
 			0 0 3px rgb(255 255 255 / 0.95),
 			0 0 8px rgb(255 255 255 / 0.7);
@@ -2795,17 +2827,18 @@
 		user-select: none;
 	}
 
+	/* 实际点数:贴底居中(原来正居中,把中间的骰点盖住 —— 3 看成 2、5 看成 4) */
 	.die-mod {
 		position: absolute;
 		inset: 0;
 		display: flex;
-		align-items: center;
+		align-items: flex-end;
 		justify-content: center;
+		padding-bottom: 2%;
 		font-size: 1.35rem;
-		font-size: 54cqw; /* 按骰子宽度缩放(容器查询) */
 		font-weight: 900;
 		line-height: 1;
-		color: rgb(109 40 217 / 0.72);
+		color: rgb(109 40 217 / 0.75);
 		text-shadow:
 			0 0 3px rgb(255 255 255 / 0.9),
 			0 0 7px rgb(255 255 255 / 0.75);
@@ -2878,28 +2911,19 @@
 		}
 	}
 
-	.pip {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		visibility: hidden;
+	/* 骰面:内联 SVG,不依赖 ::after / container-query(旧浏览器里 CSS 点阵会整片消失) */
+	.die-face {
+		display: block;
+		width: 100%;
+		height: 100%;
 	}
 
-	.pip::after {
-		content: '';
-		width: 62%;
-		height: 62%;
-		border-radius: 9999px;
-		background: #2b2b33;
-		box-shadow: inset 0 -1px 1px rgba(255, 255, 255, 0.3);
+	.die-face circle {
+		fill: #2b2b33;
 	}
 
-	.pip.on {
-		visibility: visible;
-	}
-
-	.pip.red::after {
-		background: #d63232;
+	.die-face circle.red {
+		fill: #d63232;
 	}
 
 	/* ---- 规则面板迷你骰子 ---- */
