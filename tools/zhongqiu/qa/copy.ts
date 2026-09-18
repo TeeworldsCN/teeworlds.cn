@@ -609,6 +609,30 @@ else for (const [id, ns] of dupIds) console.log(`✗ id 重复 「${id}」:${ns.
 bad += dupIds.length;
 
 console.log(`\n=== Tee 卡 (${CARDS.length}) ===`);
+// ---------- tag ↔ 名字(固化的硬规则) ----------
+// 玩家只看卡名就得能判断它吃哪一系的倍率,所以:
+//   ① 有 tag 的卡:名字里必须出现该 tag 字,且不能出现别的 tag 字
+//   ② 没有 tag 的卡:名字里不能出现任何 tag 字
+// tag 字表从卡池数据里推导,不写死 —— 以后加新系自动生效。
+{
+	const TAG_CHARS = [...new Set(CARDS.flatMap((c) => (c.tag ? [c.tag] : [])))];
+	const rows: string[] = [];
+	for (const c of CARDS) {
+		const hit = TAG_CHARS.filter((t) => c.name.includes(t));
+		if (c.tag && !hit.includes(c.tag))
+			rows.push(`✗ 「${c.name}」(${c.id}) 有 tag「${c.tag}」,名字里却没有这个字`);
+		else if (c.tag && hit.some((t) => t !== c.tag))
+			rows.push(
+				`✗ 「${c.name}」(${c.id}) 名字里出现了别的系字:${hit.filter((t) => t !== c.tag).join('/')}`
+			);
+		else if (!c.tag && hit.length)
+			rows.push(`✗ 「${c.name}」(${c.id}) 没有 tag,名字里却出现了 ${hit.join('/')}`);
+	}
+	console.log(`\n=== tag ↔ 名字 (${CARDS.length} 张 · tag 字:${TAG_CHARS.join(' ')}) ===`);
+	if (!rows.length) console.log('全部通过 ✓');
+	else for (const r of rows) console.log(r);
+	bad += rows.length;
+}
 for (const c of CARDS) bad += audit(`${c.id} 「${c.name}」`, c.desc, teeReq(c.effect));
 console.log(`\n=== 加成卡 (${BUFF_CARDS.length}) ===`);
 for (const c of BUFF_CARDS)
