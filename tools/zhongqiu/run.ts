@@ -217,7 +217,10 @@ export interface RunSimResult {
 	/** 平均每局靠主动技救回的关卡数(本来会本局结束) */
 	rescued: number;
 	/** 各关「第一次掷就过」的概率(不含主动技)· 难度曲线 */
-	passRate: number[];
+	passRate: number[]; /** 通过者在该关的中位总分(标定目标曲线用) */
+	winnerMedian: number[];
+	/** P5 最远关卡:95% 的局至少能打到这里 */
+	p5Reached: number;
 }
 
 const pickBest = <T>(opts: T[], score: (x: T) => number): T => {
@@ -255,6 +258,11 @@ export const simulateFullRun = (
 	let retryUses = 0;
 	let rescued = 0;
 	const passCnt = new Array<number>(TARGETS.length).fill(0);
+	/** 每关「通过者」的总分(用来反推目标:目标 ≈ 通过者中位分 × 系数) */
+	const scoreSum = new Array<number>(TARGETS.length).fill(0);
+	const scoreCnt = new Array<number>(TARGETS.length).fill(0);
+	/** 每局打到的最远关卡(算 P5:P5 关卡 = 95% 的局至少能到这里) */
+	const reachedAll: number[] = [];
 	for (let t = 0; t < trials; t++) {
 		// 开局:5 张普通里挑 2 张
 		const draft = [...commons].sort(() => Math.random() - 0.5).slice(0, 5);
@@ -370,6 +378,8 @@ export const simulateFullRun = (
 			if (passed) {
 				if (!rawPass) rescued++;
 				reached = r + 1;
+				scoreSum[r] += total; // 用本关原始总分(被技能救回的局很少,偏差可忽略)
+				scoreCnt[r]++;
 			} else {
 				alive = false;
 				deaths.push(r + 1);
@@ -405,6 +415,7 @@ export const simulateFullRun = (
 			}
 		}
 		if (alive) cleared++;
+		reachedAll.push(reached);
 		online.push(onlineRound || 17);
 	}
 	const sorted = [...deaths].sort((a, b) => a - b);
@@ -416,7 +427,11 @@ export const simulateFullRun = (
 		skillUses: skillUses / trials,
 		retryUses: retryUses / trials,
 		rescued: rescued / trials,
-		passRate: passCnt.map((n) => n / trials)
+		passRate: passCnt.map((n) => n / trials),
+		/** 通过者在该关的中位总分(目标曲线标定用) */
+		winnerMedian: scoreSum.map((s, i) => (scoreCnt[i] ? s / scoreCnt[i] : 0)),
+		/** P5 最远关卡:95% 的局至少能打到这里 */
+		p5Reached: [...reachedAll].sort((a, b) => a - b)[Math.floor(reachedAll.length * 0.05)] ?? 0
 	};
 };
 
@@ -522,6 +537,7 @@ if (import.meta.main) {
 			'救回/局'.padStart(9) +
 			'时轮/局'.padStart(9) +
 			'中位结束'.padStart(10) +
+			'P5关卡'.padStart(9) +
 			'  流派成型'
 	);
 	for (let i = 0; i < PREFS.length; i++) {
@@ -534,6 +550,7 @@ if (import.meta.main) {
 				r.rescued.toFixed(2).padStart(9) +
 				r.retryUses.toFixed(2).padStart(9) +
 				(r.medianDeath ? `R${r.medianDeath}` : '—').padStart(10) +
+				`R${r.p5Reached}`.padStart(9) +
 				`        ${r.onlineRound < 17 ? `R${r.onlineRound.toFixed(1)}` : '从未成型'}`
 		);
 	}
@@ -548,6 +565,17 @@ if (import.meta.main) {
 					return `R${k + 1}=${(v * 100).toFixed(0)}%`;
 				})
 				.join('  ')
+	);
+	// 通过者中位分:现行目标 vs 反推目标(系数 0.8 ≈ 让该关通过率回到 ~65%)
+	const lv2 = [0, 2, 4, 6, 8, 10, 12, 15];
+	console.log(
+		'\n各关「通过者中位分」(现行目标 → ×0.8 的建议目标):\n  ' +
+			lv2
+				.map((k) => {
+					const wm = rows.reduce((a, r) => a + (r.winnerMedian[k] ?? 0), 0) / (rows.length || 1);
+					return `R${k + 1}: ${TARGETS[k]} → ${Math.round((wm * 0.8) / 5) * 5}`;
+				})
+				.join('   ')
 	);
 	console.log(`\n耗时 ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 }
