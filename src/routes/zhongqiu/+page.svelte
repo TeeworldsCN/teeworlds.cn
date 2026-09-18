@@ -886,7 +886,9 @@
 		settledDice = [...d.dice];
 		currentTee = Math.min(d.currentTee, Math.max(0, team.length - 1));
 		currentScore = d.currentScore;
-		settlePreview = d.settlePreview;
+		// 结算动画会把显示分倒扣一段(settlePreview 从 -total 渐升到 0),这个值不能存 ——
+		// 存了之后动画不会重播,那一扣就永远补不回来(表现为 HUD 的"当前"停在 0)
+		settlePreview = 0;
 		diceSum = d.diceSum;
 		lastLevel = getRollLevel(d.lastLevelId);
 		rollsLeft = d.rollsLeft;
@@ -957,8 +959,50 @@
 		if (pendingAutoRoll) {
 			pendingAutoRoll = false;
 			setTimeout(() => rollCurrent(), 60);
+			return;
 		}
+		resumeRun();
 	});
+
+	/**
+	 * 把停在半路上的回合接回去。
+	 *
+	 * 一关里有好几个"正在进行"的瞬间,刷新后计时器全没了。恢复时按当前 Tee 的状态
+	 * 决定接在哪里:已判完就重放结算再推进,没判完就回到该玩家的决定点(重掷/改点)。
+	 * 其余阶段(选卡、集市、商店、结算回合、结束屏)本来就是稳定的等待态。
+	 */
+	const resumeRun = () => {
+		if (phase !== 'rolling') return;
+		const tee = team[currentTee];
+		if (!tee) return;
+
+		// ① 这个 Tee 已经判完了,只是结算/推进被打断 → 把结算列出来,然后照常前进
+		if (tee.lastLevelId && tee.lastLevelId !== 'none') {
+			const level = getRollLevel(tee.lastLevelId);
+			dice = [...tee.lastDice];
+			lastLevel = level;
+			diceSum = tee.lastDice.reduce((a, b) => a + b, 0);
+			// 不传 refunds:道具在判定时已经归还过了,这里只是补个显示
+			settleSteps = buildSettleSteps(level.id, level, tee, []);
+			settleIdx = settleSteps.length - 1;
+			settling = false;
+			settlePreview = 0;
+			setTimeout(advanceAfterTee, 500);
+			return;
+		}
+
+		// ② 正等玩家操作(选骰子 / 改点 / 选点数) → 保持原样
+		if (choosing || pendingAction || pointPicker) return;
+
+		// ③ 骰子已落定、只是没接上 → 回到「要不要重掷」
+		if (rollsLeft > 0) {
+			choosing = true;
+			return;
+		}
+
+		// ④ 没重掷机会了 → 继续走改点/判定
+		beginSetOps();
+	};
 
 	const toggleDraftPick = (idx: number) => {
 		sfxClick();
