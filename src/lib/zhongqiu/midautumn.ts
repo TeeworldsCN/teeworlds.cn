@@ -145,6 +145,10 @@ export interface DiceMods {
 	chain?: DiceMods[];
 	straightFloor?: boolean;
 	faceFloor?: boolean;
+	/** 寒月:本关加成卡的「加值」(chips)一律不生效 */
+	noBuffChips?: boolean;
+	/** 凛月:本关加成卡的「乘值」(mult)一律不生效 */
+	noBuffMult?: boolean;
 	fixed?: number[];
 }
 

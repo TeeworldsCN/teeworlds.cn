@@ -40,6 +40,8 @@ export interface Boss {
 	rollsBonus?: number;
 	mild?: boolean;
 	weight?: number;
+	/** 从第几关起才有机会抽到(无限模式后期专属,默认全程可抽) */
+	minRound?: number;
 }
 
 export const BOSSES: Boss[] = [
@@ -124,6 +126,84 @@ export const BOSSES: Boss[] = [
 		desc: '每个 Tee 多投掷 1 次；目标 ×2',
 		rollsBonus: 1,
 		targetMult: 2
+	},
+	// ---- 第 18 关起(无限模式后期;前 16 关是标定过的曲线,这批刻意不进池) ----
+	{
+		id: 'huiyue',
+		name: '晦月',
+		emoji: '🌚',
+		desc: '本关每个 Tee 少投掷 1 次；目标 ×0.75',
+		mods: {},
+		rollsBonus: -1,
+		targetMult: 0.75,
+		minRound: 18
+	},
+	{
+		id: 'yinyue',
+		name: '隐月',
+		emoji: '🌗',
+		desc: '本关掷出的 6 视为 5；目标 ×0.95',
+		mods: { map: { 6: 5 } },
+		targetMult: 0.95,
+		minRound: 18
+	},
+	{
+		id: 'yuanyue',
+		name: '圆月',
+		emoji: '🌝',
+		desc: '本关非 4 点的一色牌也按红牌计；目标 ×1.25',
+		mods: { faceFloor: true },
+		targetMult: 1.25,
+		weight: 0.5,
+		minRound: 18
+	},
+	{
+		id: 'poyue',
+		name: '破月',
+		emoji: '🌘',
+		desc: '本关掷出的 4 作废、6 视为 4；目标 ×0.9',
+		mods: { chain: [{ void: [4] }, { map: { 6: 4 } }] },
+		targetMult: 0.9,
+		weight: 0.5,
+		minRound: 18
+	},
+	{
+		id: 'shuangyue',
+		name: '霜月',
+		emoji: '🌫',
+		desc: '本关掷出的 1、6 作废；目标 ×0.8',
+		mods: { void: [1, 6] },
+		targetMult: 0.8,
+		minRound: 18
+	},
+	{
+		id: 'yunyue',
+		name: '晕月',
+		emoji: '🌪',
+		desc: '本关等级封顶到对堂；目标 ×0.55',
+		mods: { levelCap: 'dui_tang' },
+		targetMult: 0.55,
+		minRound: 18
+	},
+	{
+		id: 'hanyue',
+		name: '寒月',
+		emoji: '❄️',
+		desc: '本关加成卡的加值无效；目标 ×0.85',
+		mods: { noBuffChips: true },
+		targetMult: 0.85,
+		weight: 0.5,
+		minRound: 18
+	},
+	{
+		id: 'linyue',
+		name: '凛月',
+		emoji: '🥶',
+		desc: '本关加成卡的乘值无效；目标 ×0.85',
+		mods: { noBuffMult: true },
+		targetMult: 0.85,
+		weight: 0.5,
+		minRound: 18
 	}
 ];
 
@@ -131,7 +211,9 @@ export const BOSSES: Boss[] = [
 export const MILD_BOSS_IDS = BOSSES.filter((b) => b.mild).map((b) => b.id);
 
 export const getBoss = (n: number): Boss => {
-	const pool = BOSSES.filter((b) => (n <= 6 ? b.mild : b.id !== 'shiyue' || n > 16));
+	const pool = BOSSES.filter((b) =>
+		n <= 6 ? b.mild : b.minRound ? n >= b.minRound : b.id !== 'shiyue' || n > 16
+	);
 	const weight = (b: Boss) => b.weight ?? 1;
 	const total = pool.reduce((a, b) => a + weight(b), 0);
 	let r = Math.random() * total;
@@ -410,6 +492,10 @@ export interface ScoreInput {
 	playerRawDice?: number[];
 	/** 当前月饼币(coin_mult 用) */
 	coins?: number;
+	/** 本关加成卡的加值无效(寒月) */
+	noBuffChips?: boolean;
+	/** 本关加成卡的乘值无效(凛月) */
+	noBuffMult?: boolean;
 	/** 当前关卡数(reverse.perRound / growth_mult 用) */
 	round?: number;
 	leftScore?: number;
@@ -434,7 +520,9 @@ export const calcTeeScore = ({
 	coins = 0,
 	round = 1,
 	leftScore = 0,
-	soldCount = 0
+	soldCount = 0,
+	noBuffChips = false,
+	noBuffMult = false
 }: ScoreInput): ScoreBreakdown => {
 	{
 		const seenEngine = new Set<string>();
@@ -476,11 +564,13 @@ export const calcTeeScore = ({
 		const m0 = buffMult;
 		/** 加成卡效果 → buffChips / buffMult(支持 bundle 递归) */
 		const applyBuff = (be: typeof eff) => {
-			if (be.type === 'chips') buffChips += be.value ?? 0;
-			else if (be.type === 'mult') buffMult *= be.value ?? 1;
-			else if (be.type === 'chips_mult') {
-				buffChips += be.chips ?? 0;
-				buffMult *= be.mult ?? 1;
+			if (be.type === 'chips') {
+				if (!noBuffChips) buffChips += be.value ?? 0;
+			} else if (be.type === 'mult') {
+				if (!noBuffMult) buffMult *= be.value ?? 1;
+			} else if (be.type === 'chips_mult') {
+				if (!noBuffChips) buffChips += be.chips ?? 0;
+				if (!noBuffMult) buffMult *= be.mult ?? 1;
 			} else if (be.type === 'cond') {
 				if (be.cond && condHit(be.cond, levelId, level.score)) {
 					buffChips += be.chips ?? 0;
