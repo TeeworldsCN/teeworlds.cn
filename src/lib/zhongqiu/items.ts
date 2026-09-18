@@ -88,7 +88,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '五仁馅',
 		desc: '得分 +40',
 		rarity: 'common',
-		skin: 'jelly_cube',
+		skin: 'Blueberry_Cat',
 		price: 2,
 		turns: 1,
 		effect: { type: 'chips', value: 40 }
@@ -178,7 +178,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '松仁',
 		desc: '得分 +90',
 		rarity: 'rare',
-		skin: 'Chocolate_Ice_Cream_KZ',
+		skin: 'MelonFox',
 		price: 5,
 		turns: 3,
 		effect: { type: 'chips', value: 90 }
@@ -208,7 +208,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '百月团',
 		desc: '得分 +180',
 		rarity: 'legendary',
-		skin: 'aipaozy Golden Apple',
+		skin: 'TerraSlime purple',
 		price: 8,
 		turns: 1,
 		effect: { type: 'chips', value: 180 }
@@ -230,7 +230,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '丹桂',
 		desc: '得分 ×1.5',
 		rarity: 'common',
-		skin: 'giftee_green',
+		skin: 'TerraSlime red',
 		price: 3,
 		turns: 1,
 		effect: { type: 'mult', value: 1.5 }
@@ -320,7 +320,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉绳',
 		desc: '得分 ×2.6',
 		rarity: 'legendary',
-		skin: 'tea_tee',
+		skin: 'HTF_whitepinky',
 		price: 9,
 		turns: 3,
 		effect: { type: 'mult', value: 2.6 }
@@ -352,7 +352,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉脂',
 		desc: '得分 +60，×1.5',
 		rarity: 'rare',
-		skin: 'cutecat_xmas_green',
+		skin: 'TerraSlime green',
 		price: 6,
 		turns: 2,
 		effect: { type: 'chips_mult', chips: 60, mult: 1.5 }
@@ -416,7 +416,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月神庇佑',
 		desc: '最低按"三红"结算',
 		rarity: 'legendary',
-		skin: 'Tangela',
+		skin: 'IceWitch_MushDeer',
 		price: 8,
 		turns: 1,
 		effect: { type: 'level_floor', levelId: 'san_hong' }
@@ -511,7 +511,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月牙尺',
 		desc: '改 1 颗骰子点数 +1',
 		rarity: 'common',
-		skin: 'Spring',
+		skin: 'cool_glowfox',
 		price: 3,
 		turns: 2,
 		effect: { type: 'bump_point', count: 1 }
@@ -567,7 +567,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月食卡',
 		desc: '身上 Tee 本关不受点数作废影响',
 		rarity: 'rare',
-		skin: 'IceWitch_Clown',
+		skin: 'darklightevilwolfe',
 		price: 6,
 		turns: 1,
 		effect: { type: 'clear_void' }
@@ -597,7 +597,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '独酌',
 		desc: '自己每有 1 颗 6 点：得分 +70；每有 1 颗 3 点：得分 −30',
 		rarity: 'common',
-		skin: 'AmongUsRed',
+		skin: 'coffee_cup',
 		price: 3,
 		turns: 2,
 		effect: {
@@ -690,7 +690,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月华笔',
 		desc: '改 1 颗骰子为任意点数；本关没用掉就归还',
 		rarity: 'legendary',
-		skin: 'eliteknight',
+		skin: 'nanami_glow',
 		price: 14,
 		turns: 1,
 		refund: true,
