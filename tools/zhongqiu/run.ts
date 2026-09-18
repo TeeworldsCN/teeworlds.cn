@@ -154,7 +154,9 @@ const scoreTeam = (
 	let total = 0;
 	let prev = 0;
 	team.forEach((t, i) => {
-		const dice = rollers[i]();
+		// 压分辅助的持有者:模拟玩家把他打到最烂的牌(这才是这张卡的玩法)
+		const sup = !!cards[i] && JSON.stringify(cards[i]!.effect).includes('team_ratio');
+		const dice = sup ? [1, 1, 2, 3, 5, 6] : rollers[i]();
 		const self = allSelf[i];
 		const buffs: AppliedBuff[] = t.buffs.map((id) => ({ cardId: id, turnsLeft: 1 }));
 		const mods = i === 0 ? selfDiceMods(self, buffs) : selfDiceMods(self, buffs);
@@ -244,6 +246,11 @@ export const simulateFullRun = (
 		// 开局:5 张普通里挑 2 张
 		const draft = [...commons].sort(() => Math.random() - 0.5).slice(0, 5);
 		const picked = [...draft].sort((a, b) => pref.score(b) - pref.score(a)).slice(0, 2);
+		// 试验开关 GH=1:每个流派开局都带上「广寒」(压分辅助),看这个倍率的潜力上限
+		if (process.env.GH === '1') {
+			const gh = CARD_BY_ID.get('guanghan');
+			if (gh) picked[1] = gh;
+		}
 		const team: TeamSlot[] = [
 			{ card: null, buffs: [] },
 			...picked.map((c) => ({ card: c.id, buffs: [] }))
@@ -359,6 +366,16 @@ export const simulateFullRun = (
 					if (soldTotal < r + 1) soldTotal += 1;
 					worst.card = take.id;
 				}
+			}
+			// 试验 GHAT=<关数>:在这一关把广寒塞进队伍(模拟玩家中期发现它、换进队伍)。
+			// 开局就带是陷阱:低关卡邻居分也低,倍率没长起来,先白扔一个卡位。
+			const ghAt = Number(process.env.GHAT ?? 0);
+			if (ghAt > 0 && r + 1 === ghAt && team.length > 1) {
+				const w = pickBest(
+					team.slice(1),
+					(s) => -(s.card ? pref.score(CARD_BY_ID.get(s.card)!) : -999)
+				);
+				w.card = 'guanghan';
 			}
 			if (!onlineRound) {
 				const onFaction = (s: TeamSlot) =>

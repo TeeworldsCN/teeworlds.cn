@@ -74,7 +74,7 @@ export type TeeEffect =
 	 * 全池唯一一张「玩家想压低自己输出」的卡,所以故意不 clamp(先试放开)。
 	 * 分母用自己本关得分(卡里带 +20,保证不为 0);邻居没人或没分时按 ×1 处理。
 	 */
-	| { type: 'team_ratio'; from: 'right' }
+	| { type: 'team_ratio'; from: 'right' | 'side' }
 	| { type: 'per_team_chips'; value: number } // 队伍每多 1 人,得分 +value
 	| { type: 'scaling_mult'; per: number } // 每过一关,该 Tee 的 mult 永久 +per
 	| { type: 'economy'; per: number } // 每关 +月饼币
@@ -795,8 +795,8 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guanghan',
 		name: '广寒',
-		desc: '该 Tee 得分 +20，掷出的 1、6 视为 4；回合结算时：全队总分 ×（右邻本关得分 / 该 Tee 得分）',
-		rarity: 'legendary',
+		desc: '该 Tee 得分 +20，掷出的 1、6 视为 4；回合结算时：全队总分 ×（相邻 Tee 本关得分 / 该 Tee 得分），右邻优先',
+		rarity: 'rare',
 		tag: '月',
 		skin: 'IceWitch',
 		effect: {
@@ -804,7 +804,7 @@ export const CARDS: TeeCard[] = [
 			parts: [
 				{ type: 'chips', value: 20 },
 				{ type: 'self_mods', mods: { map: { 1: 4, 6: 4 } } },
-				{ type: 'team_ratio', from: 'right' }
+				{ type: 'team_ratio', from: 'side' }
 			]
 		}
 	},

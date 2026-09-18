@@ -870,7 +870,9 @@ export const calcTeamTotal = (
 		else if (eff.type === 'team_ratio') {
 			// 顺序:各人分 → 接力回流 → 这个比率 → 全队倍率(teamMult)
 			const own = Math.max(1, scores[i] ?? 0);
-			const nb = scores[i + 1] ?? 0;
+			// 右邻优先;他在 6 号位(没有右邻)时用左邻 —— 不然这张卡得先卖个 Tee 才活
+			const nb =
+				eff.from === 'right' ? (scores[i + 1] ?? 0) : (scores[i + 1] ?? scores[i - 1] ?? 0);
 			if (nb > 0 && nb / own !== 1) {
 				teamMult *= nb / own;
 				ratioLines.push({ cardId, own, neighbor: nb, mult: nb / own });
