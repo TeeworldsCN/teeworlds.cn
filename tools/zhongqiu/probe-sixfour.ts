@@ -17,7 +17,7 @@ const CONV_FACE: Record<string, number> = {
 	wangshu: 6 // 望舒 common
 };
 /** 截图里那两张大倍率 */
-const MULT = ['dazhanggui', 'yuelao']; // 饼铺掌柜(每累计卖出 ×2,叠乘) + 月老(复制右邻 ×2)
+const MULT = ['dazhanggui', 'yuelao']; // 饼铺掌柜(每累计卖出 ×2,叠乘) + 月老(复制右邻 ×1.5)
 
 function mulberry32(a: number) {
 	return () => {

@@ -652,11 +652,20 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuelao',
 		name: '月老',
-		desc: '复制右侧 Tee 的卡牌，并额外 ×2',
+		desc: '复制右侧 Tee 的卡牌',
 		rarity: 'common',
 		tag: '月',
 		skin: 'dark_chao',
-		effect: { type: 'copy_right', mult: 2 }
+		effect: { type: 'copy_right' }
+	},
+	{
+		id: 'yinyuanbu',
+		name: '姻缘簿',
+		desc: '复制右侧 Tee 的卡牌，并额外 ×1.5',
+		rarity: 'rare',
+		tag: '月',
+		skin: 'Dark Angel',
+		effect: { type: 'copy_right', mult: 1.5 }
 	},
 	{
 		id: 'kongmingdeng',
