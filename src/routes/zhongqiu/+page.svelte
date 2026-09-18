@@ -331,6 +331,8 @@
 	let rollsLeft = $state(0); // 还能重掷几次
 	let rerollCount = $state(0);
 	let usedOpSrc = $state<string[]>([]);
+	/** 本关每个道具 id **用掉的张数** —— 同一个 id 可能挂好几张(两张素月盘),退款要按张算 */
+	let usedOpCount = $state<Record<string, number>>({});
 	let pendingActive = $state<ActiveSkill | null>(null);
 	let choosing = $state(false); // 正在选要重掷的骰子
 	let rerollSel = $state<boolean[]>(Array(6).fill(false));
@@ -681,6 +683,7 @@
 		rerollAllUsed = false;
 		rerollCount = 0;
 		usedOpSrc = [];
+		usedOpCount = {};
 		pendingActive = null;
 		pendingAction = null;
 		pointPicker = false;
@@ -768,6 +771,7 @@
 			rerollSel,
 			rollMask,
 			usedOpSrc,
+			usedOpCount,
 			optedDice,
 			pendingAction,
 			pointPicker,
@@ -833,6 +837,7 @@
 		rerollSel = d.rerollSel;
 		rollMask = d.rollMask;
 		usedOpSrc = d.usedOpSrc;
+		usedOpCount = d.usedOpCount ?? {};
 		optedDice = d.optedDice;
 		pendingAction = d.pendingAction;
 		pointPicker = d.pointPicker;
@@ -1037,6 +1042,7 @@
 			currentTee += 1;
 			rerollCount = 0;
 			usedOpSrc = [];
+			usedOpCount = {};
 			pendingActive = null;
 			dice = [1, 1, 1, 1, 1, 1];
 			teeEmote = EMOTE.normal;
@@ -1080,6 +1086,7 @@
 		rollsLeft = rollsFor(currentTee) - 1;
 		rerollCount = 0;
 		usedOpSrc = [];
+		usedOpCount = {};
 		rollMask = Array(6).fill(true);
 		rerollSel = Array(6).fill(false);
 		choosing = false;
@@ -1204,6 +1211,8 @@
 			markOpted();
 			act.count -= 1;
 			if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
+			if (act.srcId)
+				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 		} else if (act.kind === 'bump') {
 			// 月牙尺：+1（6 点封顶，再点没意义）
 			if (dice[i] >= 6) return;
@@ -1211,6 +1220,8 @@
 			markOpted();
 			act.count -= 1;
 			if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
+			if (act.srcId)
+				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 		} else if (act.kind === 'set_any') {
 			markOpted();
 			act.pick = i;
@@ -1230,6 +1241,7 @@
 		dice[act.pick] = v;
 		act.count -= 1;
 		if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
+		if (act.srcId) usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 		pointPicker = false;
 		if (act.count <= 0) {
 			pendingAction = null;
@@ -1259,10 +1271,25 @@
 		if (!tee) return [];
 		const back: AppliedBuff[] = [];
 		const keep: AppliedBuff[] = [];
+		// 按 id 统计「挂了 N 张 / 本关用掉几张」:用掉几张就留几张,剩下的归还。
+		// 以前只判断 id 有没有出现过 —— 两张素月盘用掉一张时,两张都被留下,
+		// 没用的那张永远回不了库存(用户报的就是这个)。
+		const attached = new Map<string, number>();
 		for (const b of tee.buffs) {
 			const card = BUFF_BY_ID.get(b.cardId);
-			if (card?.refund && !usedOpSrc.includes(b.cardId)) back.push(b);
-			else keep.push(b);
+			if (card?.refund) attached.set(b.cardId, (attached.get(b.cardId) ?? 0) + 1);
+		}
+		const keepQuota = new Map<string, number>();
+		for (const [id, n] of attached) keepQuota.set(id, Math.min(n, usedOpCount[id] ?? 0));
+		for (const b of tee.buffs) {
+			const card = BUFF_BY_ID.get(b.cardId);
+			const quota = card?.refund ? (keepQuota.get(b.cardId) ?? 0) : 0;
+			if (card?.refund && quota > 0) {
+				keepQuota.set(b.cardId, quota - 1);
+				keep.push(b);
+			} else if (card?.refund) {
+				back.push(b);
+			} else keep.push(b);
 		}
 		if (back.length === 0) return [];
 		team[i].buffs = keep;
@@ -1499,6 +1526,7 @@
 		currentTee = 0;
 		rerollCount = 0;
 		usedOpSrc = [];
+		usedOpCount = {};
 		rerollAllUsed = false;
 		settleSteps = [];
 		settleIdx = -1;

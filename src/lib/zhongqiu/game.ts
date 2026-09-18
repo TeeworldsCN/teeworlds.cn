@@ -1089,6 +1089,8 @@ export type RunSave = {
 	rerollSel: boolean[];
 	rollMask: boolean[];
 	usedOpSrc: string[];
+	/** 本关每个道具 id 用掉的张数(退款按张算);老存档没有这个字段,读档时兜底成 {} */
+	usedOpCount?: Record<string, number>;
 	optedDice: number[];
 	pendingAction: RunOp | null;
 	pointPicker: boolean;
