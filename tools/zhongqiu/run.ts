@@ -224,6 +224,8 @@ export interface RunSimResult {
 	medianDeath: number;
 	/** 平均第几关达成「流派成型」(5 张同流派/目标) */
 	onlineRound: number;
+	/** 成型率:多少比例的局最终成型了(用来判断「成型难不难」) */
+	onlineRate: number;
 	/** 平均每局用掉几次主动技(时轮 / 补分) */
 	skillUses: number;
 	/** 平均每局用掉几次时轮 */
@@ -274,6 +276,8 @@ export const simulateFullRun = (
 	let cleared = 0;
 	const deaths: number[] = [];
 	const online: number[] = [];
+	/** 最终成型了的局数 */
+	let onlineCount = 0;
 	let skillUses = 0;
 	let retryUses = 0;
 	let rescued = 0;
@@ -453,6 +457,7 @@ export const simulateFullRun = (
 		}
 		if (alive) cleared++;
 		reachedAll.push(reached);
+		if (onlineRound) onlineCount++;
 		online.push(onlineRound || 17);
 	}
 	// 无死亡闸门时,按目标过关率反推这一条流派的建议目标
@@ -478,6 +483,7 @@ export const simulateFullRun = (
 		clearRate: cleared / trials,
 		medianDeath: sorted.length ? sorted[sorted.length >> 1] : 0,
 		onlineRound: online.reduce((a, b) => a + b, 0) / trials,
+		onlineRate: onlineCount / trials,
 		skillUses: skillUses / trials,
 		retryUses: retryUses / trials,
 		rescued: rescued / trials,
@@ -599,6 +605,7 @@ if (import.meta.main) {
 			'P5'.padStart(5) +
 			'P95'.padStart(6) +
 			'最远'.padStart(7) +
+			'成型率'.padStart(8) +
 			'  流派成型'
 	);
 	for (let i = 0; i < PREFS.length; i++) {
@@ -614,6 +621,7 @@ if (import.meta.main) {
 				`R${r.p5Reached}`.padStart(5) +
 				`R${r.p95Reached}`.padStart(6) +
 				`R${r.maxReached}`.padStart(7) +
+				`${(r.onlineRate * 100).toFixed(0)}%`.padStart(8) +
 				`        ${r.onlineRound < 17 ? `R${r.onlineRound.toFixed(1)}` : '从未成型'}`
 		);
 	}
