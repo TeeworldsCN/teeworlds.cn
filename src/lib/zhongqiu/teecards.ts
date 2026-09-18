@@ -414,7 +414,7 @@ export const CARDS: TeeCard[] = [
 		name: '月下老人',
 		desc: '回合结算时：左右两人本关得分的 75% + 150 分加进全队分，自己 ×1.45',
 		rarity: 'legendary',
-		skin: 'HTF_reddy',
+		skin: 'Lahm_red',
 		tag: '月',
 		effect: {
 			type: 'bundle',
@@ -508,7 +508,7 @@ export const CARDS: TeeCard[] = [
 		desc: '连号里每颗骰子：得分 +70；掷出对堂（连号 6 颗）：得分 ×2.5',
 		rarity: 'rare',
 		tag: '灯',
-		skin: 'santa_nanami_glow',
+		skin: 'glow_contrastfox',
 		effect: {
 			type: 'bundle',
 			parts: [
@@ -586,7 +586,7 @@ export const CARDS: TeeCard[] = [
 		desc: '再接再厉时自动重掷全部（每回合 1 次），得分 ×2',
 		rarity: 'rare',
 		tag: '仙',
-		skin: 'PaladiN',
+		skin: 'Yellow',
 		effect: { type: 'bundle', parts: [{ type: 'reroll_all_on_none' }, { type: 'mult', value: 2 }] }
 	},
 	{
@@ -753,7 +753,7 @@ export const CARDS: TeeCard[] = [
 		desc: '改 2 颗骰子为 4 点，但得分 ×0.5',
 		rarity: 'legendary',
 		tag: '仙',
-		skin: 'cammostripeangel',
+		skin: 'GlowPinky',
 		effect: {
 			type: 'bundle',
 			parts: [
@@ -856,7 +856,7 @@ export const CARDS: TeeCard[] = [
 		desc: '自己每有 1 颗 1 点：得分 +28',
 		rarity: 'common',
 		tag: '月',
-		skin: 'darky',
+		skin: 'White',
 		effect: { type: 'own_face', face: 1, chips: 28 }
 	},
 	{
@@ -892,7 +892,7 @@ export const CARDS: TeeCard[] = [
 		desc: '自己每有 1 颗 6 点：得分 +65；每有 1 颗 1 点：得分 −10',
 		rarity: 'common',
 		tag: '月',
-		skin: 'Xmas_Star',
+		skin: 'glow_mermyfox',
 		effect: {
 			type: 'bundle',
 			parts: [
@@ -997,7 +997,7 @@ export const CARDS: TeeCard[] = [
 		desc: '自己每有 1 颗 3 点：得分 +20、每颗 ×2；同点 n 颗按 4 点线档位结算',
 		rarity: 'legendary',
 		tag: '仙',
-		skin: 'masterchief',
+		skin: 'IceWitch_Druid',
 		effect: {
 			type: 'bundle',
 			parts: [{ type: 'face_ladder' }, { type: 'own_face', face: 3, chips: 20, mult: 2 }]
@@ -1133,7 +1133,7 @@ export const CARDS: TeeCard[] = [
 		desc: '每拥有一个独特的「灯」系角色：所有「灯」系 Tee 得分 ×2.1（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'legendary',
 		tag: '灯',
-		skin: 'santa_glow_mermyfox',
+		skin: 'glow_cammo',
 		effect: { type: 'per_tag', tag: '灯', per: 2.1, as: 'mult', chipsPerFour: 1, teamWide: true }
 	},
 	{

@@ -250,7 +250,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉露',
 		desc: '得分 ×1.75',
 		rarity: 'rare',
-		skin: 'clan_waterlily',
+		skin: 'ender_pearl',
 		price: 4,
 		turns: 2,
 		effect: { type: 'mult', value: 1.75 }
@@ -270,7 +270,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '蟾光',
 		desc: '得分 ×1.8',
 		rarity: 'rare',
-		skin: 'glow_rayxer',
+		skin: 'glow_hammie2',
 		price: 5,
 		turns: 3,
 		effect: { type: 'mult', value: 1.8 }
