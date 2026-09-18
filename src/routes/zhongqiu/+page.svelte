@@ -220,6 +220,8 @@
 	let shopPick = $state<BuffCard | null>(null);
 	let shopSold = $state<string[]>([]);
 	let shopLocks = $state<(string | null)[]>([null, null, null, null, null, null]);
+	/** 集市刷新价:刷一次 +1,重新进集市(选卡屏 / 商店)时回到 2 */
+	let refreshPrice = $state(2);
 	let lastRewardIdx = $state(-1);
 
 	// 道具库存（加成卡）
@@ -672,6 +674,7 @@
 		soldTees = 0;
 		soldThisRound = 0;
 		shopLocks = [null, null, null, null, null, null]; // 局内保留,跨局清空
+		refreshPrice = 2;
 	};
 
 	const resetRoundState = () => {
@@ -1711,12 +1714,14 @@
 		phase = 'reward';
 		rewardChoices = drawCards(3);
 		lastRewardIdx = -1;
+		refreshPrice = 2; // 新的一次选卡 = 新的一轮集市,刷新价从头算
 	};
 
 	const refreshReward = () => {
 		sfxClick();
-		if (mooncakes < 2) return;
-		mooncakes -= 2;
+		if (mooncakes < refreshPrice) return;
+		mooncakes -= refreshPrice;
+		refreshPrice += 1; // 越刷越贵
 		rewardChoices = drawCards(3);
 		lastRewardIdx = -1;
 	};
@@ -1748,12 +1753,14 @@
 		shopBuffs = drawShopItems(shopLocks);
 		shopPick = null;
 		shopSold = [];
+		refreshPrice = 2; // 重新进商店,刷新价恢复
 	};
 
 	const refreshShop = () => {
 		sfxClick();
-		if (mooncakes < 2) return;
-		mooncakes -= 2;
+		if (mooncakes < refreshPrice) return;
+		mooncakes -= refreshPrice;
+		refreshPrice += 1; // 越刷越贵
 		shopBuffs = drawShopItems(shopLocks);
 		shopPick = null;
 		shopSold = [];
@@ -2663,7 +2670,9 @@
 								🏮 中秋集市 · 免费选 1 张 Tee 卡
 							</div>
 							<div class="mt-0.5 text-[11px] text-slate-400 sm:text-xs">
-								{canPickReward ? '选卡后自动进入商店 · 刷新需 2 🥮' : '（队伍已满，先去商店卖卡）'}
+								{canPickReward
+									? `选卡后自动进入商店 · 刷新需 ${refreshPrice} 🥮`
+									: '（队伍已满，先去商店卖卡）'}
 								· 当前 🥮 {mooncakes}
 							</div>
 						</div>
@@ -2686,9 +2695,9 @@
 							<button
 								class="rounded-lg border border-slate-500 bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
 								onclick={refreshReward}
-								disabled={mooncakes < 2 || lastRewardIdx >= 0}
+								disabled={mooncakes < refreshPrice || lastRewardIdx >= 0}
 							>
-								<Fa icon={faRotate} class="mr-1 inline" />刷新(2 🥮)
+								<Fa icon={faRotate} class="mr-1 inline" />刷新({refreshPrice} 🥮)
 							</button>
 							<button
 								class="rounded-lg border border-slate-500 bg-slate-700 px-5 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 sm:px-6 sm:py-2 sm:text-sm"
@@ -2800,9 +2809,9 @@
 							<button
 								class="rounded-lg border border-slate-500 bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
 								onclick={refreshShop}
-								disabled={mooncakes < 2 || shopLocks.every((l) => l)}
+								disabled={mooncakes < refreshPrice || shopLocks.every((l) => l)}
 							>
-								<Fa icon={faRotate} class="mr-1 inline" />刷新(2 🥮)
+								<Fa icon={faRotate} class="mr-1 inline" />刷新({refreshPrice} 🥮)
 							</button>
 							<button
 								class="rounded-lg bg-gradient-to-b from-amber-400 to-amber-600 px-6 py-1.5 text-xs font-bold text-amber-950 transition hover:from-amber-300 hover:to-amber-500 sm:px-8 sm:py-2 sm:text-sm"
