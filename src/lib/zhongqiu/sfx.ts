@@ -218,7 +218,7 @@ export const sfxLevel = (score: number) => {
 /** 结算逐行:音高随行号递升 */
 export const sfxStep = (
 	index: number,
-	kind: 'level' | 'chip' | 'mult' | 'total',
+	kind: 'level' | 'chip' | 'mult' | 'total' | 'swap',
 	levelScore = 0
 ) => {
 	if (kind === 'level') return sfxLevel(levelScore);
@@ -226,6 +226,13 @@ export const sfxStep = (
 	initSfx();
 	if (!ctx || !enabled) return;
 	const t0 = ctx.currentTime + 0.01;
+	if (kind === 'swap') {
+		// 逆向改写:先降后升的一对锯齿音 —— 和加算(三角)/乘算(方波)明显不是一个东西,
+		// 听感上就是「把分数翻过来」
+		tone(note(6), t0, 0.1 * R(), { type: 'sawtooth', gain: 0.07 });
+		tone(note(6 + 13), t0 + 0.06, 0.18 * R(), { type: 'sawtooth', gain: 0.09 });
+		return;
+	}
 	const base = kind === 'mult' ? 9 : 5;
 	tone(note(base + index * 2.2), t0, 0.13 * R(), {
 		type: kind === 'mult' ? 'square' : 'triangle',

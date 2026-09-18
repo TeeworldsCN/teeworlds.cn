@@ -190,7 +190,7 @@
 		sources: []
 	});
 	let diceSum = $state(0); // 本回合判定用的骰子点数和
-	type SettleKind = 'level' | 'chip' | 'mult' | 'total';
+	type SettleKind = 'level' | 'chip' | 'mult' | 'total' | 'swap';
 	let settleSteps = $state<{ text: string; cls: string; kind: SettleKind }[]>([]);
 	let settleIdx = $state(-1);
 	let stepsEl: HTMLElement | undefined = $state();
@@ -1298,9 +1298,9 @@
 			// 逆向:不是加算,是「改写」—— 写清改写成了多少、替换掉了什么
 			if (src.swap) {
 				steps.push({
-					text: `${nameOf(src)} 基础分改写为 ${formatScore(src.chips)}（原 ${formatScore(src.swap.from)}）`,
-					cls: 'text-fuchsia-300',
-					kind: 'chip'
+					text: `${nameOf(src)} → ${formatScore(src.chips)}`,
+					cls: 'text-rose-300',
+					kind: 'swap'
 				});
 				continue;
 			}

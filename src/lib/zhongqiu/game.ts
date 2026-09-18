@@ -767,7 +767,7 @@ export const calcTeeScore = ({
 		sources.push({
 			srcId: reverseSrc,
 			kind: 'card',
-			chips: reverseBase,
+			chips: swapped,
 			mult: 1,
 			swap: { from: net }
 		});
