@@ -683,6 +683,26 @@ console.log(`\n=== Tee 卡 (${CARDS.length}) ===`);
 	else for (const r of rows) console.log(r);
 	bad += rows.length;
 }
+// ---------- per_tag 引擎卡守卫 ----------
+// 「凑 N 张同系」类效果(per_tag)只有在**自己带这个 tag 的卡**上才有意义。
+// 2025-09 做「月/灯脱 tag 压概率」那次,19 张卡被脱 tag —— 引擎卡一旦被顺手脱掉,
+// 整套派系流就永久吃不到计数,而且不会有任何报错。两个方向都查:
+{
+	const rows: string[] = [];
+	const tags = [...new Set(CARDS.flatMap((c) => (c.tag ? [c.tag] : [])))];
+	const isEngine = (eff: unknown) => JSON.stringify(eff).includes('per_tag');
+	for (const tag of tags)
+		if (!CARDS.some((c) => c.tag === tag && isEngine(c.effect)))
+			rows.push(`✗ 「${tag}」系没有带 tag 的 per_tag 引擎卡了`);
+	for (const c of CARDS)
+		if (!c.tag && isEngine(c.effect))
+			rows.push(`✗ 「${c.name}」(${c.id}) 有 per_tag 效果却不带 tag —— 引擎卡被脱 tag 了?`);
+	console.log(`\n=== per_tag 引擎守卫 (${tags.length} 系) ===`);
+	if (!rows.length) console.log('全部通过 ✓');
+	else for (const r of rows) console.log(r);
+	bad += rows.length;
+}
+
 for (const c of CARDS) bad += audit(`${c.id} 「${c.name}」`, c.desc, teeReq(c.effect));
 console.log(`\n=== 加成卡 (${BUFF_CARDS.length}) ===`);
 for (const c of BUFF_CARDS)
