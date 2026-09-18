@@ -221,6 +221,8 @@ export interface RunSimResult {
 	winnerMedian: number[];
 	/** P5 最远关卡:95% 的局至少能打到这里 */
 	p5Reached: number;
+	/** GATE=0 时给出的建议目标序列(其余情况为空) */
+	suggested: number[];
 }
 
 const pickBest = <T>(opts: T[], score: (x: T) => number): T => {
@@ -263,6 +265,10 @@ export const simulateFullRun = (
 	const scoreCnt = new Array<number>(TARGETS.length).fill(0);
 	/** 每局打到的最远关卡(算 P5:P5 关卡 = 95% 的局至少能到这里) */
 	const reachedAll: number[] = [];
+	/** GATE=0:不设死亡闸门(每局跑满 16 关),标定目标曲线用 —— 消掉幸存者偏差 */
+	const noGate = process.env.GATE === '0';
+	/** 每关「全部开局」的得分(不分死活) —— 目标分位就取自这里 */
+	const allScores: number[][] = TARGETS.map(() => []);
 	for (let t = 0; t < trials; t++) {
 		// 开局:5 张普通里挑 2 张
 		const draft = [...commons].sort(() => Math.random() - 0.5).slice(0, 5);
@@ -328,6 +334,7 @@ export const simulateFullRun = (
 			const rawPass = total >= TARGETS[r];
 			let passed = rawPass;
 			if (rawPass) passCnt[r]++;
+			allScores[r].push(total);
 			if (!passed) {
 				// ① 补分(chips / left_chips):能补满缺口才用,缺口从大往小凑
 				const gap = TARGETS[r] - total;
@@ -380,7 +387,7 @@ export const simulateFullRun = (
 				reached = r + 1;
 				scoreSum[r] += total; // 用本关原始总分(被技能救回的局很少,偏差可忽略)
 				scoreCnt[r]++;
-			} else {
+			} else if (!noGate) {
 				alive = false;
 				deaths.push(r + 1);
 				break;
@@ -418,6 +425,22 @@ export const simulateFullRun = (
 		reachedAll.push(reached);
 		online.push(onlineRound || 17);
 	}
+	// 无死亡闸门时,按目标过关率反推这一条流派的建议目标
+	// 过关率 p ⇒ 目标取 (1-p) 分位;曲线意图:前 3 关教学、R4~R10 平缓(中位落在 R9~R11)、
+	// R11~R13 收紧、R14~R16 收尾。
+	const wantRate = [
+		0.96, 0.96, 0.96, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.8, 0.8, 0.8, 0.72, 0.72, 0.72
+	];
+	const suggested = noGate
+		? TARGETS.map((cur, r) => {
+				const xs = [...allScores[r]].sort((a, b) => a - b);
+				if (!xs.length) return cur;
+				const q = Math.min(xs.length - 1, Math.floor(xs.length * (1 - wantRate[r])));
+				return Math.max(10, Math.round(xs[q] / 5) * 5);
+			})
+		: [];
+	for (let i = 1; i < suggested.length; i++)
+		suggested[i] = Math.max(suggested[i], suggested[i - 1]);
 	const sorted = [...deaths].sort((a, b) => a - b);
 	return {
 		name: pref.name,
@@ -431,7 +454,8 @@ export const simulateFullRun = (
 		/** 通过者在该关的中位总分(目标曲线标定用) */
 		winnerMedian: scoreSum.map((s, i) => (scoreCnt[i] ? s / scoreCnt[i] : 0)),
 		/** P5 最远关卡:95% 的局至少能打到这里 */
-		p5Reached: [...reachedAll].sort((a, b) => a - b)[Math.floor(reachedAll.length * 0.05)] ?? 0
+		p5Reached: [...reachedAll].sort((a, b) => a - b)[Math.floor(reachedAll.length * 0.05)] ?? 0,
+		suggested
 	};
 };
 
@@ -577,5 +601,18 @@ if (import.meta.main) {
 				})
 				.join('   ')
 	);
+	if (process.env.GATE === '0') {
+		const ok = results.filter((r): r is RunSimResult => !!r && r.suggested.length > 0);
+		if (ok.length) {
+			const med = TARGETS.map((_, k) => {
+				const xs = ok.map((r) => r.suggested[k]).sort((a, b) => a - b);
+				return xs[xs.length >> 1];
+			});
+			for (let i = 1; i < med.length; i++) med[i] = Math.max(med[i], med[i - 1]);
+			console.log('\n建议 TARGETS(' + ok.length + ' 条流派各自反推后取中位):');
+			console.log('  SUGGEST: ' + med.join(', '));
+			console.log('  现行:    ' + TARGETS.join(', '));
+		}
+	}
 	console.log(`\n耗时 ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 }
