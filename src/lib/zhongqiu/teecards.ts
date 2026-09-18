@@ -379,7 +379,7 @@ export const CARDS: TeeCard[] = [
 		name: '牵丝戏',
 		desc: '全队总分 ×1.15',
 		rarity: 'rare',
-		skin: 'Butterfly',
+		skin: 'IceWitch_Clown',
 		effect: { type: 'team_mult', value: 1.15 }
 	},
 	{
@@ -414,7 +414,7 @@ export const CARDS: TeeCard[] = [
 		name: '月下老人',
 		desc: '回合结算时：左右两人本关得分的 75% + 150 分加进全队分，自己 ×1.45',
 		rarity: 'legendary',
-		skin: 'Lahm_red',
+		skin: 'OLD Tee',
 		tag: '月',
 		effect: {
 			type: 'bundle',
@@ -1352,7 +1352,7 @@ export const CARDS: TeeCard[] = [
 		name: '空四',
 		desc: '自己掷出的 4 点作废；得分 +150',
 		rarity: 'common',
-		skin: 'Grass Block',
+		skin: 'Black Hole',
 		effect: {
 			type: 'bundle',
 			parts: [
