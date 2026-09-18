@@ -1186,6 +1186,17 @@
 		nextSetOp();
 	};
 
+	/** 跳过**当前这一个**改点:队列里还有就继续下一个,全部跳完才结算 */
+	const skipSetOp = () => {
+		pendingAction = null;
+		pointPicker = false;
+		nextSetOp();
+	};
+
+	/** 改点操作来自哪张卡(加成卡或 Tee 卡) */
+	const opSrcName = (id?: string) =>
+		id ? (BUFF_BY_ID.get(id)?.name ?? (CARD_BY_ID.get(id)?.name || id)) : '';
+
 	const nextSetOp = () => {
 		const op = setQueue.shift();
 		if (!op) {
@@ -2440,16 +2451,18 @@
 									</button>
 								{:else if pendingAction?.kind === 'set_point'}
 									<span class="text-cyan-300"
-										>✨ 点骰子改为 {pendingAction.point} 点{#if pendingAction.count > 1}(还剩
+										>{opSrcName(pendingAction.srcId)} ✨ 点骰子改为 {pendingAction.point} 点{#if pendingAction.count > 1}(还剩
 											{pendingAction.count} 颗){/if}</span
 									>
 								{:else if pendingAction?.kind === 'bump'}
 									<span class="text-cyan-300"
-										>✨ 点骰子让它 +1{#if pendingAction.count > 1}(还剩 {pendingAction.count} 颗){/if}</span
+										>{opSrcName(pendingAction.srcId)} ✨ 点骰子让它 +1{#if pendingAction.count > 1}(还剩
+											{pendingAction.count} 颗){/if}</span
 									>
 								{:else if pendingAction?.kind === 'set_any'}
 									<span class="text-cyan-300"
-										>✨ 点骰子选点数{#if pendingAction.count > 1}(还剩 {pendingAction.count} 颗){/if}</span
+										>{opSrcName(pendingAction.srcId)} ✨ 点骰子选点数{#if pendingAction.count > 1}(还剩
+											{pendingAction.count} 颗){/if}</span
 									>
 								{:else if rolling}
 									<span class="text-slate-400">{currentTeeCard?.name ?? '我'} 正在博饼...</span>
@@ -2457,7 +2470,7 @@
 									<span class="text-slate-400">{currentTeeCard?.name ?? '我'} 掷出了...</span>
 								{/if}
 								{#if pendingAction}
-									<button class="ml-2 text-xs text-slate-500 underline" onclick={cancelAction}
+									<button class="ml-2 text-xs text-slate-500 underline" onclick={skipSetOp}
 										>跳过改点</button
 									>
 								{/if}
