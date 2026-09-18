@@ -7,15 +7,17 @@ import { BUFF_BY_ID, type AppliedBuff } from './items';
 // ---- 关卡 ----
 //
 
+// R1~R8 不动(新手区),R9 起坡度从 ×1.18 提到 ×1.23,到 R16 = 6400;
+// 超出 16 后按 ×1.25 递增(原来只有 ×1.15 —— 比数组本身的坡度还缓,后期反而变简单了)。
 export const TARGETS = [
-	60, 180, 360, 560, 750, 885, 1045, 1235, 1460, 1725, 2035, 2400, 2835, 3345, 3950, 4660
+	60, 180, 360, 560, 750, 885, 1045, 1235, 1520, 1870, 2300, 2820, 3460, 4260, 5230, 6400
 ];
 
 export const roundTarget = (n: number): number => {
 	if (n <= TARGETS.length) return TARGETS[n - 1];
-	// 之后按 ×1.15 递增:此时只有集中叠加成 + 成长卡才撑得住
+	// 之后按 ×1.25 递增:此时只有集中叠加成 + 成长卡才撑得住
 	const last = TARGETS[TARGETS.length - 1];
-	return Math.round((last * Math.pow(1.15, n - TARGETS.length)) / 10) * 10;
+	return Math.round((last * Math.pow(1.25, n - TARGETS.length)) / 10) * 10;
 };
 
 /** 每 3 关为一个 Ante */
