@@ -68,8 +68,15 @@ function teeReq(e: TeeEffect): Group[] {
 			return [];
 		case 'face_count_mult':
 			return [];
-		case 'relay_pct':
-			return [];
+		case 'relay_pct': {
+			// 吃左/右邻本关得分的一个百分比,外加一个固定分 —— 描述里这几样都得点名
+			const side = e.from === 'both' ? 'kw:both' : e.from === 'right' ? 'kw:right' : 'kw:left';
+			return [
+				{ alts: [side], why: '吃哪一边' },
+				...(e.flat ? [{ alts: [`add:${e.flat}`], why: '+flat' }] : []),
+				{ alts: ['kw:team'], why: '加进全队分' }
+			];
+		}
 		case 'team_mult':
 			return [
 				{ alts: ['kw:team_total'], why: '全队总分' },
@@ -523,11 +530,14 @@ function textClaims(raw: string): Set<string> {
 	if (/每张加成卡|每张道具卡/.test(t)) out.add('kw:per_buff');
 	if (/左侧|左边/.test(t)) out.add('kw:left');
 	if (/右侧|右边/.test(t)) out.add('kw:right');
-	if (/左右|相邻|两边/.test(t)) out.add('kw:both');
+	if (/左右|相邻|两边|两人/.test(t)) out.add('kw:both');
+	// 「右邻 / 左邻」这种单边写法也要认(左右邻 / 左右两人 已经被上一条收走)
+	else if (/右邻/.test(t)) out.add('kw:right');
+	else if (/左邻/.test(t)) out.add('kw:left');
 	if (/相邻/.test(t)) out.add('kw:neighbor');
 	if (/我掷出|「我」|我的骰子|我每/.test(t)) out.add('kw:me');
 	for (const tag of Object.keys(TAG_NAMES) as Tag[])
-		if (new RegExp(`每张[^,]{0,6}${tag}|${tag}流派|每张${tag}卡`).test(t))
+		if (new RegExp(`每张[^,]{0,6}${tag}|${tag}流派|每张${tag}卡|「${tag}」系`).test(t))
 			out.add(`kw:per_tag:${tag}`);
 
 	return out;
@@ -672,9 +682,12 @@ function bossReq(b: (typeof BOSSES)[number]): Group[] {
 }
 
 console.log(`\n=== Boss (${BOSSES.length}) ===`);
-bad = 0;
-for (const b of BOSSES) bad += audit(`boss:${b.id} 「${b.name}」`, b.desc, bossReq(b));
-if (bad === 0) console.log('全部通过 ✓');
+// 这里以前是 bad = 0 —— 会把上面 tag↔名字、重名、id 唯一性、全卡文案审核的
+// 计数全部清掉,于是那些检查就算报警也不会影响退出码(白跑)。改成单独计数再累加。
+let bossBad = 0;
+for (const b of BOSSES) bossBad += audit(`boss:${b.id} 「${b.name}」`, b.desc, bossReq(b));
+if (bossBad === 0) console.log('全部通过 ✓');
+bad += bossBad;
 
 // ---- 等级示例自检(两条断言) ----
 // ① 示例里的核心骰子**单独**判定就该是它自己(X 是无关散牌,拿掉不影响)
@@ -698,5 +711,7 @@ if (badExamples.length) {
 		`\n等级示例自检 ✓(核心骰子单独判定即等于该等级 · X 可补全 · ${ROLL_LEVELS.length} 个等级)`
 	);
 
-console.log(`\n${bad === 0 ? '全部通过 ✓' : `发现 ${bad} 处文案与实现不一致`}`);
+console.log(
+	`\n${bad === 0 ? '全部通过 ✓' : `发现 ${bad} 处问题(重名 / id 重复 / tag↔名字 / 文案与实现不一致)`}`
+);
 process.exit(bad === 0 ? 0 : 1);

@@ -306,7 +306,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'tidengyinlu',
 		name: '提灯引路',
-		desc: '右侧 Tee 得分 +45，自身 +45',
+		desc: '右侧 Tee 得分 +45，自身 +18',
 		rarity: 'common',
 		skin: 'glow_clafairy',
 		tag: '灯',
@@ -663,7 +663,6 @@ export const CARDS: TeeCard[] = [
 		name: '姻缘簿',
 		desc: '复制右侧 Tee 的卡牌，并额外 ×1.5',
 		rarity: 'rare',
-		tag: '月',
 		skin: 'Dark Angel',
 		effect: { type: 'copy_right', mult: 1.5 }
 	},
