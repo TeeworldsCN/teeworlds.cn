@@ -11,6 +11,8 @@
 		hitIndices,
 		isVoidFace,
 		judgeRoll,
+		liveDiceValues,
+		rawLiveDice,
 		rollDice,
 		sampleDice,
 		showPip,
@@ -929,7 +931,7 @@
 			const level = getRollLevel(tee.lastLevelId);
 			dice = [...tee.lastDice];
 			lastLevel = level;
-			diceSum = tee.lastDice.reduce((a, b) => a + b, 0);
+			diceSum = liveDiceValues(tee.lastDice, modsFor(currentTee)).reduce((a, b) => a + b, 0);
 			// 不传 refunds:道具在判定时已经归还过了,这里只是补个显示
 			settleSteps = buildSettleSteps(level.id, level, tee, []);
 			settleIdx = settleSteps.length - 1;
@@ -1011,8 +1013,10 @@
 		ownDice: [...diceForSum],
 		rerolled: rerollCount,
 		playerLevelId: i === 0 ? levelId : (team[0]?.lastLevelId ?? 'none'),
-		playerDice: i === 0 ? diceForSum : (team[0]?.lastDice ?? []),
-		playerRawDice: i === 0 ? [...dice] : (team[0]?.lastDice ?? []),
+		playerDice: i === 0 ? diceForSum : liveDiceValues(team[0]?.lastDice ?? [], modsFor(0)),
+		// 原样点数:只剔作废,不做 map/shift(重复牌倍率要数真实骰面)
+		playerRawDice:
+			i === 0 ? rawLiveDice(dice, modsFor(0)) : rawLiveDice(team[0]?.lastDice ?? [], modsFor(0)),
 		// 新机制的上下文：经济流用币、成长/负分用关数、支援流用左邻已结算的分
 		coins: mooncakes,
 		round,
@@ -1398,8 +1402,8 @@
 			return;
 		}
 
-		// 和值按「变换后的点数」算，和判定保持一致
-		const shown = applyDiceMods(dice, mods);
+		// 和值按「变换后的点数」算,并剔除作废的骰子 —— 和判定(liveDice)同口径
+		const shown = liveDiceValues(dice, mods);
 		diceSum = shown.reduce((a, b) => a + b, 0);
 		hitDice = hitIndices(dice, level.id, mods);
 		lastLevel = level;
@@ -1511,7 +1515,8 @@
 		if (sk.skill === 'sum') {
 			const eff = cardById(sk.srcId)?.effect;
 			const pr = eff && eff.type === 'active' && eff.skill === 'sum' ? eff : null;
-			const sum = scoreInput(i, tee.lastLevelId, tee.lastDice ?? []).diceSum;
+			// 作废的骰子不计入和值(和判定同口径)
+			const sum = liveDiceValues(tee.lastDice ?? [], modsFor(i)).reduce((a, b) => a + b, 0);
 			const gain = Math.round(sum * (pr?.per ?? 1));
 			to.lastScore += gain;
 			currentScore += gain;
@@ -2449,7 +2454,20 @@
 							<div
 								class="order-first flex min-h-6 items-center justify-center gap-2 text-center text-xs max-[365px]:text-[10px] sm:min-h-8 sm:text-sm"
 							>
-								{#if pendingActive}
+								{#if pointPicker}
+									<!-- 点数选择直接顶掉标题行:不占下方布局,骰子一动不动 -->
+									{#each [1, 2, 3, 4, 5, 6] as v}
+										<button
+											class="h-6 w-7 shrink-0 rounded-lg bg-slate-700 text-xs font-bold text-slate-200 transition hover:bg-amber-500 hover:text-amber-950 max-[365px]:w-6 sm:h-8 sm:w-10 sm:text-sm {v ===
+											4
+												? 'ring-2 ring-red-400'
+												: ''}"
+											onclick={() => pickPoint(v)}
+										>
+											{v}
+										</button>
+									{/each}
+								{:else if pendingActive}
 									<!-- 充能技能:结算播完,等玩家决定要不要发动 -->
 									<span class="text-fuchsia-300">
 										⚡ <b>{cardById(pendingActive.srcId)?.name ?? '技能'}</b>
@@ -2521,23 +2539,6 @@
 									</button>
 								{/if}
 							</div>
-
-							<!-- 点数选择(set_any) -->
-							{#if pointPicker}
-								<div class="mt-1 flex justify-center gap-2">
-									{#each [1, 2, 3, 4, 5, 6] as v}
-										<button
-											class="h-8 w-8 rounded-lg bg-slate-700 font-bold text-slate-200 transition hover:bg-amber-500 hover:text-amber-950 {v ===
-											4
-												? 'ring-2 ring-red-400'
-												: ''}"
-											onclick={() => pickPoint(v)}
-										>
-											{v}
-										</button>
-									{/each}
-								</div>
-							{/if}
 
 							<!-- 最近结果: 结算动画逐条弹出 -->
 							<!-- 结果区按本轮行数预先占位:未弹出的行用不可见空行顶着,

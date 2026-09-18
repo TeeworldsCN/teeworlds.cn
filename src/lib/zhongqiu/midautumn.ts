@@ -217,6 +217,21 @@ export const voidFacesOf = (mods?: DiceMods): number[] => {
 export const isVoidFace = (face: number, mods?: DiceMods): boolean =>
 	voidFacesOf(mods).includes(face);
 
+/**
+ * 参与结算的点数:套上 map/shift 之后,把**作废**的骰子整个剔掉。
+ * 判定、和值、点数类效果(每颗 4 分 / 某点数个数 / 连号)都要用这个 ——
+ * 作废的意思是「这颗骰子本关不算数」,不只是不算牌型。
+ * 作废按**原始骰面**判:改点把 6 改成 4 之后就不再作废了。
+ */
+export const liveDiceValues = (dice: number[], mods?: DiceMods): number[] => {
+	const shown = applyDiceMods(dice, mods);
+	return shown.filter((_, i) => !isVoidFace(dice[i], mods));
+};
+
+/** 原始骰面(不做 map/shift),只剔掉作废的 —— 给「重复牌倍率」这类数真实骰面的效果用 */
+export const rawLiveDice = (dice: number[], mods?: DiceMods): number[] =>
+	dice.filter((face) => !isVoidFace(face, mods));
+
 /** mods(含 chain)里是否有「解除作废」 */
 export const hasClearVoid = (mods?: DiceMods): boolean => {
 	if (!mods) return false;
