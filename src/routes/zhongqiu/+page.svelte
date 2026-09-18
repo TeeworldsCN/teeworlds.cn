@@ -294,7 +294,7 @@
 			const nm = cardById(sk.srcId)?.name ?? sk.srcId;
 			const what =
 				sk.skill === 'chips'
-					? `+${formatScore(sk.value)} 分`
+					? `${sk.value < 0 ? '−' : '+'}${formatScore(Math.abs(sk.value))} 分`
 					: sk.skill === 'left_chips'
 						? `左侧 +${formatScore(sk.value)} 分`
 						: '本关重掷';
@@ -1297,7 +1297,7 @@
 		for (const src of lastBreakdown.sources) {
 			if (!src.chips) continue;
 			steps.push({
-				text: `${nameOf(src)} +${formatScore(src.chips)}`,
+				text: `${nameOf(src)} ${src.chips < 0 ? '−' : '+'}${formatScore(Math.abs(src.chips))}`,
 				cls: 'text-amber-300',
 				kind: 'chip'
 			});
