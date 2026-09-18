@@ -234,17 +234,17 @@
 	// 团队结算动画（回合确认后： 团队倍率卡一条一条弹）
 	let teamSettleSteps = $state<{ text: string; cls: string; kind: SettleKind }[]>([]);
 	let teamSettleIdx = $state(-1);
-	/** 骰面九个点位在 24×24 viewBox 里的坐标(行优先,和 midautumn 的 DICE_PIPS 对应) */
+	/** 骰面九个点位在 24×24 viewBox 里的坐标(与旧 CSS 的格心一致:4/12/20) */
 	const PIP_POS: [number, number][] = [
-		[6, 6],
-		[12, 6],
-		[18, 6],
-		[6, 12],
+		[4, 4],
+		[12, 4],
+		[20, 4],
+		[4, 12],
 		[12, 12],
-		[18, 12],
-		[6, 18],
-		[12, 18],
-		[18, 18]
+		[20, 12],
+		[4, 20],
+		[12, 20],
+		[20, 20]
 	];
 	let teamSettling = $state(false);
 
@@ -2114,7 +2114,7 @@
 										<svg class="die-face" viewBox="0 0 24 24" aria-hidden="true">
 											{#each PIP_POS as [cx, cy], idx}
 												{#if showPip(dice[i], idx + 1)}
-													<circle {cx} {cy} r="2.4" class:red={!dieRolling(i) && dice[i] === 4} />
+													<circle {cx} {cy} r="2.6" class:red={!dieRolling(i) && dice[i] === 4} />
 												{/if}
 											{/each}
 										</svg>
@@ -2753,11 +2753,8 @@
 	   小屏(320px)也绝不换行/溢出 */
 	.die {
 		position: relative;
-		/* container-type 只是为了旧的 cqw 字号,现在覆盖数字用 rem 了,保留无害 */
-		container-type: inline-size;
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		grid-template-rows: repeat(3, 1fr);
+		/* 骰面是一整块 SVG,不需要 3×3 网格;覆盖数字用 rem,也不需要 container-query */
+		display: block;
 		width: 100%;
 		aspect-ratio: 1;
 		/* 没有 aspect-ratio 的老浏览器:至少给个高度,别让骰子塌成 0 */
