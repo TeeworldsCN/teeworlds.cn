@@ -1821,9 +1821,7 @@
 					>
 						月宫掷骰
 					</h1>
-					<p class="mt-1 text-xs text-slate-300 sm:mt-2 sm:text-sm">
-						中秋博饼大会 · 不限次数,无限冲分
-					</p>
+					<p class="mt-1 text-xs text-slate-300 sm:mt-2 sm:text-sm">中秋博饼大会</p>
 
 					<div
 						class="mt-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-amber-200/90 sm:mt-4 sm:text-sm"
@@ -2553,13 +2551,7 @@
 			<div
 				class="mt-auto pt-2.5 text-center text-[10px] leading-tight text-slate-500 max-[365px]:hidden sm:pt-5 sm:text-xs"
 			>
-				祝大家中秋快乐,阖家团圆!🌕 晒出你的纪录 →
-				<a
-					href="https://chat.teeworlds.cn"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="text-amber-400 hover:underline">chat.teeworlds.cn</a
-				>
+				祝大家中秋快乐,阖家团圆!🌕
 			</div>
 		</div>
 	</div>
