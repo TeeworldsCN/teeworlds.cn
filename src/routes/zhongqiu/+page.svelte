@@ -146,6 +146,11 @@
 	// ---- 存档 ----
 
 	let save = $state(getSave());
+	/** 打赏入口(爱发电) —— 累计游玩满 10 分钟后才在「返回标题」上方出现 */
+	const DONATE_URL =
+		'https://ifdian.net/order/create?user_id=86452e60dba811ed862c5254001e7c00&remark=%E4%B8%BA%E6%9C%88%E5%AE%AB%E6%8A%95%E9%AA%B0%E6%89%93%E8%B5%8F&affiliate_code=ddnet-zq';
+	/** 至少玩过一局之后才亮出来(plays 在每局结束时 +1) */
+	const showDonate = $derived(save.plays >= 1);
 	let mooncakes = $state(0);
 
 	// ---- 游戏状态 ----
@@ -2090,6 +2095,21 @@
 				<div
 					class="panel-auto mt-2.5 rounded-xl border border-slate-700/60 bg-slate-900/70 px-2.5 py-2.5 backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-4"
 				>
+					{#if showDonate}
+						<div
+							class="mb-2.5 rounded-xl border border-amber-400/25 bg-amber-400/5 px-3 py-2.5 text-center"
+						>
+							<div class="text-[11px] text-amber-100/85 sm:text-xs">
+								如果很喜欢这个游戏，请考虑打赏给我
+							</div>
+							<a
+								class="mt-2 inline-block rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-5 py-2 text-sm font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 sm:px-6 sm:py-2.5 sm:text-base"
+								href={DONATE_URL}
+								target="_blank"
+								rel="noopener noreferrer">通过爱发电打赏</a
+							>
+						</div>
+					{/if}
 					<button
 						class="w-full rounded-xl border border-slate-500 bg-slate-700/80 px-6 py-2 text-sm font-bold text-slate-200 transition hover:bg-slate-600 active:scale-95 sm:py-2.5 sm:text-base"
 						onclick={backToTitle}
