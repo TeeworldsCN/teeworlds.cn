@@ -323,7 +323,7 @@ export const CARDS: TeeCard[] = [
 		name: '捧月',
 		desc: '该 Tee 身上每张加成卡，得分 +25',
 		rarity: 'common',
-		skin: 'Sailormoon',
+		skin: 'Puffball',
 		tag: '月',
 		effect: { type: 'per_buff', per: 25, as: 'chips' }
 	},

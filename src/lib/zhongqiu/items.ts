@@ -208,7 +208,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '百月团',
 		desc: '得分 +180',
 		rarity: 'legendary',
-		skin: 'TerraSlime purple',
+		skin: 'Bubble_gum',
 		price: 8,
 		turns: 1,
 		effect: { type: 'chips', value: 180 }
@@ -230,7 +230,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '丹桂',
 		desc: '得分 ×1.5',
 		rarity: 'common',
-		skin: 'TerraSlime red',
+		skin: 'Redboppenom',
 		price: 3,
 		turns: 1,
 		effect: { type: 'mult', value: 1.5 }
@@ -352,7 +352,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉脂',
 		desc: '得分 +60，×1.5',
 		rarity: 'rare',
-		skin: 'TerraSlime green',
+		skin: 'emerald',
 		price: 6,
 		turns: 2,
 		effect: { type: 'chips_mult', chips: 60, mult: 1.5 }
@@ -406,7 +406,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '桂荫庇佑',
 		desc: '最低按"二举"结算',
 		rarity: 'rare',
-		skin: 'TerraSlime blue',
+		skin: 'Lahm_blue',
 		price: 5,
 		turns: 2,
 		effect: { type: 'level_floor', levelId: 'er_ju' }
