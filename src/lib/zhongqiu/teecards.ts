@@ -265,7 +265,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'lingjiao',
 		name: '菱角',
-		desc: '队伍人数 ×12 分',
+		desc: '该 Tee 基础分 + 队伍人数 ×12',
 		rarity: 'common',
 		skin: 'jellyfish',
 		effect: { type: 'per_team_chips', value: 12 }
