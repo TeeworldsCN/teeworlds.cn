@@ -1680,6 +1680,9 @@
 		shopLocks = shopLocks.map((id, k) => (k === i ? (id ? null : (shopBuffs[i]?.id ?? null)) : id));
 	};
 
+	/** 最近一次按下是不是鼠标 —— 商店的「双击购买」只给鼠标用(touch 上双击=缩放/误触) */
+	let lastPointerWasMouse = false;
+
 	const buyBuff = (card: BuffCard) => {
 		if (mooncakes < card.price) return;
 		mooncakes -= card.price;
@@ -2644,8 +2647,13 @@
 														: 'border-sky-500/40 bg-slate-800/70'} {!sold && mooncakes < card.price
 											? 'opacity-50'
 											: ''}"
+										onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
 										onclick={() => !sold && (shopPick = picked ? null : card)}
-										ondblclick={() => !sold && buyBuff(card)}
+										ondblclick={() => {
+											// 触摸设备上双击会被浏览器当成缩放,而且误触代价是直接花钱
+											if (!lastPointerWasMouse) return;
+											if (!sold) buyBuff(card);
+										}}
 										disabled={sold}
 									>
 										<span class="h-4 w-4 shrink-0"
