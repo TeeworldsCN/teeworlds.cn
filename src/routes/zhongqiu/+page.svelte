@@ -2458,37 +2458,44 @@
 					<div
 						class="panel-fill mt-2.5 rounded-xl border border-amber-500/25 bg-slate-900/70 px-2.5 py-2.5 text-center backdrop-blur-sm max-[365px]:py-2 sm:mt-4 sm:rounded-2xl sm:p-4"
 					>
-						<div class="hidden text-sm font-bold text-amber-200 sm:block sm:text-lg">
-							🌕 回合结算
-						</div>
-						<!-- 结算区按本轮行数预先占位(未弹的行用不可见空行顶着):
+						<!-- 主内容在「剩余空间」里居中,好让下面的放弃按钮贴到面板底沿 -->
+						<div class="my-auto w-full">
+							<div class="hidden text-sm font-bold text-amber-200 sm:block sm:text-lg">
+								🌕 回合结算
+							</div>
+							<!-- 结算区按本轮行数预先占位(未弹的行用不可见空行顶着):
 					     否则团队倍率卡一条条弹出时,下面的按钮会被顶下去 -->
-						<div class="mt-1 flex flex-col items-center justify-center gap-0.5 text-xs sm:text-sm">
-							{#each Array.from({ length: Math.max(teamSettleReserveLines, teamSettleSteps.length) }, (_, i) => i) as i (i)}
-								{#if teamSettleSteps.length === 0 && i === 0}
-									<div class="text-[11px] text-slate-400 sm:text-xs">
-										全队已掷完,各 Tee 得分合计
-										<span class="font-bold text-slate-200"
-											>{formatScore(team.reduce((s, t) => s + t.lastScore, 0))}</span
-										>
-									</div>
-								{:else if teamSettleSteps[i] && i <= teamSettleIdx}
-									<div class="settle-step {teamSettleSteps[i].cls}">{teamSettleSteps[i].text}</div>
-								{:else}
-									<div class="invisible" aria-hidden="true">&nbsp;</div>
-								{/if}
-							{/each}
+							<div
+								class="mt-1 flex flex-col items-center justify-center gap-0.5 text-xs sm:text-sm"
+							>
+								{#each Array.from({ length: Math.max(teamSettleReserveLines, teamSettleSteps.length) }, (_, i) => i) as i (i)}
+									{#if teamSettleSteps.length === 0 && i === 0}
+										<div class="text-[11px] text-slate-400 sm:text-xs">
+											全队已掷完,各 Tee 得分合计
+											<span class="font-bold text-slate-200"
+												>{formatScore(team.reduce((s, t) => s + t.lastScore, 0))}</span
+											>
+										</div>
+									{:else if teamSettleSteps[i] && i <= teamSettleIdx}
+										<div class="settle-step {teamSettleSteps[i].cls}">
+											{teamSettleSteps[i].text}
+										</div>
+									{:else}
+										<div class="invisible" aria-hidden="true">&nbsp;</div>
+									{/if}
+								{/each}
+							</div>
+							<!-- 结算期间保持按钮占位,不换成一行文字:44px 塌成 20px 会把上面的结算文字顶下去 -->
+							<button
+								class="mt-2.5 w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:cursor-default disabled:opacity-60 disabled:hover:from-amber-400 disabled:hover:to-amber-600 sm:w-auto sm:px-10 sm:text-lg"
+								onclick={confirmRound}
+								disabled={teamSettling}
+							>
+								{teamSettling ? '结算中...' : '🥮 结算回合'}
+							</button>
 						</div>
-						<!-- 结算期间保持按钮占位,不换成一行文字:44px 塌成 20px 会把上面的结算文字顶下去 -->
-						<button
-							class="mt-2.5 w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:cursor-default disabled:opacity-60 disabled:hover:from-amber-400 disabled:hover:to-amber-600 sm:w-auto sm:px-10 sm:text-lg"
-							onclick={confirmRound}
-							disabled={teamSettling}
-						>
-							{teamSettling ? '结算中...' : '🥮 结算回合'}
-						</button>
 						<!-- 放弃：小一号字 + 右下角 + 宽度自适应（不铺满），免得点「结算回合」时误触 -->
-						<div class="mt-5 flex w-full justify-end sm:mt-6">
+						<div class="mt-2 flex w-full justify-end">
 							<button
 								class="rounded-lg px-2 py-1 text-[11px] text-slate-500 transition hover:bg-slate-800/70 hover:text-slate-300 active:scale-95 disabled:opacity-40 sm:text-xs"
 								onclick={abandonRun}
