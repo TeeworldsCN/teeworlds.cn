@@ -430,11 +430,11 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuebingshijia',
 		name: '饼香世家',
-		desc: '每拥有一个独特的「饼」系角色，该 Tee 得分 ×3',
+		desc: '每拥有一个独特的「饼」系角色，该 Tee 得分 ×2.2',
 		rarity: 'legendary',
 		skin: 'cupcakecherry',
 		tag: '饼',
-		effect: { type: 'per_tag', tag: '饼', per: 3.0, as: 'mult' }
+		effect: { type: 'per_tag', tag: '饼', per: 2.2, as: 'mult' }
 	},
 	{
 		id: 'mingyuegongzhao',
