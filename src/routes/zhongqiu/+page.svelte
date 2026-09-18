@@ -89,6 +89,7 @@
 		sfxLevel,
 		sfxLose,
 		sfxRoll,
+		sfxSell,
 		sfxSetRate,
 		sfxStep,
 		sfxTotal,
@@ -237,6 +238,8 @@
 	let selectedBuff = $state<BuffCard | null>(null);
 	/** 仅查看说明的加成卡(没选中的芯片 hover / 点按):仓库里的卡不能拖,但说明得看得到 */
 	let peekBuff = $state<BuffCard | null>(null);
+	/** 待确认的出售:被点 ✕ 的 Tee 下标(null = 没弹窗) */
+	let sellAsk = $state<number | null>(null);
 	// 团队结算动画（回合确认后： 团队倍率卡一条一条弹）
 	let teamSettleSteps = $state<{ text: string; cls: string; kind: SettleKind }[]>([]);
 	let teamSettleIdx = $state(-1);
@@ -1804,6 +1807,7 @@
 
 	const sellTee = (idx: number) => {
 		if (idx === 0) return; // 主 Tee 不可卖
+		sfxSell(); // 收银机「ka-ching」
 		const card = cardOf(team[idx]);
 		if (card) {
 			mooncakes += rarityOf(card).sell;
@@ -1815,6 +1819,13 @@
 		}
 		team = team.filter((_, i) => i !== idx);
 		if (currentTee >= team.length) currentTee = team.length - 1;
+	};
+
+	/** 确认出售(弹窗里那个按钮):关闭弹窗并真的卖 */
+	const confirmSell = () => {
+		const idx = sellAsk;
+		sellAsk = null;
+		if (idx !== null) sellTee(idx);
 	};
 
 	const nextRound = () => {
@@ -2407,7 +2418,10 @@
 											<button
 												class="absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/90 text-[10px] font-bold text-white shadow transition hover:bg-red-400"
 												title="卖出 {cardOf(tee)?.name},得 {rarityOf(cardOf(tee)).sell} 🥮"
-												onclick={() => sellTee(i)}
+												onclick={() => {
+													sfxClick();
+													sellAsk = i; // 先问一句,确认了再真卖
+												}}
 											>
 												×
 											</button>
@@ -2989,6 +3003,50 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- ================= 出售确认 ================= -->
+	{#if sellAsk !== null && team[sellAsk] && cardOf(team[sellAsk])}
+		{@const sold = cardOf(team[sellAsk])}
+		<div
+			class="fixed inset-0 z-50 flex cursor-default items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+			role="presentation"
+			onclick={(e) => {
+				if (e.target === e.currentTarget) sellAsk = null;
+			}}
+		>
+			<div
+				class="w-full max-w-xs rounded-2xl border border-amber-500/30 bg-slate-900 p-4 text-center sm:p-5"
+			>
+				<div class="text-base font-bold text-amber-200">卖掉这张卡？</div>
+				<div class="mt-3 flex items-center justify-center gap-2.5">
+					<span class="h-11 w-11 shrink-0"
+						><TeeRender name={sold?.skin ?? 'x_spec'} className="h-full w-full" /></span
+					>
+					<div class="min-w-0 text-left">
+						<div class="text-sm font-semibold text-slate-100">{sold?.name ?? '?'}</div>
+						<div class="line-clamp-2 text-[11px] leading-snug text-slate-400">{sold?.desc}</div>
+					</div>
+				</div>
+				<div class="mt-3 text-[11px] leading-snug text-slate-400">
+					卖掉后这张卡永久离队，换来的月饼币可以立刻在商店里花。
+				</div>
+				<div class="mt-3.5 flex justify-center gap-2">
+					<button
+						class="rounded-xl border border-slate-500 bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-600"
+						onclick={() => (sellAsk = null)}
+					>
+						取消
+					</button>
+					<button
+						class="rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-4 py-2 text-sm font-bold whitespace-nowrap text-amber-950 shadow transition hover:from-amber-300 hover:to-amber-500 active:scale-95"
+						onclick={confirmSell}
+					>
+						确认出售 +{rarityOf(sold).sell} 🥮
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<!-- ================= 规则弹窗 ================= -->
 	{#if showRules}

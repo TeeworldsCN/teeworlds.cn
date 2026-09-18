@@ -292,3 +292,18 @@ export const sfxCoin = () => {
 	tone(note(19), t0, 0.06, { type: 'square', gain: 0.085 });
 	tone(note(26), t0 + 0.055, 0.16, { type: 'square', gain: 0.095 });
 };
+
+/** 出售:收银机「ka-ching」—— 先一声柜厣弹开的「咔」,再一记亮铃「叮」 */
+export const sfxSell = () => {
+	log('sell');
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.005;
+	// 咔:中低频噪声 + 闷响(抽屉/机櫃的机械感)
+	click(t0, { freq: 1300, q: 0.9, dur: 0.055, gain: 0.16 });
+	tone(note(7), t0, 0.07, { type: 'triangle', gain: 0.08 });
+	// 叮:亮铃(基音 + 两个泛音,衰减比 click 长得多)
+	tone(note(24), t0 + 0.075, 0.5, { type: 'sine', gain: 0.13 });
+	tone(note(31), t0 + 0.075, 0.4, { type: 'sine', gain: 0.05 });
+	tone(note(28), t0 + 0.09, 0.45, { type: 'sine', gain: 0.07 });
+};
