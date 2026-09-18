@@ -782,32 +782,34 @@
 		phase = 'idle';
 	};
 
-	// ---- 局内存档:实时保存 + 重进恢复 ----
+	// ---- 局内存档:全量快照 ----
 	//
-	// 存的是「回合边界」的快照:掷骰/等确认/结算中途退出,重进就重掷本关 ——
-	// 既不把动画中途的半成品状态写进去,也就不用担心状态字段越加越多跟不上。
-	/** 一关之内、随时会被下一次掷骰覆盖的阶段 → 统一归一成 'intro' */
-	const MID_ROUND = new Set<Phase>(['rolling', 'round_confirm', 'round_end']);
-	/** 值得存的阶段(idle=标题、game_over=已结束,都不存) */
-	const SAVEABLE = new Set(['draft', 'intro', 'reward', 'shop']);
+	// 玩家随时可以退出,回来接在**同一个画面**上。除了动画/布局这类纯瞬时的东西,
+	// 其余状态全存。真·瞬间(掷骰动画播到一半)用 `wasRolling` 记下来,
+	// 恢复时回到那个动作开始前:骰子重掷一次,结果本来就一样(单机游戏不吃亏)。
+	/** 非动画期间的骰面(动画期间 dice 每 90ms 变一次,直接存下来是垃圾) */
+	let settledDice = [1, 1, 1, 1, 1, 1];
+	/** 读档后要补做的动作:自动重掷一次 / 恢复待确认的主动技 */
+	let pendingAutoRoll = false;
+	let pendingActiveKey: string | null = null;
 
 	const runSnapshot = (): Omit<RunSave, 'v'> => {
-		const mid = MID_ROUND.has(phase);
+		if (!rolling) settledDice = [...dice];
 		return {
-			phase: mid ? 'intro' : phase,
+			phase,
 			round,
 			bossId: boss?.id ?? null,
 			target,
 			mooncakes,
 			runScore,
 			growth,
-			// 中途归一成"本关还没掷"时,各 Tee 的本关成绩也要跟着清掉
 			team: team.map((t) => ({
 				cardId: t.cardId,
 				buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft })),
-				lastScore: mid ? 0 : t.lastScore,
-				lastLevelId: mid ? 'none' : t.lastLevelId,
-				lastDice: mid ? [1, 1, 1, 1, 1, 1] : t.lastDice
+				lastScore: t.lastScore,
+				lastLevelId: t.lastLevelId,
+				lastDice: t.lastDice,
+				charge: t.charge ?? 0
 			})),
 			soldTees,
 			soldThisRound,
@@ -817,7 +819,38 @@
 			buffInventory,
 			draftChoices: draftChoices.map((c) => c.id),
 			draftPicked,
-			rewardChoices: rewardChoices.map((c) => c.id)
+			rewardChoices: rewardChoices.map((c) => c.id),
+			// ---- 回合内细节 ----
+			dice: settledDice,
+			currentTee,
+			currentScore,
+			settlePreview,
+			diceSum,
+			lastLevelId: lastLevel.id,
+			rollsLeft,
+			rerollCount,
+			rerollAllUsed,
+			choosing,
+			rerollSel,
+			rollMask,
+			usedOpSrc,
+			optedDice,
+			pendingAction,
+			pointPicker,
+			setQueue,
+			pendingActiveKey: pendingActive ? `${pendingActive.srcId}|${pendingActive.skill}` : null,
+			roundRewardGained,
+			overflowGained,
+			economyGained,
+			finalScore,
+			finalRunScore,
+			finalRound,
+			isNewBest,
+			lastRewardIdx,
+			shopPickId: shopPick?.id ?? null,
+			selectedBuffId: selectedBuff?.id ?? null,
+			speedIdx,
+			wasRolling: rolling
 		};
 	};
 
@@ -834,7 +867,8 @@
 			lastScore: t.lastScore,
 			lastLevelId: t.lastLevelId,
 			lastDice: t.lastDice,
-			buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft }))
+			buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft })),
+			charge: t.charge ?? 0
 		}));
 		soldTees = d.soldTees;
 		soldThisRound = d.soldThisRound;
@@ -847,21 +881,57 @@
 		rewardChoices = d.rewardChoices
 			.map((id) => CARD_BY_ID.get(id))
 			.filter((c): c is TeeCard => !!c);
-		// 关卡内的临时状态本该由 beginRound 置空,恢复时手动补上
-		resetRoundState();
-		boss = d.bossId ? getBossById(d.bossId) : null;
-		target = d.target;
+		// ---- 回合内细节 ----
+		dice = [...d.dice];
+		settledDice = [...d.dice];
+		currentTee = Math.min(d.currentTee, Math.max(0, team.length - 1));
+		currentScore = d.currentScore;
+		settlePreview = d.settlePreview;
+		diceSum = d.diceSum;
+		lastLevel = getRollLevel(d.lastLevelId);
+		rollsLeft = d.rollsLeft;
+		rerollCount = d.rerollCount;
+		rerollAllUsed = d.rerollAllUsed;
+		choosing = d.choosing;
+		rerollSel = d.rerollSel;
+		rollMask = d.rollMask;
+		usedOpSrc = d.usedOpSrc;
+		optedDice = d.optedDice;
+		pendingAction = d.pendingAction;
+		pointPicker = d.pointPicker;
+		setQueue = d.setQueue ?? [];
+		roundRewardGained = d.roundRewardGained;
+		overflowGained = d.overflowGained;
+		economyGained = d.economyGained;
+		finalScore = d.finalScore;
+		finalRunScore = d.finalRunScore;
+		finalRound = d.finalRound;
+		isNewBest = d.isNewBest;
+		lastRewardIdx = d.lastRewardIdx;
+		shopPick = d.shopPickId ? (BUFF_BY_ID.get(d.shopPickId) ?? null) : null;
+		selectedBuff = d.selectedBuffId ? (BUFF_BY_ID.get(d.selectedBuffId) ?? null) : null;
+		speedIdx = d.speedIdx ?? 0;
+		// 瞬时状态一律归零:动画重播,或从"这一步开始前"接
+		rolling = false;
+		settling = false;
+		teamSettling = false;
+		hitDice = [];
+		teeAnim = '';
+		teeEmote = EMOTE.normal;
+		settleSteps = [];
+		settleIdx = -1;
+		teamSettleSteps = [];
+		teamSettleIdx = -1;
 		phase = d.phase as Phase;
+		// 这两个要等脚本剩下的常量都初始化完再处理(onMount 里做)
+		pendingAutoRoll = d.wasRolling === true;
+		pendingActiveKey = d.pendingActiveKey;
 	};
 
 	// 实时存(200ms 防抖)。$effect 读了上面所有字段 → 任何一处变了都会重跑。
 	$effect(() => {
 		const snap = runSnapshot();
-		if (phase === 'game_over') {
-			clearRun();
-			return;
-		}
-		if (!SAVEABLE.has(snap.phase)) return;
+		if (snap.phase === 'idle') return; // 标题页没有进度可存
 		const timer = setTimeout(() => saveRun(snap), 200);
 		return () => clearTimeout(timer);
 	});
@@ -871,6 +941,24 @@
 		const saved = loadRun();
 		if (saved && saved.phase !== 'idle') restoreRun(saved);
 	}
+
+	// 读档后的收尾:此时脚本里剩下的函数/常量都已就绪
+	onMount(() => {
+		// 待确认的主动技(要靠 activeSkills/allCards 反查,不能在 restoreRun 里做)
+		if (pendingActiveKey) {
+			const key = pendingActiveKey;
+			pendingActiveKey = null;
+			pendingActive =
+				activeSkills(effectiveEffects(allCards(), currentTee), team[currentTee]?.buffs ?? []).find(
+					(s) => `${s.srcId}|${s.skill}` === key
+				) ?? null;
+		}
+		// 存盘时掷骰动画正在播:让一帧,等恢复后的骰子渲染出来再重掷这个 Tee
+		if (pendingAutoRoll) {
+			pendingAutoRoll = false;
+			setTimeout(() => rollCurrent(), 60);
+		}
+	});
 
 	const toggleDraftPick = (idx: number) => {
 		sfxClick();

@@ -1051,7 +1051,7 @@ export const clearSave = () => {
 // 避免把动画中途的半成品状态写进去(重新进就是重掷本关,单机游戏不亏)。
 const RUN_KEY = 'midautumn:run';
 /** 结构变了就 +1:旧档直接作废,不尝试迁移 */
-const RUN_VERSION = 1;
+const RUN_VERSION = 2;
 
 export type RunTeamSlot = {
 	cardId: string | null;
@@ -1059,8 +1059,24 @@ export type RunTeamSlot = {
 	lastScore: number;
 	lastLevelId: string;
 	lastDice: number[];
+	/** 主动技能冷却(几关后可用) */
+	charge?: number;
 };
 
+/** 改点操作(与页面的 PendingAction 同形,存一份快照) */
+export type RunOp =
+	| { kind: 'set_point'; count: number; point: number; srcId?: string }
+	| { kind: 'set_any'; count: number; pick?: number; srcId?: string }
+	| { kind: 'bump'; count: number; srcId?: string };
+
+/**
+ * 一局游戏的**全量快照**。
+ *
+ * 设计:玩家随时可以退出,回来要接在**同一个画面**上。所以除了动画/布局这类
+ * 纯瞬时的东西,其余状态全存;真·瞬间(掷骰动画播到一半、结算动画播到一半)
+ * 由页面用 `wasRolling` / `midAnim` 两个标记记下来,恢复时回到那个动作开始前 ——
+ * 骰子重掷一次、结算重按一次,结果本来就一样。
+ */
 export type RunSave = {
 	v: number;
 	phase: string;
@@ -1080,6 +1096,43 @@ export type RunSave = {
 	draftChoices: string[];
 	draftPicked: number[];
 	rewardChoices: string[];
+
+	// ---- v2:回合内的细节状态 ----
+	/** 当前球面上的 6 颗骰(动画期间存的是上一次落定的那套) */
+	dice: number[];
+	/** 正在掷的是第几个 Tee */
+	currentTee: number;
+	currentScore: number;
+	settlePreview: number;
+	diceSum: number;
+	lastLevelId: string;
+	rollsLeft: number;
+	rerollCount: number;
+	rerollAllUsed: boolean;
+	choosing: boolean;
+	rerollSel: boolean[];
+	rollMask: boolean[];
+	usedOpSrc: string[];
+	optedDice: number[];
+	pendingAction: RunOp | null;
+	pointPicker: boolean;
+	/** 改点操作队列(与页面的 setQueue 同形) */
+	setQueue: SetOp[];
+	/** 待确认的主动技(srcId|skill) */
+	pendingActiveKey: string | null;
+	roundRewardGained: number;
+	overflowGained: number;
+	economyGained: number;
+	finalScore: number;
+	finalRunScore: number;
+	finalRound: number;
+	isNewBest: boolean;
+	lastRewardIdx: number;
+	shopPickId: string | null;
+	selectedBuffId: string | null;
+	speedIdx: number;
+	/** 存盘时掷骰动画正在播:恢复后自动把这个 Tee 重掷一次 */
+	wasRolling: boolean;
 };
 
 export const saveRun = (data: Omit<RunSave, 'v'>) => {
