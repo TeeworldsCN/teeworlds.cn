@@ -1558,6 +1558,12 @@
 			setTimeout(
 				() => {
 					teamSettleIdx = i;
+					// 每出一条加一声(和每个 Tee 的结算同一套):最后那条「合计」用 total 音
+					const st = steps[i];
+					if (st) {
+						if (st.kind === 'total') sfxTotal(total > 0);
+						else sfxStep(i, st.kind, 0);
+					}
 					// 回流/倍率播的时候进度条也往上走(终点正好是 total)
 					currentScore = Math.round(sum + (total - sum) * ((i + 1) / steps.length));
 				},
