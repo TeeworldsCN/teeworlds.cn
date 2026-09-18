@@ -1053,8 +1053,6 @@
 	};
 
 	const beginRound = () => {
-		decayBuffsForRound();
-		tickCharge(team); // 主动技能冷却 -1
 		resetRoundState();
 		boss = isBossRound(round) ? getBoss(round) : null;
 		target = Math.round(roundTarget(round) * (boss?.targetMult ?? 1));
@@ -1631,6 +1629,12 @@
 	};
 
 	const settleRound = () => {
+		// 回合制衰减放在**结算时**:点了「结算回合」立刻能看到道具少一关、
+		// 技能冷却少一回合 —— 放在下一关开始时,玩家点完结算看到的是旧数值。
+		// (顺带修正一个 off-by-one:集市里买的「持续 2 关」道具,原来会在下一关
+		//  开始就被扣掉 1,实际只生效 1 关;现在按卡面「每过一关 -1」算,正好 2 关。)
+		decayBuffsForRound();
+		tickCharge(team); // 主动技能冷却 -1
 		const total = roundTotal;
 		runScore += Math.min(total, target);
 		if (total >= target) {
