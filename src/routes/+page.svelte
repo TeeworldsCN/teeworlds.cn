@@ -1,7 +1,7 @@
 <script>
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
 	import Fa from 'svelte-fa';
-	import { faDice, faGamepad, faHeart } from '@fortawesome/free-solid-svg-icons';
+	import { faGamepad, faHeart } from '@fortawesome/free-solid-svg-icons';
 
 	const { data } = $props();
 
@@ -55,17 +55,8 @@
 {/if}
 
 <div class="mt-6">
-	<ToolboxButton href="/zhongqiu"
-		><Fa icon={faDice} class="inline text-amber-400"></Fa> 中秋博饼大会</ToolboxButton
-	>
-	<div class="text-semibold">中秋限定活动:带上你的 Tee 博月饼,每天 3 次机会</div>
-</div>
-
-<div class="mt-6">
-	<ToolboxButton href="/ddnet/nouis"
-		><Fa icon={faGamepad} class="inline"></Fa> 合成超大Tee</ToolboxButton
-	>
-	<div class="text-semibold">游玩搞怪小游戏</div>
+	<ToolboxButton href="/minigames"><Fa icon={faGamepad} class="inline"></Fa> 小游戏</ToolboxButton>
+	<div class="text-semibold">中秋博饼大会 · 合成超大Tee —— 点这里挑一个玩</div>
 </div>
 
 <div class="mt-6 flex items-start">
