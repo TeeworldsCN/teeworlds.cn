@@ -190,10 +190,12 @@
 		sources: []
 	});
 	let diceSum = $state(0); // 本回合判定用的骰子点数和
-	let stepsEl: HTMLElement | undefined = $state();
 	type SettleKind = 'level' | 'chip' | 'mult' | 'total';
 	let settleSteps = $state<{ text: string; cls: string; kind: SettleKind }[]>([]);
 	let settleIdx = $state(-1);
+	let stepsEl: HTMLElement | undefined = $state();
+	/** 「当前行可见」应处的 scrollTop —— 用它回弹用户的手动滚动 */
+	let settleScrollTarget = 0;
 	let settling = $state(false);
 
 	// 结算信息
@@ -1385,10 +1387,18 @@
 					if (!st) return;
 					if (st.kind === 'total') sfxTotal(lastBreakdown.total > 0);
 					else sfxStep(i, st.kind, level.score);
-					// 行数超出可见高度时，自动滚到最新一行
-					// 只有真的超出可视高度（而不是被 flex 挤压）才跟到底
-					if (stepsEl && stepsEl.scrollHeight > stepsEl.clientHeight + 1)
-						stepsEl.scrollTop = stepsEl.scrollHeight;
+					// 只把「正在展示的这一行」滚进可视区,不做「永远贴底」——
+					// 结算框里那些不可见的占位行会把 scrollHeight 撑得很大,贴底就会把上面的行推走
+					if (stepsEl) {
+						const line = stepsEl.children[i] as HTMLElement | undefined;
+						if (line) {
+							const lb = line.getBoundingClientRect();
+							const sb = stepsEl.getBoundingClientRect();
+							if (lb.bottom > sb.bottom) stepsEl.scrollTop += lb.bottom - sb.bottom;
+							else if (lb.top < sb.top) stepsEl.scrollTop -= sb.top - lb.top;
+							settleScrollTarget = stepsEl.scrollTop;
+						}
+					}
 				},
 				(i + 1) * stepMs
 			);
@@ -1488,6 +1498,12 @@
 
 	const finishRound = () => {
 		phase = 'round_confirm';
+	};
+
+	/** 用户手动滚动结算框一律无视:立刻回到「当前行可见」的位置 */
+	const keepSettleScroll = () => {
+		if (stepsEl && Math.abs(stepsEl.scrollTop - settleScrollTarget) > 1)
+			stepsEl.scrollTop = settleScrollTarget;
 	};
 
 	const confirmRound = () => {
@@ -2422,7 +2438,8 @@
 						     文字逐条弹出时高度不变,居中的骰子不会被顶上去 -->
 							<div
 								bind:this={stepsEl}
-								class="mt-0.5 flex max-h-[4.8rem] shrink-0 flex-col items-center justify-start gap-0 overflow-y-auto text-xs leading-[1.1] max-[365px]:mt-0.5 max-[365px]:max-h-[4rem] max-[365px]:text-[10px] max-[365px]:leading-[1.1] sm:max-h-none sm:overflow-visible sm:text-sm sm:leading-normal"
+								onscroll={keepSettleScroll}
+								class="no-scrollbar mt-0.5 flex max-h-[4.8rem] shrink-0 flex-col items-center justify-start gap-0 overflow-y-auto overscroll-contain text-xs leading-[1.1] max-[365px]:mt-0.5 max-[365px]:max-h-[4rem] max-[365px]:text-[10px] max-[365px]:leading-[1.1] sm:max-h-none sm:overflow-visible sm:text-sm sm:leading-normal"
 							>
 								{#each Array.from({ length: Math.max(settleReserveLines, settleSteps.length) }, (_, i) => i) as i (i)}
 									{#if i <= settleIdx && settleSteps[i]}
@@ -3136,6 +3153,14 @@
 	}
 
 	/* ---- 结果横幅 ---- */
+	/* 结算框:不要滚动条(用户也不该滚它,滚动由动画驱动) */
+	.no-scrollbar {
+		scrollbar-width: none;
+	}
+	.no-scrollbar::-webkit-scrollbar {
+		display: none;
+	}
+
 	.settle-step {
 		animation: settle-pop 0.3s ease both;
 		text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
