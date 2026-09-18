@@ -322,7 +322,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'dengshi',
 		name: '灯市',
-		desc: '队伍里每张「灯」系卡，得分 +20',
+		desc: '每拥有一个独特的「灯」系角色，得分 +20',
 		rarity: 'common',
 		skin: 'tuzi',
 		tag: '灯',
@@ -386,7 +386,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutuzuqun',
 		name: '玉兔族群',
-		desc: '队伍里每张「兔」系卡，该 Tee 得分 ×1.25',
+		desc: '每拥有一个独特的「兔」系角色，该 Tee 得分 ×1.25',
 		rarity: 'rare',
 		skin: 'bunny',
 		tag: '兔',
@@ -428,7 +428,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuebingshijia',
 		name: '月饼世家',
-		desc: '队伍里每张「饼」系卡，该 Tee 得分 ×1.4',
+		desc: '每拥有一个独特的「饼」系角色，该 Tee 得分 ×1.4',
 		rarity: 'legendary',
 		skin: 'Golden Shroom',
 		tag: '饼',
@@ -1032,7 +1032,7 @@ export const CARDS: TeeCard[] = [
 	// ==== 流派流:同流派越多越强(蓝=只加自己,橙=全队同流派都吃) ====
 	//
 	// 两种档位,机制只差一个 teamWide:
-	//   蓝(稀有):队伍里每张「X」系卡,该 Tee 得分 ×2(叠乘),外加 +20 底分
+	//   蓝(稀有):每拥有一个独特的「X」系角色,该 Tee 得分 ×2(叠乘),外加 +20 底分
 	//   橙(传说):同样的 ×2 和 +20,但**所有「X」系 Tee 都吃** —— 一张橙卡
 	//             就能把全队同流派摊开,不需要人手一张
 	//
@@ -1041,7 +1041,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutuhui',
 		name: '月兔会',
-		desc: '队伍里每张「兔」系卡：该 Tee 得分 ×2.3；得分 +20',
+		desc: '每拥有一个独特的「兔」系角色：该 Tee 得分 ×2.3；得分 +20',
 		rarity: 'rare',
 		tag: '兔',
 		skin: 'tuzi',
@@ -1050,7 +1050,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guiyuan',
 		name: '桂苑',
-		desc: '队伍里每张「桂」系卡：该 Tee 得分 ×2.3；得分 +20',
+		desc: '每拥有一个独特的「桂」系角色：该 Tee 得分 ×2.3；得分 +20',
 		rarity: 'rare',
 		tag: '桂',
 		skin: 'brownbear',
@@ -1059,7 +1059,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuebingfang',
 		name: '月饼坊',
-		desc: '队伍里每张「饼」系卡：该 Tee 得分 ×3；得分 +20',
+		desc: '每拥有一个独特的「饼」系角色：该 Tee 得分 ×3；得分 +20',
 		rarity: 'rare',
 		tag: '饼',
 		skin: 'GoldCat',
@@ -1068,7 +1068,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'dengzhen',
 		name: '灯阵',
-		desc: '队伍里每张「灯」系卡：该 Tee 得分 ×2.1；得分 +20',
+		desc: '每拥有一个独特的「灯」系角色：该 Tee 得分 ×2.1；得分 +20',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'iceberg',
@@ -1077,7 +1077,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuelun',
 		name: '月轮',
-		desc: '队伍里每张「月」系卡：该 Tee 得分 ×2；得分 +20',
+		desc: '每拥有一个独特的「月」系角色：该 Tee 得分 ×2；得分 +20',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'Sailormoon',
@@ -1086,7 +1086,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'xianlv',
 		name: '仙侣',
-		desc: '队伍里每张「仙」系卡：该 Tee 得分 ×2.3；得分 +20',
+		desc: '每拥有一个独特的「仙」系角色：该 Tee 得分 ×2.3；得分 +20',
 		rarity: 'rare',
 		tag: '仙',
 		skin: 'White_tee',
@@ -1095,7 +1095,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutulinfan',
 		name: '玉兔临凡',
-		desc: '队伍里每张「兔」系卡：所有「兔」系 Tee 得分 ×2.3；得分 +20',
+		desc: '每拥有一个独特的「兔」系角色：所有「兔」系 Tee 得分 ×2.3；得分 +20',
 		rarity: 'legendary',
 		tag: '兔',
 		skin: 'tuzi',
@@ -1104,7 +1104,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guidian',
 		name: '桂殿',
-		desc: '队伍里每张「桂」系卡：所有「桂」系 Tee 得分 ×2.3；得分 +20',
+		desc: '每拥有一个独特的「桂」系角色：所有「桂」系 Tee 得分 ×2.3；得分 +20',
 		rarity: 'legendary',
 		tag: '桂',
 		skin: 'brownbear',
@@ -1113,7 +1113,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'tuanyuanbing',
 		name: '团圆饼',
-		desc: '队伍里每张「饼」系卡：所有「饼」系 Tee 得分 ×3；得分 +20',
+		desc: '每拥有一个独特的「饼」系角色：所有「饼」系 Tee 得分 ×3；得分 +20',
 		rarity: 'legendary',
 		tag: '饼',
 		skin: 'GoldCat',
@@ -1122,7 +1122,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'changmingdeng',
 		name: '长明灯',
-		desc: '队伍里每张「灯」系卡：所有「灯」系 Tee 得分 ×2.1；得分 +20',
+		desc: '每拥有一个独特的「灯」系角色：所有「灯」系 Tee 得分 ×2.1；得分 +20',
 		rarity: 'legendary',
 		tag: '灯',
 		skin: 'iceberg',
@@ -1131,7 +1131,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'taiyin',
 		name: '太阴',
-		desc: '队伍里每张「月」系卡：所有「月」系 Tee 得分 ×2；得分 +20',
+		desc: '每拥有一个独特的「月」系角色：所有「月」系 Tee 得分 ×2；得分 +20',
 		rarity: 'legendary',
 		tag: '月',
 		skin: 'Sailormoon',
@@ -1140,7 +1140,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'qunxianhui',
 		name: '群仙会',
-		desc: '队伍里每张「仙」系卡：所有「仙」系 Tee 得分 ×2.3；得分 +20',
+		desc: '每拥有一个独特的「仙」系角色：所有「仙」系 Tee 得分 ×2.3；得分 +20',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'TeeAngel',

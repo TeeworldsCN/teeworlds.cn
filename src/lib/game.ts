@@ -637,7 +637,8 @@ export const calcTeeScore = ({
 				if (eff.teamWide && skipTeamWide) break;
 				// 全队版只落到**同流派**的 Tee 身上,别的流派不吃
 				if (eff.teamWide && teamCards[index]?.tag !== eff.tag) break;
-				const n = teamCards.filter((c) => c?.tag === eff.tag).length;
+				// 重复角色只算一个:3 张桂影不该给 3 份倍率(那会变成 ×2.3^3)
+				const n = new Set(teamCards.filter((c) => c?.tag === eff.tag).map((c) => c!.id)).size;
 				if (n <= 0) break;
 				const bc = chips;
 				const bm = mult;
