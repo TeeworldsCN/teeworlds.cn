@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { RARITY_INFO, type TeeCard } from '$lib/teecards';
+	import { RARITY_INFO, type TeeCard } from './teecards';
 	import TeeRender, { type TeePose } from '$lib/components/TeeRender.svelte';
 
 	/**
@@ -68,16 +68,55 @@
 	// ---- tooltip 防溢出屏幕两侧:默认居中,靠边时自动钳制 ----
 	let wrapEl: HTMLElement | undefined = $state();
 	let tipEl: HTMLElement | undefined = $state();
-	/** null = 居中模式(left 50% + translateX);否则为相对卡容器的 left px */
+	/** null = 居中模式(left 50% + translateX);否则为相对卡容器的 left px(布局 px,不含缩放) */
 	let tipLeft = $state<number | null>(null);
+	/** 上方空间不够时把提示框翻到卡片下方 */
+	let tipBelow = $state(false);
+
+	/**
+	 * 可规范围(视觉坐标):视口 ∩ 所有会裁切的祖先。
+	 * 矮屏会把整个活动区 `transform: scale(fitScale)` —— 那种情况下
+	 * 「出界」其实是撞上祖先的 overflow:hidden 被切掉,所以只看视口不够。
+	 */
+	const clipBox = () => {
+		// visualViewport 才是「真正看得见」的区域:桌面版网站 / 捻合缩放时它会窄于 innerWidth,
+		// 只钳 innerWidth 的话提示框会跑到屏幕外看不到
+		const vv = window.visualViewport;
+		const box = {
+			left: vv ? vv.offsetLeft : 0,
+			right: vv ? vv.offsetLeft + vv.width : window.innerWidth,
+			top: vv ? vv.offsetTop : 0
+		};
+		let el: HTMLElement | null = wrapEl ?? null;
+		while (el) {
+			const cs = getComputedStyle(el);
+			if (cs.overflowX === 'hidden' || cs.overflowX === 'clip') {
+				const r = el.getBoundingClientRect();
+				box.left = Math.max(box.left, r.left);
+				box.right = Math.min(box.right, r.right);
+				box.top = Math.max(box.top, r.top);
+			}
+			el = el.parentElement;
+		}
+		return box;
+	};
 
 	const positionTip = () => {
 		if (!tipEl || !wrapEl) return;
-		const tipW = tipEl.offsetWidth;
-		const wrapRect = wrapEl.getBoundingClientRect();
-		const center = wrapRect.left + wrapRect.width / 2;
-		const target = Math.max(8 + tipW / 2, Math.min(center, window.innerWidth - 8 - tipW / 2));
-		tipLeft = Math.round(target - tipW / 2 - wrapRect.left);
+		// 祖先可能有 transform: scale(矮屏整体缩放)。
+		// offsetWidth 是布局 px、getBoundingClientRect 是视觉 px —— 两套坐标不能混着减,
+		// 否则换算出来的 left 在缩放后偏掉(右边的卡就会撞出容器被切)。
+		const wr = wrapEl.getBoundingClientRect();
+		const scale = wr.width / wrapEl.offsetWidth || 1;
+		const tipW = tipEl.offsetWidth * scale; // 视觉宽
+		const box = clipBox();
+		const pad = 8;
+		const want = wr.left + wr.width / 2 - tipW / 2; // 先当居中
+		const left = Math.max(box.left + pad, Math.min(want, box.right - pad - tipW));
+		// left 写在缩放层内部,是布局 px —— 把视觉位移折算回去
+		tipLeft = Math.round((left - wr.left) / scale);
+		// 上方放不下(第一行的卡会顶到 HUD/header)就翻到卡片下方
+		tipBelow = wr.top - pad - tipEl.offsetHeight * scale < box.top;
 	};
 
 	$effect(() => {
@@ -123,10 +162,9 @@
 	{#if desc || tipExtra || tipList?.length}
 		<div
 			bind:this={tipEl}
-			class="tip pointer-events-none absolute bottom-full z-50 mb-2 w-max max-w-52 rounded-lg border px-2.5 py-1.5 text-center text-xs leading-snug text-slate-200 shadow-xl {tipLeft ===
-			null
-				? 'centered'
-				: ''}"
+			class="tip pointer-events-none absolute z-50 w-max max-w-[min(13rem,calc(100vw-2.5rem))] rounded-lg border px-2.5 py-1.5 text-center text-xs leading-snug text-slate-200 shadow-xl {tipBelow
+				? 'top-full mt-2'
+				: 'bottom-full mb-2'} {tipLeft === null ? 'centered' : ''}"
 			style={`border-color: color-mix(in srgb, var(--rarity, #94a3b8) 50%, transparent); background: rgba(2, 6, 23, 0.95);${tipLeft !== null ? `left: ${tipLeft}px;` : ''}`}
 		>
 			{desc}

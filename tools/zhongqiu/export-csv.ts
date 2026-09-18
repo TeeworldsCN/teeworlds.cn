@@ -5,8 +5,8 @@
  *
  * 只导「卡 + 说明」。要估值看 balance.ts(自 EV / 队伍影响 / 稀有度区间体检)。
  */
-import { CARDS, RARITY_INFO } from '../../src/lib/teecards';
-import { BUFF_CARDS } from '../../src/lib/items';
+import { CARDS, RARITY_INFO } from '../../src/lib/zhongqiu/teecards';
+import { BUFF_CARDS } from '../../src/lib/zhongqiu/items';
 
 const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 const rows: string[][] = [

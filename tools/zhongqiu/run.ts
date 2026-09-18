@@ -21,20 +21,22 @@ import {
 	selfDiceMods,
 	TARGETS,
 	type ScoreInput
-} from '../../src/lib/game';
-import { BUFF_BY_ID, BUFF_CARDS, type AppliedBuff, type BuffCard } from '../../src/lib/items';
-import { CARDS, CARD_BY_ID, drawCards, type Tag, type TeeCard } from '../../src/lib/teecards';
-import { applyDiceMods, judgeRoll } from '../../src/lib/midautumn';
+} from '../../src/lib/zhongqiu/game';
 import {
-	FILLS,
-	makeOptimal,
-	pack,
-	unpack,
-	countOf,
-	SUBSETS,
-	toDice,
-	rnd
-} from '../../src/lib/midautumn-dp';
+	BUFF_BY_ID,
+	BUFF_CARDS,
+	type AppliedBuff,
+	type BuffCard
+} from '../../src/lib/zhongqiu/items';
+import {
+	CARDS,
+	CARD_BY_ID,
+	drawCards,
+	type Tag,
+	type TeeCard
+} from '../../src/lib/zhongqiu/teecards';
+import { applyDiceMods, judgeRoll } from '../../src/lib/zhongqiu/midautumn';
+import { FILLS, makeOptimal, pack, unpack, countOf, SUBSETS, toDice, rnd } from './engine';
 
 type Skill = 'random' | 'sub' | 'opt';
 

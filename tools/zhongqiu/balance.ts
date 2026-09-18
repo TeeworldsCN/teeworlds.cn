@@ -1,4 +1,9 @@
-import { ROLL_LEVELS, getRollLevel, judgeRoll, type DiceMods } from '../../src/lib/midautumn';
+import {
+	ROLL_LEVELS,
+	getRollLevel,
+	judgeRoll,
+	type DiceMods
+} from '../../src/lib/zhongqiu/midautumn';
 import {
 	pack,
 	NIB,
@@ -123,20 +128,23 @@ for (const r of [1, 2, 3]) dists[r] = levelDistribution(r, SAMPLES);
 
 const ORDER = ROLL_LEVELS.map((l) => l.id);
 const idxOf = (id: string) => ORDER.indexOf(id);
+// 名字也查真源(只保留"及以上"这种聚合行的标记),改文案时报表会跟着变
+const AGG = new Set(['zhuang_yuan', 'dui_tang', 'san_hong', 'si_jin', 'er_ju', 'yi_xiu']);
+const lvName = (id: string) => ROLL_LEVELS.find((l) => l.id === id)?.name ?? id;
 const thresh: [string, string][] = [
-	['状元插金花', 'zhuang_yuan_chajinhua'],
-	['六博红', 'liu_bo_hong'],
-	['六博黑', 'liu_bo_hei'],
-	['五王', 'wu_wang'],
-	['五子登科', 'wu_zi'],
-	['状元及以上', 'zhuang_yuan'],
-	['对堂及以上', 'dui_tang'],
-	['三红及以上', 'san_hong'],
-	['四进及以上', 'si_jin'],
-	['二举及以上', 'er_ju'],
-	['一秀及以上', 'yi_xiu'],
-	['再接再厉', 'none']
-];
+	'zhuang_yuan_chajinhua',
+	'liu_bo_hong',
+	'liu_bo_hei',
+	'wu_wang',
+	'wu_zi',
+	'zhuang_yuan',
+	'dui_tang',
+	'san_hong',
+	'si_jin',
+	'er_ju',
+	'yi_xiu',
+	'none'
+].map((id) => [AGG.has(id) ? `${lvName(id)}及以上` : lvName(id), id] as [string, string]);
 console.log(
 	'  ' + '门槛'.padEnd(14) + '1 次'.padStart(9) + '2 次'.padStart(9) + '3 次'.padStart(9)
 );
@@ -165,7 +173,10 @@ for (const r of [2, 3]) {
 
 // ---- 5. chips vs mult ----
 console.log('\n【5】chips 与 mult 的收益对比(等级分越高,+固定值越亏)\n');
-const LV = [10, 20, 40, 80, 160, 320, 480, 640, 960, 1280, 2560];
+// 等级分直接取真源 —— 手抄一份的话,改了 midautumn 的等级分这里会静默地用旧值
+const LV = ROLL_LEVELS.filter((l) => l.score > 0)
+	.map((l) => l.score)
+	.sort((a, b) => a - b);
 console.log(
 	'  ' +
 		'等级分'.padStart(7) +
@@ -228,8 +239,8 @@ if (only === '') {
 
 // ---------- 8. 卡牌估值(用等级分布直接算每张卡的等效倍率) ----------
 if (only === 'cards' || only === '') {
-	const { CARDS, condHit, LEVEL_LADDER } = await import('../../src/lib/teecards');
-	const { BUFF_CARDS } = await import('../../src/lib/items');
+	const { CARDS, condHit, LEVEL_LADDER } = await import('../../src/lib/zhongqiu/teecards');
+	const { BUFF_CARDS } = await import('../../src/lib/zhongqiu/items');
 	const dist = dists[2] ?? levelDistribution(2, 40000);
 	const LV = expByRolls[2] ?? expectedScore(2);
 	const ROLL = (expByRolls[3] ?? expectedScore(3)) / LV;
@@ -433,9 +444,9 @@ if (only === 'cards' || only === '') {
 
 // ---------- 9. 强度曲线 vs 目标曲线 ----------
 if (only === 'power' || only === '') {
-	const { CARDS, condHit } = await import('../../src/lib/teecards');
-	const { BUFF_CARDS } = await import('../../src/lib/items');
-	const { roundTarget, roundReward, TEAM_LIMIT } = await import('../../src/lib/game');
+	const { CARDS, condHit } = await import('../../src/lib/zhongqiu/teecards');
+	const { BUFF_CARDS } = await import('../../src/lib/zhongqiu/items');
+	const { roundTarget, roundReward, TEAM_LIMIT } = await import('../../src/lib/zhongqiu/game');
 	if (!dists[2]) dists[2] = levelDistribution(2, 20000);
 
 	const LV = expByRolls[2] ?? expectedScore(2); // 2 次投掷的平均等级分
@@ -798,9 +809,9 @@ if (only === 'sumk') {
 
 // ---------- 12. 内容体检:数值重复 / 文案与效果不一致 ----------
 if (only === 'dup') {
-	const { CARDS } = await import('../../src/lib/teecards');
-	const { BUFF_CARDS } = await import('../../src/lib/items');
-	const { BASE_ROLLS } = await import('../../src/lib/game');
+	const { CARDS } = await import('../../src/lib/zhongqiu/teecards');
+	const { BUFF_CARDS } = await import('../../src/lib/zhongqiu/items');
+	const { BASE_ROLLS } = await import('../../src/lib/zhongqiu/game');
 
 	/** 抽取对象里所有数字(含数字键,如 {map:{6:4}} 的 6 和 4) */
 	const num = (o: unknown): number[] => {
@@ -913,9 +924,9 @@ if (only === 'dup') {
 // 构筑用确定性模型:每个带卡 Tee 的分数 = 等级分 × 平均卡倍率,团队 × 加成卡倍率,
 // 这样分布只来自掷骰本身,曲线才平滑可信。
 if (only === 'run') {
-	const { CARDS, condHit } = await import('../../src/lib/teecards');
-	const { BUFF_CARDS } = await import('../../src/lib/items');
-	const { roundTarget, roundReward, TEAM_LIMIT } = await import('../../src/lib/game');
+	const { CARDS, condHit } = await import('../../src/lib/zhongqiu/teecards');
+	const { BUFF_CARDS } = await import('../../src/lib/zhongqiu/items');
+	const { roundTarget, roundReward, TEAM_LIMIT } = await import('../../src/lib/zhongqiu/game');
 	if (!dists[2]) dists[2] = levelDistribution(2, 20000);
 
 	const LV_LIST = ROLL_LEVELS;
@@ -1160,8 +1171,8 @@ if (only === 'run') {
 // 期望分取决于玩家怎么改策略(例如逆向卡要刻意掷烂),所以这里用
 // makeOptimal + calcTeeScore 走一遍真实判定,而不是上面那张确定性表。
 if (only === 'new') {
-	const { calcTeeScore } = await import('../../src/lib/game');
-	const { CARDS: ALL } = await import('../../src/lib/teecards');
+	const { calcTeeScore } = await import('../../src/lib/zhongqiu/game');
+	const { CARDS: ALL } = await import('../../src/lib/zhongqiu/teecards');
 
 	const scoreOnce = (dice: number[], effs: TeeEffect[], rerolled: number): number => {
 		const input = {
@@ -1250,7 +1261,7 @@ if (only === 'new') {
 	// 新机制卡在卡池里的稀有度分布
 	const mine = ALL.filter((c) => {
 		const walk = (e: TeeEffect): boolean =>
-			['own_face', 'per_reroll', 'reverse', 'active'].includes(e.type) ||
+			['own_face', 'per_reroll', 'reverse', 'active', 'face_floor'].includes(e.type) ||
 			(e.type === 'bundle' && e.parts.some(walk));
 		return walk(c.effect);
 	});
@@ -1276,8 +1287,8 @@ if (only === 'new') {
 // 用「基线最优策略打出来的一手牌」当样本,直接跑 calcTeeScore —— 便宜且口径统一。
 // 会主动改打法的卡(逆向/每颗点数/条件卡)在这里是**保守下界**,后面单独标出来。
 if (only === 'band') {
-	const { calcTeeScore } = await import('../../src/lib/game');
-	const { CARDS: ALL, RARITY_INFO } = await import('../../src/lib/teecards');
+	const { calcTeeScore } = await import('../../src/lib/zhongqiu/game');
+	const { CARDS: ALL, RARITY_INFO } = await import('../../src/lib/zhongqiu/teecards');
 	const BANDS: Record<string, [number, number]> = {
 		common: [1.05, 1.13],
 		rare: [1.15, 1.28],
@@ -1321,7 +1332,14 @@ if (only === 'band') {
 		}).total;
 
 	const baseEV = hands.reduce((a, d) => a + scoreWith(null, d), 0) / hands.length;
-	const CHANGES_POLICY = new Set(['reverse', 'own_face', 'per_reroll', 'sum_chips', 'cond']);
+	const CHANGES_POLICY = new Set([
+		'reverse',
+		'own_face',
+		'per_reroll',
+		'sum_chips',
+		'cond',
+		'face_floor'
+	]);
 	/** 只有这些效果能在 calcTeeScore 里体现;改点/多掷/复制/成长类要走别的表 */
 	const MODELED = new Set([
 		'chips',
@@ -1329,6 +1347,7 @@ if (only === 'band') {
 		'chips_mult',
 		'cond',
 		'own_face',
+		'face_floor',
 		'per_reroll',
 		'reverse',
 		'sum_chips'

@@ -22,9 +22,19 @@
  *   5. 跨 Tee 条件卡(「我的 N 个 4」之类)用真实队友骰子算,不是近似。
  */
 
-import { applyDiceMods, getRollLevel, judgeRoll, type DiceMods } from '../../src/lib/midautumn';
-import { CARDS, type TeeCard, type TeeEffect } from '../../src/lib/teecards';
-import { BUFF_CARDS, drawItems, type AppliedBuff, type BuffCard } from '../../src/lib/items';
+import {
+	applyDiceMods,
+	getRollLevel,
+	judgeRoll,
+	type DiceMods
+} from '../../src/lib/zhongqiu/midautumn';
+import { CARDS, type TeeCard, type TeeEffect } from '../../src/lib/zhongqiu/teecards';
+import {
+	BUFF_CARDS,
+	drawItems,
+	type AppliedBuff,
+	type BuffCard
+} from '../../src/lib/zhongqiu/items';
 import {
 	BOSSES,
 	calcTeamTotal,
@@ -42,7 +52,7 @@ import {
 	type GrowthMap,
 	type ScoreInput,
 	type TeamTee
-} from '../../src/lib/game';
+} from '../../src/lib/zhongqiu/game';
 import { countOf, makeOptimal, pack, rnd, toDice, unpack } from './engine';
 
 const RUNS = Number(process.env.RUNS ?? 3000);

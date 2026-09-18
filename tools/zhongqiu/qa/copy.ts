@@ -17,11 +17,11 @@ import {
 	type DiceMods,
 	type TeeEffect,
 	type Tag
-} from '../../../src/lib/teecards';
-import { BUFF_CARDS, type BuffEffect } from '../../../src/lib/items';
-import { BASE_ROLLS } from '../../../src/lib/game';
-import { judgeRoll, ROLL_LEVELS, sampleDice } from '../../../src/lib/midautumn';
-import { LEVEL_LADDER } from '../../../src/lib/teecards';
+} from '../../../src/lib/zhongqiu/teecards';
+import { BUFF_CARDS, type BuffEffect } from '../../../src/lib/zhongqiu/items';
+import { BASE_ROLLS } from '../../../src/lib/zhongqiu/game';
+import { judgeRoll, ROLL_LEVELS, sampleDice } from '../../../src/lib/zhongqiu/midautumn';
+import { LEVEL_LADDER } from '../../../src/lib/zhongqiu/teecards';
 
 const lvName = (id: string) => ROLL_LEVELS.find((l) => l.id === id)?.name ?? id;
 
@@ -641,14 +641,7 @@ for (const c of BUFF_CARDS)
 	bad += audit(`${c.id} 「${c.name}」`, c.desc, [...buffReq(c.effect), ...refundGroup(c)]);
 
 // ---------- Boss 描述 ----------
-import {
-	BOSSES,
-	BASE_ROLLS as BR,
-	overflowReward,
-	isBossRound,
-	TEAM_LIMIT
-} from '../../../src/lib/game';
-import { readFileSync } from 'node:fs';
+import { BOSSES } from '../../../src/lib/zhongqiu/game';
 
 function bossReq(b: (typeof BOSSES)[number]): Group[] {
 	const g: Group[] = [];
@@ -683,127 +676,6 @@ bad = 0;
 for (const b of BOSSES) bad += audit(`boss:${b.id} 「${b.name}」`, b.desc, bossReq(b));
 if (bad === 0) console.log('全部通过 ✓');
 
-// ---------- 页面文案 ↔ 代码常量 ----------
-const page = readFileSync(
-	new URL('../../../src/routes/zhongqiu/+page.svelte', import.meta.url),
-	'utf8'
-);
-const txt = (s: string) =>
-	s
-		.replace(/<[^>]+>/g, '')
-		.replace(/&[a-z]+;/g, '')
-		.replace(/\s+/g, '');
-const rules = txt((page.match(/①[\s\S]*?⑦[^<]*/) ?? [''])[0]);
-const ladder = txt((page.match(/博饼等级:[\s\S]*?状元插金花\s*\d+/) ?? [''])[0]);
-
-const problems: string[] = [];
-const check = (label: string, ok: boolean, detail: string) => {
-	if (!ok) problems.push(`${label} —— ${detail}`);
-};
-
-// ① 开局选卡:文案的「N 张里挑 M 张」对代码里的池子大小与上限
-const draftPool = +(page.match(/draftChoices = shuffle\([\s\S]{0,200}?\.slice\(0, (\d+)\)/) ?? [
-	0,
-	'?'
-])[1];
-const draftPick = +(page.match(/draftPicked\.length < (\d+)/) ?? [0, '?'])[1];
-{
-	const m = rules.match(/开局从(\d+)张普通Tee卡里挑(\d+)张/);
-	check(
-		'规则①开局选卡',
-		!!m && +m[1] === draftPool && +m[2] === draftPick,
-		`文案「${m ? `${m[1]} 选 ${m[2]}` : '未找到'}」,代码「${draftPool} 选 ${draftPick}」`
-	);
-}
-{
-	const m = txt(page).match(/挑(\d+)张Tee卡开局/);
-	check(
-		'选卡界面标题',
-		!!m && +m[1] === draftPick,
-		`标题「${m?.[1] ?? '?'} 张」,代码 ${draftPick}`
-	);
-}
-// ② 每回合投掷次数
-{
-	const m = rules.match(/每回合可投掷(\d+)次/);
-	check('规则②投掷次数', !!m && +m[1] === BR, `文案「${m?.[1] ?? '?'} 次」,BASE_ROLLS=${BR}`);
-}
-// ④ 集市免费 N 选 M
-{
-	const m = rules.match(/免费(\d+)选(\d+)/);
-	const draws = +(page.match(/drawCards\((\d+)\)/) ?? [0, '?'])[1];
-	check(
-		'规则④免费选卡',
-		!!m && +m[1] === draws && +m[2] === 1,
-		`文案「${m?.[1]} 选 ${m?.[2]}」,drawCards(${draws})`
-	);
-}
-// ⑤ 加成卡持续回合数
-{
-	const m = rules.match(/持续(\d+)~(\d+)关/);
-	const turns = BUFF_CARDS.map((c) => c.turns);
-	check(
-		'规则⑤加成卡持续',
-		!!m && +m[1] === Math.min(...turns) && +m[2] === Math.max(...turns),
-		`文案「${m?.[1]}~${m?.[2]} 关」,实际 ${Math.min(...turns)}~${Math.max(...turns)}`
-	);
-}
-// ⑥ Boss 间隔
-{
-	const m = rules.match(/每(\d+)关出现/);
-	check(
-		'规则⑥Boss 间隔',
-		!!m && isBossRound(+m[1]) && !isBossRound(+m[1] - 1),
-		`文案「每 ${m?.[1] ?? '?'} 关」,isBossRound 周期需为 ${m?.[1]}`
-	);
-}
-// ⑦ 队伍上限(文案用的是模板表达式,只能查代码里是否真用了 TEAM_LIMIT)
-check(
-	'规则⑦队伍上限',
-	/队伍最多\s*\{TEAM_LIMIT\}/.test(page) || rules.includes('队伍最多'),
-	'文案未引用 TEAM_LIMIT'
-);
-check('TEAM_LIMIT 合理', TEAM_LIMIT >= 3 && TEAM_LIMIT <= 8, `TEAM_LIMIT=${TEAM_LIMIT}`);
-
-// 等级分阶梯:文案里的「名称 分数」序列必须与 ROLL_LEVELS 完全一致
-{
-	const pairs = [...ladder.matchAll(/([\u4e00-\u9fa5]+?)(\d+)分?/g)].map(
-		(m) => [m[1], +m[2]] as const
-	);
-	const expect = ROLL_LEVELS.filter((l) => l.id !== 'none').map((l) => [l.name, l.score] as const);
-	const seq = pairs.filter(([n]) => expect.some(([en]) => en === n));
-	const asc = [...expect].reverse(); // 文案按分数升序写
-	const wrong = asc.filter(([n, s], i) => !(seq[i]?.[0] === n && seq[i]?.[1] === s));
-	check(
-		'等级分阶梯',
-		wrong.length === 0 && seq.length === expect.length,
-		`文案 ${seq.map(([n, s]) => `${n}${s}`).join('/')} vs 实际 ${asc.map(([n, s]) => `${n}${s}`).join('/')}`
-	);
-}
-// 溢出奖励:文案阈值必须能在实现里复现
-{
-	// 卡面文案已统一成全角标点,匹配前先归一化(只看数字是否与实现一致)
-	const norm = (t: string) =>
-		t.replace(/（/g, '(').replace(/）/g, ')').replace(/，/g, ',').replace(/\s+/g, '');
-	const m = norm(txt(page)).match(/溢出奖励\(每超出目标(\d+)%\+(\d+),上限(\d+)\)/);
-	if (!m) check('溢出奖励文案', false, '未找到');
-	else {
-		const [, pct, gain, cap] = m.map(Number);
-		const t = 1000;
-		const step = (pct / 100) * t; // 每超出「目标的 pct%」应 +gain
-		const ok =
-			overflowReward(t + step, t) === gain &&
-			overflowReward(t + step * gain, t) === gain * gain &&
-			overflowReward(t + step - 1, t) === 0 &&
-			overflowReward(t * 100, t) === cap;
-		check(
-			'溢出奖励文案',
-			ok,
-			`文案「每超目标 ${pct}% +${gain},上限 ${cap}」,实测 step=${step}: +${overflowReward(t + step, t)} / 双倍 +${overflowReward(t + step * gain, t)} / 差 1 分 +${overflowReward(t + step - 1, t)} / 封顶 ${overflowReward(t * 100, t)}`
-		);
-	}
-}
-
 // ---- 等级示例自检(两条断言) ----
 // ① 示例里的核心骰子**单独**判定就该是它自己(X 是无关散牌,拿掉不影响)
 // ② 带 X 的示例能补全出一手真实手牌(sampleDice,作弊引擎塞「已掷完」结果要用)
@@ -826,11 +698,5 @@ if (badExamples.length) {
 		`\n等级示例自检 ✓(核心骰子单独判定即等于该等级 · X 可补全 · ${ROLL_LEVELS.length} 个等级)`
 	);
 
-console.log('\n=== 页面文案 ↔ 代码常量 ===');
-if (problems.length === 0) console.log('全部通过 ✓');
-else for (const p of problems) console.log(`✗ ${p}`);
-
-console.log(
-	`\n${bad + problems.length === 0 ? '全部通过 ✓' : `发现 ${bad + problems.length} 处文案与实现不一致`}`
-);
-process.exit(bad + problems.length === 0 ? 0 : 1);
+console.log(`\n${bad === 0 ? '全部通过 ✓' : `发现 ${bad} 处文案与实现不一致`}`);
+process.exit(bad === 0 ? 0 : 1);

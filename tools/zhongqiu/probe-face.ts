@@ -1,13 +1,13 @@
 // 一次性探针:验证「重复牌倍率」(face_count_mult) 在引擎里到底生不生效
-import { applyDiceMods, judgeRoll } from '../../src/lib/midautumn';
+import { applyDiceMods, judgeRoll } from '../../src/lib/zhongqiu/midautumn';
 import {
 	calcTeeScore,
 	mergeMods,
 	playerDiceMods,
 	selfDiceMods,
 	type ScoreInput
-} from '../../src/lib/game';
-import { CARD_BY_ID, type TeeCard, type TeeEffect } from '../../src/lib/teecards';
+} from '../../src/lib/zhongqiu/game';
+import { CARD_BY_ID, type TeeCard, type TeeEffect } from '../../src/lib/zhongqiu/teecards';
 
 const teamCards: (TeeCard | null)[] = [
 	null, // 主 Tee(「我」)没有卡

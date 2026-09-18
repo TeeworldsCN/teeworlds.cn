@@ -56,6 +56,11 @@ export interface Boss {
 	rollsBonus?: number;
 	/** 温和池:第 1~6 关(前两个 Ante)只会遇到这些 */
 	mild?: boolean;
+	/**
+	 * 抽中权重(默认 1)。彩蛋类守卫调低它 —— 权重是按比例分配的,
+	 * 所以降低一个不影响其余守卫之间的相对概率。
+	 */
+	weight?: number;
 }
 
 /**
@@ -120,7 +125,9 @@ export const BOSSES: Boss[] = [
 		emoji: '🌘',
 		desc: '本关掷出的 4 作废；目标 ×0.42',
 		mods: { void: [4] },
-		targetMult: 0.42
+		targetMult: 0.42,
+		// 彩蛋:R16 之后才可能碰到;权重 0.5 = 出现率约为其他守卫的一半(见 getBoss)
+		weight: 0.5
 	},
 	{
 		id: 'xueyue',
@@ -144,9 +151,20 @@ export const BOSSES: Boss[] = [
 export const MILD_BOSS_IDS = BOSSES.filter((b) => b.mild).map((b) => b.id);
 
 /** 第 n 关的 Boss: 前 2 个 Ante 用温和池,之后全池 */
+/**
+ * 抽守卫:前两个 Ante 只出温和池;「蚀月」是 R16 之后的彩蛋(R16 前永不出现),
+ * 而且权重低(0.25 → 在全部 8 个里只占约 3.4%)。
+ */
 export const getBoss = (n: number): Boss => {
-	const pool = BOSSES.filter((b) => (n <= 6 ? b.mild : true));
-	return pool[Math.floor(Math.random() * pool.length)];
+	const pool = BOSSES.filter((b) => (n <= 6 ? b.mild : b.id !== 'shiyue' || n > 16));
+	const weight = (b: Boss) => b.weight ?? 1;
+	const total = pool.reduce((a, b) => a + weight(b), 0);
+	let r = Math.random() * total;
+	for (const b of pool) {
+		r -= weight(b);
+		if (r <= 0) return b;
+	}
+	return pool[pool.length - 1];
 };
 
 export const getBossById = (id: string): Boss => BOSSES.find((b) => b.id === id) ?? BOSSES[0];
@@ -887,13 +905,21 @@ export const calcTeamTotal = (
 	/** 接力回流加进来的总分(已含在 total 里,结算动画单独播一行) */
 	relay: number;
 	relayLines: { cardId: string; from: number[]; value: number }[];
-	/** 压分辅助:全队倍率里来自「邻居分/自己分」的那部分(结算动画可单独播) */
-	ratioLines: { cardId: string; own: number; neighbor: number; mult: number }[];
+	/** 压分辅助加进来的总分(已含在 total 里):「我」的得分 ×(邻居分/自己分) */
+	ratioBonus: number;
+	ratioLines: { cardId: string; own: number; neighbor: number; mult: number; bonus: number }[];
 } => {
 	let teamMult = 1;
 	let relay = 0;
+	let ratioBonus = 0;
 	const relayLines: { cardId: string; from: number[]; value: number }[] = [];
-	const ratioLines: { cardId: string; own: number; neighbor: number; mult: number }[] = [];
+	const ratioLines: {
+		cardId: string;
+		own: number;
+		neighbor: number;
+		mult: number;
+		bonus: number;
+	}[] = [];
 	/** 接力回流:所有人都掷完才算,所以只看位置、不看出手顺序 */
 	const addRelay = (eff: TeeEffect & { type: 'relay_pct' }, i: number, cardId: string) => {
 		const idx = eff.from === 'left' ? [i - 1] : eff.from === 'right' ? [i + 1] : [i - 1, i + 1];
@@ -908,22 +934,32 @@ export const calcTeamTotal = (
 		if (eff.type === 'team_mult') teamMult *= eff.value;
 		else if (eff.type === 'relay_pct') addRelay(eff, i, cardId);
 		else if (eff.type === 'team_ratio') {
-			// 顺序:各人分 → 接力回流 → 这个比率 → 全队倍率(teamMult)
+			// 只放大「我」这一份再加进总分,不再乘全队总分:
+			// 分母(该 Tee 自己的分)再低,也只会放大「我」一个人的得分,不会把整队总分抬爆。
 			const own = Math.max(1, scores[i] ?? 0);
 			// 右邻优先;他在 6 号位(没有右邻)时用左邻 —— 不然这张卡得先卖个 Tee 才活
 			const nb =
 				eff.from === 'right' ? (scores[i + 1] ?? 0) : (scores[i + 1] ?? scores[i - 1] ?? 0);
 			if (nb > 0 && nb / own !== 1) {
-				teamMult *= nb / own;
-				ratioLines.push({ cardId, own, neighbor: nb, mult: nb / own });
+				const mult = nb / own;
+				const bonus = (scores[0] ?? 0) * mult;
+				ratioBonus += bonus;
+				ratioLines.push({ cardId, own, neighbor: nb, mult, bonus });
 			}
 		} else if (eff.type === 'bundle') eff.parts.forEach((p) => walk(p, i, cardId));
 	};
 	cards.forEach((card, i) => {
 		if (card) walk(card.effect, i, card.id);
 	});
-	const total = Math.round((scores.reduce((a, b) => a + b, 0) + relay) * teamMult);
-	return { total, teamMult, relay: Math.round(relay), relayLines, ratioLines };
+	const total = Math.round((scores.reduce((a, b) => a + b, 0) + relay + ratioBonus) * teamMult);
+	return {
+		total,
+		teamMult,
+		relay: Math.round(relay),
+		ratioBonus: Math.round(ratioBonus),
+		relayLines,
+		ratioLines
+	};
 };
 
 // ---- 奖励 ----

@@ -336,27 +336,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: { type: 'mult', value: 3.2 }
 	},
 
-	// ======== 加算+乘算 6 ========
-	{
-		id: 'guiyu',
-		name: '桂玉糕',
-		desc: '得分 +25，×1.2',
-		rarity: 'common',
-		skin: 'cupcake',
-		price: 3,
-		turns: 1,
-		effect: { type: 'chips_mult', chips: 25, mult: 1.2 }
-	},
-	{
-		id: 'hupo',
-		name: '琥珀糖',
-		desc: '得分 +30，×1.2',
-		rarity: 'common',
-		skin: 'GoldCat',
-		price: 3,
-		turns: 2,
-		effect: { type: 'chips_mult', chips: 30, mult: 1.2 }
-	},
+	// ======== 加算+乘算 4 ========
 	{
 		id: 'liuli',
 		name: '琉璃酥',
@@ -591,6 +571,106 @@ export const BUFF_CARDS: BuffCard[] = [
 		price: 6,
 		turns: 1,
 		effect: { type: 'clear_void' }
+	},
+
+	// ======== 取舍卡:点数加成 + 点数惩罚(强效果配副作用)========
+	// 玩法:带上去之后重掷/改点的目标会变(追高的那个点数、躲低的那个),
+	// 所以普通档是主力(经常能碰到才谈得上取舍),高稀有度的是「点数很高」的赌狗版。
+	{
+		id: 'shibei',
+		name: '拾贝',
+		desc: '自己每有 1 颗 5 点：得分 +65；每有 1 颗 2 点：得分 −25',
+		rarity: 'common',
+		skin: 'bunny',
+		price: 3,
+		turns: 2,
+		effect: {
+			type: 'bundle',
+			parts: [
+				{ type: 'own_face', face: 5, chips: 65 },
+				{ type: 'own_face', face: 2, chips: -25 }
+			]
+		}
+	},
+	{
+		id: 'duzhuo',
+		name: '独酌',
+		desc: '自己每有 1 颗 6 点：得分 +70；每有 1 颗 3 点：得分 −30',
+		rarity: 'common',
+		skin: 'snowflake',
+		price: 3,
+		turns: 2,
+		effect: {
+			type: 'bundle',
+			parts: [
+				{ type: 'own_face', face: 6, chips: 70 },
+				{ type: 'own_face', face: 3, chips: -30 }
+			]
+		}
+	},
+	{
+		id: 'shouzhuo',
+		name: '守拙',
+		desc: '自己每有 1 颗 4 点：得分 +60；每有 1 颗 2 点：得分 −25',
+		rarity: 'common',
+		skin: 'iceberg',
+		price: 3,
+		turns: 2,
+		effect: {
+			type: 'bundle',
+			parts: [
+				{ type: 'own_face', face: 4, chips: 60 },
+				{ type: 'own_face', face: 2, chips: -25 }
+			]
+		}
+	},
+	{
+		id: 'guxing',
+		name: '孤星',
+		desc: '自己每有 1 颗 1 点：得分 +80；每有 1 颗 4 点：得分 −35',
+		rarity: 'common',
+		skin: 'Sailormoon',
+		price: 3,
+		turns: 2,
+		effect: {
+			type: 'bundle',
+			parts: [
+				{ type: 'own_face', face: 1, chips: 80 },
+				{ type: 'own_face', face: 4, chips: -35 }
+			]
+		}
+	},
+	{
+		id: 'yishan',
+		name: '移山',
+		desc: '自己每有 1 颗 6 点：得分 +130；每有 1 颗 2 点：得分 −55',
+		rarity: 'rare',
+		skin: 'brownbear',
+		price: 6,
+		turns: 2,
+		effect: {
+			type: 'bundle',
+			parts: [
+				{ type: 'own_face', face: 6, chips: 130 },
+				{ type: 'own_face', face: 2, chips: -55 }
+			]
+		}
+	},
+	{
+		id: 'fantianyin',
+		name: '翻天印',
+		desc: '自己每有 1 颗 4 点：得分 +200；每有 1 颗 2 点：得分 −80',
+		rarity: 'legendary',
+		skin: 'GoldCat',
+		price: 9,
+		turns: 2,
+		effect: {
+			type: 'bundle',
+			parts: [
+				{ type: 'own_face', face: 4, chips: 200 },
+				{ type: 'own_face', face: 2, chips: -80 }
+			]
+		}
 	},
 
 	// ======== 低压道具(未使用即归还,定价比同类贵 40%~50%) ========

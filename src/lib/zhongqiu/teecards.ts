@@ -803,7 +803,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guanghan',
 		name: '月上广寒',
-		desc: '该 Tee 得分 +20，掷出的 1、6 视为 4；回合结算时：全队总分 ×（相邻 Tee 本关得分 / 该 Tee 得分），右邻优先',
+		desc: '该 Tee 得分 +20，掷出的 1、6 视为 4；回合结算时：总分额外 +（「我」的得分 × 相邻 Tee 本关得分 ÷ 该 Tee 得分），右邻优先',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'IceWitch',
@@ -890,7 +890,7 @@ export const CARDS: TeeCard[] = [
 		id: 'zhaixing',
 		name: '月下摘星',
 		desc: '自己每有 1 颗 6 点：得分 +65；每有 1 颗 1 点：得分 −10',
-		rarity: 'rare',
+		rarity: 'common',
 		tag: '月',
 		skin: 'TeeAngel',
 		effect: {
@@ -1249,11 +1249,11 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'dazhanggui',
 		name: '饼铺掌柜',
-		desc: '每累计卖出 1 个 Tee：得分 ×2（每回合最多计 2 个，叠乘）',
+		desc: '每累计卖出 1 个 Tee：得分 ×1.3（每回合最多计 2 个，叠乘）',
 		rarity: 'legendary',
 		tag: '饼',
 		skin: 'White_tee',
-		effect: { type: 'sell_scale', per: 2 }
+		effect: { type: 'sell_scale', per: 1.3 }
 	},
 	// ==== 重掷流:重掷越多越强,和「多投掷」配装联动 ====
 	{

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import TeeRender, { type TeePose } from '$lib/components/TeeRender.svelte';
-	import TeeCardView from '$lib/components/TeeCard.svelte';
+	import TeeCardView from '$lib/zhongqiu/TeeCard.svelte';
 	import { EMOTE } from '$lib/stores/skins';
 	import {
 		applyDiceMods,
@@ -15,15 +15,21 @@
 		sampleDice,
 		showPip,
 		type RollLevel
-	} from '$lib/midautumn';
-	import { RARITY_INFO, drawCards, type TeeCard, type TeeEffect, CARDS } from '$lib/teecards';
+	} from '$lib/zhongqiu/midautumn';
+	import {
+		RARITY_INFO,
+		drawCards,
+		type TeeCard,
+		type TeeEffect,
+		CARDS
+	} from '$lib/zhongqiu/teecards';
 	import {
 		BUFF_BY_ID,
 		BUFF_CARDS,
 		drawShopItems,
 		type AppliedBuff,
 		type BuffCard
-	} from '$lib/items';
+	} from '$lib/zhongqiu/items';
 	import {
 		BASE_ROLLS,
 		playerDiceMods,
@@ -64,7 +70,7 @@
 		type ScoreInput,
 		type SetOp,
 		type TeamTee
-	} from '$lib/game';
+	} from '$lib/zhongqiu/game';
 	import {
 		initSfx,
 		loadSfxPref,
@@ -80,7 +86,7 @@
 		sfxStep,
 		sfxTotal,
 		sfxWin
-	} from '$lib/sfx';
+	} from '$lib/zhongqiu/sfx';
 	import { onMount } from 'svelte';
 	import { setLayoutTheme } from '$lib/layoutTheme.svelte';
 	import Fa from 'svelte-fa';
@@ -1367,7 +1373,7 @@
 			}
 		}
 		const sum = team.reduce((s, t) => s + t.lastScore, 0);
-		const { total, teamMult, relay, relayLines } = calcTeamTotal(
+		const { total, teamMult, relay, ratioBonus, relayLines, ratioLines } = calcTeamTotal(
 			team.map((t) => t.lastScore),
 			team.map(cardOf) // 同上:位置对齐
 		);
@@ -1380,10 +1386,18 @@
 				kind: 'mult'
 			});
 		}
+		// 压分辅助(月上广寒):「我」这一份按 (邻居/自己) 放大后加进总分
+		for (const rl of ratioLines) {
+			steps.push({
+				text: `❄️ ${cardById(rl.cardId)?.name ?? rl.cardId}：「我」×${formatScore(Math.round(rl.mult * 10) / 10)} +${formatScore(Math.round(rl.bonus))} 分`,
+				cls: 'text-cyan-300',
+				kind: 'mult'
+			});
+		}
 		steps.push({
 			text:
 				teamMult !== 1
-					? `${formatScore(sum + relay)} × ${teamMult} = ${formatScore(total)} 分`
+					? `${formatScore(sum + relay + ratioBonus)} × ${teamMult} = ${formatScore(total)} 分`
 					: `${formatScore(total)} 分`,
 			cls: 'font-bold text-amber-200',
 			kind: 'total'

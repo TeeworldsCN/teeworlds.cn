@@ -25,10 +25,10 @@ import {
 	TARGETS,
 	type EffectiveEffect,
 	type ScoreInput
-} from '../../src/lib/game';
-import { BUFF_BY_ID, type AppliedBuff } from '../../src/lib/items';
-import { CARD_BY_ID, type TeeCard } from '../../src/lib/teecards';
-import { judgeRoll } from '../../src/lib/midautumn';
+} from '../../src/lib/zhongqiu/game';
+import { BUFF_BY_ID, type AppliedBuff } from '../../src/lib/zhongqiu/items';
+import { CARD_BY_ID, type TeeCard } from '../../src/lib/zhongqiu/teecards';
+import { judgeRoll } from '../../src/lib/zhongqiu/midautumn';
 import { FILLS, makeOptimal, pack, unpack, countOf, SUBSETS, toDice, rnd } from './engine';
 
 const MAX_DICE = 6;

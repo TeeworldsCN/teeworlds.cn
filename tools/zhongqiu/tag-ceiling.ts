@@ -6,9 +6,14 @@ import {
 	selfDiceMods,
 	mergeMods,
 	type ScoreInput
-} from '../../src/lib/game';
-import { CARDS, CARD_BY_ID, type TeeCard } from '../../src/lib/teecards';
-import { applyDiceMods, getRollLevel, sampleDice, judgeRoll } from '../../src/lib/midautumn';
+} from '../../src/lib/zhongqiu/game';
+import { CARDS, CARD_BY_ID, type TeeCard } from '../../src/lib/zhongqiu/teecards';
+import {
+	applyDiceMods,
+	getRollLevel,
+	sampleDice,
+	judgeRoll
+} from '../../src/lib/zhongqiu/midautumn';
 
 const ROUND = 14; // 后期关卡,避免「每关成长」类效果干扰对比
 const families = ['月', '桂', '仙', '饼', '兔', '灯'];
