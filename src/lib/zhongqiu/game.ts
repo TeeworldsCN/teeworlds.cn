@@ -1043,3 +1043,72 @@ export const clearSave = () => {
 		// ignore
 	}
 };
+
+// ---- 局内存档:退出页面重进还能接着打 ----
+//
+// 与上面的最高分/局数分开存(那个是跨局战绩,这个是当前这一局)。
+// 只存**回合边界**的状态:掷骰/结算中途退出会被页面归一到「本关还没掷」再存,
+// 避免把动画中途的半成品状态写进去(重新进就是重掷本关,单机游戏不亏)。
+const RUN_KEY = 'midautumn:run';
+/** 结构变了就 +1:旧档直接作废,不尝试迁移 */
+const RUN_VERSION = 1;
+
+export type RunTeamSlot = {
+	cardId: string | null;
+	buffs: { cardId: string; turnsLeft: number }[];
+	lastScore: number;
+	lastLevelId: string;
+	lastDice: number[];
+};
+
+export type RunSave = {
+	v: number;
+	phase: string;
+	round: number;
+	bossId: string | null;
+	target: number;
+	mooncakes: number;
+	runScore: number;
+	growth: GrowthMap;
+	team: RunTeamSlot[];
+	soldTees: number;
+	soldThisRound: number;
+	shopBuffs: string[];
+	shopSold: string[];
+	shopLocks: (string | null)[];
+	buffInventory: Record<string, number>;
+	draftChoices: string[];
+	draftPicked: number[];
+	rewardChoices: string[];
+};
+
+export const saveRun = (data: Omit<RunSave, 'v'>) => {
+	try {
+		localStorage.setItem(RUN_KEY, JSON.stringify({ v: RUN_VERSION, ...data }));
+	} catch {
+		// 隐私模式 / 配额满:存不了就算了,不能因此崩游戏
+	}
+};
+
+export const loadRun = (): RunSave | null => {
+	try {
+		const raw = localStorage.getItem(RUN_KEY);
+		if (!raw) return null;
+		const data = JSON.parse(raw) as RunSave;
+		if (data.v !== RUN_VERSION) {
+			localStorage.removeItem(RUN_KEY);
+			return null;
+		}
+		return data;
+	} catch {
+		return null;
+	}
+};
+
+export const clearRun = () => {
+	try {
+		localStorage.removeItem(RUN_KEY);
+	} catch {
+		// ignore
+	}
+};

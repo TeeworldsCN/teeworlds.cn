@@ -19,6 +19,7 @@
 	import {
 		RARITY_INFO,
 		drawCards,
+		CARD_BY_ID,
 		type TeeCard,
 		type TeeEffect,
 		CARDS
@@ -58,6 +59,9 @@
 		roundReward,
 		roundTarget,
 		saveResult,
+		saveRun,
+		loadRun,
+		clearRun,
 		selfDiceMods,
 		shuffle,
 		upgradeLevel,
@@ -69,7 +73,8 @@
 		type ActiveSkill,
 		type ScoreInput,
 		type SetOp,
-		type TeamTee
+		type TeamTee,
+		type RunSave
 	} from '$lib/zhongqiu/game';
 	import {
 		initSfx,
@@ -757,12 +762,115 @@
 	const startGame = () => {
 		sfxClick();
 		resetRun();
+		clearRun(); // 新开一局:把上一局的存档清掉
 		// 开局先抽 5 张普通卡给玩家挑 2 张 —— 3 人队伍起步，避免第一关纯看运气
 		draftChoices = shuffle(CARDS.filter((c) => c.rarity === 'common')).slice(0, 5);
 		draftPicked = [];
 		team = [];
 		phase = 'draft';
 	};
+
+	/** 从选卡屏回标题:这一局不要了(存档一并清掉) */
+	const backToTitle = () => {
+		sfxClick();
+		clearRun();
+		resetRun();
+		draftChoices = [];
+		draftPicked = [];
+		rewardChoices = [];
+		team = [];
+		phase = 'idle';
+	};
+
+	// ---- 局内存档:实时保存 + 重进恢复 ----
+	//
+	// 存的是「回合边界」的快照:掷骰/等确认/结算中途退出,重进就重掷本关 ——
+	// 既不把动画中途的半成品状态写进去,也就不用担心状态字段越加越多跟不上。
+	/** 一关之内、随时会被下一次掷骰覆盖的阶段 → 统一归一成 'intro' */
+	const MID_ROUND = new Set<Phase>(['rolling', 'round_confirm', 'round_end']);
+	/** 值得存的阶段(idle=标题、game_over=已结束,都不存) */
+	const SAVEABLE = new Set(['draft', 'intro', 'reward', 'shop']);
+
+	const runSnapshot = (): Omit<RunSave, 'v'> => {
+		const mid = MID_ROUND.has(phase);
+		return {
+			phase: mid ? 'intro' : phase,
+			round,
+			bossId: boss?.id ?? null,
+			target,
+			mooncakes,
+			runScore,
+			growth,
+			// 中途归一成"本关还没掷"时,各 Tee 的本关成绩也要跟着清掉
+			team: team.map((t) => ({
+				cardId: t.cardId,
+				buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft })),
+				lastScore: mid ? 0 : t.lastScore,
+				lastLevelId: mid ? 'none' : t.lastLevelId,
+				lastDice: mid ? [1, 1, 1, 1, 1, 1] : t.lastDice
+			})),
+			soldTees,
+			soldThisRound,
+			shopBuffs: shopBuffs.map((b) => b.id),
+			shopSold,
+			shopLocks,
+			buffInventory,
+			draftChoices: draftChoices.map((c) => c.id),
+			draftPicked,
+			rewardChoices: rewardChoices.map((c) => c.id)
+		};
+	};
+
+	const restoreRun = (d: RunSave) => {
+		round = d.round;
+		boss = d.bossId ? getBossById(d.bossId) : null;
+		target = d.target;
+		mooncakes = d.mooncakes;
+		runScore = d.runScore;
+		growth = d.growth;
+		team = d.team.map((t, i) => ({
+			cardId: t.cardId,
+			playerSkin: i === 0 ? SELF_SKIN : undefined,
+			lastScore: t.lastScore,
+			lastLevelId: t.lastLevelId,
+			lastDice: t.lastDice,
+			buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft }))
+		}));
+		soldTees = d.soldTees;
+		soldThisRound = d.soldThisRound;
+		shopBuffs = d.shopBuffs.map((id) => BUFF_BY_ID.get(id)).filter((b): b is BuffCard => !!b);
+		shopSold = d.shopSold;
+		shopLocks = d.shopLocks;
+		buffInventory = d.buffInventory;
+		draftChoices = d.draftChoices.map((id) => CARD_BY_ID.get(id)).filter((c): c is TeeCard => !!c);
+		draftPicked = d.draftPicked;
+		rewardChoices = d.rewardChoices
+			.map((id) => CARD_BY_ID.get(id))
+			.filter((c): c is TeeCard => !!c);
+		// 关卡内的临时状态本该由 beginRound 置空,恢复时手动补上
+		resetRoundState();
+		boss = d.bossId ? getBossById(d.bossId) : null;
+		target = d.target;
+		phase = d.phase as Phase;
+	};
+
+	// 实时存(200ms 防抖)。$effect 读了上面所有字段 → 任何一处变了都会重跑。
+	$effect(() => {
+		const snap = runSnapshot();
+		if (phase === 'game_over') {
+			clearRun();
+			return;
+		}
+		if (!SAVEABLE.has(snap.phase)) return;
+		const timer = setTimeout(() => saveRun(snap), 200);
+		return () => clearTimeout(timer);
+	});
+
+	// 页面是 ssr=false,可以直接在初始化时读档(不必等 onMount)
+	{
+		const saved = loadRun();
+		if (saved && saved.phase !== 'idle') restoreRun(saved);
+	}
 
 	const toggleDraftPick = (idx: number) => {
 		sfxClick();
@@ -1748,6 +1856,26 @@
 		<div
 			class="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col px-2 pt-2 pb-2 max-[365px]:pt-1 max-[365px]:pb-1 sm:px-6 sm:pt-4 sm:pb-6"
 		>
+			{#snippet recordsBar()}
+				<!-- 标题屏同款的战绩条:选卡阶段用它代替关卡 HUD(那时还没有关卡) -->
+				<div
+					class="rounded-xl border border-amber-500/25 bg-slate-900/70 px-2.5 py-2 text-center text-xs text-amber-200/90 backdrop-blur-sm sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm"
+				>
+					<span class="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+						<span class="flex items-center gap-1">
+							<Fa icon={faTrophy} class="inline" /> 最高总分
+							<span class="font-bold"
+								>{save.bestScore > 0 ? formatScore(save.bestScore) : '暂无'}</span
+							>
+						</span>
+						<span class="text-slate-400"
+							>({save.bestRound > 0 ? `第 ${save.bestRound} 关` : '—'})</span
+						>
+						<span class="text-slate-500">共游玩 {save.plays} 局</span>
+					</span>
+				</div>
+			{/snippet}
+
 			{#snippet hud()}
 				<!-- ================= HUD ================= -->
 				<div
@@ -1899,7 +2027,7 @@
 				</div>
 			{:else if phase === 'draft'}
 				<!-- ================= 开局选卡(5 选 2) ================= -->
-				{@render hud()}
+				{@render recordsBar()}
 				<div
 					class="panel-fill panel-auto mt-2.5 rounded-xl border border-amber-500/30 bg-slate-900/80 px-2.5 py-2.5 backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-6"
 				>
@@ -1941,6 +2069,21 @@
 						>
 							{draftPicked.length === 2 ? '开始博饼 →' : '请选择两个 Tee'}
 						</button>
+					</div>
+				</div>
+
+				<!-- 回标题:放弃本局(存档一并清掉) -->
+				<div
+					class="panel-auto mt-2.5 rounded-xl border border-slate-700/60 bg-slate-900/70 px-2.5 py-2.5 backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-4"
+				>
+					<button
+						class="w-full rounded-xl border border-slate-500 bg-slate-700/80 px-6 py-2 text-sm font-bold text-slate-200 transition hover:bg-slate-600 active:scale-95 sm:py-2.5 sm:text-base"
+						onclick={backToTitle}
+					>
+						← 返回标题
+					</button>
+					<div class="mt-1.5 text-center text-[10px] text-slate-500 sm:text-xs">
+						回标题会放弃这一局（不保留进度）
 					</div>
 				</div>
 			{:else}
