@@ -1093,19 +1093,28 @@
 			kind: 'level'
 		});
 		// 3） 卡牌 / 加成卡逐条
+		// 引擎是「先加完再乘完」((base + chips) x mult),所以结算也分两段播:
+		// 加算行全部先出现,乘算行跟在后面 —— 播放顺序 = 真实计算顺序。
+		const nameOf = (src: (typeof lastBreakdown.sources)[number]) =>
+			src.kind === 'card'
+				? (cardById(src.srcId)?.name ?? src.srcId)
+				: (BUFF_BY_ID.get(src.srcId)?.name ?? src.srcId);
+		// 3a) 加算阶段
 		for (const src of lastBreakdown.sources) {
-			const name =
-				src.kind === 'card'
-					? (cardById(src.srcId)?.name ?? src.srcId)
-					: (BUFF_BY_ID.get(src.srcId)?.name ?? src.srcId);
-			const parts: string[] = [];
-			if (src.chips) parts.push(`+${formatScore(src.chips)}`);
-			if (src.mult !== 1) parts.push(`×${Number(src.mult.toFixed(2))}`);
-			if (!parts.length) continue;
+			if (!src.chips) continue;
 			steps.push({
-				text: `${name} ${parts.join(' ')}`,
-				cls: src.chips ? 'text-amber-300' : 'text-purple-300',
-				kind: src.chips ? 'chip' : 'mult'
+				text: `${nameOf(src)} +${formatScore(src.chips)}`,
+				cls: 'text-amber-300',
+				kind: 'chip'
+			});
+		}
+		// 3b) 乘算阶段
+		for (const src of lastBreakdown.sources) {
+			if (src.mult === 1) continue;
+			steps.push({
+				text: `${nameOf(src)} ×${Number(src.mult.toFixed(2))}`,
+				cls: 'text-purple-300',
+				kind: 'mult'
 			});
 		}
 		// 4） 合计
