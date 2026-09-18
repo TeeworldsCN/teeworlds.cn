@@ -865,7 +865,7 @@ export const CARDS: TeeCard[] = [
 		desc: '自己每有 1 颗 2 点：得分 +35',
 		rarity: 'common',
 		tag: '月',
-		skin: 'Q_PatrickStar',
+		skin: 'Shadowtee',
 		effect: { type: 'own_face', face: 2, chips: 35 }
 	},
 	{
@@ -962,7 +962,7 @@ export const CARDS: TeeCard[] = [
 		desc: '投掷出 1 颗 6 点：获得 42 分；每多 1 颗 6 点，得分 ×3',
 		rarity: 'rare',
 		tag: '仙',
-		skin: 'chess_knight_white',
+		skin: 'coala_phoenix',
 		effect: { type: 'face_floor', face: 6, base: 42, per: 3 }
 	},
 
@@ -1070,7 +1070,7 @@ export const CARDS: TeeCard[] = [
 		desc: '每拥有一个独特的「饼」系角色：该 Tee 得分 ×3（叠乘）；每有 1 颗四点，得分 +1',
 		rarity: 'rare',
 		tag: '饼',
-		skin: 'donut',
+		skin: 'buni',
 		effect: { type: 'per_tag', tag: '饼', per: 3.0, as: 'mult', chipsPerFour: 1 }
 	},
 	{
@@ -1307,7 +1307,7 @@ export const CARDS: TeeCard[] = [
 		desc: '得分 = 100 + 每关 +5 − 本次掷骰分',
 		rarity: 'common',
 		tag: '月',
-		skin: 'darkcat',
+		skin: 'Whitetee Small',
 		effect: { type: 'reverse', base: 100, perRound: 5, per: 2 }
 	},
 	{

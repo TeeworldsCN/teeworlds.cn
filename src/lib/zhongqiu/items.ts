@@ -98,7 +98,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '豆沙馅',
 		desc: '得分 +45',
 		rarity: 'common',
-		skin: 'tela_beanie',
+		skin: 'HTF_reddy',
 		price: 2,
 		turns: 1,
 		effect: { type: 'chips', value: 45 }
@@ -128,7 +128,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '栗子',
 		desc: '得分 +50',
 		rarity: 'common',
-		skin: 'sweetdog',
+		skin: 'Acorn',
 		price: 3,
 		turns: 2,
 		effect: { type: 'chips', value: 50 }
@@ -480,7 +480,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '银针',
 		desc: '改 1 颗骰子为 4 点',
 		rarity: 'rare',
-		skin: 'clockwork_orange',
+		skin: 'Silver',
 		price: 5,
 		turns: 1,
 		effect: { type: 'set_point', count: 1, point: 4 }
@@ -744,7 +744,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '桂花符',
 		desc: '自己的 2 视为 4 点',
 		rarity: 'rare',
-		skin: 'HTF_limegreen',
+		skin: 'Lahm_yellow',
 		price: 4,
 		turns: 2,
 		effect: { type: 'dice_mods', mods: { map: { 2: 4 } } }
