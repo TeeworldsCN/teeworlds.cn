@@ -427,7 +427,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'yuebingshijia',
-		name: '饼铺世家',
+		name: '饼香世家',
 		desc: '每拥有一个独特的「饼」系角色，该 Tee 得分 ×1.4',
 		rarity: 'legendary',
 		skin: 'Golden Shroom',
@@ -574,7 +574,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'houyi',
-		name: '后羿仙',
+		name: '射日仙',
 		desc: '再接再厉时自动重掷全部（每回合 1 次），得分 ×2',
 		rarity: 'rare',
 		tag: '仙',
@@ -583,7 +583,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'yupan',
-		name: '月盘',
+		name: '月华盘',
 		desc: '全队总分 ×1.25',
 		rarity: 'rare',
 		tag: '月',
@@ -592,7 +592,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'quanjiafu',
-		name: '全家福饼',
+		name: '合家福饼',
 		desc: '队伍每多 1 人：得分 ×1.5；满 6 人再 ×2',
 		rarity: 'legendary',
 		tag: '饼',
@@ -634,7 +634,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'changong',
-		name: '蟾宫月',
+		name: '蟾宫清月',
 		desc: '自己的 6 点视为 4 点',
 		rarity: 'rare',
 		tag: '月',
@@ -706,7 +706,7 @@ export const CARDS: TeeCard[] = [
 	// ======== 传说 10 ========
 	{
 		id: 'wugang',
-		name: '吴刚登仙',
+		name: '吴刚成仙',
 		desc: '改 1 颗骰子为任意点数',
 		rarity: 'legendary',
 		tag: '仙',
@@ -835,7 +835,7 @@ export const CARDS: TeeCard[] = [
 	// ==== 点数统计流:自己骰子里的点数越多越强,和改点/视为类配装联动 ====
 	{
 		id: 'dianjiang',
-		name: '点将灯',
+		name: '灯下点将',
 		desc: '自己每有 1 颗 6 点：得分 +30',
 		rarity: 'common',
 		tag: '灯',
@@ -853,7 +853,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'duiying',
-		name: '对月影',
+		name: '对影邀月',
 		desc: '自己每有 1 颗 2 点：得分 +35',
 		rarity: 'common',
 		tag: '月',
@@ -905,7 +905,7 @@ export const CARDS: TeeCard[] = [
 	// 4 点自己那套**不乘**(牌型分已经是它的倍率,再乘就是给最强线发钱)。
 	{
 		id: 'hanxing',
-		name: '寒月星',
+		name: '冷月寒星',
 		desc: '投掷出 1 颗 1 点：获得 42 分；每多 1 颗 1 点，得分 ×3',
 		rarity: 'rare',
 		tag: '月',
@@ -914,7 +914,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'shuangli',
-		name: '双鲤饼',
+		name: '双鲤衔饼',
 		desc: '投掷出 1 颗 2 点：获得 44 分；每多 1 颗 2 点，得分 ×3',
 		rarity: 'rare',
 		tag: '饼',
@@ -961,7 +961,7 @@ export const CARDS: TeeCard[] = [
 	// ==== 点数线套装(传说档):每颗翻倍,橙卡是这套的终点 ====
 	{
 		id: 'yiyang',
-		name: '一阳仙',
+		name: '纯阳仙',
 		desc: '自己每有 1 颗 1 点：得分 +20、每颗 ×2；同点 n 颗按 4 点线档位结算',
 		rarity: 'legendary',
 		tag: '仙',
@@ -973,7 +973,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'shuangbi',
-		name: '桂璧双辉',
+		name: '桂璧生辉',
 		desc: '自己每有 1 颗 2 点：得分 +20、每颗 ×2；同点 n 颗按 4 点线档位结算',
 		rarity: 'legendary',
 		tag: '桂',
@@ -985,7 +985,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'sanqing',
-		name: '三清仙',
+		name: '三清仙尊',
 		desc: '自己每有 1 颗 3 点：得分 +20、每颗 ×2；同点 n 颗按 4 点线档位结算',
 		rarity: 'legendary',
 		tag: '仙',
@@ -1006,7 +1006,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'wuyue',
-		name: '五岳寻桂',
+		name: '五岳桂香',
 		desc: '自己每有 1 颗 5 点：得分 +25、每颗 ×2；同点 n 颗按 4 点线档位结算',
 		rarity: 'legendary',
 		tag: '桂',
@@ -1018,7 +1018,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'liulong',
-		name: '六龙仙',
+		name: '六龙仙驭',
 		desc: '自己每有 1 颗 6 点：得分 +25、每颗 ×2；同点 n 颗按 4 点线档位结算',
 		rarity: 'legendary',
 		tag: '仙',
@@ -1040,7 +1040,7 @@ export const CARDS: TeeCard[] = [
 	// 底分 +20 是必需的:只靠 ×2 时一秀正好 320 = 状元(等于不算大于)。
 	{
 		id: 'yutuhui',
-		name: '兔友会',
+		name: '兔儿满堂',
 		desc: '每拥有一个独特的「兔」系角色：该 Tee 得分 ×2.3；得分 +20',
 		rarity: 'rare',
 		tag: '兔',
@@ -1130,7 +1130,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'taiyin',
-		name: '太阴月',
+		name: '太阴素月',
 		desc: '每拥有一个独特的「月」系角色：所有「月」系 Tee 得分 ×2；得分 +20',
 		rarity: 'legendary',
 		tag: '月',
@@ -1197,7 +1197,7 @@ export const CARDS: TeeCard[] = [
 	// R6 之后每卖一个都变成永久倍率,所以是典型的后期流派(越晚越强)。
 	{
 		id: 'yeshi',
-		name: '夜市饼摊',
+		name: '夜市饼香',
 		desc: '每卖出 1 个 Tee：得分 ×1.25（每回合最多计 2 个）',
 		rarity: 'rare',
 		tag: '饼',
@@ -1216,7 +1216,7 @@ export const CARDS: TeeCard[] = [
 	// ==== 重掷流:重掷越多越强,和「多投掷」配装联动 ====
 	{
 		id: 'kuaiyu',
-		name: '灯下快雨',
+		name: '快雨挑灯',
 		desc: '本回合每重掷 1 颗骰子：得分 ×1.25',
 		rarity: 'rare',
 		tag: '灯',
