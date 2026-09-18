@@ -119,15 +119,39 @@
 		tipBelow = wr.top - pad - tipEl.offsetHeight * scale < box.top;
 	};
 
+	/**
+	 * 重算入口:resize / 缩放 / 祖先布局变化都走这里。
+	 * 下一帧再算 —— resize 事件里读到的 rect 还是旧布局,直接算会取到过时的位置;
+	 * 同一帧内多次触发只算一次。
+	 */
+	let tipRaf = 0;
+	const scheduleTip = () => {
+		if (tipRaf) return;
+		tipRaf = requestAnimationFrame(() => {
+			tipRaf = 0;
+			positionTip();
+		});
+	};
+
 	$effect(() => {
 		if (!tipEl || !wrapEl) return;
 		positionTip();
-		const ro = new ResizeObserver(positionTip);
+		const ro = new ResizeObserver(scheduleTip);
 		ro.observe(tipEl);
-		window.addEventListener('resize', positionTip);
+		// 卡片本身/祖先的布局变化也会让提示框错位(队伍满员换卡、结算行增高……)
+		const roWrap = new ResizeObserver(scheduleTip);
+		roWrap.observe(wrapEl);
+		window.addEventListener('resize', scheduleTip);
+		// 手机「桌面版网站」+ 双指缩放:变的是 visualViewport,window 的 resize 不一定触发
+		window.visualViewport?.addEventListener('resize', scheduleTip);
+		window.visualViewport?.addEventListener('scroll', scheduleTip);
 		return () => {
 			ro.disconnect();
-			window.removeEventListener('resize', positionTip);
+			roWrap.disconnect();
+			window.removeEventListener('resize', scheduleTip);
+			window.visualViewport?.removeEventListener('resize', scheduleTip);
+			window.visualViewport?.removeEventListener('scroll', scheduleTip);
+			if (tipRaf) cancelAnimationFrame(tipRaf);
 		};
 	});
 </script>
