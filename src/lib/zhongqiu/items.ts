@@ -159,7 +159,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	},
 	{
 		id: 'xianrou',
-		name: '鲜肉月团',
+		name: '月华酥',
 		desc: '得分 +100',
 		rarity: 'rare',
 		skin: 'Red Tomato',
@@ -169,7 +169,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	},
 	{
 		id: 'yunniang',
-		name: '云腿月团',
+		name: '玉盘酥',
 		desc: '得分 +120',
 		rarity: 'rare',
 		skin: 'Red Coke',
