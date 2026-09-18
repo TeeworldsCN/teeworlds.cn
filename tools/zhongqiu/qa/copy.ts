@@ -65,9 +65,22 @@ function teeReq(e: TeeEffect): Group[] {
 				...partGroups(e.chips, e.mult)
 			];
 		case 'team_ratio':
-			return [];
+			// 「总分额外 +(「我」的得分 × 相邻 Tee 本关得分 ÷ 该 Tee 得分),右邻优先」
+			return [
+				{ alts: ['kw:team_total'], why: '全队总分' },
+				{ alts: ['kw:neighbor'], why: '相邻 Tee 的得分' },
+				{ alts: ['kw:both'], why: '相邻/左右' },
+				{ alts: ['kw:me'], why: '「我」的得分' },
+				{ alts: ['kw:right', 'kw:left'], why: '优先哪一边' }
+			];
 		case 'face_count_mult':
-			return [];
+			// 「每有 1 颗 3,得分就 ×2」—— 统计颗数 × 每颗的倍率
+			return [
+				{ alts: [`ownface:${e.face}`], why: `统计自己的 ${e.face} 点数量` },
+				...(e.perHit !== undefined
+					? [{ alts: [`mulcount:${e.perHit}`], why: '每颗的倍率' }]
+					: [{ alts: ['mulcount:1'], why: '每颗 +1 倍(×(颗数+1))' }])
+			];
 		case 'relay_pct': {
 			// 吃左/右邻本关得分的一个百分比,外加一个固定分 —— 描述里这几样都得点名
 			const side = e.from === 'both' ? 'kw:both' : e.from === 'right' ? 'kw:right' : 'kw:left';
@@ -248,6 +261,9 @@ function teeReq(e: TeeEffect): Group[] {
 		case 'per_tag':
 			return [
 				{ alts: [`kw:per_tag:${e.tag}`], why: `每张 ${e.tag} 流派卡` },
+				...(e.chipsPerFour !== undefined
+					? [{ alts: [`add:${e.chipsPerFour}`], why: '每颗四点 +chips' }]
+					: []),
 				...(e.as === 'chips'
 					? [{ alts: [`add:${e.per}`], why: '+chips' }]
 					: [{ alts: [`mulcharge:${e.per}`, `mul:${e.per}`], why: '×mult 增量' }]),
@@ -373,6 +389,7 @@ function textClaims(raw: string): Set<string> {
 		if (/倍率$/.test(t.slice(0, m.index))) continue; // 「倍率 +1」不是 +chips
 		if (/点数$/.test(t.slice(0, m.index))) continue; // 「点数 +1」是改点(shift),不是 +chips
 		if (/每关$/.test(t.slice(0, m.index))) continue; // 「每关 +N」是成长增量(perround)
+		if (/颗数\s*$/.test(t.slice(0, m.index))) continue; // 「×(颗数 +1)」是每颗倍率,不是 +chips
 		out.add(`add:${+m[1]}`);
 	}
 	// 「每关 +N」是成长/逆向的每关增量,不是一次性 +chips
@@ -388,6 +405,8 @@ function textClaims(raw: string): Set<string> {
 		const before = t.slice(Math.max(0, m.index! - 5), m.index!);
 		if (/队伍人数|倍率\+?|掷骰分/.test(before)) continue; // 「人数×12」「倍率+2」「− 掷骰分×1.5」不是 ×mult
 		if (/点数量/.test(t.slice(m.index! + m[0].length, m.index! + m[0].length + 4))) continue; // 「×1 点数量」是颗数倍率
+		// 「得分就 ×2」是每颗倍率(face_count_mult 的 perHit),不是一次性 ×mult
+		if (/得分就\s*$/.test(t.slice(Math.max(0, m.index! - 8), m.index!))) continue;
 		out.add(`mul:${+m[1]}`);
 	}
 
@@ -432,13 +451,19 @@ function textClaims(raw: string): Set<string> {
 		mapped.push(m.index!);
 	}
 	if (mapped.length === 0) for (const m of t.matchAll(/视为(\d+)/g)) out.add(`map:4>${+m[1]}`);
+	// 列举写法:「掷出的 1、6 视为 4」—— 上面那条只吃得到紧贴「视为」的那一个数字
+	for (const m of t.matchAll(/((?:\d[、,和及])+\d)\s*点?视为\s*(\d)/g))
+		for (const d of m[1].split(/[、,和及]/)) out.add(`map:${+d}>${+m[2]}`);
 	for (const m of t.matchAll(/点数([+-])(\d+)/g)) out.add(`shift:${m[1] === '-' ? -1 : 1 * +m[2]}`);
 
 	// 点数统计:「每有 1 颗 6」/「自己的 6 每颗」/「每颗 3 点」
 	for (let f = 1; f <= 6; f++) {
-		if (new RegExp(`每有1?颗${f}|每颗${f}|${f}点每颗|自己的${f}点(?!视为)`).test(t))
+		if (new RegExp(`每有1?颗${f}|每颗${f}|${f}点每颗|自己的${f}点(?!视为)|有几颗${f}`).test(t))
 			out.add(`ownface:${f}`);
 	}
+	// 「得分就 ×(颗数 + 1)」/「得分就 ×2」—— ×(颗数+perHit) 的每颗倍率写法
+	for (const m of t.matchAll(/×\s*（?颗数\s*\+\s*(\d+)/g)) out.add(`mulcount:${+m[1]}`);
+	for (const m of t.matchAll(/得分就\s*×\s*(\d+(?:\.\d+)?)/g)) out.add(`mulcount:${+m[1]}`);
 	// 重掷流
 	if (/每重掷1颗|重掷1颗骰子/.test(t)) out.add('kw:per_reroll');
 	// 低压道具:未使用则归还
@@ -457,7 +482,7 @@ function textClaims(raw: string): Set<string> {
 
 	// 连号流:「连号」+ 每颗加分
 	if (/连号/.test(t)) out.add('kw:straight');
-	if (/每卖出/.test(t)) out.add('kw:sellscale');
+	if (/每(?:累计)?卖出/.test(t)) out.add('kw:sellscale');
 	// 点数阶梯 / 接力
 	if (/点数阶梯|同点.*档位/.test(t)) out.add('kw:faceladder');
 	if (/加到本Tee|相邻得分的\d+%/.test(t)) out.add('kw:relay');
@@ -531,9 +556,10 @@ function textClaims(raw: string): Set<string> {
 	if (/左侧|左边/.test(t)) out.add('kw:left');
 	if (/右侧|右边/.test(t)) out.add('kw:right');
 	if (/左右|相邻|两边|两人/.test(t)) out.add('kw:both');
-	// 「右邻 / 左邻」这种单边写法也要认(左右邻 / 左右两人 已经被上一条收走)
-	else if (/右邻/.test(t)) out.add('kw:right');
-	else if (/左邻/.test(t)) out.add('kw:left');
+	// 「右邻 / 左邻」单边写法也要认 —— 不能写成 else if:
+	// 「相邻 Tee ... ,右邻优先」这种句子两者同时出现,以前被上一条吃掉就再也看不见了
+	if (/右邻/.test(t)) out.add('kw:right');
+	if (/左邻/.test(t)) out.add('kw:left');
 	if (/相邻/.test(t)) out.add('kw:neighbor');
 	if (/我掷出|「我」|我的骰子|我每/.test(t)) out.add('kw:me');
 	for (const tag of Object.keys(TAG_NAMES) as Tag[])

@@ -435,7 +435,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	// ======== 多投掷(×2.33,压高稀有度) 4 ========
 	{
 		id: 'tueye',
-		name: '兔儿爷',
+		name: '兔爷灯',
 		desc: '可多投掷 1 次',
 		rarity: 'rare',
 		skin: 'rabbit_Judy',
