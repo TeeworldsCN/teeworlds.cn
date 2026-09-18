@@ -1581,6 +1581,20 @@
 		}
 	};
 
+	/** 放弃结算并结束游戏：本轮分数不计，直接按当前总分收场（按钮在结算按钮右下，小一号防误触） */
+	const abandonRun = () => {
+		sfxClick();
+		if (teamSettling) return; // 结算动画播到一半不给点，和「结算回合」一致
+		finalScore = 0;
+		finalRound = round;
+		finalRunScore = runScore;
+		const prevBest = save.bestScore;
+		save = saveResult(runScore, round);
+		isNewBest = runScore > prevBest && runScore > 0;
+		sfxLose();
+		phase = 'game_over';
+	};
+
 	const nextReward = () => {
 		sfxClick();
 		phase = 'reward';
@@ -2438,6 +2452,16 @@
 						>
 							{teamSettling ? '结算中...' : '🥮 结算回合'}
 						</button>
+						<!-- 放弃：小一号字 + 右下角 + 宽度自适应（不铺满），免得点「结算回合」时误触 -->
+						<div class="mt-1.5 flex w-full justify-end">
+							<button
+								class="rounded-lg px-2 py-1 text-[11px] text-slate-500 transition hover:bg-slate-800/70 hover:text-slate-300 active:scale-95 disabled:opacity-40 sm:text-xs"
+								onclick={abandonRun}
+								disabled={teamSettling}
+							>
+								放弃结算并结束游戏
+							</button>
+						</div>
 					</div>
 				{/if}
 
