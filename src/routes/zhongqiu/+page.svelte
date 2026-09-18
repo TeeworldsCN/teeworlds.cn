@@ -2402,7 +2402,7 @@
 						{:else}
 							<!-- 单颗骰子封顶 56px(行宽 = 6×56 + 5×间隙):手机宽屏/平板/PC 都不再放大 -->
 							<div
-								class="mx-auto grid w-full max-w-[22.25rem] grid-cols-6 gap-1 sm:max-w-[23.5rem] sm:gap-2"
+								class="mx-auto mt-1.5 grid w-full max-w-[22.25rem] grid-cols-6 gap-1 sm:mt-2 sm:max-w-[23.5rem] sm:gap-2"
 							>
 								{#each [0, 1, 2, 3, 4, 5] as i}
 									<button
@@ -2443,9 +2443,11 @@
 								{/each}
 							</div>
 
-							<!-- 交互提示 -->
+							<!-- 交互提示:视觉上排在骰子上面(order-first) ——
+							     发动 / 重掷的标题和按钮紧贴骰子,拇指按下去不会盖住骰面。
+							     高度按最高的状态预留(min-h),换状态时骰子不会上下跳。 -->
 							<div
-								class="mt-1.5 flex items-center justify-center gap-2 text-center text-xs max-[365px]:mt-1 max-[365px]:text-[10px] sm:text-sm"
+								class="order-first flex min-h-6 items-center justify-center gap-2 text-center text-xs max-[365px]:text-[10px] sm:min-h-8 sm:text-sm"
 							>
 								{#if pendingActive}
 									<!-- 充能技能:结算播完,等玩家决定要不要发动 -->
@@ -2460,7 +2462,6 @@
 										{:else}
 											本关重掷
 										{/if}
-										<span class="text-slate-500">(冷却 {pendingActive.cooldown} 关)</span>
 									</span>
 									<button
 										class="shrink-0 rounded-lg bg-gradient-to-b from-fuchsia-400 to-fuchsia-600 px-3 py-0.5 text-xs font-bold whitespace-nowrap text-fuchsia-950 shadow transition hover:from-fuchsia-300 hover:to-fuchsia-500 active:scale-95 sm:px-5 sm:py-1 sm:text-sm"
@@ -2512,9 +2513,12 @@
 									<span class="text-slate-400">{currentTeeCard?.name ?? '我'} 掷出了...</span>
 								{/if}
 								{#if pendingAction}
-									<button class="ml-2 text-xs text-slate-500 underline" onclick={skipSetOp}
-										>跳过改点</button
+									<button
+										class="shrink-0 rounded-lg border border-slate-500 bg-slate-700 px-3 py-0.5 text-xs font-semibold whitespace-nowrap text-slate-200 transition hover:bg-slate-600 sm:px-4 sm:py-1 sm:text-sm"
+										onclick={skipSetOp}
 									>
+										跳过改点
+									</button>
 								{/if}
 							</div>
 
