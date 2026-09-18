@@ -78,7 +78,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月兔护符',
 		desc: '得分 +30',
 		rarity: 'common',
-		skin: 'tuzi',
+		skin: 'Cute_Blue_Bunny',
 		price: 2,
 		turns: 1,
 		effect: { type: 'chips', value: 30 }
@@ -88,7 +88,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '五仁馅',
 		desc: '得分 +40',
 		rarity: 'common',
-		skin: 'alien',
+		skin: 'jelly_cube',
 		price: 2,
 		turns: 1,
 		effect: { type: 'chips', value: 40 }
@@ -98,7 +98,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '豆沙馅',
 		desc: '得分 +45',
 		rarity: 'common',
-		skin: 'blacktee',
+		skin: 'tela_beanie',
 		price: 2,
 		turns: 1,
 		effect: { type: 'chips', value: 45 }
@@ -108,7 +108,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '莲蓉馅',
 		desc: '得分 +55',
 		rarity: 'common',
-		skin: 'cupcake',
+		skin: 'mermydon_beanie',
 		price: 3,
 		turns: 1,
 		effect: { type: 'chips', value: 55 }
@@ -118,7 +118,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '枣泥',
 		desc: '得分 +35',
 		rarity: 'common',
-		skin: 'TeeDevil',
+		skin: 'sweet',
 		price: 3,
 		turns: 2,
 		effect: { type: 'chips', value: 35 }
@@ -128,7 +128,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '栗子',
 		desc: '得分 +50',
 		rarity: 'common',
-		skin: 'pumpkin',
+		skin: 'sweetdog',
 		price: 3,
 		turns: 2,
 		effect: { type: 'chips', value: 50 }
@@ -138,7 +138,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '糍粑',
 		desc: '得分 +25',
 		rarity: 'common',
-		skin: 'White_tee',
+		skin: '00_sweetfox',
 		price: 3,
 		turns: 3,
 		effect: { type: 'chips', value: 25 }
@@ -148,7 +148,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '星光烛',
 		desc: '得分 +70',
 		rarity: 'rare',
-		skin: 'snowflake',
+		skin: 'Yellow ray',
 		price: 4,
 		turns: 2,
 		effect: { type: 'chips', value: 70 }
@@ -158,7 +158,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '鲜肉月饼',
 		desc: '得分 +100',
 		rarity: 'rare',
-		skin: 'redbopp',
+		skin: 'Red Tomato',
 		price: 4,
 		turns: 2,
 		effect: { type: 'chips', value: 100 }
@@ -168,7 +168,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '云腿月饼',
 		desc: '得分 +120',
 		rarity: 'rare',
-		skin: 'Cowboy',
+		skin: 'Red Coke',
 		price: 5,
 		turns: 2,
 		effect: { type: 'chips', value: 120 }
@@ -178,7 +178,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '松仁',
 		desc: '得分 +90',
 		rarity: 'rare',
-		skin: 'Panda',
+		skin: 'Chocolate_Ice_Cream_KZ',
 		price: 5,
 		turns: 3,
 		effect: { type: 'chips', value: 90 }
@@ -188,7 +188,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '桂花糖浆',
 		desc: '得分 +130',
 		rarity: 'rare',
-		skin: 'Golden Shroom',
+		skin: 'cupcakesprinkle',
 		price: 5,
 		turns: 2,
 		effect: { type: 'chips', value: 130 }
@@ -198,7 +198,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '双黄莲蓉',
 		desc: '得分 +150',
 		rarity: 'legendary',
-		skin: 'iron_pot_o_gold',
+		skin: 'Sunflower',
 		price: 7,
 		turns: 2,
 		effect: { type: 'chips', value: 150 }
@@ -208,7 +208,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '百月团',
 		desc: '得分 +180',
 		rarity: 'legendary',
-		skin: 'GoldCat',
+		skin: 'aipaozy Golden Apple',
 		price: 8,
 		turns: 1,
 		effect: { type: 'chips', value: 180 }
@@ -220,7 +220,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '桂花蜜',
 		desc: '得分 ×1.3',
 		rarity: 'common',
-		skin: 'cupcake',
+		skin: 'cat with flowers',
 		price: 2,
 		turns: 1,
 		effect: { type: 'mult', value: 1.3 }
@@ -230,7 +230,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '丹桂',
 		desc: '得分 ×1.5',
 		rarity: 'common',
-		skin: 'redbopp',
+		skin: 'giftee_green',
 		price: 3,
 		turns: 1,
 		effect: { type: 'mult', value: 1.5 }
@@ -240,7 +240,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '银桂',
 		desc: '得分 ×1.4',
 		rarity: 'common',
-		skin: 'snowflake',
+		skin: 'default_flower',
 		price: 3,
 		turns: 2,
 		effect: { type: 'mult', value: 1.4 }
@@ -250,7 +250,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉露',
 		desc: '得分 ×1.75',
 		rarity: 'rare',
-		skin: 'IceWitch',
+		skin: 'clan_waterlily',
 		price: 4,
 		turns: 2,
 		effect: { type: 'mult', value: 1.75 }
@@ -260,7 +260,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月华',
 		desc: '得分 ×2',
 		rarity: 'rare',
-		skin: 'White_tee',
+		skin: 'CrystalCat',
 		price: 5,
 		turns: 2,
 		effect: { type: 'mult', value: 2 }
@@ -270,7 +270,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '蟾光',
 		desc: '得分 ×1.8',
 		rarity: 'rare',
-		skin: 'Sailormoon',
+		skin: 'glow_rayxer',
 		price: 5,
 		turns: 3,
 		effect: { type: 'mult', value: 1.8 }
@@ -280,7 +280,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '桂魄',
 		desc: '得分 ×2.25',
 		rarity: 'rare',
-		skin: 'IceWitch',
+		skin: 'babyYoda_flower',
 		price: 5,
 		turns: 2,
 		effect: { type: 'mult', value: 2.25 }
@@ -290,7 +290,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '清辉',
 		desc: '得分 ×2.5',
 		rarity: 'legendary',
-		skin: 'TeeAngel',
+		skin: 'AmethystCrystalCat',
 		price: 7,
 		turns: 1,
 		effect: { type: 'mult', value: 2.5 }
@@ -310,7 +310,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月神面纱',
 		desc: '得分 ×2.4',
 		rarity: 'legendary',
-		skin: 'TeeAngel',
+		skin: 'Drag King',
 		price: 8,
 		turns: 2,
 		effect: { type: 'mult', value: 2.4 }
@@ -320,7 +320,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉绳',
 		desc: '得分 ×2.6',
 		rarity: 'legendary',
-		skin: 'IceWitch',
+		skin: 'tea_tee',
 		price: 9,
 		turns: 3,
 		effect: { type: 'mult', value: 2.6 }
@@ -330,7 +330,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '九转金丹',
 		desc: '得分 ×3.2',
 		rarity: 'legendary',
-		skin: 'iron_pot_o_gold',
+		skin: 'angel_toast_kiinmn',
 		price: 9,
 		turns: 1,
 		effect: { type: 'mult', value: 3.2 }
@@ -342,7 +342,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '琉璃酥',
 		desc: '得分 +60，×1.4',
 		rarity: 'rare',
-		skin: 'IceWitch',
+		skin: 'Rainbow Jawbreaker',
 		price: 5,
 		turns: 2,
 		effect: { type: 'chips_mult', chips: 60, mult: 1.4 }
@@ -352,7 +352,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉脂',
 		desc: '得分 +60，×1.5',
 		rarity: 'rare',
-		skin: 'White_tee',
+		skin: 'cutecat_xmas_green',
 		price: 6,
 		turns: 2,
 		effect: { type: 'chips_mult', chips: 60, mult: 1.5 }
@@ -362,7 +362,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '金桂流心',
 		desc: '得分 +80，×1.6',
 		rarity: 'legendary',
-		skin: 'Golden Shroom',
+		skin: 'glow_greensward',
 		price: 8,
 		turns: 2,
 		effect: { type: 'chips_mult', chips: 80, mult: 1.6 }
@@ -372,7 +372,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月魂',
 		desc: '得分 +60，×2',
 		rarity: 'legendary',
-		skin: 'TeeAngel',
+		skin: 'aristocats_marie_glow',
 		price: 9,
 		turns: 1,
 		effect: { type: 'chips_mult', chips: 60, mult: 2 }
@@ -384,7 +384,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '潮信符',
 		desc: '骰子点数和 ×3 计入得分',
 		rarity: 'rare',
-		skin: 'Sailormoon',
+		skin: 'AquaFox',
 		price: 6,
 		turns: 1,
 		effect: { type: 'sum_chips', per: 3 }
@@ -396,7 +396,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '满月祝福',
 		desc: '最低按"一秀"结算',
 		rarity: 'common',
-		skin: 'bunny',
+		skin: 'twinbop_glow',
 		price: 3,
 		turns: 2,
 		effect: { type: 'level_floor', levelId: 'yi_xiu' }
@@ -406,7 +406,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '桂荫庇佑',
 		desc: '最低按"二举"结算',
 		rarity: 'rare',
-		skin: 'greensward',
+		skin: 'TerraSlime blue',
 		price: 5,
 		turns: 2,
 		effect: { type: 'level_floor', levelId: 'er_ju' }
@@ -416,7 +416,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月神庇佑',
 		desc: '最低按"三红"结算',
 		rarity: 'legendary',
-		skin: 'TeeAngel',
+		skin: 'Tangela',
 		price: 8,
 		turns: 1,
 		effect: { type: 'level_floor', levelId: 'san_hong' }
@@ -426,7 +426,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '蟾宫庇佑',
 		desc: '最低按"对堂"结算',
 		rarity: 'legendary',
-		skin: 'Sailormoon',
+		skin: 'clefairy',
 		price: 9,
 		turns: 1,
 		effect: { type: 'level_floor', levelId: 'dui_tang' }
@@ -438,7 +438,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '兔儿爷',
 		desc: '可多投掷 1 次',
 		rarity: 'rare',
-		skin: 'bunny',
+		skin: 'rabbit_Judy',
 		price: 6,
 		turns: 1,
 		effect: { type: 'roll', count: 1 }
@@ -448,7 +448,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉兔杵',
 		desc: '可多投掷 1 次',
 		rarity: 'legendary',
-		skin: 'tuzi',
+		skin: 'luoxiaohei_rabbit',
 		price: 10,
 		turns: 2,
 		effect: { type: 'roll', count: 1 }
@@ -458,7 +458,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '广寒仙酿',
 		desc: '可多投掷 1 次',
 		rarity: 'legendary',
-		skin: 'IceWitch',
+		skin: 'IceWitch_QueenCat',
 		price: 14,
 		turns: 3,
 		effect: { type: 'roll', count: 1 }
@@ -468,7 +468,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月桂神枝',
 		desc: '可多投掷 2 次',
 		rarity: 'legendary',
-		skin: 'greensward',
+		skin: 'HTF_greenberg',
 		price: 12,
 		turns: 1,
 		effect: { type: 'roll', count: 2 }
@@ -480,7 +480,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '银针',
 		desc: '改 1 颗骰子为 4 点',
 		rarity: 'rare',
-		skin: 'snowflake',
+		skin: 'clockwork_orange',
 		price: 5,
 		turns: 1,
 		effect: { type: 'set_point', count: 1, point: 4 }
@@ -490,7 +490,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '金锁',
 		desc: '改 1 颗骰子为 6 点',
 		rarity: 'common',
-		skin: 'GoldCat',
+		skin: 'Locked',
 		price: 3,
 		turns: 1,
 		effect: { type: 'set_point', count: 1, point: 6 }
@@ -501,7 +501,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '合璧符',
 		desc: '对堂及以上：得分 ×3',
 		rarity: 'rare',
-		skin: 'Sailormoon',
+		skin: 'skeyster',
 		price: 7,
 		turns: 2,
 		effect: { type: 'cond', cond: 'dui_tang_plus', mult: 3 }
@@ -511,7 +511,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月牙尺',
 		desc: '改 1 颗骰子点数 +1',
 		rarity: 'common',
-		skin: 'GoldCat',
+		skin: 'Spring',
 		price: 3,
 		turns: 2,
 		effect: { type: 'bump_point', count: 1 }
@@ -521,7 +521,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月斧',
 		desc: '改 1 颗骰子为 4 点',
 		rarity: 'legendary',
-		skin: 'viking',
+		skin: 'Roaning Knight',
 		price: 9,
 		turns: 2,
 		effect: { type: 'set_point', count: 1, point: 4 }
@@ -531,7 +531,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉玺',
 		desc: '改 1 颗骰子为任意点数',
 		rarity: 'legendary',
-		skin: 'White_tee',
+		skin: 'tiPrince',
 		price: 10,
 		turns: 1,
 		effect: { type: 'set_any', count: 1 }
@@ -541,7 +541,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '匠心神笔',
 		desc: '改 1 颗骰子为任意点数',
 		rarity: 'legendary',
-		skin: 'TeeAngel',
+		skin: 'hero_chao',
 		price: 14,
 		turns: 2,
 		effect: { type: 'set_any', count: 1 }
@@ -553,7 +553,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '逆月符',
 		desc: '该 Tee 本关得分 = 160 − 本次掷骰分',
 		rarity: 'rare',
-		skin: 'ghost',
+		skin: 'Dark Default',
 		price: 7,
 		turns: 2,
 		// per = 1 + 1:引擎在外面已经加过一次等级分,这里要把它抵掉,
@@ -567,7 +567,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月食卡',
 		desc: '身上 Tee 本关不受点数作废影响',
 		rarity: 'rare',
-		skin: 'ghost',
+		skin: 'IceWitch_Clown',
 		price: 6,
 		turns: 1,
 		effect: { type: 'clear_void' }
@@ -581,7 +581,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '拾贝',
 		desc: '自己每有 1 颗 5 点：得分 +65；每有 1 颗 2 点：得分 −25',
 		rarity: 'common',
-		skin: 'bunny',
+		skin: 'Seal',
 		price: 3,
 		turns: 2,
 		effect: {
@@ -597,7 +597,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '独酌',
 		desc: '自己每有 1 颗 6 点：得分 +70；每有 1 颗 3 点：得分 −30',
 		rarity: 'common',
-		skin: 'snowflake',
+		skin: 'AmongUsRed',
 		price: 3,
 		turns: 2,
 		effect: {
@@ -613,7 +613,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '守拙',
 		desc: '自己每有 1 颗 4 点：得分 +60；每有 1 颗 2 点：得分 −25',
 		rarity: 'common',
-		skin: 'iceberg',
+		skin: 'Graylynx',
 		price: 3,
 		turns: 2,
 		effect: {
@@ -629,7 +629,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '孤星',
 		desc: '自己每有 1 颗 1 点：得分 +80；每有 1 颗 4 点：得分 −35',
 		rarity: 'common',
-		skin: 'Sailormoon',
+		skin: 'Blue ray',
 		price: 3,
 		turns: 2,
 		effect: {
@@ -645,7 +645,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '移山',
 		desc: '自己每有 1 颗 6 点：得分 +130；每有 1 颗 2 点：得分 −55',
 		rarity: 'rare',
-		skin: 'brownbear',
+		skin: 'Beast_Winter',
 		price: 6,
 		turns: 2,
 		effect: {
@@ -661,7 +661,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '翻天印',
 		desc: '自己每有 1 颗 4 点：得分 +200；每有 1 颗 2 点：得分 −80',
 		rarity: 'legendary',
-		skin: 'GoldCat',
+		skin: 'dragon',
 		price: 9,
 		turns: 2,
 		effect: {
@@ -679,7 +679,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉兔药杵',
 		desc: '改 1 颗骰子为 4 点；本关没用掉就归还',
 		rarity: 'rare',
-		skin: 'tuzi',
+		skin: 'sleppbunny',
 		price: 7,
 		turns: 1,
 		refund: true,
@@ -690,7 +690,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月华笔',
 		desc: '改 1 颗骰子为任意点数；本关没用掉就归还',
 		rarity: 'legendary',
-		skin: 'TeeAngel',
+		skin: 'eliteknight',
 		price: 14,
 		turns: 1,
 		refund: true,
@@ -701,7 +701,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '素月盘',
 		desc: '改 1 颗骰子为 2 点；本关没用掉就归还',
 		rarity: 'common',
-		skin: 'Panda',
+		skin: 'IceWitch_Beach',
 		price: 4,
 		turns: 1,
 		refund: true,
@@ -714,7 +714,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '望月符',
 		desc: '自己的 6 视为 4 点',
 		rarity: 'rare',
-		skin: 'ghost',
+		skin: 'IceWitch_Deer',
 		price: 5,
 		turns: 2,
 		effect: { type: 'dice_mods', mods: { map: { 6: 4 } } }
@@ -724,7 +724,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '朔月符',
 		desc: '自己的 5 视为 4 点',
 		rarity: 'common',
-		skin: 'ghost',
+		skin: 'IceWitch_Reindeer',
 		price: 3,
 		turns: 2,
 		effect: { type: 'dice_mods', mods: { map: { 5: 4 } } }
@@ -734,7 +734,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月相符',
 		desc: '自己的 3 视为 4 点',
 		rarity: 'common',
-		skin: 'Panda',
+		skin: 'IceWitch_MushCat',
 		price: 3,
 		turns: 2,
 		effect: { type: 'dice_mods', mods: { map: { 3: 4 } } }
@@ -744,7 +744,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '桂花符',
 		desc: '自己的 2 视为 4 点',
 		rarity: 'rare',
-		skin: 'greensward',
+		skin: 'HTF_limegreen',
 		price: 4,
 		turns: 2,
 		effect: { type: 'dice_mods', mods: { map: { 2: 4 } } }
@@ -754,7 +754,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '婵娟符',
 		desc: '自己的 1 视为 4 点',
 		rarity: 'legendary',
-		skin: 'TeeAngel',
+		skin: 'IceWitch_FairyDeer',
 		price: 7,
 		turns: 2,
 		effect: { type: 'dice_mods', mods: { map: { 1: 4 } } }
