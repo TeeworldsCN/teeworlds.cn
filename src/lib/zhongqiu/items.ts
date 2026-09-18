@@ -570,7 +570,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'shibei',
 		name: '拾贝',
-		desc: '自己每有 1 颗 5 点：得分 +65；每有 1 颗 2 点：得分 −25',
+		desc: '自己每有 1 颗 5 点：得分 +65；每有 1 颗 6 点：得分 −25',
 		rarity: 'common',
 		skin: 'Seal',
 		price: 3,
@@ -579,7 +579,7 @@ export const BUFF_CARDS: BuffCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'own_face', face: 5, chips: 65 },
-				{ type: 'own_face', face: 2, chips: -25 }
+				{ type: 'own_face', face: 6, chips: -25 }
 			]
 		}
 	},
@@ -618,7 +618,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guxing',
 		name: '孤星',
-		desc: '自己每有 1 颗 1 点：得分 +80；每有 1 颗 3 点：得分 −35',
+		desc: '自己每有 1 颗 1 点：得分 +80；每有 1 颗 5 点：得分 −35',
 		rarity: 'common',
 		skin: 'Blue ray',
 		price: 3,
@@ -627,7 +627,7 @@ export const BUFF_CARDS: BuffCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'own_face', face: 1, chips: 80 },
-				{ type: 'own_face', face: 3, chips: -35 }
+				{ type: 'own_face', face: 5, chips: -35 }
 			]
 		}
 	},
