@@ -640,7 +640,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'yuelao',
-		name: '红线',
+		name: '红绳',
 		desc: '复制右侧 Tee 的卡牌',
 		rarity: 'common',
 		skin: 'dark_chao',
