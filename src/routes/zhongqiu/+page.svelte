@@ -824,6 +824,7 @@
 			dice: settledDice,
 			currentTee,
 			currentScore,
+			roundTotal,
 			settlePreview,
 			diceSum,
 			lastLevelId: lastLevel.id,
@@ -886,6 +887,7 @@
 		settledDice = [...d.dice];
 		currentTee = Math.min(d.currentTee, Math.max(0, team.length - 1));
 		currentScore = d.currentScore;
+		roundTotal = d.roundTotal;
 		// 结算动画会把显示分倒扣一段(settlePreview 从 -total 渐升到 0),这个值不能存 ——
 		// 存了之后动画不会重播,那一扣就永远补不回来(表现为 HUD 的"当前"停在 0)
 		settlePreview = 0;
