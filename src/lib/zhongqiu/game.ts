@@ -1051,7 +1051,7 @@ export const clearSave = () => {
 // 避免把动画中途的半成品状态写进去(重新进就是重掷本关,单机游戏不亏)。
 const RUN_KEY = 'midautumn:run';
 /** 结构变了就 +1:旧档直接作废,不尝试迁移 */
-const RUN_VERSION = 4;
+const RUN_VERSION = 5;
 
 export type RunTeamSlot = {
 	cardId: string | null;
@@ -1105,6 +1105,8 @@ export type RunSave = {
 	currentScore: number;
 	/** 本关总分(过关/失败屏的"本关得分"就是它) */
 	roundTotal: number;
+	/** 已经计过分的 Tee 下标(-1 = 本关还没有人结算) */
+	countedTee: number;
 	settlePreview: number;
 	diceSum: number;
 	lastLevelId: string;

@@ -209,6 +209,14 @@
 
 	// 结算信息
 	let roundTotal = $state(0);
+	/**
+	 * 已经**把分数计进 currentScore** 的那个 Tee 的下标(-1 = 本关还没有人结算过)。
+	 *
+	 * 不能用「等级 ≠ none」当"已判定"的标志:再接再厉的等级正好就是 none,
+	 * 而它照样可能加分(加成卡的 chips)。以前拿等级判断,恢复存档时会把自动它
+	 * 当成"没判过"再判一次 —— 每次刷新都白赚一次分。
+	 */
+	let countedTee = $state(-1);
 	/** 本局累计总分(每关结算后累加)—— 最高纪录记的是它,不是单关分 */
 	let runScore = $state(0);
 	let roundRewardGained = $state(0);
@@ -738,6 +746,7 @@
 		target = roundTarget(1); // 开局 HUD 显示第 1 关目标;beginRound 会按 round 覆盖
 		currentScore = 0;
 		roundTotal = 0;
+		countedTee = -1;
 		currentTee = 0;
 		dice = [1, 1, 1, 1, 1, 1];
 		rerollAllUsed = false;
@@ -827,6 +836,7 @@
 			currentTee,
 			currentScore,
 			roundTotal,
+			countedTee,
 			settlePreview,
 			diceSum,
 			lastLevelId: lastLevel.id,
@@ -891,6 +901,7 @@
 		currentTee = Math.min(d.currentTee, Math.max(0, team.length - 1));
 		currentScore = d.currentScore;
 		roundTotal = d.roundTotal;
+		countedTee = d.countedTee ?? -1;
 		// 结算动画会把显示分倒扣一段(settlePreview 从 -total 渐升到 0),这个值不能存 ——
 		// 存了之后动画不会重播,那一扣就永远补不回来(表现为 HUD 的"当前"停在 0)
 		settlePreview = 0;
@@ -996,8 +1007,8 @@
 		const tee = team[currentTee];
 		if (!tee) return;
 
-		// ① 这个 Tee 已经判完了,只是结算/推进被打断 → 把结算列出来,然后照常前进
-		if (tee.lastLevelId && tee.lastLevelId !== 'none') {
+		// ① 这个 Tee 的分数已经计过了,只是结算/推进被打断 → 重放结算列,然后照常前进
+		if (countedTee >= currentTee) {
 			const level = getRollLevel(tee.lastLevelId);
 			dice = [...tee.lastDice];
 			lastLevel = level;
@@ -1472,6 +1483,7 @@
 		tee.lastLevelId = level.id;
 		tee.lastScore = lastBreakdown.total;
 		currentScore += lastBreakdown.total;
+		countedTee = currentTee;
 
 		// Tee 表情
 		if (level.score >= 320) {
