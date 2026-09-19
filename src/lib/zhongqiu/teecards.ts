@@ -79,6 +79,8 @@ export type TeeEffect =
 	| { type: 'reroll_all_on_none' } // 掷出"再接再厉"时自动重掷全部(每回合 1 次)
 	| { type: 'sum_chips'; per: number } // 骰子点数和 ×per 计入基础分(和值流)
 	| { type: 'own_face'; face: number; chips?: number; mult?: number; multByCount?: boolean } // 自己最终骰子里每有 1 颗该点数(multByCount: 倍率 = 该点数颗数)
+	// 该 Tee 自己的骰子里每颗 face 点:倍率 **+per**(加算进倍率 —— 乘值在增长,不是再乘一层)
+	| { type: 'own_face_add'; face: number; per: number }
 	// chipsMult 是**基础分侧**的每颗倍率(基础分 ×chipsMult^重掷颗数),mult 才是得分侧
 	| { type: 'per_reroll'; chips?: number; mult?: number; chipsMult?: number } // 本回合每重掷 1 颗骰子
 	| { type: 'reverse'; base: number; per?: number; perRound?: number } // 逆向:基础分 = base(+每关 perRound×关数) − 等级分×per(可为负)
@@ -586,11 +588,11 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guanghangong',
 		name: '月宫广寒',
-		desc: '掷完可发动：该 Tee 总分倍率增长 ×1.25；冷却 2 关',
+		desc: '掷完可发动：该 Tee 总分倍率增长 ×1.3；冷却 2 关',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'IceWitch_IceQueen',
-		effect: { type: 'active', skill: 'mult', mult: 1.25, cooldown: 2 }
+		effect: { type: 'active', skill: 'mult', mult: 1.3, cooldown: 2 }
 	},
 	{
 		id: 'houyi',
@@ -737,7 +739,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guishu',
 		name: '桂树',
-		desc: '该 Tee 倍率增长 ×1.15。每掷出 1 颗 4 点，倍率增长 ×1.05',
+		desc: '该 Tee 倍率增长 ×1.15。每掷出 1 颗 4 点，倍率增长 +0.05',
 		rarity: 'rare',
 		tag: '桂',
 		skin: 'Leafeon',
@@ -745,7 +747,7 @@ export const CARDS: TeeCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'mult', value: 1.15 },
-				{ type: 'own_face', face: 4, mult: 1.05 }
+				{ type: 'own_face_add', face: 4, per: 0.05 }
 			]
 		}
 	},

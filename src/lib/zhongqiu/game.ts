@@ -913,6 +913,16 @@ export const calcTeeScore = ({
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `自己 ${n} 个${eff.face}`);
 				break;
 			}
+			case 'own_face_add': {
+				// 该 Tee 自己的骰子里每颗 face 点:倍率 **+per**(桂树)。
+				// 这是「乘值在增长」——同一层倍率上加,不是再乘一层。
+				const n = ownDice.filter((v) => v === eff.face).length;
+				if (n <= 0) break;
+				const bm = mult;
+				mult += eff.per * n;
+				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `自己 ${n} 个${eff.face}`);
+				break;
+			}
 			case 'straight_chips': {
 				// 「连号里每颗骰子 +per」按字面算:**落在任何一条连号里的骰子**都算,
 				// 不只看最长那一条(1 6 5 5 2 1 有两连 → 6 颗全算;原来只算最长那条 = 2 颗)。
