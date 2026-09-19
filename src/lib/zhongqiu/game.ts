@@ -330,7 +330,7 @@ export const applyBuffLevelFloor = (levelId: string, buffs: AppliedBuff[] = []):
 };
 
 export interface SetOp {
-	kind: 'point' | 'any' | 'bump';
+	kind: 'point' | 'any' | 'bump' | 'voidpick';
 	count: number;
 	point?: number;
 	/** bump: 位移方向(+1 月牙尺 / −1 缺月尺) */
@@ -352,6 +352,7 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 		value?: number;
 		from?: number;
 		options?: number[];
+		pick?: boolean;
 	};
 	const walk = (e: AnyEff, srcId: string) => {
 		if (e.type === 'bundle') {
@@ -362,6 +363,8 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 			ops.push({ kind: 'point', count: e.count ?? 1, point: e.point ?? 4, from: e.from, srcId });
 		else if (e.type === 'set_any')
 			ops.push({ kind: 'any', count: e.count ?? 1, from: e.from, options: e.options, srcId });
+		// 半影卡:由玩家挑一个点数取消作废(整关解除的月食卡没有 pick,不进队列)
+		else if (e.type === 'clear_void' && e.pick) ops.push({ kind: 'voidpick', count: 1, srcId });
 		else if (e.type === 'bump_point')
 			ops.push({ kind: 'bump', count: e.count ?? 1, step: e.value ?? 1, srcId });
 	};
@@ -421,8 +424,10 @@ export const selfDiceMods = (
 	for (const b of buffs) {
 		const e = BUFF_BY_ID.get(b.cardId)?.effect;
 		if (e?.type === 'dice_mods' && e.mods) mods.push(e.mods);
-		// 月食卡:解除本关的「点数作废」
-		if (e?.type === 'clear_void') mods.push({ clearVoid: true });
+		// 月食卡:解除本关的「点数作废」(整关全解除)。
+		// 半影卡(pick)是由玩家挑一个点数,走 modsFor 的 clearVoidFaces —— 不能也塞 clearVoid,
+		// 否则它会把 Boss/自己卡的所有作废一起抹掉(踩过)。
+		if (e?.type === 'clear_void' && !e.pick) mods.push({ clearVoid: true });
 	}
 	if (mods.length === 0) return undefined;
 	return mods.length === 1 ? mods[0] : { chain: mods };
@@ -1099,9 +1104,17 @@ export type RunTeamSlot = {
 };
 
 export type RunOp =
-	| { kind: 'set_point'; count: number; point: number; srcId?: string }
-	| { kind: 'set_any'; count: number; pick?: number; srcId?: string }
-	| { kind: 'bump'; count: number; step?: number; srcId?: string };
+	| { kind: 'set_point'; count: number; point: number; srcId?: string; from?: number }
+	| {
+			kind: 'set_any';
+			count: number;
+			pick?: number;
+			srcId?: string;
+			from?: number;
+			options?: number[];
+	  }
+	| { kind: 'bump'; count: number; step?: number; srcId?: string }
+	| { kind: 'voidpick'; count: number; srcId?: string };
 
 export type RunSave = {
 	v: number;
@@ -1143,6 +1156,7 @@ export type RunSave = {
 	/** 本关每个道具 id 用掉的张数(退款按张算);老存档没有这个字段,读档时兜底成 {} */
 	usedOpCount?: Record<string, number>;
 	optedDice: number[];
+	clearedVoid: number[];
 	pendingAction: RunOp | null;
 	pointPicker: boolean;
 	setQueue: SetOp[];

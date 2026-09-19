@@ -46,6 +46,8 @@ export interface BuffEffect {
 	point?: number;
 	/** set_any: 改成的点数只能从这里选(不填 = 1~6 任选,由玩家挑) */
 	options?: number[];
+	/** clear_void: 由玩家挑一个点数取消作废(半影卡);不填 = 整关作废全解除(月食卡) */
+	pick?: boolean;
 	mods?: DiceMods;
 }
 
@@ -371,15 +373,26 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: { type: 'cond', cond: 'none', chips: 50, mult: 2.5 }
 	},
 
-	// ======== 多投掷(×2.33,压高稀有度) 4 ========
+	// ======== 多投掷(×2.33,压高稀有度) 5 ========
 	{
 		id: 'tueye',
 		name: '余兴',
 		desc: '可多投掷 1 次',
-		rarity: 'rare',
+		rarity: 'common',
 		skin: 'rabbit_Judy',
+		price: 5,
+		turns: 1,
+		effect: { type: 'roll', count: 1 }
+	},
+	{
+		id: 'yujin',
+		name: '余烬',
+		desc: '本关可多投掷 1 次；没用掉就归还',
+		rarity: 'rare',
+		skin: 'IceWitch_Xmas',
 		price: 6,
 		turns: 1,
+		refund: true,
 		effect: { type: 'roll', count: 1 }
 	},
 	{
@@ -583,6 +596,16 @@ export const BUFF_CARDS: BuffCard[] = [
 		price: 6,
 		turns: 1,
 		effect: { type: 'clear_void' }
+	},
+	{
+		id: 'banyingka',
+		name: '半影卡',
+		desc: '选择一个点数取消作废',
+		rarity: 'common',
+		skin: 'IceWitch_Witch',
+		price: 4,
+		turns: 1,
+		effect: { type: 'clear_void', pick: true }
 	},
 
 	// 玩法:带上去之后重掷/改点的目标会变(追高的那个点数、躲低的那个),

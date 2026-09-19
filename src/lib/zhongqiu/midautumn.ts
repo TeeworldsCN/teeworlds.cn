@@ -142,6 +142,8 @@ export interface DiceMods {
 	noSameFace?: boolean;
 	levelCap?: string;
 	clearVoid?: boolean;
+	/** 只解除这几个点数的作废(半影卡) */
+	clearVoidFaces?: number[];
 	chain?: DiceMods[];
 	straightFloor?: boolean;
 	faceFloor?: boolean;
@@ -222,8 +224,15 @@ export const voidFacesOf = (mods?: DiceMods): number[] => {
 	return mods.void ?? [];
 };
 
+const clearedFacesOf = (mods?: DiceMods): number[] => {
+	if (!mods) return [];
+	if (mods.chain?.length) return mods.chain.flatMap(clearedFacesOf);
+	return mods.clearVoidFaces ?? [];
+};
+
+/** 该点数是否被作废。「取消作废」的点数(半影卡)不算 —— 不管作废来自 Boss 还是自己的卡 */
 export const isVoidFace = (face: number, mods?: DiceMods): boolean =>
-	voidFacesOf(mods).includes(face);
+	!clearedFacesOf(mods).includes(face) && voidFacesOf(mods).includes(face);
 
 /**
  * 参与结算的点数:套上 map/shift 之后,把**作废**的骰子整个剔掉。

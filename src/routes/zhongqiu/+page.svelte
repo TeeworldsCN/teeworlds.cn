@@ -339,8 +339,20 @@
 		const lines: { text: string; cls?: string }[] = [];
 		const card = cardOf(tee);
 		const i = team.indexOf(tee);
-		if (tee.buffs.some((b) => BUFF_BY_ID.get(b.cardId)?.effect.type === 'clear_void'))
-			lines.push({ text: '🌑 月食：本关点数不作废', cls: 'text-emerald-300' });
+		const voidBuff = tee.buffs.find((b) => BUFF_BY_ID.get(b.cardId)?.effect.type === 'clear_void');
+		if (voidBuff) {
+			// 半影卡是玩家挑一个点数,月食卡是整关全解除 —— 提示要分开
+			const picked = clearedVoid[team.indexOf(tee)];
+			const half = BUFF_BY_ID.get(voidBuff.cardId)?.effect.pick;
+			lines.push({
+				text: half
+					? picked
+						? `🌗 半影：本关 ${picked} 点不作废`
+						: '🌗 半影：本关挑一个点数不作废'
+					: '🌑 月食：本关点数不作废',
+				cls: 'text-emerald-300'
+			});
+		}
 		for (const sk of activeSkills(effectiveEffects(teamCards, i), tee.buffs)) {
 			const nm = cardById(sk.srcId)?.name ?? sk.srcId;
 			const what =
@@ -374,7 +386,10 @@
 	};
 
 	// 交互（改点/重掷）
+	// 半影卡:挑一个点数,本关该点数不作废(不点骰子,点点数按钮)
+	type VoidPick = { kind: 'voidpick'; count: number; srcId?: string };
 	type PendingAction =
+		| VoidPick
 		| { kind: 'set_point'; count: number; point: number; srcId?: string; from?: number }
 		| {
 				kind: 'set_any';
@@ -386,7 +401,9 @@
 		  }
 		| { kind: 'bump'; count: number; step?: number; srcId?: string }; // 月牙尺 +1 / 缺月尺 −1:点一颗骰子
 	let pendingAction = $state<PendingAction | null>(null);
-	let pointPicker = $state(false); // set_any 的点数选择
+	let pointPicker = $state(false); // set_any / clear_void 的点数选择
+	/** 半影卡:第 i 个 Tee 本关挑选的「不作废」点数 */
+	let clearedVoid = $state<number[]>([]);
 	let setQueue: SetOp[] = [];
 
 	let rollsLeft = $state(0); // 还能重掷几次
@@ -752,6 +769,7 @@
 		pendingActive = null;
 		pendingAction = null;
 		pointPicker = false;
+		clearedVoid = [];
 		choosing = false;
 		rollsLeft = 0;
 		rerollSel = Array(6).fill(false);
@@ -838,6 +856,7 @@
 			usedOpSrc,
 			usedOpCount,
 			optedDice,
+			clearedVoid,
 			pendingAction,
 			pointPicker,
 			setQueue,
@@ -903,6 +922,7 @@
 		rollMask = d.rollMask;
 		usedOpSrc = d.usedOpSrc;
 		usedOpCount = d.usedOpCount ?? {};
+		clearedVoid = d.clearedVoid ?? [];
 		optedDice = d.optedDice;
 		pendingAction = d.pendingAction;
 		pointPicker = d.pointPicker;
@@ -1085,8 +1105,8 @@
 	/** 该 Tee 本回合可投掷几次 */
 	const rollsFor = (i: number) =>
 		rollsAllowed(selfEffects(i), team[i]?.buffs ?? [], boss?.rollsBonus ?? 0);
-	const modsFor = (i: number) =>
-		withBossMods(
+	const modsFor = (i: number) => {
+		const base = withBossMods(
 			mergeMods(
 				{ fixed: optedDice },
 				mergeMods(
@@ -1097,6 +1117,17 @@
 			),
 			boss?.mods
 		);
+		// 半影卡:本关挑中的点数不再作废(作废来自 Boss 还是自己的卡都算)
+		const cleared = clearedVoid[i];
+		return cleared ? mergeMods(base, { clearVoidFaces: [cleared] }) : base;
+	};
+
+	/** 半影卡的候选:这一掷里实际被作废的点数 */
+	const voidedFaces = () => {
+		const out = new Set<number>();
+		for (const d of dice) if (isVoidFace(d, modsFor(currentTee))) out.add(d);
+		return [...out].sort((a, b) => a - b);
+	};
 
 	const shownDice = $derived(applyDiceMods(dice, modsFor(currentTee)));
 	const dieVoid = (i: number) => !dieRolling(i) && isVoidFace(dice[i], modsFor(currentTee));
@@ -1276,6 +1307,11 @@
 			nextSetOp();
 			return;
 		}
+		// 半影卡:本关没有任何点数被作废 → 没得挑,跳过
+		if (op.kind === 'voidpick' && voidedFaces().length === 0) {
+			nextSetOp();
+			return;
+		}
 		if (op.kind === 'point')
 			pendingAction = {
 				kind: 'set_point',
@@ -1286,7 +1322,10 @@
 			};
 		else if (op.kind === 'bump')
 			pendingAction = { kind: 'bump', count: op.count, step: op.step ?? 1, srcId: op.srcId };
-		else
+		else if (op.kind === 'voidpick') {
+			pendingAction = { kind: 'voidpick', count: op.count, srcId: op.srcId };
+			pointPicker = true; // 半影卡没有骰子可点,选点面板直接弹出来
+		} else
 			pendingAction = {
 				kind: 'set_any',
 				count: op.count,
@@ -1299,6 +1338,7 @@
 	const onDieClick = (i: number) => {
 		const act = pendingAction;
 		if (!act) return;
+		if (act.kind === 'voidpick') return; // 半影卡点的是点数按钮,不是骰子
 		// 「只认 4 点」的改点:点到别的点数没反应(判定用的是玩家看到的点数)
 		if (act.kind !== 'bump' && act.from !== undefined && shownDice[i] !== act.from) return;
 
@@ -1337,6 +1377,20 @@
 
 	const pickPoint = (v: number) => {
 		const act = pendingAction;
+		if (act?.kind === 'voidpick') {
+			// 用 0 当「没挑」的哨兵:空数组上 map 是空转,必须按长度补齐(踩过)
+			const next = [...clearedVoid];
+			while (next.length <= currentTee) next.push(0);
+			next[currentTee] = v;
+			clearedVoid = next;
+			if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
+			if (act.srcId)
+				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
+			pointPicker = false;
+			pendingAction = null;
+			nextSetOp();
+			return;
+		}
 		if (!act || act.kind !== 'set_any' || act.pick === undefined) return;
 		dice[act.pick] = v;
 		act.count -= 1;
@@ -1358,15 +1412,16 @@
 	};
 
 	/** set_any 的点数候选:拆 4 系列只给指定点数(1/6 或 2/5) */
-	const pointChoices = () =>
-		pendingAction?.kind === 'set_any'
-			? (pendingAction.options ?? [1, 2, 3, 4, 5, 6])
-			: [1, 2, 3, 4, 5, 6];
+	const pointChoices = () => {
+		if (pendingAction?.kind === 'voidpick') return voidedFaces();
+		if (pendingAction?.kind === 'set_any') return pendingAction.options ?? [1, 2, 3, 4, 5, 6];
+		return [1, 2, 3, 4, 5, 6];
+	};
 
 	/** 拆 4 系列:只认 4 点的改点,非 4 点的骰子点不动 → 画暗一点 */
 	const dieOffTarget = (i: number) =>
 		!!pendingAction &&
-		pendingAction.kind !== 'bump' &&
+		(pendingAction.kind === 'set_point' || pendingAction.kind === 'set_any') &&
 		pendingAction.from !== undefined &&
 		shownDice[i] !== pendingAction.from;
 
@@ -2630,12 +2685,13 @@
 											? 'rolling'
 											: ''} {hitDice.includes(i) ? 'hit' : ''} {choosing && rerollSel[i]
 											? 'marked'
-											: ''} {diceModded(i) ? 'moded' : ''} {choosing || pendingAction
+											: ''} {diceModded(i) ? 'moded' : ''} {choosing ||
+										(pendingAction && pendingAction.kind !== 'voidpick')
 											? 'cursor-pointer hover:scale-110'
 											: 'cursor-default'}"
 										style={`animation-duration: ${rollDur}s; animation-delay: ${dieDelay(i)}s; animation-iteration-count: ${rollIter}`}
 										onclick={() => (choosing ? toggleReroll(i) : pendingAction && onDieClick(i))}
-										disabled={!choosing && !pendingAction}
+										disabled={!choosing && (!pendingAction || pendingAction.kind === 'voidpick')}
 										class:voided={dieVoid(i)}
 									>
 										<!-- 骰面用内联 SVG:不依赖 ::after/container-query/:has(),老浏览器也能渲染 -->
@@ -2673,8 +2729,8 @@
 									<!-- 点数选择直接顶掉标题行:不占下方布局,骰子一动不动 -->
 									{#each pointChoices() as v}
 										<button
-											class="h-6 w-7 shrink-0 rounded-lg bg-slate-700 text-xs font-bold text-slate-200 transition hover:bg-amber-500 hover:text-amber-950 max-[365px]:w-6 sm:h-8 sm:w-10 sm:text-sm {v ===
-											4
+											class="h-6 w-7 shrink-0 rounded-lg bg-slate-700 text-xs font-bold text-slate-200 transition hover:bg-amber-500 hover:text-amber-950 max-[365px]:w-6 sm:h-8 sm:w-10 sm:text-sm {pendingAction?.kind ===
+												'set_any' && v === 4
 												? 'ring-2 ring-red-400'
 												: ''}"
 											onclick={() => pickPoint(v)}
@@ -2737,6 +2793,10 @@
 											? '−1'
 											: '+1'}{#if pendingAction.count > 1}(还剩
 											{pendingAction.count} 颗){/if}</span
+									>
+								{:else if pendingAction?.kind === 'voidpick'}
+									<span class="text-cyan-300"
+										>{opSrcName(pendingAction.srcId)} ✨ 选一个点数,本关该点数不作废</span
 									>
 								{:else if pendingAction?.kind === 'set_any'}
 									<span class="text-cyan-300"
