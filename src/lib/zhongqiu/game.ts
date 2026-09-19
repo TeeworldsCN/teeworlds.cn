@@ -632,6 +632,8 @@ export const calcTeeScore = ({
 	let reverseBase = 0;
 	let reverseSrc = '';
 	let mult = 1;
+	/** 加算到倍率的部分(桂树):最后统一乘进去 —— 先长再乘,和队伍/挂卡顺序无关 */
+	let multAdd = 0;
 	let allowNegative = false;
 
 	const sources: ScoreSource[] = [];
@@ -917,10 +919,16 @@ export const calcTeeScore = ({
 				// 该 Tee 自己的骰子里每颗 face 点:倍率 **+per**(桂树)。
 				// 这是「乘值在增长」——同一层倍率上加,不是再乘一层。
 				const n = ownDice.filter((v) => v === eff.face).length;
-				if (n <= 0) break;
-				const bm = mult;
-				mult += eff.per * n;
-				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `自己 ${n} 个${eff.face}`);
+				const beforeAdd = multAdd;
+				// 基值也在这个乘值里(1.15 + 0.05n)—— 所以整条链是「先长再乘」:这里只长,最后统一乘
+				multAdd += eff.base - 1 + eff.per * n;
+				note(
+					srcId,
+					'card',
+					0,
+					1 + beforeAdd === 0 ? 1 : (1 + multAdd) / (1 + beforeAdd),
+					`自己 ${n} 个${eff.face}`
+				);
 				break;
 			}
 			case 'straight_chips': {
@@ -1108,6 +1116,8 @@ export const calcTeeScore = ({
 	// 倍率相乘(×1.35×N、×1.4、×2.5 这类),而最小的一手也有 10 分、典型得分几百到上万 ——
 	// 那半个点没有任何玩法意义,却让记分板一直挂着小数点、结算时又要突变成整数。
 	// 取整放在**唯一的出口**上,所以回合内的乘算仍然精确,只是最终得分是整数。
+	// 先长再乘:加算到倍率的部分在这里统一乘进最终倍率
+	mult *= 1 + multAdd;
 	const raw = Math.round((base + chips + buffChips) * mult * buffMult);
 	const netChips = chips + buffChips;
 	const total = swapped !== null || allowNegative || netChips < 0 ? raw : Math.max(0, raw);
