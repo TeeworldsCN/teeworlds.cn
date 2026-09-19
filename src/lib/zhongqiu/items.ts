@@ -153,52 +153,52 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'xianrou',
 		name: '月华酥',
-		desc: '得分 +100',
+		desc: '得分 +80',
 		rarity: 'rare',
 		skin: 'Red Tomato',
-		price: 4,
+		price: 5,
 		turns: 2,
-		effect: { type: 'chips', value: 100 }
+		effect: { type: 'chips', value: 80 }
 	},
 	{
 		id: 'yunniang',
 		name: '玉盘酥',
-		desc: '得分 +120',
+		desc: '得分 +100',
 		rarity: 'rare',
 		skin: 'Red Coke',
-		price: 5,
+		price: 6,
 		turns: 2,
-		effect: { type: 'chips', value: 120 }
+		effect: { type: 'chips', value: 100 }
 	},
 	{
 		id: 'songren',
 		name: '松仁',
-		desc: '得分 +90',
+		desc: '得分 +70',
 		rarity: 'rare',
 		skin: 'MelonFox',
-		price: 5,
+		price: 6,
 		turns: 3,
-		effect: { type: 'chips', value: 90 }
+		effect: { type: 'chips', value: 70 }
 	},
 	{
 		id: 'guihuatangjiang',
 		name: '桂花糖浆',
-		desc: '得分 +130',
+		desc: '得分 +110',
 		rarity: 'rare',
 		skin: 'cupcakesprinkle',
-		price: 5,
+		price: 6,
 		turns: 2,
-		effect: { type: 'chips', value: 130 }
+		effect: { type: 'chips', value: 110 }
 	},
 	{
 		id: 'lianrongshuang',
 		name: '双黄莲蓉',
-		desc: '得分 +150',
+		desc: '得分 +140',
 		rarity: 'legendary',
 		skin: 'Sunflower',
 		price: 7,
 		turns: 2,
-		effect: { type: 'chips', value: 150 }
+		effect: { type: 'chips', value: 140 }
 	},
 	{
 		id: 'baiyuetuan',
@@ -245,12 +245,12 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yulu',
 		name: '玉露',
-		desc: '得分 ×1.75',
+		desc: '得分 ×1.7',
 		rarity: 'rare',
 		skin: 'ender_pearl',
 		price: 4,
 		turns: 2,
-		effect: { type: 'mult', value: 1.75 }
+		effect: { type: 'mult', value: 1.7 }
 	},
 	{
 		id: 'yuehua',
@@ -268,19 +268,19 @@ export const BUFF_CARDS: BuffCard[] = [
 		desc: '得分 ×1.8',
 		rarity: 'rare',
 		skin: 'glow_hammie2',
-		price: 5,
+		price: 6,
 		turns: 3,
 		effect: { type: 'mult', value: 1.8 }
 	},
 	{
 		id: 'guipo',
 		name: '桂魄',
-		desc: '得分 ×2.25',
+		desc: '得分 ×2.2',
 		rarity: 'rare',
 		skin: 'babyYoda_flower',
-		price: 5,
+		price: 6,
 		turns: 2,
-		effect: { type: 'mult', value: 2.25 }
+		effect: { type: 'mult', value: 2.2 }
 	},
 	{
 		id: 'qinghui',
@@ -318,7 +318,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		desc: '得分 ×2.6',
 		rarity: 'legendary',
 		skin: 'HTF_whitepinky',
-		price: 9,
+		price: 10,
 		turns: 3,
 		effect: { type: 'mult', value: 2.6 }
 	},
@@ -337,32 +337,32 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'liuli',
 		name: '琉璃酥',
-		desc: '得分 +60，×1.4',
+		desc: '得分 +40，×1.4',
 		rarity: 'rare',
 		skin: 'Rainbow Jawbreaker',
 		price: 5,
 		turns: 2,
-		effect: { type: 'chips_mult', chips: 60, mult: 1.4 }
+		effect: { type: 'chips_mult', chips: 40, mult: 1.4 }
 	},
 	{
 		id: 'yuzhi',
 		name: '玉脂',
-		desc: '得分 +60，×1.5',
+		desc: '得分 +45，×1.5',
 		rarity: 'rare',
 		skin: 'emerald',
 		price: 6,
 		turns: 2,
-		effect: { type: 'chips_mult', chips: 60, mult: 1.5 }
+		effect: { type: 'chips_mult', chips: 45, mult: 1.5 }
 	},
 	{
 		id: 'jingui',
 		name: '金桂流心',
-		desc: '得分 +80，×1.6',
+		desc: '得分 +60，×1.6',
 		rarity: 'legendary',
 		skin: 'OnyxNanami_Yellow',
 		price: 8,
 		turns: 2,
-		effect: { type: 'chips_mult', chips: 80, mult: 1.6 }
+		effect: { type: 'chips_mult', chips: 60, mult: 1.6 }
 	},
 	{
 		id: 'yuehun',
