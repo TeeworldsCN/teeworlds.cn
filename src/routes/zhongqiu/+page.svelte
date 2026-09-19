@@ -415,6 +415,12 @@
 	let choosing = $state(false); // 正在选要重掷的骰子
 	let rerollSel = $state<boolean[]>(Array(6).fill(false));
 	let rollMask = $state<boolean[]>(Array(6).fill(true));
+	/**
+	 * 动画代次。每开一次掷骰/重掷动画 +1;重开、读档、退出游戏也 +1 ——
+	 * 这样还在 await/定时器里的收尾一看自己不是当前代次就直接放弃,
+	 * 不会把上一局(或已经退回标题)的动画收尾打到新局上。
+	 */
+	let animGen = 0;
 	const dieRolling = (i: number) => rolling && rollMask[i];
 	const dieDelay = (i: number) => {
 		let n = 0;
@@ -779,6 +785,7 @@
 	};
 
 	const resetRun = () => {
+		animGen += 1; // 作废还在飞的掷骰/重掷动画(退回标题、重开一局)
 		resetRunState();
 		resetRoundState();
 	};
@@ -878,6 +885,7 @@
 	};
 
 	const restoreRun = (d: RunSave) => {
+		animGen += 1; // 存档是权威状态,之前在飞的动画一律作废
 		round = d.round;
 		boss = d.bossId ? getBossById(d.bossId) : null;
 		target = d.target;
@@ -990,7 +998,9 @@
 				'| rollsLeft =',
 				rollsLeft
 			);
+			const replayGen = animGen;
 			setTimeout(() => {
+				if (replayGen !== animGen) return; // 这 60ms 里退了/重开了
 				if (kind === 'reroll') playRerollAnim(rollMask, afterRoll);
 				else if (kind === 'finalize') playRerollAnim(rollMask, finalizeTee);
 				else rollCurrent();
@@ -1173,6 +1183,7 @@
 	/** 掷一次骰子(动画 + 定格) */
 	const rollCurrent = () => {
 		if (rolling) return;
+		const gen = ++animGen;
 		pendingRollKind = 'roll';
 		rolling = true;
 		hitDice = [];
@@ -1196,16 +1207,22 @@
 		rollTotal = 250 + rollDur * rollIter * 1000; // 250ms = 波浪延迟预算(5×50ms)
 
 		const timer = setInterval(() => {
+			if (gen !== animGen) {
+				clearInterval(timer);
+				return;
+			}
 			dice = rollDice();
 		}, 90 / speed);
 
 		setTimeout(() => {
+			if (gen !== animGen) return;
 			clearInterval(timer);
 			dice = cheatRoll(); // 定格最终点数(nextRoll 在此消费)
 		}, rollTotal * 0.8);
 
 		sfxRoll(rollTotal / 1000, 6);
 		setTimeout(() => {
+			if (gen !== animGen) return;
 			rolling = false;
 			teePose = IDLE_POSE;
 			afterRoll();
@@ -1249,9 +1266,12 @@
 	 * 所以这里先摘掉 rolling、等一帧、再挂上,强制所有选中的骰子重播。
 	 */
 	const playRerollAnim = async (sel: boolean[], done: () => void) => {
+		const gen = ++animGen;
+		pendingRollKind = 'reroll'; // 提前记:存档要读它
 		rolling = false;
 		await tick();
-		pendingRollKind = 'reroll';
+		// 等这一帧的工夫里可能读了档 / 退回标题 / 重开一局 —— 那就别再启动动画了
+		if (gen !== animGen) return;
 		rolling = true;
 		rollMask = [...sel];
 		// 被重掷的骰子不再算「改点」:它的点数已经不是我们改出来的那个了。
@@ -1267,16 +1287,22 @@
 		rollTotal = 250 + rollDur * rollIter * 1000;
 
 		const timer = setInterval(() => {
+			if (gen !== animGen) {
+				clearInterval(timer);
+				return;
+			}
 			dice = dice.map((v, i) => (sel[i] ? rollSingle() : v));
 		}, 90 / speed);
 
 		setTimeout(() => {
+			if (gen !== animGen) return;
 			clearInterval(timer);
 			dice = dice.map((v, i) => (sel[i] ? cheatSingle() : v));
 		}, rollTotal * 0.8);
 
 		sfxRoll(rollTotal / 1000, sel.filter(Boolean).length);
 		setTimeout(() => {
+			if (gen !== animGen) return;
 			rolling = false;
 			teePose = IDLE_POSE;
 			done();
