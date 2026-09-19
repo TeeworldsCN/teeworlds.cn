@@ -793,28 +793,60 @@ export const BUFF_CARDS: BuffCard[] = [
 
 export const BUFF_BY_ID = new Map(BUFF_CARDS.map((c) => [c.id, c]));
 
-/** 从池中抽 n 张不重复(商店用) */
-export const drawShopItems = (locks: (string | null)[] = []): BuffCard[] => {
-	// 锁定的槽位保留原商品(不参与重抽),并且从池子里排除,免得同一张占两格
-	const held = locks.filter((id): id is string => !!id);
-	const common = BUFF_CARDS.filter((c) => c.rarity === 'common' && !held.includes(c.id));
-	const high = BUFF_CARDS.filter((c) => c.rarity !== 'common' && !held.includes(c.id));
-	const weight: Record<string, number> = { rare: 3, legendary: 1 };
-	const total = high.reduce((a, c) => a + (weight[c.rarity] ?? 1), 0);
-	let r = Math.random() * total;
-	let hi: BuffCard = high[0];
-	for (const c of high) {
-		r -= weight[c.rarity] ?? 1;
-		if (r <= 0) {
-			hi = c;
-			break;
-		}
+/** 商店 6 格的稀有度权重:前 5 格是普通栏(60/35/5),最后 1 格是稀有栏(0/90/10)
+ *
+ *  原来前 5 格写死普通、后 1 格写死稀有/传说(3:1),于是 83% 的槽位都是普通,
+ *  一局一半以上的普通槽位是重复;而 42 张稀有/传说挤在一个槽位里,一局只见 5~9 张。
+ *  现在每格独立掷:普通栏也有 35% 出稀有、5% 出传说,稀有栏保底不出普通。
+ */
+export const SHOP_SLOT_WEIGHTS: Record<Rarity, number>[] = [
+	{ common: 60, rare: 35, legendary: 5 },
+	{ common: 60, rare: 35, legendary: 5 },
+	{ common: 60, rare: 35, legendary: 5 },
+	{ common: 60, rare: 35, legendary: 5 },
+	{ common: 60, rare: 35, legendary: 5 },
+	{ common: 0, rare: 90, legendary: 10 }
+];
+
+/** 按权重掷一档稀有度;某一档没货了(抽走了 / 被锁位占着)就从还有货的档里重新归一化 */
+const rollRarity = (weights: Record<Rarity, number>, pool: BuffCard[]): Rarity | null => {
+	const avail = (['common', 'rare', 'legendary'] as Rarity[]).filter(
+		(r) => weights[r] > 0 && pool.some((c) => c.rarity === r)
+	);
+	if (!avail.length) return null;
+	const total = avail.reduce((a, r) => a + weights[r], 0);
+	let x = Math.random() * total;
+	for (const r of avail) {
+		x -= weights[r];
+		if (x <= 0) return r;
 	}
-	const drawn = [...drawItems(common, 5), hi];
-	// 锁住的槽位原样放回(位置也不变,玩家锁哪格就在哪格)
-	return locks.length
-		? drawn.map((c, i) => (locks[i] ? (BUFF_BY_ID.get(locks[i]!) ?? c) : c))
-		: drawn;
+	return avail[avail.length - 1];
+};
+
+/** 抽 6 格商店。锁定的格子保留原位(也占住池子),同一家店不出现重复卡 */
+export const drawShopItems = (locks: (string | null)[] = []): BuffCard[] => {
+	// taken = 锁定的商品,既保留在原位,也从池子里排除,免得同一张占两格
+	const taken = new Set(locks.filter((id): id is string => !!id));
+	const out: BuffCard[] = [];
+	for (let i = 0; i < SHOP_SLOT_WEIGHTS.length; i++) {
+		const locked = locks[i] ? BUFF_BY_ID.get(locks[i]!) : null;
+		if (locked) {
+			out.push(locked);
+			continue;
+		}
+		const pool = BUFF_CARDS.filter((c) => !taken.has(c.id));
+		const rarity = rollRarity(SHOP_SLOT_WEIGHTS[i], pool);
+		const pick = rarity
+			? drawItems(
+					pool.filter((c) => c.rarity === rarity),
+					1
+				)[0]
+			: undefined;
+		if (!pick) break;
+		taken.add(pick.id);
+		out.push(pick);
+	}
+	return out;
 };
 
 export function drawItems<T extends { id: string }>(pool: T[], n: number): T[] {
