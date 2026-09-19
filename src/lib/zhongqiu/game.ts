@@ -951,7 +951,7 @@ export const calcTeeScore = ({
 			'card',
 			preScale * (rerollBaseMult - 1),
 			1,
-			`重掷 ${rerolled} 颗 · 基础分 ×${Number(rerollBaseMult.toFixed(3))}`
+			`重掷 ${rerolled} 颗 · 基础分 ×${Math.round(rerollBaseMult * 10) / 10}`
 		);
 	// 逆向:chips 全部结算完、mult 之前,把「本回合已得的净值」整个替换掉 ——
 	// chips = reverseBase − 净值。掷得越漂亮(净值越高)逆向分越低,反之吃惩罚。
@@ -968,10 +968,26 @@ export const calcTeeScore = ({
 			swap: { from: net }
 		});
 	}
-	const raw = Math.round((base + chips + buffChips) * mult * buffMult * 100) / 100;
+	// 一律取整。加减项本来就是整数(底分 10/20/40…、筹码 5/10/25…),小数只可能来自
+	// 倍率相乘(×1.35^N、×1.4^N、×1.5 这类),而最小的一手也有 10 分、典型得分几百到上万 ——
+	// 那半个点没有任何玩法意义,却让记分板一直挂着小数点、结算时又要突变成整数。
+	// 取整放在**唯一的出口**上,所以回合内的乘算仍然精确,只是最终得分是整数。
+	const raw = Math.round((base + chips + buffChips) * mult * buffMult);
 	const netChips = chips + buffChips;
 	const total = swapped !== null || allowNegative || netChips < 0 ? raw : Math.max(0, raw);
-	return { base, chips: chips + buffChips, mult: mult * buffMult, teamMult: 1, total, sources };
+	return {
+		base,
+		chips: chips + buffChips,
+		mult: mult * buffMult,
+		teamMult: 1,
+		total,
+		// 明细行只给界面看(结算逐条) —— 这里逐个取整,免得出现「+617.28 分」这种行
+		sources: sources.map((s) => ({
+			...s,
+			chips: Math.round(s.chips),
+			swap: s.swap ? { from: Math.round(s.swap.from) } : s.swap
+		}))
+	};
 };
 
 export const decayBuffs = (team: TeamTee[]): void => {
