@@ -335,42 +335,42 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'manyuezhufu',
 		name: '满月祝福',
-		desc: '投掷出再接再厉时：基础分 +20，得分 ×1.5',
+		desc: '投掷出再接再厉时：得分 ×1.5',
 		rarity: 'common',
 		skin: 'twinbop_glow',
 		price: 3,
 		turns: 2,
-		effect: { type: 'cond', cond: 'none', chips: 20, mult: 1.5 }
+		effect: { type: 'cond', cond: 'none', mult: 1.5 }
 	},
 	{
 		id: 'guiyin',
 		name: '桂荫庇佑',
-		desc: '投掷出再接再厉时：基础分 +40，得分 ×2.4',
+		desc: '投掷出再接再厉时：得分 ×2.4',
 		rarity: 'rare',
 		skin: 'Lahm_blue',
 		price: 5,
 		turns: 2,
-		effect: { type: 'cond', cond: 'none', chips: 40, mult: 2.4 }
+		effect: { type: 'cond', cond: 'none', mult: 2.4 }
 	},
 	{
 		id: 'yueshenbiyou',
 		name: '月神庇佑',
-		desc: '投掷出再接再厉时：基础分 +50，得分 ×3',
+		desc: '投掷出再接再厉时：得分 ×3',
 		rarity: 'legendary',
 		skin: 'IceWitch_MushDeer',
 		price: 8,
 		turns: 1,
-		effect: { type: 'cond', cond: 'none', chips: 50, mult: 3 }
+		effect: { type: 'cond', cond: 'none', mult: 3 }
 	},
 	{
 		id: 'changongbiyou',
 		name: '蟾宫庇佑',
-		desc: '投掷出再接再厉时：基础分 +50，得分 ×2.5',
+		desc: '投掷出再接再厉时：得分 ×2.5',
 		rarity: 'legendary',
 		skin: 'clefairy',
 		price: 9,
 		turns: 3,
-		effect: { type: 'cond', cond: 'none', chips: 50, mult: 2.5 }
+		effect: { type: 'cond', cond: 'none', mult: 2.5 }
 	},
 
 	// ======== 多投掷(×2.33,压高稀有度) 5 ========
