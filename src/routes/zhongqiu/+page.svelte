@@ -1245,6 +1245,10 @@
 		pendingRollKind = 'reroll';
 		rolling = true;
 		rollMask = [...sel];
+		// 被重掷的骰子不再算「改点」:它的点数已经不是我们改出来的那个了。
+		// 撤掉 overlay,同时把 fixed 豁免一起摘掉 —— 否则重掷出来的新点数还豁免点数映射
+		// (「6 视为 4」这类),判定会跟显示对不上。
+		if (sel.some(Boolean)) optedDice = optedDice.filter((i) => !sel[i]);
 		teeEmote = EMOTE.angry;
 		teePose = THROW_POSE;
 		teeAnim = 'throw';
