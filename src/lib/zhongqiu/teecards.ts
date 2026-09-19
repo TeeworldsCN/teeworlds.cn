@@ -79,6 +79,9 @@ export type TeeEffect =
 	| { type: 'reverse'; base: number; per?: number; perRound?: number } // 逆向:得分 = base(+每关 perRound×关数) − 等级分×per(可为负)
 	| { type: 'straight_ladder' } // 连号阶梯:123/234/345/456→一秀,1234 系→二举,12345 系→四进
 	| { type: 'straight_chips'; per: number } // 连号里每颗骰子 +per 分
+	// 连号长度倍率:连号 n 颗 → 得分 ×per^(n-from)。连号流的引擎 ——
+	// 原来三张卡的乘数全锁在「对堂(6 连)」上,而那是 ~1.5% 的事件,等于按不出来。
+	| { type: 'straight_mult'; per: number; from?: number }
 	| { type: 'active'; skill: 'chips' | 'left_chips' | 'retry'; value?: number; cooldown: number }
 	// 和值类主动技:发动时按**当前骰子点数和**结算,所以参数不是固定 value
 	| { type: 'active'; skill: 'sum'; per: number; from?: number; mult?: number; cooldown: number }
@@ -441,7 +444,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'lianzhudeng',
 		name: '连珠灯',
-		desc: '连号 3 颗（如 123）算一秀、4 颗算二举、5 颗算四进；连号里每颗骰子：得分 +45；掷出对堂（连号 6 颗）：得分 +150、×3',
+		desc: '连号 3 颗（如 123）算一秀、4 颗算二举、5 颗算四进；连号里每颗骰子：得分 +45；连号每多 1 颗，得分 ×1.6；掷出对堂（连号 6 颗）：额外 +150、得分 ×2',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_coala_cammo',
@@ -450,15 +453,17 @@ export const CARDS: TeeCard[] = [
 			parts: [
 				{ type: 'straight_ladder' },
 				{ type: 'straight_chips', per: 45 },
+				// 连号长度就是这套流派的引擎:3 连 ×1.6、4 连 ×2.56、5 连 ×4.1
+				{ type: 'straight_mult', per: 1.6, from: 2 },
 				// 招牌手不能输给别人的中档牌:满顺(对堂)额外给一笔
-				{ type: 'cond', cond: 'dui_tang', chips: 150, mult: 3 }
+				{ type: 'cond', cond: 'dui_tang', chips: 150, mult: 2 }
 			]
 		}
 	},
 	{
 		id: 'qixingdeng',
 		name: '七星灯',
-		desc: '连号里每颗骰子：得分 +70；掷出对堂（连号 6 颗）：得分 ×2.5',
+		desc: '连号里每颗骰子：得分 +70；连号每多 1 颗，得分 ×2',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_contrastfox',
@@ -466,7 +471,8 @@ export const CARDS: TeeCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'straight_chips', per: 70 },
-				{ type: 'cond', cond: 'dui_tang', mult: 2.5 }
+				// 七星灯是连号流的头牌:纯靠「连得越长越猛」,不再赌 6 连那种偶然
+				{ type: 'straight_mult', per: 2, from: 2 }
 			]
 		}
 	},

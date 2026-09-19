@@ -586,6 +586,11 @@ export const calcTeeScore = ({
 					if (be.chips) buffChips += be.chips * n;
 					if (be.mult) buffMult *= Math.pow(be.mult, n);
 				}
+			} else if (be.type === 'straight_mult') {
+				// 连号长度倍率(合璧符):连号 n 颗 → ×per^(n-from)
+				const run = longestRun(ownDice);
+				const from = be.from ?? 2;
+				if (run > from) buffMult *= Math.pow(be.per ?? 1, run - from);
 			} else if (be.type === 'reverse') {
 				// 逆向加成卡:并入同一个替换步骤
 				reverseBase += be.base ?? 0;
@@ -745,6 +750,17 @@ export const calcTeeScore = ({
 				const bc = chips;
 				chips += eff.per * run;
 				note(srcId, 'card', chips - bc, 1, `连号 ${run} 颗`);
+				break;
+			}
+			case 'straight_mult': {
+				// 连号越长越猛:连号 n 颗 → ×per^(n-from)。这是连号流的引擎 ——
+				// 原来那套乘数全锁在「对堂(6 连)」上,而那是 ~1.5% 的事件,等于按不出来。
+				const run = longestRun(ownDice);
+				const from = eff.from ?? 2;
+				if (run <= from) break;
+				const bm = mult;
+				mult *= Math.pow(eff.per, run - from);
+				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `连号 ${run} 颗`);
 				break;
 			}
 			case 'per_reroll': {

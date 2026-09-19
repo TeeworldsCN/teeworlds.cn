@@ -21,13 +21,17 @@ export interface BuffEffect {
 		| 'own_face'
 		| 'bump_point'
 		| 'bundle'
-		| 'sum_chips';
+		| 'sum_chips'
+		// 连号长度倍率(合璧符):连号 n 颗 → ×per^(n-from)
+		| 'straight_mult';
 	value?: number;
 	chips?: number;
 	mult?: number;
 	/** level_floor: 最低按该等级结算 */
 	levelId?: string;
-	/** sum_chips: 点数和 ×per;reverse: 减分系数(默认 1) */
+	/** straight_mult: 超过几颗才开始叠乘 */
+	from?: number;
+	/** sum_chips: 点数和 ×per;reverse: 减分系数(默认 1);straight_mult: 连号每多 1 颗 ×per */
 	per?: number;
 	/** reverse: 基础分(得分 = base − 掷骰分) */
 	base?: number;
@@ -492,12 +496,12 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'hebi',
 		name: '合璧符',
-		desc: '对堂及以上：得分 ×3',
+		desc: '连号 4 颗及以上：连号每多 1 颗，得分 ×1.5',
 		rarity: 'rare',
 		skin: 'skeyster',
 		price: 7,
 		turns: 2,
-		effect: { type: 'cond', cond: 'dui_tang_plus', mult: 3 }
+		effect: { type: 'straight_mult', per: 1.5, from: 3 }
 	},
 	{
 		id: 'yueyachi',
