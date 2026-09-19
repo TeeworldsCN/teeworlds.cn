@@ -29,7 +29,7 @@ export interface BuffEffect {
 	mult?: number;
 	/** level_floor: 最低按该等级结算 */
 	levelId?: string;
-	/** straight_mult: 超过几颗才开始叠乘 */
+	/** straight_mult: 超过几颗才开始叠乘;set_point/set_any: 只能挑这个点数的骰子(4 = 只认 4 点) */
 	from?: number;
 	/** sum_chips: 点数和 ×per;reverse: 减分系数(默认 1);straight_mult: 连号每多 1 颗 ×per */
 	per?: number;
@@ -44,6 +44,8 @@ export interface BuffEffect {
 	/** roll: 额外投掷次数 */
 	count?: number;
 	point?: number;
+	/** set_any: 改成的点数只能从这里选(不填 = 1~6 任选,由玩家挑) */
+	options?: number[];
 	mods?: DiceMods;
 }
 
@@ -69,7 +71,7 @@ export interface AppliedBuff {
 }
 
 export const BUFF_CARDS: BuffCard[] = [
-	// ======== 加算(+chips) 14 ========
+	// ======== 加算(+chips) 8 ========
 	{
 		id: 'yuefu',
 		name: '玉兔护符',
@@ -411,7 +413,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: { type: 'roll', count: 2 }
 	},
 
-	// ======== 改点(×2.90 / ×4.48,强) 6 ========
+	// ======== 改点(×2.90 / ×4.48,强) 9 ========
 	{
 		id: 'yuetuchu2',
 		name: '银针',
@@ -507,6 +509,54 @@ export const BUFF_CARDS: BuffCard[] = [
 		price: 14,
 		turns: 2,
 		effect: { type: 'set_any', count: 1 }
+	},
+
+	// ======== 拆 4(只能挑 4 点,手上没 4 就白拿 → 会归还) 4 ========
+	// 4 点是这套规则的硬通货(四点红/对堂/六博红/四点单点线),所以「把 4 拆掉」是
+	// 一个独立的工具位:破自己的 4 换等级、救被作废的 4(空四/蚀月)、或凑对堂的 1 和 6。
+	{
+		id: 'shuangjipan',
+		name: '双极盘',
+		desc: '改 1 颗 4 点骰子为 1 或 6 点；本关没用掉就归还',
+		rarity: 'common',
+		skin: 'IceWitch_Winter',
+		price: 4,
+		turns: 1,
+		refund: true,
+		effect: { type: 'set_any', count: 1, from: 4, options: [1, 6] }
+	},
+	{
+		id: 'zhongduanpan',
+		name: '中段盘',
+		desc: '改 1 颗 4 点骰子为 2 或 5 点；本关没用掉就归还',
+		rarity: 'common',
+		skin: 'IceWitch_WinterCat',
+		price: 4,
+		turns: 1,
+		refund: true,
+		effect: { type: 'set_any', count: 1, from: 4, options: [2, 5] }
+	},
+	{
+		id: 'dingwupan',
+		name: '定五盘',
+		desc: '改 1 颗 4 点骰子为 5 点；本关没用掉就归还',
+		rarity: 'rare',
+		skin: 'IceWitch_WitchDeer',
+		price: 5,
+		turns: 1,
+		refund: true,
+		effect: { type: 'set_point', count: 1, point: 5, from: 4 }
+	},
+	{
+		id: 'wanxiangpan',
+		name: '万象盘',
+		desc: '改 1 颗 4 点骰子为任意点数；本关没用掉就归还',
+		rarity: 'legendary',
+		skin: 'IceWitch_FairyCat',
+		price: 8,
+		turns: 1,
+		refund: true,
+		effect: { type: 'set_any', count: 1, from: 4 }
 	},
 
 	// ======== 逆向流:把「掷得越烂越赚」做成加成卡 ========

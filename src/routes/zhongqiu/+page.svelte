@@ -375,8 +375,15 @@
 
 	// 交互（改点/重掷）
 	type PendingAction =
-		| { kind: 'set_point'; count: number; point: number; srcId?: string }
-		| { kind: 'set_any'; count: number; pick?: number; srcId?: string }
+		| { kind: 'set_point'; count: number; point: number; srcId?: string; from?: number }
+		| {
+				kind: 'set_any';
+				count: number;
+				pick?: number;
+				srcId?: string;
+				from?: number;
+				options?: number[];
+		  }
 		| { kind: 'bump'; count: number; step?: number; srcId?: string }; // 月牙尺 +1 / 缺月尺 −1:点一颗骰子
 	let pendingAction = $state<PendingAction | null>(null);
 	let pointPicker = $state(false); // set_any 的点数选择
@@ -1263,16 +1270,37 @@
 			finalizeTee();
 			return;
 		}
+		// 「只认 4 点」的改点(拆 4 系列):场上没有可挑的 4 点就直接跳过这张,
+		// 不算用掉 → 结算时按「没用掉就归还」退回库存
+		if (op.from !== undefined && !shownDice.includes(op.from)) {
+			nextSetOp();
+			return;
+		}
 		if (op.kind === 'point')
-			pendingAction = { kind: 'set_point', count: op.count, point: op.point ?? 4, srcId: op.srcId };
+			pendingAction = {
+				kind: 'set_point',
+				count: op.count,
+				point: op.point ?? 4,
+				from: op.from,
+				srcId: op.srcId
+			};
 		else if (op.kind === 'bump')
 			pendingAction = { kind: 'bump', count: op.count, step: op.step ?? 1, srcId: op.srcId };
-		else pendingAction = { kind: 'set_any', count: op.count, srcId: op.srcId };
+		else
+			pendingAction = {
+				kind: 'set_any',
+				count: op.count,
+				from: op.from,
+				options: op.options,
+				srcId: op.srcId
+			};
 	};
 
 	const onDieClick = (i: number) => {
 		const act = pendingAction;
 		if (!act) return;
+		// 「只认 4 点」的改点:点到别的点数没反应(判定用的是玩家看到的点数)
+		if (act.kind !== 'bump' && act.from !== undefined && shownDice[i] !== act.from) return;
 
 		const markOpted = () => {
 			if (!optedDice.includes(i)) optedDice = [...optedDice, i];
@@ -1319,9 +1347,28 @@
 			pendingAction = null;
 			nextSetOp();
 		} else {
-			pendingAction = { kind: 'set_any', count: act.count, srcId: act.srcId };
+			pendingAction = {
+				kind: 'set_any',
+				count: act.count,
+				from: act.from,
+				options: act.options,
+				srcId: act.srcId
+			};
 		}
 	};
+
+	/** set_any 的点数候选:拆 4 系列只给指定点数(1/6 或 2/5) */
+	const pointChoices = () =>
+		pendingAction?.kind === 'set_any'
+			? (pendingAction.options ?? [1, 2, 3, 4, 5, 6])
+			: [1, 2, 3, 4, 5, 6];
+
+	/** 拆 4 系列:只认 4 点的改点,非 4 点的骰子点不动 → 画暗一点 */
+	const dieOffTarget = (i: number) =>
+		!!pendingAction &&
+		pendingAction.kind !== 'bump' &&
+		pendingAction.from !== undefined &&
+		shownDice[i] !== pendingAction.from;
 
 	const cancelAction = () => {
 		pendingAction = null;
@@ -2579,11 +2626,11 @@
 							>
 								{#each [0, 1, 2, 3, 4, 5] as i}
 									<button
-										class="die min-w-0 {dieRolling(i) ? 'rolling' : ''} {hitDice.includes(i)
-											? 'hit'
-											: ''} {choosing && rerollSel[i] ? 'marked' : ''} {diceModded(i)
-											? 'moded'
-											: ''} {choosing || pendingAction
+										class="die min-w-0 {dieOffTarget(i) ? 'opacity-30' : ''} {dieRolling(i)
+											? 'rolling'
+											: ''} {hitDice.includes(i) ? 'hit' : ''} {choosing && rerollSel[i]
+											? 'marked'
+											: ''} {diceModded(i) ? 'moded' : ''} {choosing || pendingAction
 											? 'cursor-pointer hover:scale-110'
 											: 'cursor-default'}"
 										style={`animation-duration: ${rollDur}s; animation-delay: ${dieDelay(i)}s; animation-iteration-count: ${rollIter}`}
@@ -2624,7 +2671,7 @@
 							>
 								{#if pointPicker}
 									<!-- 点数选择直接顶掉标题行:不占下方布局,骰子一动不动 -->
-									{#each [1, 2, 3, 4, 5, 6] as v}
+									{#each pointChoices() as v}
 										<button
 											class="h-6 w-7 shrink-0 rounded-lg bg-slate-700 text-xs font-bold text-slate-200 transition hover:bg-amber-500 hover:text-amber-950 max-[365px]:w-6 sm:h-8 sm:w-10 sm:text-sm {v ===
 											4
@@ -2680,7 +2727,8 @@
 									</button>
 								{:else if pendingAction?.kind === 'set_point'}
 									<span class="text-cyan-300"
-										>{opSrcName(pendingAction.srcId)} ✨ 点骰子改为 {pendingAction.point} 点{#if pendingAction.count > 1}(还剩
+										>{opSrcName(pendingAction.srcId)} ✨ 选一颗{#if pendingAction.from}&nbsp;{pendingAction.from}
+											点{/if}骰子改为 {pendingAction.point} 点{#if pendingAction.count > 1}(还剩
 											{pendingAction.count} 颗){/if}</span
 									>
 								{:else if pendingAction?.kind === 'bump'}
@@ -2692,7 +2740,8 @@
 									>
 								{:else if pendingAction?.kind === 'set_any'}
 									<span class="text-cyan-300"
-										>{opSrcName(pendingAction.srcId)} ✨ 点骰子选点数{#if pendingAction.count > 1}(还剩
+										>{opSrcName(pendingAction.srcId)} ✨ 选一颗{#if pendingAction.from}&nbsp;{pendingAction.from}
+											点{/if}骰子{#if pendingAction.options}改为 {pendingAction.options.join(' / ')} 点{:else}改为任意点数{/if}{#if pendingAction.count > 1}(还剩
 											{pendingAction.count} 颗){/if}</span
 									>
 								{:else if rolling}

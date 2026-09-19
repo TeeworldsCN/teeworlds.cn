@@ -335,20 +335,33 @@ export interface SetOp {
 	point?: number;
 	/** bump: 位移方向(+1 月牙尺 / −1 缺月尺) */
 	step?: number;
+	/** set_point/set_any: 只能挑这个点数的骰子(拆 4 系列:4) */
+	from?: number;
+	/** set_any: 可选的改后点数(不填 = 1~6 任选) */
+	options?: number[];
 	srcId?: string;
 }
 
 export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []): SetOp[] => {
 	const ops: SetOp[] = [];
-	type AnyEff = { type: string; parts?: AnyEff[]; count?: number; point?: number; value?: number };
+	type AnyEff = {
+		type: string;
+		parts?: AnyEff[];
+		count?: number;
+		point?: number;
+		value?: number;
+		from?: number;
+		options?: number[];
+	};
 	const walk = (e: AnyEff, srcId: string) => {
 		if (e.type === 'bundle') {
 			(e.parts ?? []).forEach((p) => walk(p, srcId));
 			return;
 		}
 		if (e.type === 'set_point')
-			ops.push({ kind: 'point', count: e.count ?? 1, point: e.point ?? 4, srcId });
-		else if (e.type === 'set_any') ops.push({ kind: 'any', count: e.count ?? 1, srcId });
+			ops.push({ kind: 'point', count: e.count ?? 1, point: e.point ?? 4, from: e.from, srcId });
+		else if (e.type === 'set_any')
+			ops.push({ kind: 'any', count: e.count ?? 1, from: e.from, options: e.options, srcId });
 		else if (e.type === 'bump_point')
 			ops.push({ kind: 'bump', count: e.count ?? 1, step: e.value ?? 1, srcId });
 	};
