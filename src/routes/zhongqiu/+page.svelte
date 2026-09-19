@@ -236,8 +236,21 @@
 	// 道具库存（加成卡）
 	let buffInventory = $state<Record<string, number>>({});
 	let selectedBuff = $state<BuffCard | null>(null);
-	/** 仅查看说明的加成卡(没选中的芯片 hover / 点按):仓库里的卡不能拖,但说明得看得到 */
+	/** 仅查看说明的加成卡(没选中的芯片 hover / 点按):仓库里的卡点一下看说明 */
 	let peekBuff = $state<BuffCard | null>(null);
+	/** 商店货架的悬停说明(和 peekBuff 分开:同一屏里仓库和货架会同时存在) */
+	let shopPeek = $state<BuffCard | null>(null);
+	/** 同一时刻只弹一个说明浮层:悬停优先于选中,否则两个浮层会叠在一起。
+	 *  选中只在开局编队有效——到了商店它挂不上任何东西,别把上一次的选中带过来。 */
+	const shownBuff = $derived(peekBuff ?? (phase === 'intro' ? selectedBuff : null));
+	const shownShopBuff = $derived(shopPeek ?? shopPick);
+	// 阶段一切换,悬停说明就作废 —— 指针的 leave 事件不会补发,
+	// 否则上一屏 hover 过的那张会拖着一张陈旧浮层跟到下一屏。
+	$effect(() => {
+		phase;
+		peekBuff = null;
+		shopPeek = null;
+	});
 	/** 待确认的出售:被点 ✕ 的 Tee 下标(null = 没弹窗) */
 	let sellAsk = $state<number | null>(null);
 	// 团队结算动画（回合确认后： 团队倍率卡一条一条弹）
@@ -259,23 +272,6 @@
 	// ---- 加成卡 / 重构卡工具 ----
 
 	const buffEntries = $derived(Object.entries(buffInventory) as [string, number][]);
-
-	const onBuffDragStart = (e: DragEvent, card: BuffCard) => {
-		if (!canEquipBuff) {
-			e.preventDefault();
-			return;
-		}
-		e.dataTransfer?.setData('text/plain', card.id);
-		if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
-	};
-
-	const onTeeDrop = (e: DragEvent, idx: number) => {
-		e.preventDefault();
-		const id = e.dataTransfer?.getData('text/plain');
-		if (!id) return;
-		const card = BUFF_BY_ID.get(id);
-		if (card) applyBuffToTee(card, idx);
-	};
 
 	const toggleSelectBuff = (card: BuffCard) => {
 		if (!canEquipBuff) return;
@@ -1781,6 +1777,7 @@
 		phase = 'shop';
 		shopBuffs = drawShopItems(shopLocks);
 		shopPick = null;
+		shopPeek = null;
 		shopSold = [];
 		refreshPrice = 2; // 重新进商店,刷新价恢复
 	};
@@ -1792,6 +1789,7 @@
 		refreshPrice += 1; // 越刷越贵
 		shopBuffs = drawShopItems(shopLocks);
 		shopPick = null;
+		shopPeek = null;
 		shopSold = [];
 	};
 
@@ -2027,7 +2025,7 @@
 	{/snippet}
 
 	{#snippet buffChip(card: BuffCard, count: number, interactive = false)}
-		<!-- 加成卡芯片:所有宽度统一形态(不再用大卡);掷骰前可点选/拖到 Tee 上 -->
+		<!-- 加成卡芯片:所有宽度统一形态(不再用大卡);掷骰前点选,再点 Tee 挂上 -->
 		{@const state =
 			selectedBuff?.id === card.id
 				? 'border-amber-400 bg-amber-400/15'
@@ -2044,15 +2042,10 @@
 			<span class="text-[10px] font-bold text-amber-300 sm:text-[11px]">×{count}</span>
 		{/snippet}
 		{#if interactive}
-			<!-- 可拖的芯片用 div 而不是 button:Chrome 里 <button draggable> 不触发原生 dragstart,
-			     拖拽会“看不见地失效”(合成事件能过,真鼠标过不了) -->
-			<div
-				class="flex shrink-0 cursor-grab items-center gap-1 rounded-lg border px-1.5 py-0.5 transition select-none sm:gap-1.5 sm:px-2 sm:py-1 {state}"
-				role="button"
-				tabindex="0"
-				draggable
-				ondragstart={(e) => onBuffDragStart(e, card)}
-				title="拖到队伍 Tee 上使用(或点选后再点 Tee)"
+			<button
+				type="button"
+				class="flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border px-1.5 py-0.5 transition select-none sm:gap-1.5 sm:px-2 sm:py-1 {state}"
+				title="点选后再点队伍里的 Tee 挂上"
 				onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
 				onpointerenter={(e) => {
 					if (e.pointerType !== 'touch') peekBuff = card;
@@ -2069,7 +2062,7 @@
 				}}
 			>
 				{@render inner()}
-			</div>
+			</button>
 		{:else}
 			<div
 				class="flex shrink-0 items-center gap-1 rounded-lg border px-1.5 py-0.5 transition sm:gap-1.5 sm:px-2 sm:py-1 {state}"
@@ -2379,7 +2372,7 @@
 							<span class="hidden text-slate-500 sm:inline">轮流上前掷骰，队伍总分为总奖品</span>
 						</div>
 
-						<!-- 加成卡:掷骰前拖/点到 Tee 身上,故排在最前 -->
+						<!-- 加成卡:掷骰前点选再点到 Tee 身上,故排在最前 -->
 						{#if showBuffShelf}
 							<div class="mt-1 border-t border-sky-500/20 pt-1">
 								<div class="flex items-center justify-between gap-2 text-[11px] text-slate-400">
@@ -2400,8 +2393,8 @@
 											{@const card = BUFF_BY_ID.get(id)!}
 											<div class="relative shrink-0">
 												{@render buffChip(card, count, canEquipBuff)}
-												{#if selectedBuff?.id === card.id || peekBuff?.id === card.id}
-													<!-- 桌面:说明浮在选中的芯片上方 -->
+												{#if shownBuff?.id === card.id}
+													<!-- 桌面:说明浮在悬停/选中的芯片上方 -->
 													{@render buffPop(
 														card,
 														'absolute bottom-full left-0 mb-1 hidden sm:block'
@@ -2410,10 +2403,10 @@
 											</div>
 										{/each}
 									</div>
-									{#if selectedBuff || peekBuff}
+									{#if shownBuff}
 										<!-- 手机:横滑容器会裁掉芯片内的绝对定位,说明居中挂在容器上 -->
 										{@render buffPop(
-											selectedBuff ?? peekBuff!,
+											shownBuff,
 											'absolute bottom-full left-1/2 mb-1 -translate-x-1/2 sm:hidden'
 										)}
 									{/if}
@@ -2430,10 +2423,6 @@
 									class="rounded-xl p-0.5 transition {canEquipBuff && selectedBuff
 										? 'bg-amber-400/5 ring-1 ring-amber-400/70'
 										: ''}"
-									ondragover={(e) => {
-										if (canEquipBuff) e.preventDefault();
-									}}
-									ondrop={(e) => onTeeDrop(e, i)}
 									onclick={() => selectedBuff && applyBuffToTee(selectedBuff, i)}
 									onkeydown={(e) => {
 										if ((e.key === 'Enter' || e.key === ' ') && selectedBuff) {
@@ -2446,7 +2435,7 @@
 										{#if (phase === 'reward' || phase === 'shop') && i > 0 && tee.cardId}
 											<button
 												class="absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/90 text-[10px] font-bold text-white shadow transition hover:bg-red-400"
-												title="卖出 {cardOf(tee)?.name},得 {rarityOf(cardOf(tee)).sell} 🥮"
+												title="卖出 {cardOf(tee)?.name},得 🥮 {rarityOf(cardOf(tee)).sell}"
 												onclick={() => {
 													sfxClick();
 													sellAsk = i; // 先问一句,确认了再真卖
@@ -2461,7 +2450,7 @@
 										skin={tee.playerSkin ?? 'x_spec'}
 										name="我"
 										desc={cardOf(tee)?.desc}
-										tipExtra={tee.cardId ? `卖出得 ${rarityOf(cardOf(tee)).sell} 🥮` : undefined}
+										tipExtra={tee.cardId ? `卖出得 🥮 ${rarityOf(cardOf(tee)).sell}` : undefined}
 										tipList={teeTipList(tee)}
 										badge={tee.buffs.length > 0 ? `✨${tee.buffs.length}` : undefined}
 										skillBadge={activeSkills(effectiveEffects(teamCards, i), tee.buffs).length > 0
@@ -2779,20 +2768,20 @@
 							>
 								<div class="flex justify-between rounded bg-slate-800/60 px-3 py-1">
 									<span>过关奖励</span><span class="font-bold text-amber-300"
-										>+{roundRewardGained} 🥮</span
+										>🥮 +{roundRewardGained}</span
 									>
 								</div>
 								{#if overflowGained > 0}
 									<div class="flex justify-between rounded bg-slate-800/60 px-3 py-1">
 										<span>溢出奖励（每超出目标 50% +1，上限 8）</span><span
-											class="font-bold text-amber-300">+{overflowGained} 🥮</span
+											class="font-bold text-amber-300">🥮 +{overflowGained}</span
 										>
 									</div>
 								{/if}
 								{#if economyGained > 0}
 									<div class="flex justify-between rounded bg-slate-800/60 px-3 py-1">
 										<span>经商收益</span><span class="font-bold text-amber-300"
-											>+{economyGained} 🥮</span
+											>🥮 +{economyGained}</span
 										>
 									</div>
 								{/if}
@@ -2818,7 +2807,7 @@
 							</div>
 							<div class="mt-0.5 text-[11px] text-slate-400 sm:text-xs">
 								{canPickReward
-									? `选卡后自动进入商店 · 刷新需 ${refreshPrice} 🥮`
+									? `选卡后自动进入商店 · 刷新需 🥮 ${refreshPrice}`
 									: '（队伍已满，先去商店卖卡）'}
 								· 当前 🥮 {mooncakes}
 							</div>
@@ -2844,7 +2833,7 @@
 								onclick={refreshReward}
 								disabled={mooncakes < refreshPrice || lastRewardIdx >= 0}
 							>
-								<Fa icon={faRotate} class="mr-1 inline" />刷新({refreshPrice} 🥮)
+								<Fa icon={faRotate} class="mr-1 inline" />刷新(🥮 {refreshPrice})
 							</button>
 							<button
 								class="rounded-lg border border-slate-500 bg-slate-700 px-5 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 sm:px-6 sm:py-2 sm:text-sm"
@@ -2871,24 +2860,28 @@
 							<div class="text-[10px] text-slate-500">掷骰前挂到 Tee 身上</div>
 						</div>
 						<!-- 商店货架:和队伍面板同款的小芯片,固定 3 列等宽(两排对齐) -->
-						<div class="mt-1 grid grid-cols-3 gap-1.5 max-[365px]:gap-1 sm:mt-2 sm:gap-2">
+						<div class="relative mt-1 grid grid-cols-3 gap-1.5 max-[365px]:gap-1 sm:mt-2 sm:gap-2">
 							{#each shopBuffs as card, ci}
 								{@const picked = shopPick?.id === card.id}
 								{@const sold = shopSold.includes(card.id)}
 								{@const locked = !!shopLocks[ci]}
 								<div class="relative">
-									<button
-										class="flex h-8 w-full items-center gap-1 rounded-lg border py-0 pr-5 pl-1.5 text-left transition {locked
-											? 'border-amber-400/70 bg-amber-400/10'
+									<!-- 格子:手机两行(名字一行、价格+锁定一行,四字名才放得下),sm 起恢复单行 -->
+									<div
+										role="button"
+										tabindex={sold ? -1 : 0}
+										aria-disabled={sold}
+										class="flex w-full flex-col gap-0.5 rounded-lg border px-1.5 py-1 text-left transition {sold
+											? 'cursor-default'
+											: 'cursor-pointer'} sm:h-8 sm:flex-row sm:items-center sm:gap-1 sm:py-0 sm:pr-5 {locked
+											? 'border-dashed border-violet-400/70 bg-violet-400/10'
 											: sold
 												? 'border-slate-700/50 bg-slate-900/50 opacity-45'
-												: picked
-													? 'border-amber-400 bg-amber-400/15'
-													: ci === 5
-														? 'border-fuchsia-400/50 bg-slate-800/70'
-														: 'border-sky-500/40 bg-slate-800/70'} {!sold && mooncakes < card.price
-											? 'opacity-50'
-											: ''}"
+												: ci === 5
+													? 'border-fuchsia-400/50 bg-slate-800/70'
+													: 'border-sky-500/40 bg-slate-800/70'} {picked
+											? 'bg-amber-400/15 ring-2 ring-amber-400'
+											: ''} {!sold && mooncakes < card.price ? 'opacity-50' : ''}"
 										onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
 										onclick={() => !sold && (shopPick = picked ? null : card)}
 										ondblclick={() => {
@@ -2896,23 +2889,39 @@
 											if (!lastPointerWasMouse) return;
 											if (!sold) buyBuff(card);
 										}}
-										disabled={sold}
+										onkeydown={(e) => {
+											if ((e.key === 'Enter' || e.key === ' ') && !sold) {
+												e.preventDefault();
+												shopPick = picked ? null : card;
+											}
+										}}
+										onpointerenter={(e) => {
+											if (e.pointerType !== 'touch') shopPeek = card;
+										}}
+										onpointerleave={(e) => {
+											if (e.pointerType !== 'touch' && shopPeek?.id === card.id) shopPeek = null;
+										}}
 									>
-										<span class="h-4 w-4 shrink-0 sm:h-5 sm:w-5"
-											><TeeRender name={card.skin} className="h-full w-full" /></span
-										>
-										<span
-											class="min-w-0 flex-1 truncate text-[11px] leading-tight font-semibold text-slate-200 sm:text-xs"
-											>{card.name}</span
-										>
-										<span class="shrink-0 text-[10px] font-bold text-amber-300 sm:text-[11px]"
-											>{sold ? '已买' : `🥮${card.price}`}</span
-										>
-									</button>
-									<!-- 锁定:锁住的格子刷新/下次进商店都不变 -->
+										<span class="flex min-w-0 items-center gap-1">
+											<span class="h-4 w-4 shrink-0 sm:h-5 sm:w-5"
+												><TeeRender name={card.skin} className="h-full w-full" /></span
+											>
+											<span
+												class="min-w-0 flex-1 truncate text-[11px] leading-tight font-semibold text-slate-200 sm:text-xs"
+												>{card.name}</span
+											>
+										</span>
+										<!-- 第二行:手机上是价格(右侧让位给锁定按钮),sm 起 contents 把它摊回同一行 -->
+										<span class="flex items-center pr-6 sm:contents">
+											<span class="text-[10px] font-bold text-amber-300 sm:text-[11px]"
+												>{sold ? '已买' : `🥮 ${card.price}`}</span
+											>
+										</span>
+									</div>
+									<!-- 锁定:锁住的格子刷新/下次进商店都不变(手机放右下,sm 起回到右上) -->
 									<button
-										class="absolute top-0 right-0 flex h-8 w-5 items-center justify-center text-[10px] {locked
-											? 'text-amber-300'
+										class="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center text-[10px] sm:top-0 sm:bottom-auto sm:h-8 sm:w-5 {locked
+											? 'text-violet-300'
 											: 'text-slate-500 hover:text-slate-300'}"
 										title={locked ? '已锁定：刷新和下次进商店都不会变' : '锁定这格商品'}
 										aria-label={locked ? '解锁' : '锁定'}
@@ -2923,43 +2932,53 @@
 									>
 										<Fa icon={locked ? faLock : faLockOpen} />
 									</button>
+									<!-- 悬停/选中时的说明浮层(同一时刻只渲染一张):按列对齐,免得左右两列超出面板 -->
+									{#if shownShopBuff?.id === card.id}
+										{@render buffPop(
+											card,
+											`absolute bottom-full z-50 mb-1 hidden sm:block ${
+												ci % 3 === 0
+													? 'left-0'
+													: ci % 3 === 1
+														? 'left-1/2 -translate-x-1/2'
+														: 'right-0'
+											}`
+										)}
+									{/if}
 								</div>
 							{/each}
-						</div>
-
-						<!-- 说明条常驻(未选中时是一条提示):高度写死,免得选中/取消把下面的按钮顶来顶去 -->
-						<div
-							class="mt-1.5 flex h-11 items-center gap-2 rounded-lg border px-2 {shopPick
-								? 'border-amber-500/30 bg-slate-950/60'
-								: 'border-slate-700/40 bg-slate-950/30'}"
-						>
-							{#if shopPick}
-								<div class="line-clamp-2 min-w-0 flex-1 text-[11px] leading-snug text-slate-300">
-									<b class="text-amber-300">{shopPick.name}</b>
-									· {shopPick.desc} · 持续 {shopPick.turns} 关
-								</div>
-								<button
-									class="shrink-0 rounded-full bg-gradient-to-b from-amber-400 to-amber-600 px-3 py-0.5 text-[11px] font-bold whitespace-nowrap text-amber-950 transition hover:from-amber-300 hover:to-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
-									onclick={() => buyBuff(shopPick!)}
-									disabled={mooncakes < shopPick.price}
-								>
-									买 🥮{shopPick.price}
-								</button>
-							{:else}
-								<span class="text-[11px] text-slate-500"
-									>点道具看说明 · 🔒 锁住的格子刷新/下关都不变</span
-								>
+							<!-- 手机没有 hover:选中的那张居中浮在货架上方 -->
+							{#if shownShopBuff}
+								{@render buffPop(
+									shownShopBuff,
+									'absolute bottom-full left-1/2 mb-1 -translate-x-1/2 sm:hidden'
+								)}
 							{/if}
 						</div>
 
-						<div class="mt-1.5 flex justify-center gap-2 sm:gap-3">
-							<button
-								class="rounded-lg border border-slate-500 bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
-								onclick={refreshShop}
-								disabled={mooncakes < refreshPrice || shopLocks.every((l) => l)}
-							>
-								<Fa icon={faRotate} class="mr-1 inline" />刷新({refreshPrice} 🥮)
-							</button>
+						<!-- 说明改由 tooltip 承担(悬停/点按货架格子),这里只留一行锁的提示 -->
+						<div class="mt-1 text-[10px] leading-none text-slate-500">
+							点道具看说明 · 🔒 锁住的格子刷新/下关都不变
+						</div>
+
+						<!-- 购买和「下一关」分置两端:一个花钱、一个离开,挨在一起太容易点错 -->
+						<div class="mt-1.5 flex items-center justify-between gap-2 sm:mt-2 sm:gap-3">
+							<div class="flex items-center gap-1.5 sm:gap-2">
+								<button
+									class="rounded-lg border border-slate-500 bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
+									onclick={refreshShop}
+									disabled={mooncakes < refreshPrice || shopLocks.every((l) => l)}
+								>
+									<Fa icon={faRotate} class="mr-1 inline" />刷新(🥮 {refreshPrice})
+								</button>
+								<button
+									class="rounded-lg border border-emerald-400/60 bg-emerald-500/20 px-3 py-1.5 text-xs font-bold whitespace-nowrap text-emerald-200 transition hover:bg-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
+									onclick={() => shopPick && buyBuff(shopPick)}
+									disabled={!shopPick || mooncakes < shopPick.price}
+								>
+									{shopPick ? `买 🥮 ${shopPick.price}` : '买'}
+								</button>
+							</div>
 							<button
 								class="rounded-lg bg-gradient-to-b from-amber-400 to-amber-600 px-6 py-1.5 text-xs font-bold text-amber-950 transition hover:from-amber-300 hover:to-amber-500 sm:px-8 sm:py-2 sm:text-sm"
 								onclick={nextRound}
@@ -3072,7 +3091,7 @@
 						class="rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-4 py-2 text-sm font-bold whitespace-nowrap text-amber-950 shadow transition hover:from-amber-300 hover:to-amber-500 active:scale-95"
 						onclick={confirmSell}
 					>
-						确认出售 +{rarityOf(sold).sell} 🥮
+						确认出售 🥮 +{rarityOf(sold).sell}
 					</button>
 				</div>
 			</div>
