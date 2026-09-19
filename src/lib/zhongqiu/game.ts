@@ -1,5 +1,12 @@
 // 月宫掷骰 · 游戏核心逻辑(关卡、Boss、计分、存档)
-import { getRollLevel, hasClearVoid, judgeRoll, stripVoid, type DiceMods } from './midautumn';
+import {
+	getRollLevel,
+	hasClearVoid,
+	judgeRoll,
+	straightDiceCount,
+	stripVoid,
+	type DiceMods
+} from './midautumn';
 import { LEVEL_LADDER, CARD_BY_ID, CARDS, condHit, type TeeCard, type TeeEffect } from './teecards';
 import { longestRun } from './midautumn';
 import { BUFF_BY_ID, type AppliedBuff } from './items';
@@ -212,10 +219,14 @@ export const BOSSES: Boss[] = [
 /** 温和池 id(第 1~6 关) */
 export const MILD_BOSS_IDS = BOSSES.filter((b) => b.mild).map((b) => b.id);
 
-export const getBoss = (n: number): Boss => {
-	const pool = BOSSES.filter((b) =>
+/** 第 n 关能抽到的 Boss 池(抽卡规则只此一份,getBoss 和「卡池一览」页共用) */
+export const bossPool = (n: number): Boss[] =>
+	BOSSES.filter((b) =>
 		n <= 6 ? b.mild : b.minRound ? n >= b.minRound : b.id !== 'shiyue' || n > 16
 	);
+
+export const getBoss = (n: number): Boss => {
+	const pool = bossPool(n);
 	const weight = (b: Boss) => b.weight ?? 1;
 	const total = pool.reduce((a, b) => a + weight(b), 0);
 	let r = Math.random() * total;
@@ -239,8 +250,15 @@ export interface TeamTee {
 	lastScore: number;
 	lastLevelId: string;
 	lastDice: number[];
+	/** 这一手哪些骰子被判作废(高照抄牌面时要连作废状态一起抄) */
+	lastVoid?: number[];
 	buffs: AppliedBuff[];
 	charge?: number;
+	/**
+	 * 田螺:这只 Tee 身上的加成卡不生效 —— 挂载时就**直接不入库**,只在这里记下
+	 * 「哪张卡、原价多少月饼币」,掷完之后按原价返还(结算动画逐张弹)。
+	 */
+	refundPending?: { cardId: string; coins: number }[];
 }
 
 export const TEAM_LIMIT = 6;
@@ -378,10 +396,29 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 
 export interface ActiveSkill {
 	srcId: string;
-	skill: 'chips' | 'left_chips' | 'retry' | 'sum' | 'to_four';
-	/** 固定加分(chips/left_chips 用);和值类(sum)在卡自己的效果里读参数,这里是 0 */
+	skill:
+		| 'chips'
+		| 'left_chips'
+		| 'retry'
+		| 'sum'
+		| 'to_four'
+		| 'mult'
+		| 'total_add'
+		| 'end_round'
+		| 'sell_self';
+	/** 固定加分(chips/left_chips/total_add 用);和值类(sum)在卡自己的效果里读参数,这里是 0 */
 	value: number;
 	cooldown: number;
+	/** 发动要花的月饼币(猜谜) */
+	cost?: number;
+	/** 得分倍率(猜谜) */
+	mult?: number;
+	/** 结束本关时,每个尚未投掷的角色给多少月饼币(云海) */
+	perTee?: number;
+	/** 出售「我」换多少月饼币(归家) */
+	coins?: number;
+	/** 技能属于「我」而不是持有者(归家) */
+	toPlayer?: boolean;
 }
 
 export const activeSkills = (self: EffectiveEffect[], buffs: AppliedBuff[] = []): ActiveSkill[] => {
@@ -398,11 +435,30 @@ export const activeSkills = (self: EffectiveEffect[], buffs: AppliedBuff[] = [])
 				srcId,
 				skill: eff.skill,
 				value: 'value' in eff ? (eff.value ?? 0) : 0,
-				cooldown: eff.cooldown
+				cooldown: eff.cooldown,
+				cost: 'cost' in eff ? eff.cost : undefined,
+				mult: 'mult' in eff ? eff.mult : undefined,
+				perTee: 'perTee' in eff ? eff.perTee : undefined,
+				coins: 'coins' in eff ? eff.coins : undefined,
+				toPlayer: 'toPlayer' in eff ? eff.toPlayer : undefined
 			});
 	};
 	for (const { eff, srcId } of self) walk(eff, srcId);
 	void buffs; // 目前只有卡牌带主动技能(加成卡时效太短,冷却没意义)
+	return out;
+};
+
+/**
+ * 「我」能用的主动技:别人卡上标了 toPlayer 的那些(归家)。
+ * 技能归属「我」——所以冷却记在 team[0].charge、按钮/角标也长在主 Tee 上。
+ */
+export const playerActiveSkills = (cards: (TeeCard | null)[]): ActiveSkill[] => {
+	const out: ActiveSkill[] = [];
+	for (let i = 0; i < cards.length; i++) {
+		if (!cards[i]) continue;
+		for (const sk of activeSkills(effectiveEffects(cards, i)))
+			if (i === 0 || sk.toPlayer) out.push(sk);
+	}
 	return out;
 };
 
@@ -448,12 +504,19 @@ export const mergeMods = (a?: DiceMods, b?: DiceMods): DiceMods | undefined => {
 
 export const playerDiceMods = (cards: (TeeCard | null)[]): DiceMods | undefined => {
 	const map: Record<number, number> = {};
+	/** 星河:「我」掷出的这些点数作废 */
+	const voidFaces = new Set<number>();
 	const walk = (eff: TeeEffect) => {
 		if (eff.type === 'map_player_die') map[eff.from] = eff.to;
+		else if (eff.type === 'player_void_die') eff.faces.forEach((f) => voidFaces.add(f));
 		else if (eff.type === 'bundle') eff.parts.forEach(walk);
 	};
 	for (const c of cards) if (c) walk(c.effect);
-	return Object.keys(map).length ? { map } : undefined;
+	if (!Object.keys(map).length && !voidFaces.size) return undefined;
+	const out: DiceMods = {};
+	if (Object.keys(map).length) out.map = map;
+	if (voidFaces.size) out.void = [...voidFaces].sort((a, b) => a - b);
+	return out;
 };
 
 const isEmptyMods = (m?: DiceMods): boolean =>
@@ -461,6 +524,7 @@ const isEmptyMods = (m?: DiceMods): boolean =>
 	(!m.map &&
 		m.shift === undefined &&
 		!m.void?.length &&
+		!m.voidIdx?.length &&
 		!m.noSameFace &&
 		!m.levelCap &&
 		!m.clearVoid &&
@@ -518,6 +582,10 @@ export interface ScoreInput {
 	diceSum: number;
 	ownDice?: number[];
 	rerolled?: number;
+	/** 本回合「重掷之后点数没变」的次数(猜谜) */
+	stuckRerolls?: number;
+	/** 本回合开始前卖过 Tee(夜市饼摊:卖过就 ×2,卖几个都只算一次) */
+	sellBoost?: boolean;
 	playerLevelId: string;
 	playerDice: number[];
 	playerRawDice?: number[];
@@ -545,6 +613,8 @@ export const calcTeeScore = ({
 	diceSum,
 	ownDice = [],
 	rerolled = 0,
+	stuckRerolls = 0,
+	sellBoost = false,
 	playerLevelId,
 	playerDice,
 	playerRawDice,
@@ -672,15 +742,15 @@ export const calcTeeScore = ({
 				note(srcId, 'card', chips - before.chips, before.mult === 0 ? 1 : mult / before.mult);
 				break;
 			}
-			case 'face_count_mult': {
+			case 'face_count_chips': {
 				if (skipTeamWide || index !== 0) break;
 				{
 					const raw = playerRawDice ?? playerDice ?? [];
 					const hits = raw.filter((d) => d === eff.face).length;
 					if (hits > 0) {
-						const bm = mult;
-						mult *= eff.perHit ? Math.pow(eff.perHit, hits) : hits + 1;
-						note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `${hits} 颗 ${eff.face}`);
+						const bc = chips;
+						chips += eff.chips * hits;
+						note(srcId, 'card', chips - bc, 1, `${hits} 颗 ${eff.face}`);
 					}
 				}
 				break;
@@ -692,6 +762,51 @@ export const calcTeeScore = ({
 				const n = ownDice.length;
 				chips += eff.per * n;
 				note(srcId, 'card', chips - bc, 1, `${n} 颗未作废`);
+				break;
+			}
+			case 'next_round_sell_mult': {
+				// 夜市饼摊:上回合卖出过 Tee → 本回合 ×mult(不累积:卖几个都只算一次)
+				if (!sellBoost) break;
+				const bm = mult;
+				mult *= eff.mult;
+				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, '上回合卖出过 Tee');
+				break;
+			}
+			case 'sold_chips': {
+				// 饼铺掌柜(一):每累计卖出 1 个 Tee,基础分 +per
+				if (soldCount <= 0) break;
+				const bc = chips;
+				chips += eff.per * soldCount;
+				note(srcId, 'card', chips - bc, 1, `累计卖 ${soldCount} 个`);
+				break;
+			}
+			case 'same_face_chips': {
+				// 掷出 min 个同点数(任意点数)就 +chips,有几组算几组
+				const counts = [0, 0, 0, 0, 0, 0, 0];
+				for (const v of ownDice) if (v >= 1 && v <= 6) counts[v]++;
+				let groups = 0;
+				for (let v = 1; v <= 6; v++) if (counts[v] >= eff.min) groups++;
+				if (groups <= 0) break;
+				const bc = chips;
+				chips += eff.chips * groups;
+				note(srcId, 'card', chips - bc, 1, `${groups} 组 ${eff.min} 个同点`);
+				break;
+			}
+			case 'stuck_reroll_chips': {
+				// 猜谜:重掷后点数没变(白掷)就有安慰奖,按次数累加
+				if (stuckRerolls <= 0) break;
+				const bc = chips;
+				chips += eff.per * stuckRerolls;
+				note(srcId, 'card', chips - bc, 1, `白掷 ${stuckRerolls} 次`);
+				break;
+			}
+			case 'live_sum_chips': {
+				// 花生:基础分 += per × (未作废点数和) × (未作废颗数)
+				const bc = chips;
+				const n = ownDice.length;
+				const sum = ownDice.reduce((a, b) => a + b, 0);
+				chips += eff.per * sum * n;
+				note(srcId, 'card', chips - bc, 1, `未作废 ${n} 颗 · 和 ${sum}`);
 				break;
 			}
 			case 'mult': {
@@ -748,7 +863,9 @@ export const calcTeeScore = ({
 				const bc = chips;
 				const bm = mult;
 				if (eff.as === 'chips') chips += eff.per * n;
-				else mult *= Math.pow(eff.per, n);
+				// 流派倍率走线性(×per×N),不再是 ×per^N —— 5 张时 per^5 要 per>⁴√5≈1.495
+				// 才追得平 5×per,低 per 的团队卡会被指数压死;线性后牌面所见即所得。
+				else mult *= eff.per * n;
 				// 底分 = 四点颗数(用最终骰子,「1、6 视为 4」已算进去):
 				if (eff.chipsPerFour) chips += ownDice.filter((d) => d === 4).length * eff.chipsPerFour;
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `${eff.tag}系 ${n} 张`);
@@ -776,6 +893,18 @@ export const calcTeeScore = ({
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `我的 ${n} 个${eff.face}`);
 				break;
 			}
+			case 'player_die_mult': {
+				// 星河:「我」每有 1 颗**作废**的骰子,「我」自己的得分 ×per×颗数(线性)。
+				// 作废颗数 = 6 − 活骰子数(ownDice 在 index===0 时就是「我」那一手,已剔掉作废),
+				// 所以掷出的 4 越多倍率越高,但那些 4 不参与牌型 —— 两头自己权衡。
+				if (index !== 0) break;
+				const n = 6 - ownDice.length;
+				if (n <= 0) break;
+				const bm = mult;
+				mult *= eff.per * n;
+				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `我作废 ${n} 颗`);
+				break;
+			}
 			case 'sum_chips': {
 				const before = { chips, mult };
 				chips += eff.per * diceSum;
@@ -793,12 +922,25 @@ export const calcTeeScore = ({
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `自己 ${n} 个${eff.face}`);
 				break;
 			}
+			case 'own_face_add': {
+				// 该 Tee 自己的骰子里每颗 face 点:倍率 **加算** +per(桂树)。
+				// 加算而不是 ×per —— 采颗数只会线性堆倍率,不会指数爆炸。
+				const n = ownDice.filter((v) => v === eff.face).length;
+				if (n <= 0) break;
+				const bm = mult;
+				mult += eff.per * n;
+				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `自己 ${n} 个${eff.face}`);
+				break;
+			}
 			case 'straight_chips': {
-				const run = longestRun(ownDice);
-				if (run < 3) break;
+				// 「连号里每颗骰子 +per」按字面算:**落在任何一条连号里的骰子**都算,
+				// 不只看最长那一条(1 6 5 5 2 1 有两连 → 6 颗全算;原来只算最长那条 = 2 颗)。
+				// 注意:倍率那边(straight_mult)仍按**最长连号长度** —— 否则「两条 2 连」会白送 ×16。
+				const n = straightDiceCount(ownDice);
+				if (n < 2) break;
 				const bc = chips;
-				chips += eff.per * run;
-				note(srcId, 'card', chips - bc, 1, `连号 ${run} 颗`);
+				chips += eff.per * n;
+				note(srcId, 'card', chips - bc, 1, `连号 ${n} 颗`);
 				break;
 			}
 			case 'straight_mult': {
@@ -901,10 +1043,13 @@ export const calcTeeScore = ({
 			// 流派流的传说档:一张卡把全队同流派都抬起来
 			else if (eff.type === 'per_tag' && eff.teamWide) apply(eff, srcId, false);
 			// 重复牌倍率:卡在谁身上都生效,但只抬主 Tee(自己那一轮已跳过)
-			else if (eff.type === 'face_count_mult') apply(eff, srcId, false);
+			else if (eff.type === 'face_count_chips') apply(eff, srcId, false);
+			// 星河:「我」自己的倍率(卡长在别人身上,得利的是「我」)
+			else if (eff.type === 'player_die_mult') apply(eff, srcId, false);
 			// 上面那几种可能被包在 bundle 里(改点卡的「重复牌倍率」就是)
 			else if (eff.type === 'bundle')
-				for (const p of eff.parts) if (p.type === 'face_count_mult') apply(p, srcId, false);
+				for (const p of eff.parts)
+					if (p.type === 'face_count_chips' || p.type === 'player_die_mult') apply(p, srcId, false);
 		}
 	}
 	// 相邻 Tee 是指向别人的支援卡:站在我左边/右边的人给我加成
@@ -969,7 +1114,7 @@ export const calcTeeScore = ({
 		});
 	}
 	// 一律取整。加减项本来就是整数(底分 10/20/40…、筹码 5/10/25…),小数只可能来自
-	// 倍率相乘(×1.35^N、×1.4^N、×1.5 这类),而最小的一手也有 10 分、典型得分几百到上万 ——
+	// 倍率相乘(×1.35×N、×1.4、×2.5 这类),而最小的一手也有 10 分、典型得分几百到上万 ——
 	// 那半个点没有任何玩法意义,却让记分板一直挂着小数点、结算时又要突变成整数。
 	// 取整放在**唯一的出口**上,所以回合内的乘算仍然精确,只是最终得分是整数。
 	const raw = Math.round((base + chips + buffChips) * mult * buffMult);
@@ -1029,14 +1174,25 @@ export const calcTeamTotal = (
 			relayLines.push({ cardId, from, value: Math.round(v) });
 		}
 	};
+	/** 队伍里还有没有「我」(没卡的那一位) */
+	const hasMe = cards.some((c) => c === null);
 	const walk = (eff: TeeEffect, i: number, cardId: string) => {
 		if (eff.type === 'team_mult') teamMult *= eff.value;
-		else if (eff.type === 'relay_pct') addRelay(eff, i, cardId);
+		// 饼铺掌柜(二):队伍里没有「我」(被归家卖掉)→ 队伍总分 ×mult
+		else if (eff.type === 'no_me_team_mult') {
+			if (!hasMe && scores[i] > 0) teamMult *= eff.mult;
+		} else if (eff.type === 'relay_pct') addRelay(eff, i, cardId);
 		else if (eff.type === 'team_ratio') {
 			// 只放大「我」这一份再加进总分,不再乘全队总分:
 			const own = Math.max(1, scores[i] ?? 0);
+			// 邻居看哪边:right = 只认右邻;left = 只认左邻(0 号位没有左邻 = 不触发);
+			// side = 右邻优先,他在 6 号位(没有右邻)时才用左邻 —— 不然这张卡得先卖个 Tee 才活
 			const nb =
-				eff.from === 'right' ? (scores[i + 1] ?? 0) : (scores[i + 1] ?? scores[i - 1] ?? 0);
+				eff.from === 'right'
+					? (scores[i + 1] ?? 0)
+					: eff.from === 'left'
+						? (scores[i - 1] ?? 0)
+						: (scores[i + 1] ?? scores[i - 1] ?? 0);
 			if (nb > 0 && nb / own !== 1) {
 				const mult = nb / own;
 				const bonus = (scores[0] ?? 0) * mult;
@@ -1160,6 +1316,10 @@ export type RunTeamSlot = {
 	lastDice: number[];
 	/** 主动技能冷却(几关后可用) */
 	charge?: number;
+	/** 田螺:待按原价返还的加成卡(掷完就付) */
+	refundPending?: { cardId: string; coins: number }[];
+	/** 这一手哪些骰子作废(高照抄作废状态用) */
+	lastVoid?: number[];
 };
 
 export type RunOp =
@@ -1186,7 +1346,8 @@ export type RunSave = {
 	growth: GrowthMap;
 	team: RunTeamSlot[];
 	soldTees: number;
-	soldThisRound: number;
+	/** 旧的「本回合卖了几张」(每回合上限 2 个那套) —— 已废弃,读档忽略 */
+	soldThisRound?: number;
 	shopBuffs: string[];
 	shopSold: string[];
 	shopLocks: (string | null)[];
@@ -1234,6 +1395,25 @@ export type RunSave = {
 	speedIdx: number;
 	wasRolling: boolean;
 	rollKind: string;
+
+	// ---- v6:几张重做卡的本关状态 ----
+	/** 花生:本回合按下标作废的骰子(老存档没有 → 读档时兜底成 []) */
+	hsVoid?: number[];
+	/** 上面那份清单属于哪个 Tee */
+	hsVoidTee?: number;
+	/** 蜜枣:本回合已经抽过 1% 的 Tee */
+	jackpotDone?: number[];
+	/** 归家:已发动、等回合结算时出售「我」(数字 = 换多少月饼币) */
+	homingSell?: number | null;
+	/** 猜谜:本回合该 Tee 白掷了几次 */
+	stuckRerolls?: number;
+	/** 夜市饼摊:本回合开始前卖过 Tee */
+	sellBoost?: boolean;
+	/** 夜市饼摊:已经卖出、还没被下回合消费掉 */
+	sellBoostPending?: boolean;
+	/** 高照抄来的作废状态(位置列表)+ 属于哪个 Tee */
+	sharedVoid?: number[] | null;
+	sharedVoidTee?: number;
 };
 
 export const saveRun = (data: Omit<RunSave, 'v'>) => {

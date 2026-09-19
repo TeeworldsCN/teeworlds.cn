@@ -25,7 +25,7 @@
 		/** tooltip 底部附加信息(队伍:卖出价值) */
 		tipExtra?: string;
 		/** tooltip 附加明细行(队伍:身上加成项目+剩余回合、成长卡当前数值) */
-		tipList?: { text: string; cls?: string }[];
+		tipList?: { text: string; cls?: string; name?: string; nameColor?: string }[];
 		/** 卡面角标(队伍:身上加成数量;开局选卡:出战顺序) */
 		badge?: string;
 		/** 角标配色(默认琥珀;开局选卡用翠绿,与「已选」同色系) */
@@ -239,7 +239,10 @@
 			{#if tipList?.length}
 				<div class="mt-1.5 space-y-0.5 border-t border-slate-600/50 pt-1 text-left text-[10px]">
 					{#each tipList as line}
-						<div class={line.cls ?? 'text-slate-400'}>{line.text}</div>
+						<div class={line.cls ?? 'text-slate-400'}>
+							<!-- 名字单独上色(加成卡按稀有度:普通灰 / 稀有蓝 / 传说金) -->
+							{#if line.name}<b style="color: {line.nameColor}">{line.name}</b>{/if}{line.text}
+						</div>
 					{/each}
 				</div>
 			{/if}

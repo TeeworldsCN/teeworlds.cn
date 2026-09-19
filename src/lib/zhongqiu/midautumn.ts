@@ -152,6 +152,13 @@ export interface DiceMods {
 	/** 凛月:本关加成卡的「乘值」(mult)一律不生效 */
 	noBuffMult?: boolean;
 	fixed?: number[];
+	/** 按下标作废(花生:回合初始投掷整把作废,重掷的那几颗才解除) */
+	voidIdx?: number[];
+	/**
+	 * 高照:这一手是「抄」来的,作废状态也一起抄 —— 所以本关的**点数作废**全部不算数,
+	 * 只认抄来的 voidIdx。重掷之后这颗状态就丢掉,回到本关正常规则。
+	 */
+	voidOverride?: boolean;
 }
 
 export function longestRun(values: number[]): number {
@@ -164,6 +171,19 @@ export function longestRun(values: number[]): number {
 		if (cur > best) best = cur;
 	}
 	return best;
+}
+
+/**
+ * 落在**连号里**的骰子颗数:任一条长度 ≥2 的连号(1-2 / 5-6 …)里的点数都算,
+ * 同一条里重复的点数按颗数算(「连号里每颗骰子 +per」的字面口径)。
+ * 例:1 6 5 5 2 1 有两连(1-2、5-6)→ 6 颗全算;5 5 5 5 5 5 一条连号都没有 → 0。
+ */
+export function straightDiceCount(values: number[]): number {
+	const has = [false, false, false, false, false, false, false, false];
+	for (const v of values) if (v >= 1 && v <= 6) has[v] = true;
+	const inRun = [false, false, false, false, false, false, false, false];
+	for (let v = 1; v <= 6; v++) if (has[v - 1] || has[v + 1]) inRun[v] = true;
+	return values.filter((v) => v >= 1 && v <= 6 && inRun[v]).length;
 }
 
 export function faceFloorLevel(counts: number[]): string | null {
@@ -179,9 +199,12 @@ export function faceFloorLevel(counts: number[]): string | null {
 }
 
 export function straightFloorLevel(run: number): string | null {
+	// 连号一律**从二连起算**(和 straight_chips 同一口径):2~3 连 = 一秀,再往上不变。
+	// 注:`straight_ladder` 现在没有任何卡带(连珠灯重做时去掉了),这里只是把口径统一,
+	// 哪天把阶梯挂回灯系卡上就是「2 连也保底一秀」。
 	if (run >= 5) return 'si_jin';
 	if (run >= 4) return 'er_ju';
-	if (run >= 3) return 'yi_xiu';
+	if (run >= 2) return 'yi_xiu';
 	return null;
 }
 
@@ -218,8 +241,17 @@ const applyMods = (dice: number[], mods: DiceMods | undefined, fixed: Set<number
 	});
 };
 
+/** mods(含 chain)里有没有「作废状态以抄来的为准」的标记(高照) */
+export const hasVoidOverride = (mods?: DiceMods): boolean => {
+	if (!mods) return false;
+	if (mods.chain?.length) return mods.chain.some(hasVoidOverride);
+	return mods.voidOverride === true;
+};
+
 export const voidFacesOf = (mods?: DiceMods): number[] => {
 	if (!mods) return [];
+	// 抄来的那一手:本关的点数作废统统不作数(只认 voidIdx)
+	if (hasVoidOverride(mods)) return [];
 	if (mods.chain?.length) return [...new Set(mods.chain.flatMap(voidFacesOf))];
 	return mods.void ?? [];
 };
@@ -234,6 +266,20 @@ const clearedFacesOf = (mods?: DiceMods): number[] => {
 export const isVoidFace = (face: number, mods?: DiceMods): boolean =>
 	!clearedFacesOf(mods).includes(face) && voidFacesOf(mods).includes(face);
 
+/** 按下标作废的骰子(花生) */
+export const voidIdxOf = (mods?: DiceMods): number[] => {
+	if (!mods) return [];
+	if (mods.chain?.length) return mods.chain.flatMap(voidIdxOf);
+	return mods.voidIdx ?? [];
+};
+
+/**
+ * 第 i 颗骰子是否作废 —— 按点数(Boss/自己的卡)和按下标(花生)两种口径合一。
+ * 半影卡的「取消作废」只认点数:它挑的是牌面,救不了按颗作废的骰子。
+ */
+export const isVoidDie = (dice: number[], i: number, mods?: DiceMods): boolean =>
+	voidIdxOf(mods).includes(i) || isVoidFace(dice[i], mods);
+
 /**
  * 参与结算的点数:套上 map/shift 之后,把**作废**的骰子整个剔掉。
  * 判定、和值、点数类效果(每颗 4 分 / 某点数个数 / 连号)都要用这个 ——
@@ -242,12 +288,12 @@ export const isVoidFace = (face: number, mods?: DiceMods): boolean =>
  */
 export const liveDiceValues = (dice: number[], mods?: DiceMods): number[] => {
 	const shown = applyDiceMods(dice, mods);
-	return shown.filter((_, i) => !isVoidFace(dice[i], mods));
+	return shown.filter((_, i) => !isVoidDie(dice, i, mods));
 };
 
 /** 原始骰面(不做 map/shift),只剔掉作废的 —— 给「重复牌倍率」这类数真实骰面的效果用 */
 export const rawLiveDice = (dice: number[], mods?: DiceMods): number[] =>
-	dice.filter((face) => !isVoidFace(face, mods));
+	dice.filter((_, i) => !isVoidDie(dice, i, mods));
 
 /** mods(含 chain)里是否有「解除作废」 */
 export const hasClearVoid = (mods?: DiceMods): boolean => {
@@ -260,8 +306,8 @@ export const hasClearVoid = (mods?: DiceMods): boolean => {
 export const stripVoid = (mods?: DiceMods): DiceMods | undefined => {
 	if (!mods) return undefined;
 	if (mods.chain?.length) return { ...mods, chain: mods.chain.map(stripVoid) as DiceMods[] };
-	if (!mods.void?.length) return mods;
-	const { void: _drop, ...rest } = mods;
+	if (!mods.void?.length && !mods.voidIdx?.length && !mods.voidOverride) return mods;
+	const { void: _drop, voidIdx: _dropIdx, voidOverride: _dropOv, ...rest } = mods;
 	return rest;
 };
 
@@ -307,7 +353,7 @@ const liveDice = (dice: number[], mods?: DiceMods): { values: number[]; faces: n
 	const values: number[] = [];
 	const faces: number[] = [];
 	dice.forEach((raw, i) => {
-		if (isVoidFace(raw, mods)) return;
+		if (isVoidDie(dice, i, mods)) return;
 		values.push(shown[i]);
 		faces.push(raw);
 	});
@@ -374,7 +420,7 @@ export function rollDice(): number[] {
 export function hitIndices(dice: number[], levelId: string, mods?: DiceMods): number[] {
 	const shown = applyDiceMods(dice, mods);
 	// 作废的骰子永不参与高亮
-	const idx = dice.map((raw, i) => (isVoidFace(raw, mods) ? -1 : i)).filter((i) => i >= 0);
+	const idx = dice.map((_, i) => (isVoidDie(dice, i, mods) ? -1 : i)).filter((i) => i >= 0);
 	const d = idx.map((i) => shown[i]);
 	// 封顶(血月)时按**原本掷出的牌型**高亮,否则玩家看不出是哪几颗凑的
 	if (hasMod(mods, 'levelCap')) levelId = judgeRoll(dice, stripLevelCap(mods!)).id;

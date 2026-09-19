@@ -159,7 +159,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guihuami',
 		name: '桂花蜜',
-		desc: '得分 ×1.3',
+		desc: '倍率增长 ×1.3',
 		rarity: 'common',
 		skin: 'cat with flowers',
 		price: 2,
@@ -169,7 +169,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'dangui',
 		name: '丹桂',
-		desc: '得分 ×1.5',
+		desc: '倍率增长 ×1.5',
 		rarity: 'common',
 		skin: 'Redboppenom',
 		price: 3,
@@ -179,7 +179,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yingui',
 		name: '银桂',
-		desc: '得分 ×1.4',
+		desc: '倍率增长 ×1.4',
 		rarity: 'common',
 		skin: 'default_flower',
 		price: 3,
@@ -189,7 +189,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yulu',
 		name: '玉露',
-		desc: '得分 ×1.7',
+		desc: '倍率增长 ×1.7',
 		rarity: 'rare',
 		skin: 'ender_pearl',
 		price: 4,
@@ -199,7 +199,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yuehua',
 		name: '月华',
-		desc: '得分 ×2',
+		desc: '倍率增长 ×2',
 		rarity: 'rare',
 		skin: 'CrystalCat',
 		price: 5,
@@ -209,7 +209,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'changuang',
 		name: '蟾光',
-		desc: '得分 ×1.8',
+		desc: '倍率增长 ×1.8',
 		rarity: 'rare',
 		skin: 'glow_hammie2',
 		price: 6,
@@ -219,7 +219,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guipo',
 		name: '桂魄',
-		desc: '得分 ×2.2',
+		desc: '倍率增长 ×2.2',
 		rarity: 'rare',
 		skin: 'babyYoda_flower',
 		price: 6,
@@ -229,7 +229,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'qinghui',
 		name: '清辉',
-		desc: '得分 ×2.5',
+		desc: '倍率增长 ×2.5',
 		rarity: 'legendary',
 		skin: 'AmethystCrystalCat',
 		price: 7,
@@ -239,7 +239,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'jinguiguan',
 		name: '金桂冠',
-		desc: '得分 ×3',
+		desc: '倍率增长 ×3',
 		rarity: 'legendary',
 		skin: 'Golden Shroom',
 		price: 8,
@@ -249,7 +249,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yueshen',
 		name: '月神面纱',
-		desc: '得分 ×2.4',
+		desc: '倍率增长 ×2.4',
 		rarity: 'legendary',
 		skin: 'pinkcrystal',
 		price: 8,
@@ -259,7 +259,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yusheng',
 		name: '玉绳',
-		desc: '得分 ×2.6',
+		desc: '倍率增长 ×2.6',
 		rarity: 'legendary',
 		skin: 'HTF_whitepinky',
 		price: 10,
@@ -269,7 +269,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'jiuzhuan',
 		name: '九转金丹',
-		desc: '得分 ×3.2',
+		desc: '倍率增长 ×3.2',
 		rarity: 'legendary',
 		skin: 'angel_toast_kiinmn',
 		price: 9,
@@ -281,7 +281,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'liuli',
 		name: '琉璃酥',
-		desc: '基础分 +40，×1.4',
+		desc: '基础分 +40，倍率增长 ×1.4',
 		rarity: 'rare',
 		skin: 'Rainbow Jawbreaker',
 		price: 5,
@@ -291,7 +291,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yuzhi',
 		name: '玉脂',
-		desc: '基础分 +45，×1.5',
+		desc: '基础分 +45，倍率增长 ×1.5',
 		rarity: 'rare',
 		skin: 'emerald',
 		price: 6,
@@ -301,7 +301,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'jingui',
 		name: '金桂流心',
-		desc: '基础分 +60，×1.6',
+		desc: '基础分 +60，倍率增长 ×1.6',
 		rarity: 'legendary',
 		skin: 'OnyxNanami_Yellow',
 		price: 8,
@@ -311,7 +311,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yuehun',
 		name: '月魂',
-		desc: '基础分 +60，×2',
+		desc: '基础分 +60，倍率增长 ×2',
 		rarity: 'legendary',
 		skin: 'aristocats_marie_glow',
 		price: 9,
@@ -335,7 +335,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'manyuezhufu',
 		name: '满月祝福',
-		desc: '投掷出再接再厉时：得分 ×1.5',
+		desc: '投掷出再接再厉时：倍率增长 ×1.5',
 		rarity: 'common',
 		skin: 'twinbop_glow',
 		price: 3,
@@ -345,7 +345,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guiyin',
 		name: '桂荫庇佑',
-		desc: '投掷出再接再厉时：得分 ×2.4',
+		desc: '投掷出再接再厉时：倍率增长 ×2.4',
 		rarity: 'rare',
 		skin: 'Lahm_blue',
 		price: 5,
@@ -355,7 +355,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yueshenbiyou',
 		name: '月神庇佑',
-		desc: '投掷出再接再厉时：得分 ×3',
+		desc: '投掷出再接再厉时：倍率增长 ×3',
 		rarity: 'legendary',
 		skin: 'IceWitch_MushDeer',
 		price: 8,
@@ -365,7 +365,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'changongbiyou',
 		name: '蟾宫庇佑',
-		desc: '投掷出再接再厉时：得分 ×2.5',
+		desc: '投掷出再接再厉时：倍率增长 ×2.5',
 		rarity: 'legendary',
 		skin: 'clefairy',
 		price: 9,

@@ -9,6 +9,7 @@
 		ROLL_LEVELS,
 		getRollLevel,
 		hitIndices,
+		isVoidDie,
 		isVoidFace,
 		judgeRoll,
 		liveDiceValues,
@@ -16,6 +17,7 @@
 		rollDice,
 		sampleDice,
 		showPip,
+		type DiceMods,
 		type RollLevel
 	} from '$lib/zhongqiu/midautumn';
 	import {
@@ -58,6 +60,7 @@
 		isBossRound,
 		overflowReward,
 		rollsAllowed,
+		playerActiveSkills,
 		roundReward,
 		roundTarget,
 		saveResult,
@@ -262,7 +265,7 @@
 	let shopSold = $state<string[]>([]);
 	let shopLocks = $state<(string | null)[]>([null, null, null, null, null, null]);
 	/** 集市刷新价:刷一次 +1,重新进集市(组建 Tee 队 / 中秋集市)时回到 2 */
-	let refreshPrice = $state(2);
+	let refreshPrice = $state(1); // 初始刷新价:1(每刷一次 +1)
 	let lastRewardIdx = $state(-1);
 
 	// 道具库存（加成卡）
@@ -330,16 +333,25 @@
 			}
 		}
 		buffInventory = next;
-		team[idx].buffs = [...team[idx].buffs, { cardId: card.id, turnsLeft: card.turns }];
+		if (hasBuffRefund(idx)) {
+			// 田螺:这只 Tee 身上的加成卡不生效 —— 所以**不挂载**,只记「哪张卡、原价多少月饼币」,
+			// 掷完之后按原价返还(结算动画逐张弹),见 settleTianluo
+			team[idx].refundPending = [
+				...(team[idx].refundPending ?? []),
+				{ cardId: card.id, coins: card.price }
+			];
+		} else {
+			team[idx].buffs = [...team[idx].buffs, { cardId: card.id, turnsLeft: card.turns }];
+		}
 		selectedBuff = null;
 		peekBuff = null;
 	};
 
 	const teeTipList = (tee: TeamTee) => {
-		const lines: { text: string; cls?: string }[] = [];
+		const lines: { text: string; cls?: string; name?: string; nameColor?: string }[] = [];
 		const card = cardOf(tee);
 		const i = team.indexOf(tee);
-		const voidBuff = tee.buffs.find((b) => BUFF_BY_ID.get(b.cardId)?.effect.type === 'clear_void');
+		const voidBuff = buffsOf(i).find((b) => BUFF_BY_ID.get(b.cardId)?.effect.type === 'clear_void');
 		if (voidBuff) {
 			// 半影卡是玩家挑一个点数,月食卡是整关全解除 —— 提示要分开
 			const picked = clearedVoid[team.indexOf(tee)];
@@ -353,7 +365,7 @@
 				cls: 'text-emerald-300'
 			});
 		}
-		for (const sk of activeSkills(effectiveEffects(teamCards, i), tee.buffs)) {
+		for (const sk of skillsFor(i)) {
 			const nm = cardById(sk.srcId)?.name ?? sk.srcId;
 			const what =
 				sk.skill === 'chips'
@@ -362,7 +374,15 @@
 						? `左侧 +${formatScore(sk.value)} 分`
 						: sk.skill === 'sum'
 							? '按本 Tee 点数和结算'
-							: '本关重掷';
+							: sk.skill === 'mult'
+								? `该 Tee 得分 ×${formatMult(sk.mult ?? 1)}（花 🥮 ${sk.cost ?? 0}）`
+								: sk.skill === 'total_add'
+									? `该 Tee 总分 +${formatScore(sk.value)}`
+									: sk.skill === 'end_round'
+										? `结束本关 · 未投角色 +🥮 ${sk.perTee ?? 0}`
+										: sk.skill === 'sell_self'
+											? `回合结算时出售「我」 +🥮 ${sk.coins ?? 0}`
+											: '本关重掷';
 			lines.push({
 				// 时机(掷完可发动)卡牌 desc 里已经写全,这里只说还能不能发动
 				text: `⚡ ${nm}:${what}${(tee.charge ?? 0) > 0 ? `(冷却 ${tee.charge} 关)` : '（可发动）'}`,
@@ -373,14 +393,29 @@
 			const layers = growth[card.id] ?? 0;
 			lines.push({ text: `成长: ×${1 + layers}(已叠 ${layers} 层)`, cls: 'text-emerald-300' });
 		}
-		for (const b of tee.buffs) {
+		for (const b of buffsOf(i)) {
 			const bc = BUFF_BY_ID.get(b.cardId);
 			if (bc) {
+				// 名字按稀有度上色(和芯片描边同一套色),描述仍是中性色
 				lines.push({
-					text: `${bc.name}: ${bc.desc} · 剩 ${b.turnsLeft} 回合`,
-					cls: 'text-amber-300'
+					name: bc.name,
+					nameColor: RARITY_INFO[bc.rarity].color,
+					text: `: ${bc.desc} · 剩 ${b.turnsLeft} 回合`,
+					cls: 'text-slate-400'
 				});
 			}
+		}
+		// 田螺:身上的加成卡不生效,已经换算成「掷完返还多少月饼币」
+		if (hasBuffRefund(i)) {
+			const pend = (team[i]?.refundPending ?? []).map(
+				(r) => `${BUFF_BY_ID.get(r.cardId)?.name ?? r.cardId} +🥮 ${r.coins}`
+			);
+			lines.push({
+				text: pend.length
+					? `🐚 田螺:掷完返还 ${pend.join('、')}`
+					: '🐚 田螺:该 Tee 身上的加成卡不生效',
+				cls: 'text-cyan-300'
+			});
 		}
 		return lines;
 	};
@@ -412,6 +447,20 @@
 	/** 本关每个道具 id **用掉的张数** —— 同一个 id 可能挂好几张(两张素月盘),退款要按张算 */
 	let usedOpCount = $state<Record<string, number>>({});
 	let pendingActive = $state<ActiveSkill | null>(null);
+	/** 花生:本回合**按下标**作废的骰子(回合初始投掷整把作废,重掷过的那几颗解除) */
+	let hsVoid = $state<number[]>([]);
+	/** 上面那份清单属于哪个 Tee(换人就失效) */
+	let hsVoidTee = $state(-1);
+	/** 蜜枣:本回合已经抽过那 1% 的 Tee(每人每回合只抽一次,读档也不能重抽) */
+	let jackpotDone = $state<number[]>([]);
+	/** 猜谜:本回合这只 Tee「重掷之后点数没变」的次数 */
+	let stuckRerolls = $state(0);
+	/** 高照抄牌时,模板那一手哪些骰子作废(抄来的作废状态只作用于这一手) */
+	let sharedVoid = $state<number[] | null>(null);
+	/** 上面这份作废状态属于哪个 Tee */
+	let sharedVoidTee = $state(-1);
+	/** 归家:已发动、等回合结算时出售「我」。null = 没发动;数字 = 换多少月饼币 */
+	let homingSell = $state<number | null>(null);
 	let choosing = $state(false); // 正在选要重掷的骰子
 	let rerollSel = $state<boolean[]>(Array(6).fill(false));
 	let rollMask = $state<boolean[]>(Array(6).fill(true));
@@ -435,8 +484,12 @@
 	let speedIdx = $state(0);
 	let speed = $derived(SPEEDS[speedIdx]); // 默认 0.5x(当前默认速度的一半)
 	let hitDice = $state<number[]>([]);
+	/** 累计卖出过几个 Tee(饼铺掌柜的基础分按它算) */
 	let soldTees = $state(0);
-	let soldThisRound = $state(0);
+	/** 已经卖出、还没被「下回合」消费掉(夜市饼摊) */
+	let sellBoostPending = $state(false);
+	/** 本回合开始前卖过 Tee → 本回合该 Tee 得分 ×2 */
+	let sellBoost = $state(false);
 	let optedDice = $state<number[]>([]); // 本次判定命中的骰子索引
 	let showRules = $state(false);
 	/** 音效开关(状态存 localStorage) */
@@ -504,6 +557,10 @@
 
 	let cheatNextRoll = $state<number[] | null>(null); // 强制下一次掷骰结果
 	let cheatNextDie = $state<number | null>(null); // 强制下一次单骰重掷结果
+	/** 强制接下来几次单骰重掷的结果(按顺序消费;QA 要一次重掷多颗时用) */
+	let cheatDieQueue = $state<number[]>([]);
+	/** 强制下一次蜜枣 1% 的判定结果(QA 用;null = 按概率抽) */
+	let cheatJackpot = $state<boolean | null>(null);
 	const cheatRoll = (): number[] => {
 		if (cheatNextRoll) {
 			const d = cheatNextRoll;
@@ -513,6 +570,7 @@
 		return rollDice();
 	};
 	const cheatSingle = (): number => {
+		if (cheatDieQueue.length) return cheatDieQueue.shift()!;
 		if (cheatNextDie !== null) {
 			const v = cheatNextDie;
 			cheatNextDie = null;
@@ -537,7 +595,7 @@
 			},
 			readyActives: () => {
 				team.forEach((t, i) => {
-					if (activeSkills(effectiveEffects(teamCards, i), t.buffs).length > 0) t.charge = 0;
+					if (skillsFor(i).length > 0) t.charge = 0;
 				});
 			},
 			/** 加成卡入库存 addBuff('yuefu', 2) */
@@ -569,6 +627,35 @@
 			/** 强制下一次单骰重掷结果 */
 			nextDie: (v: number) => {
 				cheatNextDie = v;
+			},
+			/** 强制接下来 n 颗重掷结果(按顺序) nextDice([5,6]) */
+			nextDice: (vals: number[]) => {
+				cheatDieQueue = [...vals];
+			},
+			/** 清掉存档(QA 开跑前保证干净) */
+			clearSave: () => clearRun(),
+			/** 某个 Tee 现在挂着哪些主动技(QA 排查用) */
+			skills: (i: number) => skillsFor(i),
+			/** 直接设「累计卖出几个 Tee」+ 挂上「卖过卡」标记(QA 快测饼铺掌柜/夜市饼摊) */
+			sold: (n: number) => {
+				soldTees = n;
+				sellBoostPending = n > 0;
+			},
+			/** 动画速度档位(0=1x 1=2x 2=3x),QA 跑流程时调快 */
+			speed: (i: number) => {
+				speedIdx = Math.max(0, Math.min(SPEEDS.length - 1, i));
+			},
+			/** 走真实挂载逻辑(会认田螺的「不挂载」) equip(1,'jinsuo') */
+			equip: (teeIdx: number, buffId: string) => {
+				const bc = BUFF_BY_ID.get(buffId);
+				if (!bc) return warnId('加成卡', buffId);
+				if (!team[teeIdx]) return warnId('Tee（下标）', String(teeIdx));
+				buffInventory = { ...buffInventory, [buffId]: (buffInventory[buffId] ?? 0) + 1 };
+				applyBuffToTee(bc, teeIdx);
+			},
+			/** 强制下一次蜜枣的 1% 判定(不传 = 必定中) */
+			jackpot: (v = true) => {
+				cheatJackpot = v;
 			},
 			/** Tee 卡直接入队(可超 6 人) addCard('guanghangong') */
 			addCard: (cardId: string) => {
@@ -668,11 +755,7 @@
 					if (opts.choosing) {
 						rollsLeft = Math.max(
 							1,
-							rollsAllowed(
-								effectiveEffects(teamCards, 0),
-								team[0]?.buffs ?? [],
-								boss?.rollsBonus ?? 0
-							) - 1
+							rollsAllowed(effectiveEffects(teamCards, 0), buffsOf(0), boss?.rollsBonus ?? 0) - 1
 						);
 						choosing = true;
 						rerollSel = [false, true, false, true, false, false];
@@ -726,13 +809,32 @@
 				currentTee,
 				mooncakes,
 				target,
+				bossId: boss?.id ?? null,
 				currentScore,
 				buffInventory,
+				settling,
+				rolling,
+				choosing,
+				rollsLeft,
+				pendingActiveKey: pendingActive ? `${pendingActive.srcId}|${pendingActive.skill}` : null,
+				pendingActionKind: pendingAction?.kind ?? null,
+				pointPicker,
+				hsVoid,
+				hsVoidTee,
+				jackpotDone,
+				homingSell,
+				stuckRerolls,
+				settleText: settleSteps.map((s) => s.text).join(' | '),
+				teamSettleText: teamSettleSteps.map((s) => s.text).join(' | '),
 				team: team.map((t) => ({
 					cardId: t.cardId,
 					lastScore: t.lastScore,
 					lastLevelId: t.lastLevelId,
-					buffs: t.buffs
+					buffs: t.buffs,
+					refundPending: t.refundPending ?? [],
+					charge: t.charge ?? 0,
+					lastDice: t.lastDice,
+					lastVoid: t.lastVoid ?? []
 				}))
 			})
 		};
@@ -755,12 +857,16 @@
 		peekBuff = null;
 		round = 1;
 		soldTees = 0;
-		soldThisRound = 0;
+		sellBoost = false;
+		sellBoostPending = false;
 		shopLocks = [null, null, null, null, null, null]; // 局内保留,跨局清空
-		refreshPrice = 2;
+		refreshPrice = 1;
 	};
 
 	const resetRoundState = () => {
+		// 本关重来 / 换关:在飞的掷骰·结算·收尾定时器全部作废
+		// (读档/重开走 resetRun,那里还会再 ++ 一次,多一次无害)
+		animGen += 1;
 		boss = null; // 第 1 关没有 Boss;beginRound 会按 round 重新指派
 		target = roundTarget(1); // 开局 HUD 显示第 1 关目标;beginRound 会按 round 覆盖
 		currentScore = 0;
@@ -779,6 +885,22 @@
 		choosing = false;
 		rollsLeft = 0;
 		rerollSel = Array(6).fill(false);
+		// 动画态也一并清:如果上一段流程卡在「掷骰中/结算中」(中途读档、动画被代次守卫掐掉),
+		// animGen 只能让回调不再跑,`rolling` 会永远停在 true → 新一关点「开始掷骰」没反应。
+		rolling = false;
+		settling = false;
+		teeAnim = '';
+		settlePreview = 0;
+		teePose = IDLE_POSE;
+		teeEmote = EMOTE.normal;
+		// 本轮的四张新状态:花生按下标作废、蜜枣抽过没、归家待出售
+		hsVoid = [];
+		hsVoidTee = -1;
+		jackpotDone = [];
+		homingSell = null;
+		stuckRerolls = 0;
+		sharedVoid = null;
+		sharedVoidTee = -1;
 		teamSettleSteps = [];
 		teamSettleIdx = -1;
 		teamSettling = false;
@@ -834,10 +956,13 @@
 				lastScore: t.lastScore,
 				lastLevelId: t.lastLevelId,
 				lastDice: t.lastDice,
-				charge: t.charge ?? 0
+				lastVoid: t.lastVoid ?? [],
+				charge: t.charge ?? 0,
+				refundPending: t.refundPending ?? []
 			})),
 			soldTees,
-			soldThisRound,
+			sellBoost,
+			sellBoostPending,
 			shopBuffs: shopBuffs.map((b) => b.id),
 			shopSold,
 			shopLocks,
@@ -880,7 +1005,15 @@
 			selectedBuffId: selectedBuff?.id ?? null,
 			speedIdx,
 			wasRolling: rolling,
-			rollKind: pendingRollKind
+			rollKind: pendingRollKind,
+			// ---- 重做卡的本关状态 ----
+			hsVoid,
+			hsVoidTee,
+			jackpotDone,
+			homingSell,
+			stuckRerolls,
+			sharedVoid,
+			sharedVoidTee
 		};
 	};
 
@@ -898,11 +1031,14 @@
 			lastScore: t.lastScore,
 			lastLevelId: t.lastLevelId,
 			lastDice: t.lastDice,
+			lastVoid: t.lastVoid ?? [],
 			buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft })),
-			charge: t.charge ?? 0
+			charge: t.charge ?? 0,
+			refundPending: t.refundPending ?? []
 		}));
 		soldTees = d.soldTees;
-		soldThisRound = d.soldThisRound;
+		sellBoost = d.sellBoost ?? false;
+		sellBoostPending = d.sellBoostPending ?? false;
 		shopBuffs = d.shopBuffs.map((id) => BUFF_BY_ID.get(id)).filter((b): b is BuffCard => !!b);
 		shopSold = d.shopSold;
 		shopLocks = d.shopLocks;
@@ -935,6 +1071,14 @@
 		pendingAction = d.pendingAction;
 		pointPicker = d.pointPicker;
 		setQueue = d.setQueue ?? [];
+		// 重做卡的本关状态(老存档没这些字段 → 兜底)
+		hsVoid = d.hsVoid ?? [];
+		hsVoidTee = d.hsVoidTee ?? -1;
+		jackpotDone = d.jackpotDone ?? [];
+		homingSell = d.homingSell ?? null;
+		stuckRerolls = d.stuckRerolls ?? 0;
+		sharedVoid = d.sharedVoid ?? null;
+		sharedVoidTee = d.sharedVoidTee ?? -1;
 		roundRewardGained = d.roundRewardGained;
 		overflowGained = d.overflowGained;
 		economyGained = d.economyGained;
@@ -981,10 +1125,7 @@
 		if (pendingActiveKey) {
 			const key = pendingActiveKey;
 			pendingActiveKey = null;
-			pendingActive =
-				activeSkills(effectiveEffects(allCards(), currentTee), team[currentTee]?.buffs ?? []).find(
-					(s) => `${s.srcId}|${s.skill}` === key
-				) ?? null;
+			pendingActive = skillsFor(currentTee).find((s) => `${s.srcId}|${s.skill}` === key) ?? null;
 		}
 		// 存盘时掷骰动画正在播:让一帧,等恢复后的骰子渲染出来再重掷这个 Tee
 		if (pendingAutoRoll) {
@@ -1085,6 +1226,55 @@
 	/** 全队效果(team_chips 之类) */
 	const allEffects = (): EffectiveEffect[] =>
 		teamCards.flatMap((_, i) => effectiveEffects(teamCards, i));
+
+	/** 田螺:这只 Tee 身上的加成卡全部不生效(挂载时已经拦下,这里是兑底 + 结算用) */
+	const hasBuffRefund = (i: number): boolean => {
+		for (const { eff } of selfEffects(i)) if (eff.type === 'buff_refund') return true;
+		return false;
+	};
+	/** 该 Tee 身上**真正生效**的加成卡(田螺 → 空)。所有读 buffs 的地方都走这里 */
+	const buffsOf = (i: number): AppliedBuff[] => (hasBuffRefund(i) ? [] : (team[i]?.buffs ?? []));
+	/** 该 Tee 可用的主动技(「我」= 自己的 + 别人卡上授予「我」的) */
+	const skillsFor = (i: number): ActiveSkill[] =>
+		i === 0 ? playerActiveSkills(teamCards) : activeSkills(selfEffects(i), buffsOf(i));
+	/** 花生:这只 Tee 回合初始投掷整把作废 */
+	const hasFirstRollVoid = (i: number): boolean => {
+		for (const { eff } of selfEffects(i)) if (eff.type === 'first_roll_void') return true;
+		return false;
+	};
+	/** 效果里(含 bundle)有没有这一种 */
+	const hasEffect = (eff: TeeEffect, type: TeeEffect['type']): boolean =>
+		eff.type === type || (eff.type === 'bundle' && eff.parts.some((p) => hasEffect(p, type)));
+	/** 高照这条线的四张卡:谁先投掷谁当模板 */
+	const SHARE_CARDS = ['denglong', 'zhideng', 'qixingdeng', 'lianzhudeng'];
+	/**
+	 * 高照:队伍里有高照时,「高照/串珠/七星灯/连珠灯」里**首先投掷**的那只 Tee 的最终骰面,
+	 * 决定其他 Tee 回合内首次投掷的点数(不是「我」,是这四张里的第一个)。
+	 * 模板自己没得抄;排在她前面投的 Tee 也没得抄(那时模板还没产生)。
+	 * 投掷顺序就是队伍下标顺序,countedTee = 最后一只结算完的 Tee。
+	 */
+	const sharedFirstDice = (i: number): number[] | null => {
+		if (!allCards().some((c) => hasEffect(c.effect, 'shared_first_roll'))) return null;
+		let src = -1;
+		for (let k = 0; k < team.length; k++) {
+			const cid = team[k]?.cardId;
+			if (!cid || !SHARE_CARDS.includes(cid)) continue;
+			if (k <= countedTee) src = k; // 这一只已经投过了 = 这条线里首个投掷者
+			break; // 只看这四张里的第一只,它没投就还没模板
+		}
+		if (src < 0 || src === i) return null;
+		const first = team[src]?.lastDice;
+		if (!first || first.length !== 6) return null;
+		// 作废状态也一起抄:先记下来,rollCurrent 定格那一步挂到这一手上
+		sharedVoid = [...(team[src]?.lastVoid ?? [])];
+		sharedVoidTee = i;
+		return [...first];
+	};
+	/** 蜜枣:这只 Tee 的「首次投掷大奖」 */
+	const jackpotOf = (i: number) => {
+		for (const { eff } of selfEffects(i)) if (eff.type === 'jackpot') return eff;
+		return null;
+	};
 	const scoreInput = (i: number, levelId: string, diceForSum: number[]): ScoreInput => ({
 		// 寒月/凛月:本关加成卡的加值与乘值分别失效
 		noBuffChips: !!boss?.mods?.noBuffChips,
@@ -1095,11 +1285,12 @@
 		index: i,
 		teamCards,
 		growth,
-		buffs: team[i]?.buffs ?? [],
+		buffs: buffsOf(i),
 		teamSize: team.length,
 		diceSum: diceForSum.reduce((a, b) => a + b, 0),
 		ownDice: [...diceForSum],
 		rerolled: rerollCount,
+		stuckRerolls,
 		playerLevelId: i === 0 ? levelId : (team[0]?.lastLevelId ?? 'none'),
 		playerDice: i === 0 ? diceForSum : liveDiceValues(team[0]?.lastDice ?? [], modsFor(0)),
 		// 原样点数:只剔作废,不做 map/shift(重复牌倍率要数真实骰面)
@@ -1109,19 +1300,28 @@
 		coins: mooncakes,
 		round,
 		leftScore: i > 0 ? (team[i - 1]?.lastScore ?? 0) : (team[team.length - 1]?.lastScore ?? 0),
-		soldCount: soldTees
+		soldCount: soldTees,
+		sellBoost
 	});
 
 	/** 该 Tee 本回合可投掷几次 */
-	const rollsFor = (i: number) =>
-		rollsAllowed(selfEffects(i), team[i]?.buffs ?? [], boss?.rollsBonus ?? 0);
+	const rollsFor = (i: number) => rollsAllowed(selfEffects(i), buffsOf(i), boss?.rollsBonus ?? 0);
 	const modsFor = (i: number) => {
+		// 花生:按下标作废 —— 只有正在结算的那只 Tee 吃这份清单
+		const extra: DiceMods = { fixed: optedDice };
+		const vi = i === hsVoidTee && hsVoid.length ? hsVoid : undefined;
+		if (vi) extra.voidIdx = vi;
+		// 高照:抄来的那一手连作废状态一起抄 —— 盖掉本关的点数作废,只认抄来的位置
+		if (i === sharedVoidTee && sharedVoid) {
+			extra.voidOverride = true;
+			extra.voidIdx = [...sharedVoid]; // 覆盖:抄来的那一手只认模板的作废位置
+		}
 		const base = withBossMods(
 			mergeMods(
-				{ fixed: optedDice },
+				extra,
 				mergeMods(
-					selfDiceMods(selfEffects(i), team[i]?.buffs ?? []),
-					// 只有主 Tee 吃队友的「我掷出的 X 视为 4」规则
+					selfDiceMods(selfEffects(i), buffsOf(i)),
+					// 只有主 Tee 吃队友的「我掷出的 X 视为 4」「我掷出的 4 作废」规则
 					i === 0 ? playerDiceMods(teamCards) : undefined
 				)
 			),
@@ -1140,7 +1340,7 @@
 	};
 
 	const shownDice = $derived(applyDiceMods(dice, modsFor(currentTee)));
-	const dieVoid = (i: number) => !dieRolling(i) && isVoidFace(dice[i], modsFor(currentTee));
+	const dieVoid = (i: number) => !dieRolling(i) && isVoidDie(dice, i, modsFor(currentTee));
 	const diceModded = (i: number) =>
 		optedDice.includes(i) || (!dieRolling(i) && (dieVoid(i) || shownDice[i] !== dice[i]));
 
@@ -1161,6 +1361,9 @@
 	};
 
 	const beginRound = () => {
+		// 夜市饼摊:上一段间隙(集市/结算)里卖过 Tee → 本回合 ×2
+		sellBoost = sellBoostPending;
+		sellBoostPending = false;
 		resetRoundState();
 		boss = isBossRound(round) ? getBoss(round) : null;
 		target = Math.round(roundTarget(round) * (boss?.targetMult ?? 1));
@@ -1188,7 +1391,6 @@
 		rolling = true;
 		hitDice = [];
 		optedDice = [];
-		soldThisRound = 0;
 		settleSteps = [];
 		settleIdx = -1;
 		rollsLeft = rollsFor(currentTee) - 1;
@@ -1198,6 +1400,13 @@
 		rollMask = Array(6).fill(true);
 		rerollSel = Array(6).fill(false);
 		choosing = false;
+		// 花生:回合初始投掷整把作废(重掷过的那几颗才解除)。换 Tee / 重开本关都在这里重置
+		// 蜜枣:本回合的 1% 每个 Tee 只抽一次(jackpotDone 记着;读档也不重抽)
+		hsVoidTee = hasFirstRollVoid(currentTee) ? currentTee : -1;
+		hsVoid = hsVoidTee >= 0 ? [0, 1, 2, 3, 4, 5] : [];
+		sharedVoid = null; // 这一手还没抄到
+		sharedVoidTee = -1;
+		stuckRerolls = 0; // 猜谜:白掷计数随每只 Tee 的回合重置
 		teeEmote = EMOTE.angry;
 		teePose = THROW_POSE;
 		teeAnim = 'throw';
@@ -1217,7 +1426,17 @@
 		setTimeout(() => {
 			if (gen !== animGen) return;
 			clearInterval(timer);
-			dice = cheatRoll(); // 定格最终点数(nextRoll 在此消费)
+			const forced = cheatRoll(); // 定格最终点数(nextRoll 在此消费)
+			// 高照:队伍里有这张卡时,首个投掷者的最终骰面就是这一手(自己那手照常)
+			dice = sharedFirstDice(currentTee) ?? forced;
+			// 蜜枣:该回合**首次投掷**抽一次 1% —— 中了就直接把骰面换成四个四点(不管 boss 怎么改)
+			const jp = jackpotOf(currentTee);
+			if (jp && rerollCount === 0 && !jackpotDone.includes(currentTee)) {
+				jackpotDone = [...jackpotDone, currentTee];
+				const hit = cheatJackpot ?? Math.random() < jp.chance;
+				cheatJackpot = null;
+				if (hit) dice = [...jp.faces];
+			}
 		}, rollTotal * 0.8);
 
 		sfxRoll(rollTotal / 1000, 6);
@@ -1267,6 +1486,8 @@
 	 */
 	const playRerollAnim = async (sel: boolean[], done: () => void) => {
 		const gen = ++animGen;
+		// 猜谜:先记下「挑出去重掷的那几颗」重掷前的点数,定格时对比(动画期间 dice 一直在跳)
+		const beforeReroll = sel.map((s, i) => (s ? dice[i] : null));
 		pendingRollKind = 'reroll'; // 提前记:存档要读它
 		rolling = false;
 		await tick();
@@ -1298,6 +1519,14 @@
 			if (gen !== animGen) return;
 			clearInterval(timer);
 			dice = dice.map((v, i) => (sel[i] ? cheatSingle() : v));
+			// 猜谜:重掷出来的点数全和重掷前一样 → 白掷 +1(全都没变才算一次)
+			if (beforeReroll.every((v, i) => v === null || v === dice[i])) stuckRerolls += 1;
+			// 高照:一重掷就丢掉抄来的作废状态,新点数按本关正常规则判作废
+			if (sharedVoidTee === currentTee) {
+				sharedVoid = null;
+				sharedVoidTee = -1;
+			}
+			reflowVoid(sel); // 花生:重掷解除作废 + 重掷后同点数作废
 		}, rollTotal * 0.8);
 
 		sfxRoll(rollTotal / 1000, sel.filter(Boolean).length);
@@ -1307,6 +1536,24 @@
 			teePose = IDLE_POSE;
 			done();
 		}, rollTotal);
+	};
+
+	/**
+	 * 花生:重掷之后重算「按下标作废」的清单。
+	 * 规则(定稿):重掷过的骰子解除作废;然后按**下标顺序**逐个判 ——
+	 * 当前未作废的骰子里只要有一颗和它同点数(不含自己),它就被作废。
+	 * 顺序判定 ⇒ 两颗重掷出同一个点数时,只有靠前的那颗被作废。
+	 */
+	const reflowVoid = (sel: boolean[]) => {
+		if (hsVoidTee < 0 || hsVoidTee !== currentTee) return;
+		const voided = hsVoid.filter((i) => !sel[i]); // 没重掷的仍然作废
+		for (let i = 0; i < 6; i++) {
+			if (!sel[i]) continue; // 只判这一轮重掷的骰子
+			const v = dice[i];
+			// 「当前未作废的骰子」里(不含自己)有没有和它同点数的 —— 有就作废
+			if (dice.some((dv, j) => j !== i && !voided.includes(j) && dv === v)) voided.push(i);
+		}
+		hsVoid = [...voided].sort((a, b) => a - b);
 	};
 
 	const skipReroll = () => {
@@ -1321,8 +1568,7 @@
 	const diceActive = (i: number): ActiveSkill | null => {
 		const tee = team[i];
 		if (!tee) return null;
-		for (const sk of activeSkills(selfEffects(i), tee.buffs))
-			if (sk.skill === 'to_four' && activeReady(tee, sk)) return sk;
+		for (const sk of skillsFor(i)) if (sk.skill === 'to_four' && activeReady(tee, sk)) return sk;
 		return null;
 	};
 
@@ -1337,7 +1583,7 @@
 	};
 
 	const beginSetOps = () => {
-		setQueue = collectSetOps(selfEffects(currentTee), team[currentTee]?.buffs ?? []);
+		setQueue = collectSetOps(selfEffects(currentTee), buffsOf(currentTee));
 		nextSetOp();
 	};
 
@@ -1498,6 +1744,31 @@
 		wuyue: '6 视为 1'
 	};
 
+	/**
+	 * 田螺:身上的加成卡不生效 —— 它们**从来没被挂上**(见 applyBuffToTee 里的分支),
+	 * 这里把记账的原价付掉;同时兜底「先挂了卡、后来才拿到田螺」的情形。
+	 * 返还是一次性的:付完就把 buffs / refundPending 一起清空。
+	 */
+	const settleTianluo = (i: number): { name: string; coins: number }[] => {
+		const tee = team[i];
+		if (!tee || !hasBuffRefund(i)) return [];
+		const out: { name: string; coins: number }[] = [];
+		for (const b of tee.buffs) {
+			const c = BUFF_BY_ID.get(b.cardId);
+			out.push({ name: c?.name ?? b.cardId, coins: c?.price ?? 0 });
+		}
+		for (const r of tee.refundPending ?? []) {
+			const c = BUFF_BY_ID.get(r.cardId);
+			out.push({ name: c?.name ?? r.cardId, coins: r.coins });
+		}
+		if (!out.length) return [];
+		team[i].buffs = [];
+		team[i].refundPending = [];
+		mooncakes += out.reduce((s, x) => s + x.coins, 0);
+		sfxCoin();
+		return out;
+	};
+
 	const refundUnusedItems = (i: number): string[] => {
 		const tee = team[i];
 		if (!tee) return [];
@@ -1535,7 +1806,8 @@
 		rawLevelId: string,
 		level: RollLevel,
 		tee: TeamTee,
-		refunds: string[] = []
+		refunds: string[] = [],
+		buffBack: { name: string; coins: number }[] = []
 	) => {
 		const steps: { text: string; cls: string; kind: SettleKind }[] = [];
 		const prefix = boss?.mods ? `${boss.emoji} ${boss.name} · ` : '';
@@ -1586,6 +1858,13 @@
 		// 4） 低压道具：没用掉就归还（也走结算动画，不然玩家不知道东西还在）
 		for (const name of refunds)
 			steps.push({ text: `🔄 没用上,${name} 归还库存`, cls: 'text-cyan-300', kind: 'chip' });
+		// 4b） 田螺：加成卡不生效，掷完按原价返还（逐张一行）
+		for (const b of buffBack)
+			steps.push({
+				text: `🐚 田螺：「${b.name}」+🥮 ${b.coins}`,
+				cls: 'text-cyan-300',
+				kind: 'chip'
+			});
 		// 5） 合计
 		steps.push({
 			text: `= ${formatScore(lastBreakdown.total)} 分`,
@@ -1601,12 +1880,14 @@
 		const mods = modsFor(currentTee);
 
 		const rawLevel = judgeRoll(dice, mods);
-		// 等级提升（玉兔捣药） → 加成卡保底
+		// 等级提升（玉兔捣药） → 加成卡保底。前提:这一手不是「再接再厉」(掷空不给抬)
 		let up = 0;
 		for (const { eff } of self) if (eff.type === 'level_up') up += eff.count;
-		const afterUp = up > 0 ? upgradeLevel(rawLevel.id, up) : rawLevel.id;
+		const afterUp = up > 0 && rawLevel.id !== 'none' ? upgradeLevel(rawLevel.id, up) : rawLevel.id;
 		// 升级卡可能把等级顶过 Boss 的封顶（血月），这里再套一次
-		const level = getRollLevel(cappedLevelId(applyBuffLevelFloor(afterUp, tee.buffs), mods));
+		const level = getRollLevel(
+			cappedLevelId(applyBuffLevelFloor(afterUp, buffsOf(currentTee)), mods)
+		);
 
 		// 后羿： 再接再厉时自动重掷全部（每回合 1 次）
 		if (level.id === 'none' && hasRerollAllOnNone(self) && !rerollAllUsed) {
@@ -1624,6 +1905,8 @@
 		lastBreakdown = calcTeeScore(scoreInput(currentTee, level.id, shown));
 
 		tee.lastDice = [...dice];
+		// 记下这一手被判作废的骰子(高照抄牌面时要连作废状态一起抄)
+		tee.lastVoid = dice.map((_, k) => (isVoidDie(dice, k, mods) ? k : -1)).filter((k) => k >= 0);
 		tee.lastLevelId = level.id;
 		tee.lastScore = lastBreakdown.total;
 		currentScore += lastBreakdown.total;
@@ -1641,7 +1924,15 @@
 			teeAnim = 'sad';
 		}
 
-		settleSteps = buildSettleSteps(rawLevel.id, level, tee, refundUnusedItems(currentTee));
+		// 田螺:身上的加成卡不生效 —— 挂载时就不入库,掷完按原价返还(逐张一行)
+		const buffBack = settleTianluo(currentTee);
+		settleSteps = buildSettleSteps(
+			rawLevel.id,
+			level,
+			tee,
+			refundUnusedItems(currentTee),
+			buffBack
+		);
 		settleIdx = -1;
 		settling = true;
 		const stepMs = 380 / speed;
@@ -1674,12 +1965,17 @@
 				(i + 1) * stepMs
 			);
 		});
+		const gen = animGen;
 		setTimeout(
 			() => {
+				if (gen !== animGen) return; // 这中间读了档/重开/换人 → 这段流程作废
 				settling = false;
 				settlePreview = 0;
 				teeAnim = '';
-				setTimeout(afterSettle, 600 / speed);
+				setTimeout(() => {
+					if (gen !== animGen) return;
+					afterSettle();
+				}, 600 / speed);
 			},
 			(settleSteps.length + 1) * stepMs
 		);
@@ -1688,10 +1984,16 @@
 	const usableActive = (i: number): ActiveSkill | null => {
 		const tee = team[i];
 		if (!tee) return null;
-		for (const sk of activeSkills(selfEffects(i), tee.buffs)) {
+		for (const sk of skillsFor(i)) {
 			if (!activeReady(tee, sk)) continue;
 			if (sk.skill === 'left_chips' && i === 0) continue;
 			if (sk.skill === 'to_four') continue; // 改骰子的主动技在判定前就处理掉了
+			// 猜谜:月饼币不够就不弹(弹了也点不动)
+			if (sk.cost && mooncakes < sk.cost) continue;
+			// 归家:队里只剩「我」一个就没人可卖;本关已经发动过也不再弹
+			if (sk.skill === 'sell_self' && (team.length <= 1 || homingSell !== null)) continue;
+			// 云海:自己已经是最后一个 Tee(没有「尚未投掷」的角色)就不弹了
+			if (sk.skill === 'end_round' && i >= team.length - 1) continue;
 			return sk;
 		}
 		return null;
@@ -1713,6 +2015,7 @@
 		const tee = team[i];
 		if (!sk || !tee) return;
 		sfxClick();
+		const gen = animGen; // 结算/读档会 ++animGen,下面那些收尾回调都要对代次
 		pendingActive = null;
 		tee.charge = sk.cooldown; // 进入冷却
 		const name = cardById(sk.srcId)?.name ?? sk.srcId;
@@ -1727,7 +2030,7 @@
 			// 恒定效果,不管技能用没用都会在队列里(collectSetOps 收的)。
 			setQueue = [
 				{ kind: 'point', count: 1, point: 4, srcId: sk.srcId },
-				...collectSetOps(selfEffects(currentTee), team[currentTee]?.buffs ?? [])
+				...collectSetOps(selfEffects(currentTee), buffsOf(currentTee))
 			];
 			nextSetOp();
 			return;
@@ -1735,6 +2038,104 @@
 		const to = sk.skill === 'left_chips' ? team[i - 1] : tee;
 		if (!to) {
 			advanceAfterTee();
+			return;
+		}
+		// 月宫广寒:掷完可发动,给该 Tee 的**总分**加一笔(加算,不是倍率)
+		if (sk.skill === 'total_add') {
+			const before = tee.lastScore;
+			const after = before + sk.value;
+			tee.lastScore = after;
+			currentScore += sk.value;
+			settleSteps = [
+				...settleSteps,
+				{
+					// 总分那一层的加减 —— 写成 before → after,和叠加倍率(紫)区分开
+					text: `⚡ ${name} · 总分 +${formatScore(sk.value)}：${formatScore(before)} → ${formatScore(after)}`,
+					cls: 'font-bold text-amber-200',
+					kind: 'total'
+				}
+			];
+			settleIdx = settleSteps.length - 1;
+			sfxTotal(true);
+			setTimeout(() => {
+				if (gen !== animGen) return;
+				advanceAfterTee();
+			}, 700 / speed);
+			return;
+		}
+		// 猜谜:先扣币,再把这只 Tee 已结算的得分乘一层(和值技能同一套路:事后补一行)
+		if (sk.skill === 'mult') {
+			const cost = sk.cost ?? 0;
+			if (mooncakes < cost) {
+				advanceAfterTee();
+				return;
+			}
+			mooncakes -= cost;
+			sfxCoin();
+			const before = tee.lastScore;
+			const after = Math.round(before * (sk.mult ?? 1));
+			tee.lastScore = after;
+			currentScore += after - before;
+			settleSteps = [
+				...settleSteps,
+				{
+					// 这是**总分**乘数(结算完再乘),不是链里的叠加倍率 —— 用「合计」同款粗体 + before → after,
+					// 和紫色的叠加行区分开
+					text: `⚡ ${name} · 总分 ×${formatMult(sk.mult ?? 1)}：${formatScore(before)} → ${formatScore(after)}${cost > 0 ? `（−🥮 ${cost}）` : ''}`,
+					cls: 'font-bold text-amber-200',
+					kind: 'total'
+				}
+			];
+			settleIdx = settleSteps.length - 1;
+			sfxTotal(true);
+			setTimeout(() => {
+				if (gen !== animGen) return;
+				advanceAfterTee();
+			}, 700 / speed);
+			return;
+		}
+		// 云海:立刻结束本关 —— 直接跳到结算按钮,还没投掷的角色按人头给币
+		if (sk.skill === 'end_round') {
+			const left = Math.max(0, team.length - 1 - i);
+			const gain = left * (sk.perTee ?? 0);
+			if (gain > 0) {
+				mooncakes += gain;
+				sfxCoin();
+			}
+			settleSteps = [
+				...settleSteps,
+				{
+					text: `⚡ ${name} · 结束本关${gain > 0 ? ` · 未投 ${left} 人 +🥮 ${gain}` : ''}`,
+					cls: 'text-fuchsia-300',
+					kind: 'chip'
+				}
+			];
+			settleIdx = settleSteps.length - 1;
+			sfxTotal(true);
+			const gen = animGen;
+			setTimeout(() => {
+				if (gen !== animGen) return;
+				finishRound();
+			}, 700 / speed);
+			return;
+		}
+		// 归家:只记状态 —— 真正的出售放在回合结算(那里没有下标跳人的问题)
+		if (sk.skill === 'sell_self') {
+			homingSell = sk.coins ?? 8;
+			settleSteps = [
+				...settleSteps,
+				{
+					text: `⚡ ${name} · 回合结算时出售「我」 +🥮 ${homingSell}`,
+					cls: 'text-cyan-300',
+					kind: 'chip'
+				}
+			];
+			settleIdx = settleSteps.length - 1;
+			sfxTotal(true);
+			setTimeout(() => {
+				if (gen !== animGen) return;
+				advanceAfterTee();
+			}, 700 / speed);
 			return;
 		}
 		// 和值类主动技:参数在卡自己的效果里(per / from / mult),按当前点数和结算
@@ -1762,7 +2163,10 @@
 			];
 			settleIdx = settleSteps.length - 1;
 			sfxTotal(true);
-			setTimeout(advanceAfterTee, 700 / speed);
+			setTimeout(() => {
+				if (gen !== animGen) return;
+				advanceAfterTee();
+			}, 700 / speed);
 			return;
 		}
 		to.lastScore += sk.value;
@@ -1778,7 +2182,10 @@
 		];
 		settleIdx = settleSteps.length - 1;
 		sfxTotal(true);
-		setTimeout(advanceAfterTee, 700 / speed);
+		setTimeout(() => {
+			if (gen !== animGen) return;
+			advanceAfterTee();
+		}, 700 / speed);
 	};
 
 	/** 跳过主动技能 */
@@ -1806,11 +2213,13 @@
 		usedOpSrc = [];
 		usedOpCount = {};
 		rerollAllUsed = false;
+		countedTee = -1; // 本关重来 → 所有 Tee 回到「待掷」
 		settleSteps = [];
 		settleIdx = -1;
 		pendingAction = null;
 		choosing = false;
 		dice = [1, 1, 1, 1, 1, 1];
+		jackpotDone = []; // 本关重来 → 蜜枣的 1% 重新抽
 		rollCurrent();
 	};
 
@@ -1829,14 +2238,34 @@
 		if (teamSettling || phase !== 'round_confirm') return;
 		const cards = allCards();
 		const steps: { text: string; cls: string; kind: SettleKind }[] = [];
+		// 队伍里还有没有「我」——注意 allCards() 已经把 null 过滤掉了,得看原队伍
+		const hasMe = team.some((t) => !t.cardId);
 		for (const c of cards) {
 			if (c.effect.type === 'team_mult') {
 				steps.push({
-					text: `${c.name}:团队总分 ×${c.effect.value}`,
-					cls: 'text-cyan-300',
+					// 总分乘数(作用在团队总分上)—— 粗体亮青,和每个 Tee 里的紫「叠加倍率」分开
+					text: `Σ ${c.name}：总分 ×${c.effect.value}`,
+					cls: 'font-bold text-cyan-200',
 					kind: 'mult'
 				});
 			}
+			// 饼铺掌柜(二):「我」被卖掉了,队伍总分 ×2
+			const noMe =
+				c.effect.type === 'no_me_team_mult'
+					? c.effect.mult
+					: c.effect.type === 'bundle'
+						? (
+								c.effect.parts.find((p) => p.type === 'no_me_team_mult') as
+									{ mult: number } | undefined
+							)?.mult
+						: undefined;
+			if (noMe && !hasMe)
+				steps.push({
+					// 不写「队伍里没有我」——条件玩家自己清楚,结算行动画越短越好
+					text: `Σ 🏪 ${c.name}：总分 ×${noMe}`,
+					cls: 'font-bold text-cyan-200',
+					kind: 'mult'
+				});
 		}
 		const sum = team.reduce((s, t) => s + t.lastScore, 0);
 		const { total, teamMult, relay, ratioBonus, relayLines, ratioLines } = calcTeamTotal(
@@ -1860,6 +2289,13 @@
 				kind: 'mult'
 			});
 		}
+		// 归家:本关发动过 —— 出售「我」的换币摆在这一屏(结算动画里的那一行)
+		if (homingSell !== null)
+			steps.push({
+				text: `🏠 归家:出售「我」 +🥮 ${homingSell}`,
+				cls: 'text-cyan-300',
+				kind: 'mult'
+			});
 		steps.push({
 			text:
 				teamMult !== 1
@@ -1888,8 +2324,10 @@
 				(i + 1) * stepMs
 			);
 		});
+		const gen = animGen;
 		setTimeout(
 			() => {
+				if (gen !== animGen) return;
 				teamSettling = false;
 				settleRound();
 			},
@@ -1897,11 +2335,35 @@
 		);
 	};
 
+	/**
+	 * 归家:回合结算时**出售「我」**。
+	 * 刻意不走 sellTee —— 那个会按稀有度给币、还会动卖卡计数;而且关卡中途卖人会让
+	 * currentTee 这类下标错位。这里在回合末整队重排一次,顺手把「我」的身份交给新队首,
+	 * 保证「我」= 下标 0 这个不成文约定继续成立(下关开局挂加成卡/放技能都还认它)。
+	 */
+	const homingSettle = () => {
+		const coins = homingSell;
+		if (coins === null) return;
+		homingSell = null;
+		mooncakes += coins;
+		// 「我」被卖也算一次(夜市饼摊/饼铺掌柜都要算上)
+		soldTees += 1;
+		sellBoostPending = true;
+		sfxSell();
+		if (team.length <= 1) return; // 只剩「我」一个时就别卖了(入口已经拦过,兑底)
+		const rest = team.slice(1);
+		rest[0] = { ...rest[0], playerSkin: SELF_SKIN };
+		team = rest;
+		currentTee = 0;
+		countedTee = Math.min(countedTee, Math.max(0, team.length - 1));
+	};
+
 	const settleRound = () => {
 		// 回合制衰减放在**结算时**:点了「结算回合」立刻能看到道具少一关、
 		// 技能冷却少一回合 —— 放在下一关开始时,玩家点完结算看到的是旧数值。
 		// (顺带修正一个 off-by-one:集市里买的「持续 2 关」道具,原来会在下一关
 		//  开始就被扣掉 1,实际只生效 1 关;现在按卡面「每过一关 -1」算,正好 2 关。)
+		homingSettle(); // 归家:先把「我」卖掉(它自己身上没有任何卡,不影响下面的卡池计算)
 		decayBuffsForRound();
 		tickCharge(team); // 主动技能冷却 -1
 		const total = roundTotal;
@@ -1951,7 +2413,7 @@
 		phase = 'reward';
 		rewardChoices = drawCards(3);
 		lastRewardIdx = -1;
-		refreshPrice = 2; // 新的一次选卡 = 新的一轮集市,刷新价从头算
+		refreshPrice = 1; // 新的一次选卡 = 新的一轮集市,刷新价从头算
 	};
 
 	const refreshReward = () => {
@@ -1991,7 +2453,7 @@
 		shopPick = null;
 		shopPeek = null;
 		shopSold = [];
-		refreshPrice = 2; // 重新进中秋集市,刷新价恢复
+		refreshPrice = 1; // 重新进中秋集市,刷新价恢复
 	};
 
 	const refreshShop = () => {
@@ -2030,11 +2492,9 @@
 		const card = cardOf(team[idx]);
 		if (card) {
 			mooncakes += rarityOf(card).sell;
-			// 卖卡攒倍率：累计，但每回合最多计 2 个（避免靠狂卖刷爆倍率）
-			if (soldThisRound < 2) {
-				soldThisRound += 1;
-				soldTees += 1;
-			}
+			// 卖卡计数:累计给饼铺掌柜的基础分,同时给夜市饼摊挂上「下回合 ×2」
+			soldTees += 1;
+			sellBoostPending = true;
 		}
 		team = team.filter((_, i) => i !== idx);
 		if (currentTee >= team.length) currentTee = team.length - 1;
@@ -2095,7 +2555,11 @@
 	const marketTeam = $derived(phase === 'reward' || phase === 'shop');
 	// 中秋集市阶段也显示（只看不用：挂卡只在掷骰前），否则卖掉/买卡的决策少了信息
 	const showBuffShelf = $derived((phase === 'intro' || phase === 'shop') && buffEntries.length > 0);
-	const showItemBar = $derived(phase === 'round_end' && buffEntries.length > 0);
+	// 3 选 1 也把仓库摆出来(那里能卖 Tee、要决定留哪些卡):实测面板下方还剩 106~163px,
+	// 道具条一行 ~48px(手机横滑)/ sm 换行后 ~56px,放得下。
+	const showItemBar = $derived(
+		(phase === 'round_end' || phase === 'reward') && buffEntries.length > 0
+	);
 	const settleReserveLines = $derived(
 		Math.min(
 			(boss?.mods ? 1 : 0) + 1 + Math.max(0, ...team.map((_, i) => potentialSources(i))) + 1,
@@ -2174,7 +2638,7 @@
 			e.type === 'per_team_chips' ||
 			(e.type === 'on_player' && e.teamWide) ||
 			(e.type === 'per_tag' && e.teamWide) ||
-			e.type === 'face_count_mult';
+			e.type === 'face_count_chips';
 		for (let j = 0; j < team.length; j++) {
 			if (j === i) continue;
 			for (const { eff } of selfEffects(j)) {
@@ -2186,6 +2650,8 @@
 		for (const b of team[i]?.buffs ?? []) {
 			if (BUFF_BY_ID.get(b.cardId)?.effect) n += 1;
 		}
+		// 田螺:返还是逐张一行的(含兜底清掉的那些已挂载卡)
+		if (hasBuffRefund(i)) n += (team[i]?.refundPending?.length ?? 0) + (team[i]?.buffs.length ?? 0);
 		return n;
 	};
 
@@ -2194,8 +2660,10 @@
 			1,
 			allCards().filter((c) => {
 				const j = JSON.stringify(c.effect);
-				return j.includes('team_mult') || j.includes('relay_pct');
-			}).length + 1
+				return j.includes('team_mult') || j.includes('relay_pct') || j.includes('no_me_team_mult');
+			}).length +
+				1 +
+				(homingSell !== null ? 1 : 0)
 		)
 	);
 
@@ -2227,7 +2695,7 @@
 		<div
 			class="pointer-events-none z-50 w-max max-w-[17rem] rounded-lg border border-sky-400/50 bg-slate-950/95 px-2.5 py-1.5 text-center text-[11px] leading-snug shadow-xl {cls}"
 		>
-			<div class="font-semibold text-amber-300">
+			<div class="font-semibold" style="color: {RARITY_INFO[card.rarity].color}">
 				{card.name}
 				<span class="ml-1 font-normal text-sky-300">持续 {card.turns} 关</span>
 			</div>
@@ -2238,12 +2706,14 @@
 
 	{#snippet buffChip(card: BuffCard, count: number, interactive = false)}
 		<!-- 加成卡芯片:所有宽度统一形态(不再用大卡);掷骰前点选,再点 Tee 挂上 -->
+		<!-- 描边 = 稀有度色(普通灰 / 稀有蓝 / 传说金);选中改用外圈 ring,免得盖掉稀有度 -->
 		{@const state =
 			selectedBuff?.id === card.id
-				? 'border-amber-400 bg-amber-400/15'
+				? 'ring-2 ring-amber-400 bg-amber-400/15'
 				: interactive
-					? 'border-sky-500/40 bg-slate-800/70'
-					: 'border-slate-700/60 bg-slate-800/60'}
+					? 'bg-slate-800/70'
+					: 'bg-slate-800/60'}
+		{@const rarityColor = RARITY_INFO[card.rarity].color}
 		{#snippet inner()}
 			<span class="h-5 w-5 shrink-0 sm:h-6 sm:w-6"
 				><TeeRender name={card.skin} className="h-full w-full" /></span
@@ -2257,6 +2727,7 @@
 			<button
 				type="button"
 				class="flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border px-1.5 py-0.5 transition select-none sm:gap-1.5 sm:px-2 sm:py-1 {state}"
+				style="border-color: {rarityColor}"
 				title="点选后再点队伍里的 Tee 挂上"
 				onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
 				onpointerenter={(e) => {
@@ -2278,6 +2749,7 @@
 		{:else}
 			<div
 				class="flex shrink-0 items-center gap-1 rounded-lg border px-1.5 py-0.5 transition sm:gap-1.5 sm:px-2 sm:py-1 {state}"
+				style="border-color: {rarityColor}"
 				role="button"
 				tabindex="0"
 				title={`${card.name}:${card.desc} · 持续 ${card.turns} 关`}
@@ -2670,8 +3142,12 @@
 										desc={cardOf(tee)?.desc}
 										tipExtra={tee.cardId ? `卖出得 🥮 ${rarityOf(cardOf(tee)).sell}` : undefined}
 										tipList={teeTipList(tee)}
-										badge={tee.buffs.length > 0 ? `✨${tee.buffs.length}` : undefined}
-										skillBadge={activeSkills(effectiveEffects(teamCards, i), tee.buffs).length > 0
+										badge={(team[i]?.refundPending?.length ?? 0) > 0
+											? `🐚${team[i]?.refundPending?.length}`
+											: tee.buffs.length > 0
+												? `✨${tee.buffs.length}`
+												: undefined}
+										skillBadge={skillsFor(i).length > 0
 											? (tee.charge ?? 0) > 0
 												? `⚡${tee.charge}`
 												: '⚡'
@@ -2688,17 +3164,21 @@
 											<!-- 两种状态都占两行:待掷(1 行)→ 点数+等级(2 行)会让整队高度跳 14px -->
 											{#if phase === 'shop'}
 												<!-- 中秋集市阶段:回合已结算,结果看结算面板;省一行高度给 6 人满队 -->
-											{:else if tee.lastScore > 0}
-												<div class="text-[10px] font-bold text-amber-300">
+											{:else if i <= countedTee}
+												<!-- 投过了就显示分数:0 分/负分也算结果,别退回「待掷」(countedTee = 最后一只结算完的) -->
+												<div
+													class="text-[10px] font-bold {tee.lastScore > 0
+														? 'text-amber-300'
+														: 'text-slate-400'}"
+												>
 													{formatScore(tee.lastScore)}
 												</div>
 												<div class="text-[9px] text-slate-500">
 													{getRollLevel(tee.lastLevelId).name}
 												</div>
 											{:else}
-												<div class="text-[10px] font-bold text-slate-600">
-													待掷<span class="text-slate-500">·{rollsFor(i)}次</span>
-												</div>
+												<!-- 不写投掷次数:角标已经有加成卡(右)和技能(左)两处计数,玩家自己数 -->
+												<div class="text-[10px] font-bold text-slate-600">待掷</div>
 												<div class="text-[9px] text-slate-500">&nbsp;</div>
 											{/if}
 										{/snippet}
@@ -2824,6 +3304,14 @@
 											左侧 +{formatScore(pendingActive.value)} 分
 										{:else if pendingActive.skill === 'sum'}
 											按本 Tee 点数和结算
+										{:else if pendingActive.skill === 'mult'}
+											该 Tee 总分 ×{formatMult(pendingActive.mult ?? 1)}{pendingActive.cost
+												? ` · 花 🥮 ${pendingActive.cost}`
+												: ''}
+										{:else if pendingActive.skill === 'end_round'}
+											结束本关 · 未投角色 +🥮 {pendingActive.perTee ?? 0}
+										{:else if pendingActive.skill === 'sell_self'}
+											回合结算时出售「我」 +🥮 {pendingActive.coins ?? 0}
 										{:else if pendingActive.skill === 'to_four'}
 											把一颗骰子改为 4 点，之后可反复改四点
 										{:else}
@@ -3098,11 +3586,12 @@
 											? 'border-dashed border-violet-400/70 bg-violet-400/10'
 											: sold
 												? 'border-slate-700/50 bg-slate-900/50 opacity-45'
-												: ci === 5
-													? 'border-fuchsia-400/50 bg-slate-800/70'
-													: 'border-sky-500/40 bg-slate-800/70'} {picked
+												: 'bg-slate-800/70'} {picked
 											? 'bg-amber-400/15 ring-2 ring-amber-400'
 											: ''} {!sold && mooncakes < card.price ? 'opacity-50' : ''}"
+										style={!locked && !sold
+											? `border-color: ${RARITY_INFO[card.rarity].color}`
+											: ''}
 										onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
 										onclick={() => !sold && (shopPick = picked ? null : card)}
 										ondblclick={() => {
