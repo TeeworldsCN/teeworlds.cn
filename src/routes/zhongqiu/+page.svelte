@@ -261,7 +261,7 @@
 	const buffEntries = $derived(Object.entries(buffInventory) as [string, number][]);
 
 	const onBuffDragStart = (e: DragEvent, card: BuffCard) => {
-		if (phase !== 'intro') {
+		if (!canEquipBuff) {
 			e.preventDefault();
 			return;
 		}
@@ -278,12 +278,19 @@
 	};
 
 	const toggleSelectBuff = (card: BuffCard) => {
-		if (phase !== 'intro') return;
+		if (!canEquipBuff) return;
 		selectedBuff = selectedBuff?.id === card.id ? null : card;
 	};
 
+	/**
+	 * 加成卡只能在开局编队(intro)挂到 Tee 上 —— 商店里只买不挂。
+	 * 时机也是对的:衰减发生在「结算回合」那一刻(settleRound → decayBuffs),
+	 * 在商店买的道具到下一关开局挂,正好吃满卡面的持续关数。
+	 */
+	const canEquipBuff = $derived(phase === 'intro');
+
 	const applyBuffToTee = (card: BuffCard, idx: number) => {
-		if (phase !== 'intro' && phase !== 'shop') return;
+		if (!canEquipBuff) return;
 		const cur = buffInventory[card.id] ?? 0;
 		if (cur <= 0) return;
 		const next: Record<string, number> = {};
@@ -2037,15 +2044,32 @@
 			<span class="text-[10px] font-bold text-amber-300 sm:text-[11px]">×{count}</span>
 		{/snippet}
 		{#if interactive}
-			<button
-				class="flex shrink-0 cursor-grab items-center gap-1 rounded-lg border px-1.5 py-0.5 transition sm:gap-1.5 sm:px-2 sm:py-1 {state}"
+			<!-- 可拖的芯片用 div 而不是 button:Chrome 里 <button draggable> 不触发原生 dragstart,
+			     拖拽会“看不见地失效”(合成事件能过,真鼠标过不了) -->
+			<div
+				class="flex shrink-0 cursor-grab items-center gap-1 rounded-lg border px-1.5 py-0.5 transition select-none sm:gap-1.5 sm:px-2 sm:py-1 {state}"
+				role="button"
+				tabindex="0"
 				draggable
 				ondragstart={(e) => onBuffDragStart(e, card)}
-				onclick={() => toggleSelectBuff(card)}
 				title="拖到队伍 Tee 上使用(或点选后再点 Tee)"
+				onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
+				onpointerenter={(e) => {
+					if (e.pointerType !== 'touch') peekBuff = card;
+				}}
+				onpointerleave={(e) => {
+					if (e.pointerType !== 'touch' && peekBuff?.id === card.id) peekBuff = null;
+				}}
+				onclick={() => toggleSelectBuff(card)}
+				onkeydown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						toggleSelectBuff(card);
+					}
+				}}
 			>
 				{@render inner()}
-			</button>
+			</div>
 		{:else}
 			<div
 				class="flex shrink-0 items-center gap-1 rounded-lg border px-1.5 py-0.5 transition sm:gap-1.5 sm:px-2 sm:py-1 {state}"
@@ -2375,7 +2399,7 @@
 										{#each buffEntries as [id, count]}
 											{@const card = BUFF_BY_ID.get(id)!}
 											<div class="relative shrink-0">
-												{@render buffChip(card, count, phase === 'intro')}
+												{@render buffChip(card, count, canEquipBuff)}
 												{#if selectedBuff?.id === card.id || peekBuff?.id === card.id}
 													<!-- 桌面:说明浮在选中的芯片上方 -->
 													{@render buffPop(
@@ -2402,12 +2426,12 @@
 							{#each team as tee, i (i)}
 								<div
 									role="button"
-									tabindex={phase === 'intro' && selectedBuff ? 0 : -1}
-									class="rounded-xl p-0.5 transition {phase === 'intro' && selectedBuff
+									tabindex={canEquipBuff && selectedBuff ? 0 : -1}
+									class="rounded-xl p-0.5 transition {canEquipBuff && selectedBuff
 										? 'bg-amber-400/5 ring-1 ring-amber-400/70'
 										: ''}"
 									ondragover={(e) => {
-										if (phase === 'intro') e.preventDefault();
+										if (canEquipBuff) e.preventDefault();
 									}}
 									ondrop={(e) => onTeeDrop(e, i)}
 									onclick={() => selectedBuff && applyBuffToTee(selectedBuff, i)}
@@ -3250,8 +3274,11 @@
 		box-shadow:
 			0 4px 10px rgba(0, 0, 0, 0.45),
 			inset 0 -2px 4px rgba(0, 0, 0, 0.15);
+		/* Tailwind v4 的 scale-110 写的是 `scale` 属性,不在 transform 上 ——
+		   少了这一行 hover 放大就是硬切没有过渡 */
 		transition:
 			transform 0.15s ease,
+			scale 0.15s ease,
 			box-shadow 0.15s ease;
 	}
 
