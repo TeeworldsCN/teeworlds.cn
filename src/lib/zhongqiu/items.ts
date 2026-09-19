@@ -33,7 +33,7 @@ export interface BuffEffect {
 	from?: number;
 	/** sum_chips: 点数和 ×per;reverse: 减分系数(默认 1);straight_mult: 连号每多 1 颗 ×per */
 	per?: number;
-	/** reverse: 基础分(得分 = base − 掷骰分) */
+	/** reverse: 基础分替换(基础分 = base − 掷骰分) */
 	base?: number;
 	/** cond: 条件(与卡牌同一套 Cond) */
 	cond?: Cond;
@@ -73,7 +73,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yuefu',
 		name: '玉兔护符',
-		desc: '得分 +30',
+		desc: '基础分 +30',
 		rarity: 'common',
 		skin: 'Cute_Blue_Bunny',
 		price: 2,
@@ -83,7 +83,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'wurenxian',
 		name: '五仁馅',
-		desc: '得分 +40',
+		desc: '基础分 +40',
 		rarity: 'common',
 		skin: 'Blueberry_Cat',
 		price: 2,
@@ -93,7 +93,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'doushaxian',
 		name: '豆沙馅',
-		desc: '得分 +45',
+		desc: '基础分 +45',
 		rarity: 'common',
 		skin: 'HTF_reddy',
 		price: 2,
@@ -103,7 +103,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'lianrongxian',
 		name: '莲蓉馅',
-		desc: '得分 +55',
+		desc: '基础分 +55',
 		rarity: 'common',
 		skin: 'mermydon_beanie',
 		price: 3,
@@ -113,7 +113,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'zaoni',
 		name: '枣泥',
-		desc: '得分 +35',
+		desc: '基础分 +35',
 		rarity: 'common',
 		skin: 'sweet',
 		price: 3,
@@ -123,7 +123,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'lizi',
 		name: '栗子',
-		desc: '得分 +50',
+		desc: '基础分 +50',
 		rarity: 'common',
 		skin: 'Acorn',
 		price: 3,
@@ -133,7 +133,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'ciba',
 		name: '糍粑',
-		desc: '得分 +25',
+		desc: '基础分 +25',
 		rarity: 'common',
 		skin: '00_sweetfox',
 		price: 3,
@@ -143,7 +143,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'xingguangzhu',
 		name: '星光烛',
-		desc: '得分 +70',
+		desc: '基础分 +70',
 		rarity: 'rare',
 		skin: 'Yellow ray',
 		price: 4,
@@ -153,7 +153,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'xianrou',
 		name: '月华酥',
-		desc: '得分 +80',
+		desc: '基础分 +80',
 		rarity: 'rare',
 		skin: 'Red Tomato',
 		price: 5,
@@ -163,7 +163,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yunniang',
 		name: '玉盘酥',
-		desc: '得分 +100',
+		desc: '基础分 +100',
 		rarity: 'rare',
 		skin: 'Red Coke',
 		price: 6,
@@ -173,7 +173,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'songren',
 		name: '松仁',
-		desc: '得分 +70',
+		desc: '基础分 +70',
 		rarity: 'rare',
 		skin: 'MelonFox',
 		price: 6,
@@ -183,7 +183,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guihuatangjiang',
 		name: '桂花糖浆',
-		desc: '得分 +110',
+		desc: '基础分 +110',
 		rarity: 'rare',
 		skin: 'cupcakesprinkle',
 		price: 6,
@@ -193,7 +193,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'lianrongshuang',
 		name: '双黄莲蓉',
-		desc: '得分 +140',
+		desc: '基础分 +140',
 		rarity: 'legendary',
 		skin: 'Sunflower',
 		price: 7,
@@ -203,7 +203,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'baiyuetuan',
 		name: '百月团',
-		desc: '得分 +180',
+		desc: '基础分 +180',
 		rarity: 'legendary',
 		skin: 'Bubble_gum',
 		price: 8,
@@ -215,7 +215,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guihuami',
 		name: '桂花蜜',
-		desc: '得分 ×1.3',
+		desc: '基础分 ×1.3',
 		rarity: 'common',
 		skin: 'cat with flowers',
 		price: 2,
@@ -225,7 +225,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'dangui',
 		name: '丹桂',
-		desc: '得分 ×1.5',
+		desc: '基础分 ×1.5',
 		rarity: 'common',
 		skin: 'Redboppenom',
 		price: 3,
@@ -235,7 +235,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yingui',
 		name: '银桂',
-		desc: '得分 ×1.4',
+		desc: '基础分 ×1.4',
 		rarity: 'common',
 		skin: 'default_flower',
 		price: 3,
@@ -245,7 +245,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yulu',
 		name: '玉露',
-		desc: '得分 ×1.7',
+		desc: '基础分 ×1.7',
 		rarity: 'rare',
 		skin: 'ender_pearl',
 		price: 4,
@@ -255,7 +255,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yuehua',
 		name: '月华',
-		desc: '得分 ×2',
+		desc: '基础分 ×2',
 		rarity: 'rare',
 		skin: 'CrystalCat',
 		price: 5,
@@ -265,7 +265,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'changuang',
 		name: '蟾光',
-		desc: '得分 ×1.8',
+		desc: '基础分 ×1.8',
 		rarity: 'rare',
 		skin: 'glow_hammie2',
 		price: 6,
@@ -275,7 +275,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guipo',
 		name: '桂魄',
-		desc: '得分 ×2.2',
+		desc: '基础分 ×2.2',
 		rarity: 'rare',
 		skin: 'babyYoda_flower',
 		price: 6,
@@ -285,7 +285,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'qinghui',
 		name: '清辉',
-		desc: '得分 ×2.5',
+		desc: '基础分 ×2.5',
 		rarity: 'legendary',
 		skin: 'AmethystCrystalCat',
 		price: 7,
@@ -295,7 +295,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'jinguiguan',
 		name: '金桂冠',
-		desc: '得分 ×3',
+		desc: '基础分 ×3',
 		rarity: 'legendary',
 		skin: 'Golden Shroom',
 		price: 8,
@@ -305,7 +305,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yueshen',
 		name: '月神面纱',
-		desc: '得分 ×2.4',
+		desc: '基础分 ×2.4',
 		rarity: 'legendary',
 		skin: 'pinkcrystal',
 		price: 8,
@@ -315,7 +315,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yusheng',
 		name: '玉绳',
-		desc: '得分 ×2.6',
+		desc: '基础分 ×2.6',
 		rarity: 'legendary',
 		skin: 'HTF_whitepinky',
 		price: 10,
@@ -325,7 +325,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'jiuzhuan',
 		name: '九转金丹',
-		desc: '得分 ×3.2',
+		desc: '基础分 ×3.2',
 		rarity: 'legendary',
 		skin: 'angel_toast_kiinmn',
 		price: 9,
@@ -337,7 +337,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'liuli',
 		name: '琉璃酥',
-		desc: '得分 +40，×1.4',
+		desc: '基础分 +40，×1.4',
 		rarity: 'rare',
 		skin: 'Rainbow Jawbreaker',
 		price: 5,
@@ -347,7 +347,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yuzhi',
 		name: '玉脂',
-		desc: '得分 +45，×1.5',
+		desc: '基础分 +45，×1.5',
 		rarity: 'rare',
 		skin: 'emerald',
 		price: 6,
@@ -357,7 +357,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'jingui',
 		name: '金桂流心',
-		desc: '得分 +60，×1.6',
+		desc: '基础分 +60，×1.6',
 		rarity: 'legendary',
 		skin: 'OnyxNanami_Yellow',
 		price: 8,
@@ -367,7 +367,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yuehun',
 		name: '月魂',
-		desc: '得分 +60，×2',
+		desc: '基础分 +60，×2',
 		rarity: 'legendary',
 		skin: 'aristocats_marie_glow',
 		price: 9,
@@ -379,7 +379,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'chaoxin',
 		name: '潮信符',
-		desc: '骰子点数和 ×3 计入得分',
+		desc: '骰子点数和 ×3 计入基础分',
 		rarity: 'rare',
 		skin: 'AquaFox',
 		price: 6,
@@ -496,7 +496,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'hebi',
 		name: '合璧符',
-		desc: '连号 4 颗及以上：连号每多 1 颗，得分 ×1.5',
+		desc: '连号 4 颗及以上：连号每多 1 颗，基础分 ×1.5',
 		rarity: 'rare',
 		skin: 'skeyster',
 		price: 7,
@@ -586,7 +586,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'shibei',
 		name: '拾贝',
-		desc: '自己每有 1 颗 5 点：得分 +65；每有 1 颗 6 点：得分 −25',
+		desc: '自己每有 1 颗 5 点：基础分 +65；每有 1 颗 6 点：基础分 −25',
 		rarity: 'common',
 		skin: 'Seal',
 		price: 3,
@@ -602,7 +602,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'duzhuo',
 		name: '独酌',
-		desc: '自己每有 1 颗 6 点：得分 +70；每有 1 颗 3 点：得分 −30',
+		desc: '自己每有 1 颗 6 点：基础分 +70；每有 1 颗 3 点：基础分 −30',
 		rarity: 'common',
 		skin: 'coffee_cup',
 		price: 3,
@@ -618,7 +618,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'shouzhuo',
 		name: '守拙',
-		desc: '自己每有 1 颗 4 点：得分 +60；每有 1 颗 2 点：得分 −25',
+		desc: '自己每有 1 颗 4 点：基础分 +60；每有 1 颗 2 点：基础分 −25',
 		rarity: 'common',
 		skin: 'Graylynx',
 		price: 3,
@@ -634,7 +634,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guxing',
 		name: '孤星',
-		desc: '自己每有 1 颗 1 点：得分 +80；每有 1 颗 5 点：得分 −35',
+		desc: '自己每有 1 颗 1 点：基础分 +80；每有 1 颗 5 点：基础分 −35',
 		rarity: 'common',
 		skin: 'Blue ray',
 		price: 3,
@@ -650,7 +650,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yishan',
 		name: '移山',
-		desc: '自己每有 1 颗 6 点：得分 +130；每有 1 颗 2 点：得分 −55',
+		desc: '自己每有 1 颗 6 点：基础分 +130；每有 1 颗 2 点：基础分 −55',
 		rarity: 'rare',
 		skin: 'Beast_Winter',
 		price: 6,
@@ -666,7 +666,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'fantianyin',
 		name: '翻天印',
-		desc: '自己每有 1 颗 4 点：得分 +200；每有 1 颗 2 点：得分 −80',
+		desc: '自己每有 1 颗 4 点：基础分 +200；每有 1 颗 2 点：基础分 −80',
 		rarity: 'legendary',
 		skin: 'dragon',
 		price: 9,
