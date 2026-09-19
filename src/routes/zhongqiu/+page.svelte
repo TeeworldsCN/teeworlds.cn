@@ -1378,7 +1378,7 @@
 		for (const src of lastBreakdown.sources) {
 			if (src.mult === 1) continue;
 			steps.push({
-				text: `${nameOf(src)} ×${Number(src.mult.toFixed(2))}`,
+				text: `${nameOf(src)} ×${formatMult(src.mult)}`,
 				cls: 'text-purple-300',
 				kind: 'mult'
 			});
@@ -1544,7 +1544,7 @@
 			settleSteps = [
 				...settleSteps,
 				{
-					text: `⚡ ${name} · 点数和 ${sum} → +${formatScore(gain)}${m > 1 ? ` ×${m.toFixed(2)}` : ''}`,
+					text: `⚡ ${name} · 点数和 ${sum} → +${formatScore(gain)}${m > 1 ? ` ×${formatMult(m)}` : ''}`,
 					cls: 'text-fuchsia-300',
 					kind: 'chip'
 				}
@@ -1851,6 +1851,9 @@
 	const progressPct = $derived(Math.max(0, Math.round(rawProgress * 100)));
 	const currentTeeCard = $derived(cardOf(team[currentTee] ?? team[0]));
 	const canPickReward = $derived(team.length < TEAM_LIMIT);
+
+	/** 倍率显示:最多一位小数、去掉末尾 0(×2.56 → ×2.6、×4.10 → ×4.1、×2 → ×2) */
+	const formatMult = (m: number): string => String(Math.round(m * 10) / 10);
 
 	const formatScore = (n: number) => n.toLocaleString('zh-CN');
 

@@ -590,7 +590,7 @@ export const calcTeeScore = ({
 				// 连号长度倍率(合璧符):连号 n 颗 → ×per^(n-from)
 				const run = longestRun(ownDice);
 				const from = be.from ?? 2;
-				if (run > from) buffMult *= Math.pow(be.per ?? 1, run - from);
+				if (run > from) buffMult *= Math.round(Math.pow(be.per ?? 1, run - from) * 10) / 10;
 			} else if (be.type === 'reverse') {
 				// 逆向加成卡:并入同一个替换步骤
 				reverseBase += be.base ?? 0;
@@ -759,7 +759,8 @@ export const calcTeeScore = ({
 				const from = eff.from ?? 2;
 				if (run <= from) break;
 				const bm = mult;
-				mult *= Math.pow(eff.per, run - from);
+				// 倍率按一位小数取整:结算行写的是 ×2.3,实际乘的也得是 2.3
+				mult *= Math.round(Math.pow(eff.per, run - from) * 10) / 10;
 				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `连号 ${run} 颗`);
 				break;
 			}

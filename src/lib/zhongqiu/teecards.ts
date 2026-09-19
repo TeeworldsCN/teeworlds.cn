@@ -444,7 +444,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'lianzhudeng',
 		name: '连珠灯',
-		desc: '连号 3 颗（如 123）算一秀、4 颗算二举、5 颗算四进；连号里每颗骰子：得分 +45；连号每多 1 颗，得分 ×1.6；掷出对堂（连号 6 颗）：额外 +150、得分 ×2',
+		desc: '连号 3 颗（如 123）算一秀、4 颗算二举、5 颗算四进；连号里每颗骰子：得分 +45；连号每多 1 颗，得分 ×1.5；掷出对堂（连号 6 颗）：额外 +150、得分 ×2',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_coala_cammo',
@@ -453,8 +453,8 @@ export const CARDS: TeeCard[] = [
 			parts: [
 				{ type: 'straight_ladder' },
 				{ type: 'straight_chips', per: 45 },
-				// 连号长度就是这套流派的引擎:3 连 ×1.6、4 连 ×2.56、5 连 ×4.1
-				{ type: 'straight_mult', per: 1.6, from: 2 },
+				// 连号长度就是这套流派的引擎:3 连 ×1.5、4 连 ×2.3、5 连 ×3.4
+				{ type: 'straight_mult', per: 1.5, from: 2 },
 				// 招牌手不能输给别人的中档牌:满顺(对堂)额外给一笔
 				{ type: 'cond', cond: 'dui_tang', chips: 150, mult: 2 }
 			]
