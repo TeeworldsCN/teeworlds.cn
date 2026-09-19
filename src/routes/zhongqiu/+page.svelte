@@ -156,6 +156,38 @@
 	const showDonate = $derived(save.plays >= 1);
 	let mooncakes = $state(0);
 
+	/**
+	 * 夜空星群:4 个 SVG。位置/宽度用百分比(跟窗口一起缩放)。
+	 * 星点用种子 PRNG 生成 —— 原来用 i*61%300 这种线性取模,出来是斜线/晶格,
+	 * 一眼就看得出规律;又不能用 Math.random(SSR 预渲染和客户端必须算同一批坐标)。
+	 */
+	const starRnd = (seed: number) => {
+		let a = seed >>> 0;
+		return () => {
+			a = (a + 0x6d2b79f5) >>> 0;
+			let t = Math.imul(a ^ (a >>> 15), 1 | a);
+			t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+			return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+		};
+	};
+	const STAR_FIELDS = [
+		{ left: '-4%', top: '-6%', w: '52%', seed: 1337, n: 22 },
+		{ left: '44%', top: '-8%', w: '54%', seed: 7331, n: 20 },
+		{ left: '6%', top: '24%', w: '50%', seed: 2027, n: 18 },
+		{ left: '58%', top: '28%', w: '48%', seed: 4921, n: 16 }
+	].map((f) => {
+		const rnd = starRnd(f.seed);
+		return {
+			...f,
+			stars: Array.from({ length: f.n }, () => ({
+				x: +(rnd() * 300).toFixed(1),
+				y: +(rnd() * 170).toFixed(1),
+				r: +(0.45 + rnd() * 0.85).toFixed(2),
+				o: +(0.25 + rnd() * 0.6).toFixed(2)
+			}))
+		};
+	});
+
 	// ---- 游戏状态 ----
 
 	type Phase =
@@ -229,7 +261,7 @@
 	let shopPick = $state<BuffCard | null>(null);
 	let shopSold = $state<string[]>([]);
 	let shopLocks = $state<(string | null)[]>([null, null, null, null, null, null]);
-	/** 集市刷新价:刷一次 +1,重新进集市(选卡屏 / 商店)时回到 2 */
+	/** 集市刷新价:刷一次 +1,重新进集市(组建 Tee 队 / 中秋集市)时回到 2 */
 	let refreshPrice = $state(2);
 	let lastRewardIdx = $state(-1);
 
@@ -238,10 +270,10 @@
 	let selectedBuff = $state<BuffCard | null>(null);
 	/** 仅查看说明的加成卡(没选中的芯片 hover / 点按):仓库里的卡点一下看说明 */
 	let peekBuff = $state<BuffCard | null>(null);
-	/** 商店货架的悬停说明(和 peekBuff 分开:同一屏里仓库和货架会同时存在) */
+	/** 中秋集市货架的悬停说明(和 peekBuff 分开:同一屏里仓库和货架会同时存在) */
 	let shopPeek = $state<BuffCard | null>(null);
 	/** 同一时刻只弹一个说明浮层:悬停优先于选中,否则两个浮层会叠在一起。
-	 *  选中只在开局编队有效——到了商店它挂不上任何东西,别把上一次的选中带过来。 */
+	 *  选中只在开局编队有效——到了中秋集市它挂不上任何东西,别把上一次的选中带过来。 */
 	const shownBuff = $derived(peekBuff ?? (phase === 'intro' ? selectedBuff : null));
 	const shownShopBuff = $derived(shopPeek ?? shopPick);
 	// 阶段一切换,悬停说明就作废 —— 指针的 leave 事件不会补发,
@@ -279,9 +311,9 @@
 	};
 
 	/**
-	 * 加成卡只能在开局编队(intro)挂到 Tee 上 —— 商店里只买不挂。
+	 * 加成卡只能在开局编队(intro)挂到 Tee 上 —— 中秋集市里只买不挂。
 	 * 时机也是对的:衰减发生在「结算回合」那一刻(settleRound → decayBuffs),
-	 * 在商店买的道具到下一关开局挂,正好吃满卡面的持续关数。
+	 * 在中秋集市买的道具到下一关开局挂,正好吃满卡面的持续关数。
 	 */
 	const canEquipBuff = $derived(phase === 'intro');
 
@@ -1766,8 +1798,8 @@
 			}
 		];
 		lastRewardIdx = idx;
-		// 同步进商店,不搞"选中特效 + 延时跳转" ——
-		// 卡牌那时已经真的进队了,只要这个延时里刷新页面,就会卡在选卡屏
+		// 同步进中秋集市,不搞"选中特效 + 延时跳转" ——
+		// 卡牌那时已经真的进队了,只要这个延时里刷新页面,就会卡在组建 Tee 队
 		// (队伍里多了一张卡、界面却还在等着你选)。
 		openShop();
 	};
@@ -1779,7 +1811,7 @@
 		shopPick = null;
 		shopPeek = null;
 		shopSold = [];
-		refreshPrice = 2; // 重新进商店,刷新价恢复
+		refreshPrice = 2; // 重新进中秋集市,刷新价恢复
 	};
 
 	const refreshShop = () => {
@@ -1798,7 +1830,7 @@
 		shopLocks = shopLocks.map((id, k) => (k === i ? (id ? null : (shopBuffs[i]?.id ?? null)) : id));
 	};
 
-	/** 最近一次按下是不是鼠标 —— 商店的「双击购买」只给鼠标用(touch 上双击=缩放/误触) */
+	/** 最近一次按下是不是鼠标 —— 中秋集市的「双击购买」只给鼠标用(touch 上双击=缩放/误触) */
 	let lastPointerWasMouse = false;
 
 	const buyBuff = (card: BuffCard) => {
@@ -1881,7 +1913,7 @@
 	// 按阶段只保留该阶段真正要用的面板，其余收成一行道具条。
 
 	const marketTeam = $derived(phase === 'reward' || phase === 'shop');
-	// 商店阶段也显示（只看不用：挂卡只在掷骰前），否则卖掉/买卡的决策少了信息
+	// 中秋集市阶段也显示（只看不用：挂卡只在掷骰前），否则卖掉/买卡的决策少了信息
 	const showBuffShelf = $derived((phase === 'intro' || phase === 'shop') && buffEntries.length > 0);
 	const showItemBar = $derived(phase === 'round_end' && buffEntries.length > 0);
 	const settleReserveLines = $derived(
@@ -2092,17 +2124,23 @@
 		{/if}
 	{/snippet}
 	<!-- 夜空背景:固定在可视区域内(fixed),内容再长也不会把月亮推走 -->
-	<div class="sky pointer-events-none fixed inset-x-0 top-11 bottom-8">
-		{#each Array.from({ length: 40 }, (_, i) => i) as i}
-			<span
-				class="star"
-				style={`left: ${(i * 37 + 13) % 100}%; top: ${(i * 53 + 7) % 60}%; animation-delay: ${(i % 7) * 0.6}s; width: ${(i % 3) + 1}px; height: ${(i % 3) + 1}px;`}
-			></span>
+	<!-- 夜空:四个星群 SVG。以前是 40 个带动画的 span + 3 片 blur(14px) 的云 ——
+	     移动的模糊层要逐帧重算,星星又一直在动,而上面的面板全都带 backdrop-blur,
+	     三者叠在一起就是耗电大头。现在星空是静态的(4 个节点),背后的模糊只算一次。 -->
+	<div class="sky pointer-events-none fixed inset-x-0 top-11 bottom-8 overflow-hidden">
+		{#each STAR_FIELDS as f}
+			<svg
+				class="starfield"
+				viewBox="0 0 300 170"
+				style={`left: ${f.left}; top: ${f.top}; width: ${f.w}`}
+				aria-hidden="true"
+			>
+				{#each f.stars as s}
+					<circle cx={s.x} cy={s.y} r={s.r} fill="#fff" opacity={s.o} />
+				{/each}
+			</svg>
 		{/each}
 		<div class="moon" class:dim={phase !== 'idle'}></div>
-		<div class="cloud cloud-1"></div>
-		<div class="cloud cloud-2"></div>
-		<div class="cloud cloud-3"></div>
 	</div>
 
 	<!-- 矮屏缩放:按 minH 布局再整体缩小(transform-origin 左上,宽高补偿回去) -->
@@ -2262,7 +2300,7 @@
 								，卡牌能加到 3 次以上
 							</li>
 							<li>
-								③ 过关进<b class="text-amber-300">中秋集市</b>：免费 3 选 1 换卡，商店买<b
+								③ 过关进<b class="text-amber-300">组建 Tee 队</b>：免费 3 选 1 换卡，中秋集市买<b
 									class="text-sky-300">加成卡</b
 								>
 							</li>
@@ -2414,7 +2452,7 @@
 							</div>
 						{/if}
 
-						<!-- 队伍:商店阶段也用普通卡(去掉结果行省高度) -->
+						<!-- 队伍:中秋集市阶段也用普通卡(去掉结果行省高度) -->
 						<div class="mt-2 flex flex-wrap gap-1.5 sm:gap-2 {marketTeam ? 'market-team' : ''}">
 							{#each team as tee, i (i)}
 								<div
@@ -2469,7 +2507,7 @@
 										{#snippet actions()}
 											<!-- 两种状态都占两行:待掷(1 行)→ 点数+等级(2 行)会让整队高度跳 14px -->
 											{#if phase === 'shop'}
-												<!-- 商店阶段:回合已结算,结果看结算面板;省一行高度给 6 人满队 -->
+												<!-- 中秋集市阶段:回合已结算,结果看结算面板;省一行高度给 6 人满队 -->
 											{:else if tee.lastScore > 0}
 												<div class="text-[10px] font-bold text-amber-300">
 													{formatScore(tee.lastScore)}
@@ -2790,7 +2828,7 @@
 								class="mt-3.5 w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 sm:w-auto sm:px-10 sm:text-lg"
 								onclick={nextReward}
 							>
-								🏮 去中秋集市
+								🏮 去组建 Tee 队
 							</button>
 						</div>
 					</div>
@@ -2803,13 +2841,7 @@
 					>
 						<div class="text-center">
 							<div class="text-base font-bold text-amber-200 sm:text-xl">
-								🏮 中秋集市 · 免费选 1 张 Tee 卡
-							</div>
-							<div class="mt-0.5 text-[11px] text-slate-400 sm:text-xs">
-								{canPickReward
-									? `选卡后自动进入商店 · 刷新需 🥮 ${refreshPrice}`
-									: '（队伍已满，先去商店卖卡）'}
-								· 当前 🥮 {mooncakes}
+								🏮 组建 Tee 队 · 免费选 1 张 Tee 卡
 							</div>
 						</div>
 						<div class="mt-2.5 flex justify-center gap-2 sm:mt-4 sm:gap-4">
@@ -2845,13 +2877,13 @@
 					</div>
 				{/if}
 
-				<!-- ================= 商店 ================= -->
+				<!-- ================= 中秋集市 ================= -->
 				{#if phase === 'shop'}
 					<div
 						class="panel-fill mt-2.5 rounded-xl border border-amber-500/30 bg-slate-900/80 px-2.5 py-1.5 backdrop-blur-sm max-[365px]:py-1 sm:mt-4 sm:rounded-2xl sm:p-6"
 					>
 						<div class="flex items-center justify-between">
-							<div class="text-base font-bold text-amber-200 sm:text-xl">🛒 商店</div>
+							<div class="text-base font-bold text-amber-200 sm:text-xl">🛒 中秋集市</div>
 							<div class="text-xs text-amber-300 sm:text-sm">🥮 {mooncakes}</div>
 						</div>
 
@@ -2859,7 +2891,7 @@
 							<div class="text-xs font-bold text-sky-300 sm:text-sm">✨ 加成卡</div>
 							<div class="text-[10px] text-slate-500">掷骰前挂到 Tee 身上</div>
 						</div>
-						<!-- 商店货架:和队伍面板同款的小芯片,固定 3 列等宽(两排对齐) -->
+						<!-- 中秋集市货架:和队伍面板同款的小芯片,固定 3 列等宽(两排对齐) -->
 						<div class="relative mt-1 grid grid-cols-3 gap-1.5 max-[365px]:gap-1 sm:mt-2 sm:gap-2">
 							{#each shopBuffs as card, ci}
 								{@const picked = shopPick?.id === card.id}
@@ -2918,12 +2950,12 @@
 											>
 										</span>
 									</div>
-									<!-- 锁定:锁住的格子刷新/下次进商店都不变(手机放右下,sm 起回到右上) -->
+									<!-- 锁定:锁住的格子刷新/下次进中秋集市都不变(手机放右下,sm 起回到右上) -->
 									<button
 										class="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center text-[10px] sm:top-0 sm:bottom-auto sm:h-8 sm:w-5 {locked
 											? 'text-violet-300'
 											: 'text-slate-500 hover:text-slate-300'}"
-										title={locked ? '已锁定：刷新和下次进商店都不会变' : '锁定这格商品'}
+										title={locked ? '已锁定：刷新和下次进中秋集市都不会变' : '锁定这格商品'}
 										aria-label={locked ? '解锁' : '锁定'}
 										onclick={(e) => {
 											e.stopPropagation();
@@ -3078,7 +3110,7 @@
 					</div>
 				</div>
 				<div class="mt-3 text-[11px] leading-snug text-slate-400">
-					卖掉后这张卡永久离队，换来的月饼币可以立刻在商店里花。
+					卖掉后这张卡永久离队，换来的月饼币可以立刻在中秋集市里花。
 				</div>
 				<div class="mt-3.5 flex justify-center gap-2">
 					<button
@@ -3158,22 +3190,9 @@
 <style>
 	/* ---- 夜空 ---- */
 
-	.star {
+	/* 星群:静态,不做动画 —— 上面的面板都带 backdrop-blur,星星一动模糊就得每帧重算 */
+	.starfield {
 		position: absolute;
-		border-radius: 9999px;
-		background: #fff;
-		opacity: 0.7;
-		animation: twinkle 3s ease-in-out infinite;
-	}
-
-	@keyframes twinkle {
-		0%,
-		100% {
-			opacity: 0.15;
-		}
-		50% {
-			opacity: 0.9;
-		}
 	}
 
 	.moon {
@@ -3208,49 +3227,6 @@
 			radial-gradient(circle at 65% 35%, rgba(180, 130, 40, 0.25) 0 6%, transparent 7%),
 			radial-gradient(circle at 30% 60%, rgba(180, 130, 40, 0.2) 0 9%, transparent 10%),
 			radial-gradient(circle at 55% 75%, rgba(180, 130, 40, 0.22) 0 5%, transparent 6%);
-	}
-
-	.cloud {
-		position: absolute;
-		border-radius: 9999px;
-		background: rgba(190, 200, 235, 0.08);
-		filter: blur(14px);
-		animation: drift linear infinite;
-	}
-
-	.cloud-1 {
-		width: 340px;
-		height: 56px;
-		top: 18%;
-		left: -20%;
-		animation-duration: 90s;
-	}
-
-	.cloud-2 {
-		width: 260px;
-		height: 44px;
-		top: 38%;
-		left: -30%;
-		animation-duration: 130s;
-		animation-delay: -40s;
-	}
-
-	.cloud-3 {
-		width: 400px;
-		height: 60px;
-		top: 62%;
-		left: -25%;
-		animation-duration: 110s;
-		animation-delay: -70s;
-	}
-
-	@keyframes drift {
-		from {
-			transform: translateX(0);
-		}
-		to {
-			transform: translateX(150vw);
-		}
 	}
 
 	/* ---- 月饼(月相进度) ---- */

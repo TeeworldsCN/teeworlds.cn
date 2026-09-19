@@ -50,7 +50,7 @@ export interface DiceMods {
 /** 卡牌效果 */
 export type TeeEffect =
 	| { type: 'chips'; value: number } // 基础分 +chips
-	| { type: 'mult'; value: number } // 基础分 ×mult
+	| { type: 'mult'; value: number } // 得分 ×mult
 	| { type: 'chips_mult'; chips: number; mult: number } // 加算 + 乘算
 	| { type: 'cond'; cond: Cond; chips?: number; mult?: number } // 条件触发
 	| { type: 'team_mult'; value: number } // 全队总分 ×mult
@@ -79,7 +79,7 @@ export type TeeEffect =
 	| { type: 'reverse'; base: number; per?: number; perRound?: number } // 逆向:基础分 = base(+每关 perRound×关数) − 等级分×per(可为负)
 	| { type: 'straight_ladder' } // 连号阶梯:123/234/345/456→一秀,1234 系→二举,12345 系→四进
 	| { type: 'straight_chips'; per: number } // 连号里每颗骰子 +per 分
-	// 连号长度倍率:连号 n 颗 → 基础分 ×per^(n-from)。连号流的引擎 ——
+	// 连号长度倍率:连号 n 颗 → 得分 ×per^(n-from)。连号流的引擎 ——
 	// 原来三张卡的乘数全锁在「对堂(6 连)」上,而那是 ~1.5% 的事件,等于按不出来。
 	| { type: 'straight_mult'; per: number; from?: number }
 	| { type: 'active'; skill: 'chips' | 'left_chips' | 'retry'; value?: number; cooldown: number }
@@ -104,11 +104,11 @@ export type TeeEffect =
 	| { type: 'face_ladder' } // 点数阶梯:非 4 点的同点 n 颗按 4 点线档位结算(一秀→六博红)
 	| { type: 'face_floor'; face: number; base: number; per: number } // 同点颗数的**基础分下限**:base × per^(n-1)(只升不降)
 	| { type: 'team_scale'; per: number; fullBonus?: number } // 队伍每多 1 人 ×per;满编再 ×fullBonus
-	| { type: 'sell_scale'; per: number } // 本局每卖出 1 个 Tee:基础分 ×per(后期流派)
-	| { type: 'coin_mult'; perCoin: number; per: number } // 每 perCoin 月饼币:基础分 ×per
-	| { type: 'growth_mult'; per: number } // 每过一关:基础分 ×(1+per)(复利,读 growth)
+	| { type: 'sell_scale'; per: number } // 本局每卖出 1 个 Tee:得分 ×per(后期流派)
+	| { type: 'coin_mult'; perCoin: number; per: number } // 每 perCoin 月饼币:得分 ×per
+	| { type: 'growth_mult'; per: number } // 每过一关:得分 ×(1+per)(复利,读 growth)
 	| { type: 'relay_left'; share: number } // 加算:左侧相邻 Tee 的已结算得分 ×share
-	| { type: 'sum_mult'; from: number; per: number } // 和值每超过 from 一点:基础分 ×per
+	| { type: 'sum_mult'; from: number; per: number } // 和值每超过 from 一点:得分 ×per
 	| { type: 'bundle'; parts: TeeEffect[] }; // 复合:多个效果同时生效
 
 export type Tag = '兔' | '桂' | '饼' | '灯' | '月' | '仙';
@@ -197,7 +197,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'chahu',
 		name: '茶壶',
-		desc: '二举及以上：基础分 ×1.75',
+		desc: '二举及以上：得分 ×1.75',
 		rarity: 'common',
 		skin: 'Tea',
 		effect: { type: 'cond', cond: 'er_ju_plus', mult: 1.75 }
@@ -205,7 +205,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'tuerdeng',
 		name: '兔儿爷',
-		desc: '三红及以上：基础分 ×1.8',
+		desc: '三红及以上：得分 ×1.8',
 		rarity: 'common',
 		tag: '兔',
 		skin: 'bunny',
@@ -356,7 +356,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'dengguan',
 		name: '灯官',
-		desc: '该 Tee 身上每张加成卡，基础分 ×1.4',
+		desc: '该 Tee 身上每张加成卡，得分 ×1.4',
 		rarity: 'rare',
 		skin: 'glow_hammie',
 		tag: '灯',
@@ -374,7 +374,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'wangyuehuaiyuan',
 		name: '望月怀远',
-		desc: '「我」掷出"三红"及以上时，该 Tee 基础分 ×4.5',
+		desc: '「我」掷出"三红"及以上时，该 Tee 得分 ×4.5',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'lunalovegood',
@@ -398,7 +398,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guanghandenghui',
 		name: '广寒灯会',
-		desc: '该 Tee 身上每张加成卡，基础分 ×1.7',
+		desc: '该 Tee 身上每张加成卡，得分 ×1.7',
 		rarity: 'legendary',
 		skin: '10Nanami_glow',
 		tag: '灯',
@@ -407,7 +407,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuebingshijia',
 		name: '饼香世家',
-		desc: '每拥有一个独特的「饼」系角色，该 Tee 基础分 ×2.2',
+		desc: '每拥有一个独特的「饼」系角色，该 Tee 得分 ×2.2',
 		rarity: 'legendary',
 		skin: 'cupcakecherry',
 		tag: '饼',
@@ -444,7 +444,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'lianzhudeng',
 		name: '连珠灯',
-		desc: '连号 3 颗（如 123）算一秀、4 颗算二举、5 颗算四进；连号里每颗骰子：基础分 +45；连号每多 1 颗，基础分 ×1.5；掷出对堂（连号 6 颗）：额外 +150、基础分 ×2',
+		desc: '连号 3 颗（如 123）算一秀、4 颗算二举、5 颗算四进；连号里每颗骰子：基础分 +45；连号每多 1 颗，得分 ×1.5；掷出对堂（连号 6 颗）：额外 +150、得分 ×2',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_coala_cammo',
@@ -463,7 +463,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'qixingdeng',
 		name: '七星灯',
-		desc: '连号里每颗骰子：基础分 +70；连号每多 1 颗，基础分 ×2',
+		desc: '连号里每颗骰子：基础分 +70；连号每多 1 颗，得分 ×2',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_contrastfox',
@@ -506,7 +506,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuebingwang',
 		name: '饼王',
-		desc: '基础分 ×2',
+		desc: '得分 ×2',
 		rarity: 'rare',
 		tag: '饼',
 		skin: 'cookie_bite',
@@ -532,7 +532,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guanghangong',
 		name: '月宫广寒',
-		desc: '每过一关：基础分 ×1.25，可叠（复利）',
+		desc: '每过一关：得分 ×1.25，可叠（复利）',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'IceWitch_IceQueen',
@@ -541,7 +541,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'houyi',
 		name: '射日仙',
-		desc: '再接再厉时自动重掷全部（每回合 1 次），基础分 ×2',
+		desc: '再接再厉时自动重掷全部（每回合 1 次），得分 ×2',
 		rarity: 'rare',
 		tag: '仙',
 		skin: 'Yellow',
@@ -559,7 +559,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'quanjiafu',
 		name: '合家福饼',
-		desc: '队伍每多 1 人：基础分 ×1.5；满 6 人再 ×2',
+		desc: '队伍每多 1 人：得分 ×1.5；满 6 人再 ×2',
 		rarity: 'legendary',
 		tag: '饼',
 		skin: 'Red and White',
@@ -568,7 +568,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutuyao',
 		name: '玉兔捣药',
-		desc: '判定等级 +1 档，但基础分 ×0.8',
+		desc: '判定等级 +1 档，但得分 ×0.8',
 		rarity: 'rare',
 		tag: '兔',
 		skin: 'rabbit_new2',
@@ -583,7 +583,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yinhe',
 		name: '星河',
-		desc: '状元及以上：基础分 ×3',
+		desc: '状元及以上：得分 ×3',
 		rarity: 'rare',
 		skin: 'astronaut',
 		effect: { type: 'cond', cond: 'zhuang_yuan_plus', mult: 3 }
@@ -623,7 +623,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'kongmingdeng',
 		name: '孔明灯',
-		desc: '队伍每多 1 人：基础分 ×1.2',
+		desc: '队伍每多 1 人：得分 ×1.2',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'FalFy_glow',
@@ -650,7 +650,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'tianluo',
 		name: '田螺',
-		desc: '四进及以上：基础分 ×2.2',
+		desc: '四进及以上：得分 ×2.2',
 		rarity: 'rare',
 		skin: 'Frog',
 		effect: { type: 'cond', cond: 'si_jin_plus', mult: 2.2 }
@@ -658,7 +658,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yunhai',
 		name: '云海',
-		desc: '二举及以上：基础分 ×2.4',
+		desc: '二举及以上：得分 ×2.4',
 		rarity: 'rare',
 		skin: 'cloudly',
 		effect: { type: 'cond', cond: 'er_ju_plus', mult: 2.4 }
@@ -666,7 +666,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guishu',
 		name: '桂树',
-		desc: '每过一关：基础分 ×1.15，可叠（复利）',
+		desc: '每过一关：得分 ×1.15，可叠（复利）',
 		rarity: 'rare',
 		tag: '桂',
 		skin: 'Leafeon',
@@ -686,7 +686,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'jinyuebing',
 		name: '金饼',
-		desc: '基础分 ×3',
+		desc: '得分 ×3',
 		rarity: 'legendary',
 		tag: '饼',
 		skin: 'candy_apple',
@@ -703,7 +703,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuegongxianzi',
 		name: '仙子临凡',
-		desc: '状元及以上：基础分 ×5.5',
+		desc: '状元及以上：得分 ×5.5',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'IceWitch_AccurateAngel',
@@ -712,7 +712,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'changepair',
 		name: '嫦娥飞仙',
-		desc: '改 2 颗骰子为 4 点，但基础分 ×0.5',
+		desc: '改 2 颗骰子为 4 点，但得分 ×0.5',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'GlowPinky',
@@ -727,7 +727,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuetu',
 		name: '仙娥',
-		desc: '可投掷 3 次，且基础分 ×1.5',
+		desc: '可投掷 3 次，且得分 ×1.5',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'IceWitch_Fairy',
@@ -742,7 +742,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'chijin',
 		name: '赤金仙丹',
-		desc: '基础分 ×1.5；三红及以上再 ×2.5',
+		desc: '得分 ×1.5；三红及以上再 ×2.5',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'FireCrystalCat',
@@ -790,7 +790,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'panlong',
 		name: '蟠龙礼盒',
-		desc: '全队总分 ×1.3，每关 +4 月饼币；每 10 月饼币：该 Tee 基础分 ×1.2',
+		desc: '全队总分 ×1.3，每关 +4 月饼币；每 10 月饼币：该 Tee 得分 ×1.2',
 		rarity: 'legendary',
 		skin: 'ghost_dragon',
 		effect: {
@@ -838,7 +838,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'sixi',
 		name: '四喜饼',
-		desc: '自己每有 1 颗 4 点：基础分 ×1.25',
+		desc: '自己每有 1 颗 4 点：得分 ×1.25',
 		rarity: 'rare',
 		tag: '饼',
 		skin: 'SweetVertigo',
@@ -866,7 +866,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'hanxing',
 		name: '寒星',
-		desc: '投掷出 1 颗 1 点：获得 42 分；每多 1 颗 1 点，基础分 ×3',
+		desc: '投掷出 1 颗 1 点：获得 42 分；每多 1 颗 1 点，得分 ×3',
 		rarity: 'rare',
 		skin: 'IceWitch_Dark',
 		effect: { type: 'face_floor', face: 1, base: 42, per: 3 }
@@ -874,7 +874,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'shuangli',
 		name: '双鲤衔饼',
-		desc: '投掷出 1 颗 2 点：获得 44 分；每多 1 颗 2 点，基础分 ×3',
+		desc: '投掷出 1 颗 2 点：获得 44 分；每多 1 颗 2 点，得分 ×3',
 		rarity: 'rare',
 		tag: '饼',
 		skin: 'Aqua Fish_KZ',
@@ -883,7 +883,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'sanqiu',
 		name: '灯下三秋',
-		desc: '投掷出 1 颗 3 点：获得 45 分；每多 1 颗 3 点，基础分 ×3',
+		desc: '投掷出 1 颗 3 点：获得 45 分；每多 1 颗 3 点，得分 ×3',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_turtle',
@@ -900,7 +900,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'wugeng',
 		name: '五更桂花',
-		desc: '投掷出 1 颗 5 点：获得 44 分；每多 1 颗 5 点，基础分 ×3',
+		desc: '投掷出 1 颗 5 点：获得 44 分；每多 1 颗 5 点，得分 ×3',
 		rarity: 'rare',
 		tag: '桂',
 		skin: 'Greeny',
@@ -909,7 +909,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'liuhe',
 		name: '六合仙踪',
-		desc: '投掷出 1 颗 6 点：获得 42 分；每多 1 颗 6 点，基础分 ×3',
+		desc: '投掷出 1 颗 6 点：获得 42 分；每多 1 颗 6 点，得分 ×3',
 		rarity: 'rare',
 		tag: '仙',
 		skin: 'coala_phoenix',
@@ -995,7 +995,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutuhui',
 		name: '兔儿满堂',
-		desc: '每拥有一个独特的「兔」系角色：该 Tee 基础分 ×1.8（叠乘）；每有 1 颗四点，基础分 +1',
+		desc: '每拥有一个独特的「兔」系角色：该 Tee 得分 ×1.8（叠乘）；每有 1 颗四点，基础分 +1',
 		rarity: 'rare',
 		tag: '兔',
 		skin: 'BunnyViVi',
@@ -1004,7 +1004,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guiyuan',
 		name: '桂苑',
-		desc: '每拥有一个独特的「桂」系角色：该 Tee 基础分 ×1.4（叠乘）；每有 1 颗四点，基础分 +1',
+		desc: '每拥有一个独特的「桂」系角色：该 Tee 得分 ×1.4（叠乘）；每有 1 颗四点，基础分 +1',
 		rarity: 'rare',
 		tag: '桂',
 		skin: 'flower_crown_ghost',
@@ -1013,7 +1013,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuebingfang',
 		name: '饼坊',
-		desc: '每拥有一个独特的「饼」系角色：该 Tee 基础分 ×1.7（叠乘）；每有 1 颗四点，基础分 +1',
+		desc: '每拥有一个独特的「饼」系角色：该 Tee 得分 ×1.7（叠乘）；每有 1 颗四点，基础分 +1',
 		rarity: 'rare',
 		tag: '饼',
 		skin: 'buni',
@@ -1022,7 +1022,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'dengzhen',
 		name: '灯阵',
-		desc: '每拥有一个独特的「灯」系角色：该 Tee 基础分 ×1.5（叠乘）；每有 1 颗四点，基础分 +1',
+		desc: '每拥有一个独特的「灯」系角色：该 Tee 得分 ×1.5（叠乘）；每有 1 颗四点，基础分 +1',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_axolotl',
@@ -1031,7 +1031,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuelun',
 		name: '月轮',
-		desc: '每拥有一个独特的「月」系角色：该 Tee 基础分 ×1.2（叠乘）；每有 1 颗四点，基础分 +1',
+		desc: '每拥有一个独特的「月」系角色：该 Tee 得分 ×1.2（叠乘）；每有 1 颗四点，基础分 +1',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'cloud',
@@ -1040,7 +1040,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'xianlv',
 		name: '仙侣',
-		desc: '每拥有一个独特的「仙」系角色：该 Tee 基础分 ×1.6（叠乘）；每有 1 颗四点，基础分 +1',
+		desc: '每拥有一个独特的「仙」系角色：该 Tee 得分 ×1.6（叠乘）；每有 1 颗四点，基础分 +1',
 		rarity: 'rare',
 		tag: '仙',
 		skin: 'cammostripeangel',
@@ -1049,7 +1049,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutulinfan',
 		name: '玉兔临凡',
-		desc: '每拥有一个独特的「兔」系角色：所有「兔」系 Tee 基础分 ×1.45（叠乘）；每有 1 颗四点，基础分 +1',
+		desc: '每拥有一个独特的「兔」系角色：所有「兔」系 Tee 得分 ×1.45（叠乘）；每有 1 颗四点，基础分 +1',
 		rarity: 'legendary',
 		tag: '兔',
 		skin: 'usagi',
@@ -1058,7 +1058,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guidian',
 		name: '桂殿',
-		desc: '每拥有一个独特的「桂」系角色：所有「桂」系 Tee 基础分 ×1.2（叠乘）；每有 1 颗四点，基础分 +1',
+		desc: '每拥有一个独特的「桂」系角色：所有「桂」系 Tee 得分 ×1.2（叠乘）；每有 1 颗四点，基础分 +1',
 		rarity: 'legendary',
 		tag: '桂',
 		skin: 'ghost_greensward',
@@ -1067,7 +1067,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'tuanyuanbing',
 		name: '团圆饼',
-		desc: '每拥有一个独特的「饼」系角色：所有「饼」系 Tee 基础分 ×1.35（叠乘）；每有 1 颗四点，基础分 +1',
+		desc: '每拥有一个独特的「饼」系角色：所有「饼」系 Tee 得分 ×1.35（叠乘）；每有 1 颗四点，基础分 +1',
 		rarity: 'legendary',
 		tag: '饼',
 		skin: 'Mint Choco',
@@ -1076,7 +1076,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'changmingdeng',
 		name: '长明灯',
-		desc: '每拥有一个独特的「灯」系角色：所有「灯」系 Tee 基础分 ×1.25（叠乘）；每有 1 颗四点，基础分 +1',
+		desc: '每拥有一个独特的「灯」系角色：所有「灯」系 Tee 得分 ×1.25（叠乘）；每有 1 颗四点，基础分 +1',
 		rarity: 'legendary',
 		tag: '灯',
 		skin: 'glow_cammo',
@@ -1085,7 +1085,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'taiyin',
 		name: '太阴素月',
-		desc: '每拥有一个独特的「月」系角色：所有「月」系 Tee 基础分 ×1.15（叠乘）；每有 1 颗四点，基础分 +1',
+		desc: '每拥有一个独特的「月」系角色：所有「月」系 Tee 得分 ×1.15（叠乘）；每有 1 颗四点，基础分 +1',
 		rarity: 'legendary',
 		tag: '月',
 		skin: 'IceWitch_Queen',
@@ -1094,7 +1094,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'qunxianhui',
 		name: '群仙会',
-		desc: '每拥有一个独特的「仙」系角色：所有「仙」系 Tee 基础分 ×1.3（叠乘）；每有 1 颗四点，基础分 +1',
+		desc: '每拥有一个独特的「仙」系角色：所有「仙」系 Tee 得分 ×1.3（叠乘）；每有 1 颗四点，基础分 +1',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'Drag Queen',
@@ -1181,7 +1181,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yeshi',
 		name: '夜市饼香',
-		desc: '每卖出 1 个 Tee：基础分 ×1.25（每回合最多计 2 个）',
+		desc: '每卖出 1 个 Tee：得分 ×1.25（每回合最多计 2 个）',
 		rarity: 'rare',
 		tag: '饼',
 		skin: 'Lan_Pudding',
@@ -1190,7 +1190,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'dazhanggui',
 		name: '饼铺掌柜',
-		desc: '每累计卖出 1 个 Tee：基础分 ×1.3（每回合最多计 2 个，叠乘）',
+		desc: '每累计卖出 1 个 Tee：得分 ×1.3（每回合最多计 2 个，叠乘）',
 		rarity: 'legendary',
 		tag: '饼',
 		skin: 'biscuit',
@@ -1200,7 +1200,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'kuaiyu',
 		name: '快雨',
-		desc: '本回合每重掷 1 颗骰子：基础分 ×1.25',
+		desc: '本回合每重掷 1 颗骰子：得分 ×1.25',
 		rarity: 'rare',
 		skin: 'mermydon_glow',
 		effect: { type: 'per_reroll', mult: 1.25 }

@@ -215,7 +215,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guihuami',
 		name: '桂花蜜',
-		desc: '基础分 ×1.3',
+		desc: '得分 ×1.3',
 		rarity: 'common',
 		skin: 'cat with flowers',
 		price: 2,
@@ -225,7 +225,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'dangui',
 		name: '丹桂',
-		desc: '基础分 ×1.5',
+		desc: '得分 ×1.5',
 		rarity: 'common',
 		skin: 'Redboppenom',
 		price: 3,
@@ -235,7 +235,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yingui',
 		name: '银桂',
-		desc: '基础分 ×1.4',
+		desc: '得分 ×1.4',
 		rarity: 'common',
 		skin: 'default_flower',
 		price: 3,
@@ -245,7 +245,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yulu',
 		name: '玉露',
-		desc: '基础分 ×1.7',
+		desc: '得分 ×1.7',
 		rarity: 'rare',
 		skin: 'ender_pearl',
 		price: 4,
@@ -255,7 +255,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yuehua',
 		name: '月华',
-		desc: '基础分 ×2',
+		desc: '得分 ×2',
 		rarity: 'rare',
 		skin: 'CrystalCat',
 		price: 5,
@@ -265,7 +265,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'changuang',
 		name: '蟾光',
-		desc: '基础分 ×1.8',
+		desc: '得分 ×1.8',
 		rarity: 'rare',
 		skin: 'glow_hammie2',
 		price: 6,
@@ -275,7 +275,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guipo',
 		name: '桂魄',
-		desc: '基础分 ×2.2',
+		desc: '得分 ×2.2',
 		rarity: 'rare',
 		skin: 'babyYoda_flower',
 		price: 6,
@@ -285,7 +285,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'qinghui',
 		name: '清辉',
-		desc: '基础分 ×2.5',
+		desc: '得分 ×2.5',
 		rarity: 'legendary',
 		skin: 'AmethystCrystalCat',
 		price: 7,
@@ -295,7 +295,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'jinguiguan',
 		name: '金桂冠',
-		desc: '基础分 ×3',
+		desc: '得分 ×3',
 		rarity: 'legendary',
 		skin: 'Golden Shroom',
 		price: 8,
@@ -305,7 +305,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yueshen',
 		name: '月神面纱',
-		desc: '基础分 ×2.4',
+		desc: '得分 ×2.4',
 		rarity: 'legendary',
 		skin: 'pinkcrystal',
 		price: 8,
@@ -315,7 +315,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yusheng',
 		name: '玉绳',
-		desc: '基础分 ×2.6',
+		desc: '得分 ×2.6',
 		rarity: 'legendary',
 		skin: 'HTF_whitepinky',
 		price: 10,
@@ -325,7 +325,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'jiuzhuan',
 		name: '九转金丹',
-		desc: '基础分 ×3.2',
+		desc: '得分 ×3.2',
 		rarity: 'legendary',
 		skin: 'angel_toast_kiinmn',
 		price: 9,
@@ -496,7 +496,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'hebi',
 		name: '合璧符',
-		desc: '连号 4 颗及以上：连号每多 1 颗，基础分 ×1.5',
+		desc: '连号 4 颗及以上：连号每多 1 颗，得分 ×1.5',
 		rarity: 'rare',
 		skin: 'skeyster',
 		price: 7,
@@ -793,7 +793,7 @@ export const BUFF_CARDS: BuffCard[] = [
 
 export const BUFF_BY_ID = new Map(BUFF_CARDS.map((c) => [c.id, c]));
 
-/** 商店 6 格的稀有度权重:前 5 格是普通栏(60/35/5),最后 1 格是稀有栏(0/90/10)
+/** 中秋集市 6 格的稀有度权重:前 5 格是普通栏(60/35/5),最后 1 格是稀有栏(0/90/10)
  *
  *  原来前 5 格写死普通、后 1 格写死稀有/传说(3:1),于是 83% 的槽位都是普通,
  *  一局一半以上的普通槽位是重复;而 42 张稀有/传说挤在一个槽位里,一局只见 5~9 张。
@@ -823,7 +823,7 @@ const rollRarity = (weights: Record<Rarity, number>, pool: BuffCard[]): Rarity |
 	return avail[avail.length - 1];
 };
 
-/** 抽 6 格商店。锁定的格子保留原位(也占住池子),同一家店不出现重复卡 */
+/** 抽 6 格中秋集市。锁定的格子保留原位(也占住池子),同一家店不出现重复卡 */
 export const drawShopItems = (locks: (string | null)[] = []): BuffCard[] => {
 	// taken = 锁定的商品,既保留在原位,也从池子里排除,免得同一张占两格
 	const taken = new Set(locks.filter((id): id is string => !!id));

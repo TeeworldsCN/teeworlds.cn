@@ -1000,7 +1000,7 @@ export const economyReward = (cards: TeeCard[], mooncakes = 0): number =>
 
 // ---- 卡池工具 ----
 
-/** 卡池(商店)洗牌 */
+/** 卡池(中秋集市)洗牌 */
 export const shuffle = <T>(arr: T[]): T[] => {
 	const a = [...arr];
 	for (let i = a.length - 1; i > 0; i--) {

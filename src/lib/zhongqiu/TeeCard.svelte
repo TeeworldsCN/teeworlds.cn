@@ -4,10 +4,10 @@
 	import TeeRender, { type TeePose } from '$lib/components/TeeRender.svelte';
 
 	/**
-	 * 统一 Tee 小卡。三处复用(队伍 / 3 选 1 / 商店):
+	 * 统一 Tee 小卡。三处复用(队伍 / 3 选 1 / 中秋集市):
 	 * - 卡本体:固定尺寸,稀有度边框 + 头像 + 名字,样式统一
 	 * - 说明(desc):hover 淡入淡出弹出,可带附加信息(tipExtra)
-	 * - 操作区(actions):渲染在卡牌下方(队伍:掷骰结果;3 选 1:选择;商店:购买)
+	 * - 操作区(actions):渲染在卡牌下方(队伍:掷骰结果;3 选 1:选择;中秋集市:购买)
 	 */
 	type Props = {
 		/** 卡牌数据;null 时表示玩家自己(用 skin/name) */
@@ -32,7 +32,7 @@
 		badgeClass?: string;
 		/** 技能角标(主动技剩余冷却 / 可发动),固定卡片左下角、紫红色 —— 和加成卡角标分开 */
 		skillBadge?: string;
-		/** 卡牌下方的操作/结果区(队伍:结果;3 选 1:选择按钮;商店:购买按钮) */
+		/** 卡牌下方的操作/结果区(队伍:结果;3 选 1:选择按钮;中秋集市:购买按钮) */
 		actions?: Snippet;
 		/** 卡牌右上角角标(队伍:卖出 ×) */
 		sellBtn?: Snippet;
