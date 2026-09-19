@@ -80,7 +80,8 @@ export type TeeEffect =
 	| { type: 'reroll_all_on_none' } // 掷出"再接再厉"时自动重掷全部(每回合 1 次)
 	| { type: 'sum_chips'; per: number } // 骰子点数和 ×per 计入基础分(和值流)
 	| { type: 'own_face'; face: number; chips?: number; mult?: number; multByCount?: boolean } // 自己最终骰子里每有 1 颗该点数(multByCount: 倍率 = 该点数颗数)
-	| { type: 'per_reroll'; chips?: number; mult?: number } // 本回合每重掷 1 颗骰子
+	// chipsMult 是**基础分侧**的每颗倍率(基础分 ×chipsMult^重掷颗数),mult 才是得分侧
+	| { type: 'per_reroll'; chips?: number; mult?: number; chipsMult?: number } // 本回合每重掷 1 颗骰子
 	| { type: 'reverse'; base: number; per?: number; perRound?: number } // 逆向:基础分 = base(+每关 perRound×关数) − 等级分×per(可为负)
 	| { type: 'straight_ladder' } // 连号阶梯:123/234/345/456→一秀,1234 系→二举,12345 系→四进
 	| { type: 'straight_chips'; per: number } // 连号里每颗骰子 +per 分
@@ -555,11 +556,19 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'houyi',
 		name: '射日仙',
-		desc: '再接再厉时自动重掷全部（每回合 1 次），得分 ×2',
-		rarity: 'common',
+		desc: '再接再厉时自动重掷全部（每回合 1 次），得分 ×2；本回合每重掷 1 颗骰子：基础分 ×1.1',
+		rarity: 'rare',
 		tag: '仙',
 		skin: 'Yellow',
-		effect: { type: 'bundle', parts: [{ type: 'reroll_all_on_none' }, { type: 'mult', value: 2 }] }
+		effect: {
+			type: 'bundle',
+			parts: [
+				{ type: 'reroll_all_on_none' },
+				{ type: 'mult', value: 2 },
+				// 自动重掷也算(那 6 颗同样进 rerolled)—— 页面里 rerollCount += 6
+				{ type: 'per_reroll', chipsMult: 1.1 }
+			]
+		}
 	},
 	{
 		id: 'yupan',
@@ -1217,7 +1226,7 @@ export const CARDS: TeeCard[] = [
 		id: 'kuaiyu',
 		name: '快雨',
 		desc: '本回合每重掷 1 颗骰子：得分 ×1.5',
-		rarity: 'rare',
+		rarity: 'common',
 		skin: 'mermydon_glow',
 		effect: { type: 'per_reroll', mult: 1.5 }
 	},

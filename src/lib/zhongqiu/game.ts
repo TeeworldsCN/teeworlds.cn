@@ -636,6 +636,9 @@ export const calcTeeScore = ({
 	/** 进士:点名等级的基础分倍数(在 base 结算前累乘) */
 	let baseMult = 1;
 	let baseMultSrc = '';
+	/** 射日仙:本回合每重掷 1 颗骰子,基础分 ×N(等级底分和筹码一起放大,不动倍率链) */
+	let rerollBaseMult = 1;
+	let rerollBaseSrc = '';
 	let floorN = 0;
 	let floorFace = 0;
 	const collectFloor = (eff: TeeEffect, srcId: string) => {
@@ -815,6 +818,11 @@ export const calcTeeScore = ({
 				const bc = chips;
 				const bm = mult;
 				if (eff.chips) chips += eff.chips * rerolled;
+				// 基础分侧:先记账,末尾和等级底分一起放大(免得受效果先后顺序影响)
+				if (eff.chipsMult) {
+					rerollBaseMult *= Math.pow(eff.chipsMult, rerolled);
+					rerollBaseSrc = srcId;
+				}
 				if (eff.mult) mult *= Math.pow(eff.mult, rerolled);
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `重掷 ${rerolled} 颗`);
 				break;
@@ -926,9 +934,22 @@ export const calcTeeScore = ({
 	}
 
 	const baseRaw = Math.max(level.score, baseFloor);
-	const base = baseRaw * baseMult;
+	const baseScaled = baseRaw * baseMult;
+	const base = baseScaled * rerollBaseMult;
 	// 进士这类「等级基础分翻倍」:差值单独出一行,不然玩家只看到总分变了
-	if (baseMult !== 1) note(baseMultSrc, 'card', base - baseRaw, 1, `等级基础分 ×${baseMult}`);
+	if (baseMult !== 1) note(baseMultSrc, 'card', baseScaled - baseRaw, 1, `等级基础分 ×${baseMult}`);
+	// 射日仙:重掷越多,基础分越大 —— 等级底分和已积累的 chips 一起放大
+	if (rerollBaseMult !== 1) {
+		const beforeChips = chips;
+		chips *= rerollBaseMult;
+		note(
+			rerollBaseSrc,
+			'card',
+			base - baseScaled + (chips - beforeChips),
+			1,
+			`重掷 ${rerolled} 颗 · 基础分 ×${Number(rerollBaseMult.toFixed(3))}`
+		);
+	}
 	// 逆向:chips 全部结算完、mult 之前,把「本回合已得的净值」整个替换掉 ——
 	// chips = reverseBase − 净值。掷得越漂亮(净值越高)逆向分越低,反之吃惩罚。
 	const net = base + chips + buffChips;
