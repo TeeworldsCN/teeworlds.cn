@@ -226,10 +226,10 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'jinshi',
 		name: '进士',
-		desc: '四进、五子登科、六博黑：该等级的基础分翻倍',
+		desc: '四进、五子登科、六博黑：该等级的基础分 ×3',
 		rarity: 'common',
 		skin: 'Scholar',
-		effect: { type: 'level_base_mult', levelIds: ['si_jin', 'wu_zi', 'liu_bo_hei'], value: 2 }
+		effect: { type: 'level_base_mult', levelIds: ['si_jin', 'wu_zi', 'liu_bo_hei'], value: 3 }
 	},
 	{
 		id: 'huasheng',
