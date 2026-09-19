@@ -2898,14 +2898,14 @@
 										}}
 										disabled={sold}
 									>
-										<span class="h-4 w-4 shrink-0"
+										<span class="h-4 w-4 shrink-0 sm:h-5 sm:w-5"
 											><TeeRender name={card.skin} className="h-full w-full" /></span
 										>
 										<span
-											class="min-w-0 flex-1 truncate text-[10px] leading-tight font-semibold text-slate-200"
+											class="min-w-0 flex-1 truncate text-[11px] leading-tight font-semibold text-slate-200 sm:text-xs"
 											>{card.name}</span
 										>
-										<span class="shrink-0 text-[10px] font-bold text-amber-300"
+										<span class="shrink-0 text-[10px] font-bold text-amber-300 sm:text-[11px]"
 											>{sold ? '已买' : `🥮${card.price}`}</span
 										>
 									</button>
