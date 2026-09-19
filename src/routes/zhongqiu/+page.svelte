@@ -1683,11 +1683,12 @@
 			return;
 		}
 		if (sk.skill === 'to_four') {
-			// 先改一颗骰子为 4 点(point),再把任意四点改成任意点数(any,可反复)。
-			// 塞进改点队列最前面 —— 顺序就是「主动技 → 卡牌改点 → 加成卡」。
+			// 主动技只加自己那一步(改 1 颗为 4 点),排在改点队列最前面 ——
+			// 顺序就是「主动技 → 卡牌改点 → 加成卡」。把 4 点改成任意点数是卡自带的
+			// 恒定效果,不管技能用没用都会在队列里(collectSetOps 收的)。
 			setQueue = [
 				{ kind: 'point', count: 1, point: 4, srcId: sk.srcId },
-				{ kind: 'any', count: 6, from: 4, srcId: sk.srcId }
+				...collectSetOps(selfEffects(currentTee), team[currentTee]?.buffs ?? [])
 			];
 			nextSetOp();
 			return;

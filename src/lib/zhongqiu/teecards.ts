@@ -68,8 +68,9 @@ export type TeeEffect =
 	| { type: 'economy'; per: number } // 每关 +月饼币
 	| { type: 'interest'; per: number; perCoins: number } // 每 perCoins 月饼币,每关 +per
 	| { type: 'extra_roll'; count: number } // 该 Tee 可多投掷 count 次
-	| { type: 'set_point'; count: number; point: number } // 掷完后把 count 颗骰子改为 point
-	| { type: 'set_any'; count: number } // 掷完后把 count 颗骰子改为任意点数
+	// from: 只能挑这个点数的骰子(连珠灯的「4 点→任意点数」);options: 改后点数只能二选一
+	| { type: 'set_point'; count: number; point: number; from?: number }
+	| { type: 'set_any'; count: number; from?: number; options?: number[] } // 掷完后把 count 颗骰子改为任意点数
 	| { type: 'level_up'; count: number } // 判定等级提升 count 档(一秀→二举→四进…)
 	// 点名等级的基础分 ×value(进士:四进 / 六博黑)。注意是 chips 侧翻倍,
 	// 不是「得分 ×2」——只放大这几个等级自带的基础分,不动后面的倍率链
@@ -458,14 +459,17 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'lianzhudeng',
 		name: '连珠灯',
-		desc: '掷完后可发动：把 1 颗骰子改为 4 点，之后可反复把任意 4 点骰子改为任意点数，直到不再想改或跳过。冷却 2 关；掷出对堂：基础分 +150，得分 ×2',
+		desc: '投掷后可发动：把 1 颗骰子改为 4 点，冷却 2 关；投掷后可将任意数量的 4 点骰子改为任意点数；掷出对堂：基础分 +150，得分 ×2',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_coala_cammo',
 		effect: {
 			type: 'bundle',
 			parts: [
+				// 主动技(可选):改 1 颗骰子为 4 点,冷却 2 关
 				{ type: 'active', skill: 'to_four', cooldown: 2 },
+				// 恒定:把任意数量的 4 点改成任意点数 —— 和主动技无关,每回合都在改点队列里
+				{ type: 'set_any', count: 6, from: 4 },
 				{ type: 'cond', cond: 'dui_tang', chips: 150, mult: 2 }
 			]
 		}
