@@ -89,6 +89,9 @@ export type TeeEffect =
 	| { type: 'active'; skill: 'chips' | 'left_chips' | 'retry'; value?: number; cooldown: number }
 	// 和值类主动技:发动时按**当前骰子点数和**结算,所以参数不是固定 value
 	| { type: 'active'; skill: 'sum'; per: number; from?: number; mult?: number; cooldown: number }
+	// 改骰子的主动技(连珠灯):发动后先改一颗骰子为 4 点,再把任意四点改成任意点数。
+	// 发生在改点阶段之前 —— 所以卡牌的改点能看到它改出来的 4 点。
+	| { type: 'active'; skill: 'to_four'; cooldown: number }
 	// ---- 联动类:不再只是「换个数字的 +X 分」 ----
 	| { type: 'neighbor'; side: 'left' | 'right' | 'both'; chips?: number; mult?: number } // 给相邻 Tee 加成(自己不吃)
 	| { type: 'per_buff'; per: number; as: 'chips' | 'mult' } // 该 Tee 身上每有 1 张加成卡
@@ -452,22 +455,17 @@ export const CARDS: TeeCard[] = [
 		skin: 'star',
 		effect: { type: 'active', skill: 'sum', per: 10, from: 18, mult: 1.15, cooldown: 2 }
 	},
-
 	{
 		id: 'lianzhudeng',
 		name: '连珠灯',
-		desc: '连号 3 颗（如 123）算一秀、4 颗算二举、5 颗算四进；连号里每颗骰子：基础分 +45；连号每多 1 颗，得分 ×1.5；掷出对堂（连号 6 颗）：额外 +150、得分 ×2',
+		desc: '掷完后可发动：把 1 颗骰子改为 4 点，之后可反复把任意 4 点骰子改为任意点数，直到不再想改或跳过。冷却 2 关；掷出对堂：基础分 +150，得分 ×2',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_coala_cammo',
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'straight_ladder' },
-				{ type: 'straight_chips', per: 45 },
-				// 连号长度就是这套流派的引擎:3 连 ×1.5、4 连 ×2.3、5 连 ×3.4
-				{ type: 'straight_mult', per: 1.5, from: 2 },
-				// 招牌手不能输给别人的中档牌:满顺(对堂)额外给一笔
+				{ type: 'active', skill: 'to_four', cooldown: 2 },
 				{ type: 'cond', cond: 'dui_tang', chips: 150, mult: 2 }
 			]
 		}
@@ -554,7 +552,7 @@ export const CARDS: TeeCard[] = [
 		id: 'houyi',
 		name: '射日仙',
 		desc: '再接再厉时自动重掷全部（每回合 1 次），得分 ×2',
-		rarity: 'rare',
+		rarity: 'common',
 		tag: '仙',
 		skin: 'Yellow',
 		effect: { type: 'bundle', parts: [{ type: 'reroll_all_on_none' }, { type: 'mult', value: 2 }] }
@@ -580,7 +578,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutuyao',
 		name: '玉兔捣药',
-		desc: '判定等级 +1 档，但得分 ×0.8',
+		desc: '判定等级 +1 档，但得分 ×0.8；状元插金花：基础分翻倍',
 		rarity: 'rare',
 		tag: '兔',
 		skin: 'rabbit_new2',
@@ -588,7 +586,9 @@ export const CARDS: TeeCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'level_up', count: 1 },
-				{ type: 'mult', value: 0.8 }
+				{ type: 'mult', value: 0.8 },
+				// 已经是最高档(状元插金花)时 +1 档无处可去,改成底分翻倍顶上
+				{ type: 'level_base_mult', levelIds: ['zhuang_yuan_chajinhua'], value: 2 }
 			]
 		}
 	},

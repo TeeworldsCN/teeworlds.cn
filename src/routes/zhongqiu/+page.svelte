@@ -1029,7 +1029,7 @@
 		}
 
 		// ④ 没重掷机会了 → 继续走改点/判定
-		beginSetOps();
+		startSetPhase();
 	};
 
 	const toggleDraftPick = (idx: number) => {
@@ -1218,7 +1218,7 @@
 			rerollSel = Array(6).fill(false);
 			return;
 		}
-		beginSetOps();
+		startSetPhase();
 	};
 
 	const toggleReroll = (i: number) => {
@@ -1275,6 +1275,25 @@
 		sfxClick();
 		choosing = false;
 		rollsLeft = 0;
+		startSetPhase();
+	};
+
+	/** 会改骰子的主动技(连珠灯):必须在改点之前发动,它改出来的 4 点要让改点卡看得见 */
+	const diceActive = (i: number): ActiveSkill | null => {
+		const tee = team[i];
+		if (!tee) return null;
+		for (const sk of activeSkills(selfEffects(i), tee.buffs))
+			if (sk.skill === 'to_four' && activeReady(tee, sk)) return sk;
+		return null;
+	};
+
+	/** 改点阶段入口:先给「改骰子的主动技」一次机会,玩家跳过/用完了才进改点 */
+	const startSetPhase = () => {
+		const sk = diceActive(currentTee);
+		if (sk) {
+			pendingActive = sk;
+			return;
+		}
 		beginSetOps();
 	};
 
@@ -1633,6 +1652,7 @@
 		for (const sk of activeSkills(selfEffects(i), tee.buffs)) {
 			if (!activeReady(tee, sk)) continue;
 			if (sk.skill === 'left_chips' && i === 0) continue;
+			if (sk.skill === 'to_four') continue; // 改骰子的主动技在判定前就处理掉了
 			return sk;
 		}
 		return null;
@@ -1660,6 +1680,16 @@
 		if (sk.skill === 'retry') {
 			// 重试本关：全队分数清零重掷（目标/Boss 不变）
 			retryRound();
+			return;
+		}
+		if (sk.skill === 'to_four') {
+			// 先改一颗骰子为 4 点(point),再把任意四点改成任意点数(any,可反复)。
+			// 塞进改点队列最前面 —— 顺序就是「主动技 → 卡牌改点 → 加成卡」。
+			setQueue = [
+				{ kind: 'point', count: 1, point: 4, srcId: sk.srcId },
+				{ kind: 'any', count: 6, from: 4, srcId: sk.srcId }
+			];
+			nextSetOp();
 			return;
 		}
 		const to = sk.skill === 'left_chips' ? team[i - 1] : tee;
@@ -1714,7 +1744,13 @@
 	/** 跳过主动技能 */
 	const skipActive = () => {
 		sfxClick();
+		const wasDice = pendingActive?.skill === 'to_four';
 		pendingActive = null;
+		// 改骰子的主动技跳过了,不是收尾 —— 还要接着走改点/判定
+		if (wasDice) {
+			beginSetOps();
+			return;
+		}
 		advanceAfterTee();
 	};
 
@@ -2748,6 +2784,8 @@
 											左侧 +{formatScore(pendingActive.value)} 分
 										{:else if pendingActive.skill === 'sum'}
 											按本 Tee 点数和结算
+										{:else if pendingActive.skill === 'to_four'}
+											把一颗骰子改为 4 点，之后可反复改四点
 										{:else}
 											本关重掷
 										{/if}

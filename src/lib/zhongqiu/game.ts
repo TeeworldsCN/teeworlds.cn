@@ -378,7 +378,7 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 
 export interface ActiveSkill {
 	srcId: string;
-	skill: 'chips' | 'left_chips' | 'retry' | 'sum';
+	skill: 'chips' | 'left_chips' | 'retry' | 'sum' | 'to_four';
 	/** 固定加分(chips/left_chips 用);和值类(sum)在卡自己的效果里读参数,这里是 0 */
 	value: number;
 	cooldown: number;
@@ -386,7 +386,13 @@ export interface ActiveSkill {
 
 export const activeSkills = (self: EffectiveEffect[], buffs: AppliedBuff[] = []): ActiveSkill[] => {
 	const out: ActiveSkill[] = [];
-	for (const { eff, srcId } of self) {
+	// bundle 要拆开看:主动技可以直接挂在卡上,也可以和别的效果打包
+	// (连珠灯 = 主动技 + 对堂奖励,踩过:不拆的话技能根本收不到)
+	const walk = (eff: TeeEffect, srcId: string) => {
+		if (eff.type === 'bundle') {
+			eff.parts.forEach((p) => walk(p, srcId));
+			return;
+		}
 		if (eff.type === 'active')
 			out.push({
 				srcId,
@@ -394,7 +400,8 @@ export const activeSkills = (self: EffectiveEffect[], buffs: AppliedBuff[] = [])
 				value: 'value' in eff ? (eff.value ?? 0) : 0,
 				cooldown: eff.cooldown
 			});
-	}
+	};
+	for (const { eff, srcId } of self) walk(eff, srcId);
 	void buffs; // 目前只有卡牌带主动技能(加成卡时效太短,冷却没意义)
 	return out;
 };
