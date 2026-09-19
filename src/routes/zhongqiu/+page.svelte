@@ -617,7 +617,9 @@
 					const sample = sampleDice(lv); // 示例带 X,补成真实手牌再计分
 					t.lastDice = [...sample];
 					t.lastLevelId = lv.id;
-					t.lastScore = calcTeeScore(scoreInput(i, lv.id, sample)).total;
+					t.lastScore = calcTeeScore(
+						scoreInput(i, lv.id, liveDiceValues(sample, modsFor(i)))
+					).total;
 					sum += t.lastScore;
 				});
 				currentScore = sum;

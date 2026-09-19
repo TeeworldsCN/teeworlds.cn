@@ -50,6 +50,7 @@ export interface DiceMods {
 /** 卡牌效果 */
 export type TeeEffect =
 	| { type: 'chips'; value: number } // 基础分 +chips
+	| { type: 'live_die_chips'; per: number } // 每颗未作废的骰子:基础分 +per(空四)
 	| { type: 'mult'; value: number } // 得分 ×mult
 	| { type: 'chips_mult'; chips: number; mult: number } // 加算 + 乘算
 	| { type: 'cond'; cond: Cond; chips?: number; mult?: number } // 条件触发
@@ -1290,14 +1291,14 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'kongsi',
 		name: '空四',
-		desc: '自己掷出的 4 点作废；基础分 +150',
+		desc: '自己掷出的 4 点作废；未作废的每颗骰子：基础分 +25',
 		rarity: 'common',
 		skin: 'Black Hole',
 		effect: {
 			type: 'bundle',
 			parts: [
 				{ type: 'self_mods', mods: { void: [4] } },
-				{ type: 'chips', value: 150 }
+				{ type: 'live_die_chips', per: 25 }
 			]
 		}
 	}

@@ -648,6 +648,15 @@ export const calcTeeScore = ({
 				}
 				break;
 			}
+			case 'live_die_chips': {
+				// 空四:每颗「未作废」的骰子给 per 分。作废的骰子不算 ——
+				// 所以掷出 4 点反而少拿,迷月/影月/弦月这些「作废」Boss 也就天然克它。
+				const bc = chips;
+				const n = ownDice.length;
+				chips += eff.per * n;
+				note(srcId, 'card', chips - bc, 1, `${n} 颗未作废`);
+				break;
+			}
 			case 'mult': {
 				const before = { chips, mult };
 				mult *= eff.value;
