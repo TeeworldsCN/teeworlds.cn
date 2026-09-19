@@ -81,46 +81,6 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: { type: 'chips', value: 30 }
 	},
 	{
-		id: 'wurenxian',
-		name: '五仁馅',
-		desc: '基础分 +40',
-		rarity: 'common',
-		skin: 'Blueberry_Cat',
-		price: 2,
-		turns: 1,
-		effect: { type: 'chips', value: 40 }
-	},
-	{
-		id: 'doushaxian',
-		name: '豆沙馅',
-		desc: '基础分 +45',
-		rarity: 'common',
-		skin: 'HTF_reddy',
-		price: 2,
-		turns: 1,
-		effect: { type: 'chips', value: 45 }
-	},
-	{
-		id: 'lianrongxian',
-		name: '莲蓉馅',
-		desc: '基础分 +55',
-		rarity: 'common',
-		skin: 'mermydon_beanie',
-		price: 3,
-		turns: 1,
-		effect: { type: 'chips', value: 55 }
-	},
-	{
-		id: 'zaoni',
-		name: '枣泥',
-		desc: '基础分 +35',
-		rarity: 'common',
-		skin: 'sweet',
-		price: 3,
-		turns: 2,
-		effect: { type: 'chips', value: 35 }
-	},
-	{
 		id: 'lizi',
 		name: '栗子',
 		desc: '基础分 +50',
@@ -149,26 +109,6 @@ export const BUFF_CARDS: BuffCard[] = [
 		price: 4,
 		turns: 2,
 		effect: { type: 'chips', value: 70 }
-	},
-	{
-		id: 'xianrou',
-		name: '月华酥',
-		desc: '基础分 +80',
-		rarity: 'rare',
-		skin: 'Red Tomato',
-		price: 5,
-		turns: 2,
-		effect: { type: 'chips', value: 80 }
-	},
-	{
-		id: 'yunniang',
-		name: '玉盘酥',
-		desc: '基础分 +100',
-		rarity: 'rare',
-		skin: 'Red Coke',
-		price: 6,
-		turns: 2,
-		effect: { type: 'chips', value: 100 }
 	},
 	{
 		id: 'songren',
@@ -391,42 +331,42 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'manyuezhufu',
 		name: '满月祝福',
-		desc: '最低按"一秀"结算',
+		desc: '投掷出再接再厉时：基础分 +20，得分 ×1.5',
 		rarity: 'common',
 		skin: 'twinbop_glow',
 		price: 3,
 		turns: 2,
-		effect: { type: 'level_floor', levelId: 'yi_xiu' }
+		effect: { type: 'cond', cond: 'none', chips: 20, mult: 1.5 }
 	},
 	{
 		id: 'guiyin',
 		name: '桂荫庇佑',
-		desc: '最低按"二举"结算',
+		desc: '投掷出再接再厉时：基础分 +40，得分 ×2.4',
 		rarity: 'rare',
 		skin: 'Lahm_blue',
 		price: 5,
 		turns: 2,
-		effect: { type: 'level_floor', levelId: 'er_ju' }
+		effect: { type: 'cond', cond: 'none', chips: 40, mult: 2.4 }
 	},
 	{
 		id: 'yueshenbiyou',
 		name: '月神庇佑',
-		desc: '最低按"三红"结算',
+		desc: '投掷出再接再厉时：基础分 +50，得分 ×3',
 		rarity: 'legendary',
 		skin: 'IceWitch_MushDeer',
 		price: 8,
 		turns: 1,
-		effect: { type: 'level_floor', levelId: 'san_hong' }
+		effect: { type: 'cond', cond: 'none', chips: 50, mult: 3 }
 	},
 	{
 		id: 'changongbiyou',
 		name: '蟾宫庇佑',
-		desc: '最低按"对堂"结算',
+		desc: '投掷出再接再厉时：基础分 +50，得分 ×2.5',
 		rarity: 'legendary',
 		skin: 'clefairy',
 		price: 9,
-		turns: 1,
-		effect: { type: 'level_floor', levelId: 'dui_tang' }
+		turns: 3,
+		effect: { type: 'cond', cond: 'none', chips: 50, mult: 2.5 }
 	},
 
 	// ======== 多投掷(×2.33,压高稀有度) 4 ========
@@ -478,7 +418,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		desc: '改 1 颗骰子为 4 点',
 		rarity: 'rare',
 		skin: 'Silver',
-		price: 5,
+		price: 4,
 		turns: 1,
 		effect: { type: 'set_point', count: 1, point: 4 }
 	},
@@ -490,6 +430,18 @@ export const BUFF_CARDS: BuffCard[] = [
 		skin: 'Locked',
 		price: 3,
 		turns: 1,
+		effect: { type: 'set_point', count: 1, point: 6 }
+	},
+
+	{
+		id: 'yusuo',
+		name: '玉锁',
+		desc: '改 1 颗骰子为 6 点；本关没用掉就归还',
+		rarity: 'rare',
+		skin: 'Locked',
+		price: 4,
+		turns: 1,
+		refund: true,
 		effect: { type: 'set_point', count: 1, point: 6 }
 	},
 	// ---- 连号流补给(配合连珠灯 / 七星灯) ----
@@ -528,11 +480,12 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yuefu2',
 		name: '月斧',
-		desc: '改 1 颗骰子为 4 点',
+		desc: '改 1 颗骰子为 4 点；本关没用掉就归还',
 		rarity: 'legendary',
 		skin: 'Roaning Knight',
-		price: 9,
+		price: 8,
 		turns: 2,
+		refund: true,
 		effect: { type: 'set_point', count: 1, point: 4 }
 	},
 	{
@@ -681,17 +634,6 @@ export const BUFF_CARDS: BuffCard[] = [
 	},
 
 	{
-		id: 'yaochu',
-		name: '玉兔药杵',
-		desc: '改 1 颗骰子为 4 点；本关没用掉就归还',
-		rarity: 'rare',
-		skin: 'sleppbunny',
-		price: 7,
-		turns: 1,
-		refund: true,
-		effect: { type: 'set_point', count: 1, point: 4 }
-	},
-	{
 		id: 'yuehuabi',
 		name: '月华笔',
 		desc: '改 1 颗骰子为任意点数；本关没用掉就归还',
@@ -753,9 +695,9 @@ export const BUFF_CARDS: BuffCard[] = [
 		id: 'shuoyuefu',
 		name: '朔月符',
 		desc: '自己的 5 视为 4 点',
-		rarity: 'common',
+		rarity: 'legendary',
 		skin: 'IceWitch_Reindeer',
-		price: 3,
+		price: 8,
 		turns: 2,
 		effect: { type: 'dice_mods', mods: { map: { 5: 4 } } }
 	},
@@ -763,9 +705,9 @@ export const BUFF_CARDS: BuffCard[] = [
 		id: 'yuexiangfu',
 		name: '月相符',
 		desc: '自己的 3 视为 4 点',
-		rarity: 'common',
+		rarity: 'rare',
 		skin: 'IceWitch_MushCat',
-		price: 3,
+		price: 5,
 		turns: 2,
 		effect: { type: 'dice_mods', mods: { map: { 3: 4 } } }
 	},
@@ -773,9 +715,9 @@ export const BUFF_CARDS: BuffCard[] = [
 		id: 'guihuafu',
 		name: '桂花符',
 		desc: '自己的 2 视为 4 点',
-		rarity: 'rare',
+		rarity: 'legendary',
 		skin: 'Lahm_yellow',
-		price: 4,
+		price: 8,
 		turns: 2,
 		effect: { type: 'dice_mods', mods: { map: { 2: 4 } } }
 	},
@@ -783,9 +725,9 @@ export const BUFF_CARDS: BuffCard[] = [
 		id: 'chanjuanfu',
 		name: '婵娟符',
 		desc: '自己的 1 视为 4 点',
-		rarity: 'legendary',
+		rarity: 'rare',
 		skin: 'IceWitch_FairyDeer',
-		price: 7,
+		price: 5,
 		turns: 2,
 		effect: { type: 'dice_mods', mods: { map: { 1: 4 } } }
 	}
