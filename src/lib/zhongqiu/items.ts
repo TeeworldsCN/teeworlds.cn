@@ -471,7 +471,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: { type: 'roll', count: 2 }
 	},
 
-	// ======== 改点(×2.90 / ×4.48,强) 5 ========
+	// ======== 改点(×2.90 / ×4.48,强) 6 ========
 	{
 		id: 'yuetuchu2',
 		name: '银针',
@@ -712,6 +712,30 @@ export const BUFF_CARDS: BuffCard[] = [
 		turns: 1,
 		refund: true,
 		effect: { type: 'set_point', count: 1, point: 2 }
+	},
+	{
+		// 定值家族的中间两块拼图:普通档原来只定 2(素月盘) 和 6(金锁),
+		// 而连号阶梯的中间段(3/4/5)全靠它 —— 4 是牌面最贵的,继续留在稀有
+		id: 'xianyuepan',
+		name: '弦月盘',
+		desc: '改 1 颗骰子为 3 点；本关没用掉就归还',
+		rarity: 'common',
+		skin: 'CrystalCat',
+		price: 4,
+		turns: 1,
+		refund: true,
+		effect: { type: 'set_point', count: 1, point: 3 }
+	},
+	{
+		id: 'tuyuepan',
+		name: '凸月盘',
+		desc: '改 1 颗骰子为 5 点；本关没用掉就归还',
+		rarity: 'common',
+		skin: 'AquaFox',
+		price: 4,
+		turns: 1,
+		refund: true,
+		effect: { type: 'set_point', count: 1, point: 5 }
 	},
 
 	// ======== 点数变换 5 ========
