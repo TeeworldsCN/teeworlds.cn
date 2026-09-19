@@ -935,21 +935,24 @@ export const calcTeeScore = ({
 
 	const baseRaw = Math.max(level.score, baseFloor);
 	const baseScaled = baseRaw * baseMult;
+	// 射日仙:每重掷一颗,整块基础分 ×N —— 等级底分、卡牌筹码、加成卡筹码一起放大
+	// (所以它能和道具的倍率叠着爆;作用在基础分侧而不是得分侧)
+	const preScale = baseScaled + chips + buffChips;
+	if (rerollBaseMult !== 1) {
+		chips *= rerollBaseMult;
+		buffChips *= rerollBaseMult;
+	}
 	const base = baseScaled * rerollBaseMult;
 	// 进士这类「等级基础分翻倍」:差值单独出一行,不然玩家只看到总分变了
 	if (baseMult !== 1) note(baseMultSrc, 'card', baseScaled - baseRaw, 1, `等级基础分 ×${baseMult}`);
-	// 射日仙:重掷越多,基础分越大 —— 等级底分和已积累的 chips 一起放大
-	if (rerollBaseMult !== 1) {
-		const beforeChips = chips;
-		chips *= rerollBaseMult;
+	if (rerollBaseMult !== 1)
 		note(
 			rerollBaseSrc,
 			'card',
-			base - baseScaled + (chips - beforeChips),
+			preScale * (rerollBaseMult - 1),
 			1,
 			`重掷 ${rerolled} 颗 · 基础分 ×${Number(rerollBaseMult.toFixed(3))}`
 		);
-	}
 	// 逆向:chips 全部结算完、mult 之前,把「本回合已得的净值」整个替换掉 ——
 	// chips = reverseBase − 净值。掷得越漂亮(净值越高)逆向分越低,反之吃惩罚。
 	const net = base + chips + buffChips;

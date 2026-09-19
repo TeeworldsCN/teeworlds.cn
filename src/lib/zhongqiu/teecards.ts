@@ -556,7 +556,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'houyi',
 		name: '射日仙',
-		desc: '再接再厉时自动重掷全部（每回合 1 次），得分 ×2；本回合每重掷 1 颗骰子：基础分 ×1.1',
+		desc: '再接再厉时自动重掷全部（每回合 1 次）；本回合每重掷 1 颗骰子：基础分 ×1.5',
 		rarity: 'rare',
 		tag: '仙',
 		skin: 'Yellow',
@@ -564,9 +564,9 @@ export const CARDS: TeeCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'reroll_all_on_none' },
-				{ type: 'mult', value: 2 },
-				// 自动重掷也算(那 6 颗同样进 rerolled)—— 页面里 rerollCount += 6
-				{ type: 'per_reroll', chipsMult: 1.1 }
+				// 自动重掷也算(那 6 颗同样进 rerolled)—— 页面里 rerollCount += 6。
+				// 作用在基础分侧:能和道具的得分倍率叠着爆(得分 ×2 那半段已去掉)。
+				{ type: 'per_reroll', chipsMult: 1.5 }
 			]
 		}
 	},
