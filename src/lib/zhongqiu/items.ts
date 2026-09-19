@@ -514,6 +514,18 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: { type: 'bump_point', count: 1 }
 	},
 	{
+		// 月牙尺的反向。补连号的缺口有两种姿势:捏着缺口下邻就 +1,捏着上邻就 −1
+		// (持 2 3 4 6 缺 5 → 要 6→5)。池子里原来只有「+1」这半边,另一半只能买传说的改任意点数
+		id: 'queyuechi',
+		name: '缺月尺',
+		desc: '改 1 颗骰子点数 −1',
+		rarity: 'common',
+		skin: 'darklightevilwolfe',
+		price: 3,
+		turns: 2,
+		effect: { type: 'bump_point', count: 1, value: -1 }
+	},
+	{
 		id: 'yuefu2',
 		name: '月斧',
 		desc: '改 1 颗骰子为 4 点',

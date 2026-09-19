@@ -333,12 +333,14 @@ export interface SetOp {
 	kind: 'point' | 'any' | 'bump';
 	count: number;
 	point?: number;
+	/** bump: 位移方向(+1 月牙尺 / −1 缺月尺) */
+	step?: number;
 	srcId?: string;
 }
 
 export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []): SetOp[] => {
 	const ops: SetOp[] = [];
-	type AnyEff = { type: string; parts?: AnyEff[]; count?: number; point?: number };
+	type AnyEff = { type: string; parts?: AnyEff[]; count?: number; point?: number; value?: number };
 	const walk = (e: AnyEff, srcId: string) => {
 		if (e.type === 'bundle') {
 			(e.parts ?? []).forEach((p) => walk(p, srcId));
@@ -347,7 +349,8 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 		if (e.type === 'set_point')
 			ops.push({ kind: 'point', count: e.count ?? 1, point: e.point ?? 4, srcId });
 		else if (e.type === 'set_any') ops.push({ kind: 'any', count: e.count ?? 1, srcId });
-		else if (e.type === 'bump_point') ops.push({ kind: 'bump', count: e.count ?? 1, srcId });
+		else if (e.type === 'bump_point')
+			ops.push({ kind: 'bump', count: e.count ?? 1, step: e.value ?? 1, srcId });
 	};
 	for (const { eff, srcId } of self) walk(eff as unknown as AnyEff, srcId);
 	for (const b of buffs) {
@@ -1076,7 +1079,7 @@ export type RunTeamSlot = {
 export type RunOp =
 	| { kind: 'set_point'; count: number; point: number; srcId?: string }
 	| { kind: 'set_any'; count: number; pick?: number; srcId?: string }
-	| { kind: 'bump'; count: number; srcId?: string };
+	| { kind: 'bump'; count: number; step?: number; srcId?: string };
 
 export type RunSave = {
 	v: number;

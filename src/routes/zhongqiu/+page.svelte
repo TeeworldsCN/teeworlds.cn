@@ -342,7 +342,7 @@
 	type PendingAction =
 		| { kind: 'set_point'; count: number; point: number; srcId?: string }
 		| { kind: 'set_any'; count: number; pick?: number; srcId?: string }
-		| { kind: 'bump'; count: number; srcId?: string }; // 月牙尺:点一颗骰子,它的点数 +1
+		| { kind: 'bump'; count: number; step?: number; srcId?: string }; // 月牙尺 +1 / 缺月尺 −1:点一颗骰子
 	let pendingAction = $state<PendingAction | null>(null);
 	let pointPicker = $state(false); // set_any 的点数选择
 	let setQueue: SetOp[] = [];
@@ -1228,7 +1228,8 @@
 		}
 		if (op.kind === 'point')
 			pendingAction = { kind: 'set_point', count: op.count, point: op.point ?? 4, srcId: op.srcId };
-		else if (op.kind === 'bump') pendingAction = { kind: 'bump', count: op.count, srcId: op.srcId };
+		else if (op.kind === 'bump')
+			pendingAction = { kind: 'bump', count: op.count, step: op.step ?? 1, srcId: op.srcId };
 		else pendingAction = { kind: 'set_any', count: op.count, srcId: op.srcId };
 	};
 
@@ -1247,9 +1248,10 @@
 			if (act.srcId)
 				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 		} else if (act.kind === 'bump') {
-			// 月牙尺：+1（6 点封顶，再点没意义）
-			if (dice[i] >= 6) return;
-			dice[i] = dice[i] + 1;
+			// 月牙尺 +1(6 点封顶) / 缺月尺 −1(1 点封底),够不到就再点没意义
+			const step = act.step ?? 1;
+			if (step > 0 ? dice[i] >= 6 : dice[i] <= 1) return;
+			dice[i] = dice[i] + step;
 			markOpted();
 			act.count -= 1;
 			if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
@@ -2630,7 +2632,9 @@
 									>
 								{:else if pendingAction?.kind === 'bump'}
 									<span class="text-cyan-300"
-										>{opSrcName(pendingAction.srcId)} ✨ 点骰子让它 +1{#if pendingAction.count > 1}(还剩
+										>{opSrcName(pendingAction.srcId)} ✨ 点骰子让它 {(pendingAction.step ?? 1) < 0
+											? '−1'
+											: '+1'}{#if pendingAction.count > 1}(还剩
 											{pendingAction.count} 颗){/if}</span
 									>
 								{:else if pendingAction?.kind === 'set_any'}
