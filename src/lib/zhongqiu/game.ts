@@ -396,17 +396,8 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 
 export interface ActiveSkill {
 	srcId: string;
-	skill:
-		| 'chips'
-		| 'left_chips'
-		| 'retry'
-		| 'sum'
-		| 'to_four'
-		| 'mult'
-		| 'total_add'
-		| 'end_round'
-		| 'sell_self';
-	/** 固定加分(chips/left_chips/total_add 用);和值类(sum)在卡自己的效果里读参数,这里是 0 */
+	skill: 'chips' | 'left_chips' | 'retry' | 'sum' | 'to_four' | 'mult' | 'end_round' | 'sell_self';
+	/** 固定加分(chips/left_chips 用);和值类(sum)在卡自己的效果里读参数,这里是 0 */
 	value: number;
 	cooldown: number;
 	/** 发动要花的月饼币(猜谜) */
@@ -920,16 +911,6 @@ export const calcTeeScore = ({
 				if (eff.mult) mult *= Math.pow(eff.mult, n);
 				if (eff.multByCount) mult *= n;
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `自己 ${n} 个${eff.face}`);
-				break;
-			}
-			case 'own_face_add': {
-				// 该 Tee 自己的骰子里每颗 face 点:倍率 **加算** +per(桂树)。
-				// 加算而不是 ×per —— 采颗数只会线性堆倍率,不会指数爆炸。
-				const n = ownDice.filter((v) => v === eff.face).length;
-				if (n <= 0) break;
-				const bm = mult;
-				mult += eff.per * n;
-				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `自己 ${n} 个${eff.face}`);
 				break;
 			}
 			case 'straight_chips': {

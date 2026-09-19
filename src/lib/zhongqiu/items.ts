@@ -463,7 +463,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'hebi',
 		name: '合璧符',
-		desc: '连号 4 颗及以上：连号每多 1 颗，得分 ×1.5',
+		desc: '连号 4 颗及以上：连号每多 1 颗，倍率增长 ×1.5',
 		rarity: 'rare',
 		skin: 'skeyster',
 		price: 7,

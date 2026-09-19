@@ -376,13 +376,11 @@
 							? '按本 Tee 点数和结算'
 							: sk.skill === 'mult'
 								? `该 Tee 得分 ×${formatMult(sk.mult ?? 1)}（花 🥮 ${sk.cost ?? 0}）`
-								: sk.skill === 'total_add'
-									? `该 Tee 总分 +${formatScore(sk.value)}`
-									: sk.skill === 'end_round'
-										? `结束本关 · 未投角色 +🥮 ${sk.perTee ?? 0}`
-										: sk.skill === 'sell_self'
-											? `回合结算时出售「我」 +🥮 ${sk.coins ?? 0}`
-											: '本关重掷';
+								: sk.skill === 'end_round'
+									? `结束本关 · 未投角色 +🥮 ${sk.perTee ?? 0}`
+									: sk.skill === 'sell_self'
+										? `回合结算时出售「我」 +🥮 ${sk.coins ?? 0}`
+										: '本关重掷';
 			lines.push({
 				// 时机(掷完可发动)卡牌 desc 里已经写全,这里只说还能不能发动
 				text: `⚡ ${nm}:${what}${(tee.charge ?? 0) > 0 ? `(冷却 ${tee.charge} 关)` : '（可发动）'}`,
@@ -2038,29 +2036,6 @@
 		const to = sk.skill === 'left_chips' ? team[i - 1] : tee;
 		if (!to) {
 			advanceAfterTee();
-			return;
-		}
-		// 月宫广寒:掷完可发动,给该 Tee 的**总分**加一笔(加算,不是倍率)
-		if (sk.skill === 'total_add') {
-			const before = tee.lastScore;
-			const after = before + sk.value;
-			tee.lastScore = after;
-			currentScore += sk.value;
-			settleSteps = [
-				...settleSteps,
-				{
-					// 总分那一层的加减 —— 写成 before → after,和叠加倍率(紫)区分开
-					text: `⚡ ${name} · 总分 +${formatScore(sk.value)}：${formatScore(before)} → ${formatScore(after)}`,
-					cls: 'font-bold text-amber-200',
-					kind: 'total'
-				}
-			];
-			settleIdx = settleSteps.length - 1;
-			sfxTotal(true);
-			setTimeout(() => {
-				if (gen !== animGen) return;
-				advanceAfterTee();
-			}, 700 / speed);
 			return;
 		}
 		// 猜谜:先扣币,再把这只 Tee 已结算的得分乘一层(和值技能同一套路:事后补一行)
