@@ -626,6 +626,9 @@ export const calcTeeScore = ({
 
 	let baseFloor = 0;
 	let floorSrcId = '';
+	/** 进士:点名等级的基础分倍数(在 base 结算前累乘) */
+	let baseMult = 1;
+	let baseMultSrc = '';
 	let floorN = 0;
 	let floorFace = 0;
 	const collectFloor = (eff: TeeEffect, srcId: string) => {
@@ -647,6 +650,12 @@ export const calcTeeScore = ({
 
 	const apply = (eff: TeeEffect, srcId: string, skipTeamWide = false) => {
 		switch (eff.type) {
+			case 'level_base_mult': {
+				if (!eff.levelIds.includes(levelId)) break;
+				baseMult *= eff.value;
+				baseMultSrc = srcId;
+				break;
+			}
 			case 'chips': {
 				const before = { chips, mult };
 				chips += eff.value;
@@ -909,7 +918,10 @@ export const calcTeeScore = ({
 		}
 	}
 
-	const base = Math.max(level.score, baseFloor);
+	const baseRaw = Math.max(level.score, baseFloor);
+	const base = baseRaw * baseMult;
+	// 进士这类「等级基础分翻倍」:差值单独出一行,不然玩家只看到总分变了
+	if (baseMult !== 1) note(baseMultSrc, 'card', base - baseRaw, 1, `等级基础分 ×${baseMult}`);
 	// 逆向:chips 全部结算完、mult 之前,把「本回合已得的净值」整个替换掉 ——
 	// chips = reverseBase − 净值。掷得越漂亮(净值越高)逆向分越低,反之吃惩罚。
 	const net = base + chips + buffChips;

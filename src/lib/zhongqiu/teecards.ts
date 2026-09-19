@@ -71,6 +71,9 @@ export type TeeEffect =
 	| { type: 'set_point'; count: number; point: number } // 掷完后把 count 颗骰子改为 point
 	| { type: 'set_any'; count: number } // 掷完后把 count 颗骰子改为任意点数
 	| { type: 'level_up'; count: number } // 判定等级提升 count 档(一秀→二举→四进…)
+	// 点名等级的基础分 ×value(进士:四进 / 六博黑)。注意是 chips 侧翻倍,
+	// 不是「得分 ×2」——只放大这几个等级自带的基础分,不动后面的倍率链
+	| { type: 'level_base_mult'; levelIds: string[]; value: number }
 	| { type: 'self_mods'; mods: DiceMods } // 自己的骰子点数变换
 	| { type: 'copy_right'; mult?: number } // 复制右侧 Tee 的卡牌(可再 ×mult 超车)
 	| { type: 'reroll_all_on_none' } // 掷出"再接再厉"时自动重掷全部(每回合 1 次)
@@ -185,7 +188,7 @@ export const condHit = (cond: Cond, levelId: string, levelScore: number): boolea
 // ---- 卡池(50) ----
 
 export const CARDS: TeeCard[] = [
-	// ======== 普通 21 ========
+	// ======== 普通 22 ========
 	{
 		id: 'yutou',
 		name: '芋泥饼',
@@ -219,6 +222,14 @@ export const CARDS: TeeCard[] = [
 		rarity: 'common',
 		skin: 'BerryCat',
 		effect: { type: 'cond', cond: 'si_jin_plus', chips: 100 }
+	},
+	{
+		id: 'jinshi',
+		name: '进士',
+		desc: '四进、六博黑：该等级的基础分翻倍',
+		rarity: 'common',
+		skin: 'Scholar',
+		effect: { type: 'level_base_mult', levelIds: ['si_jin', 'liu_bo_hei'], value: 2 }
 	},
 	{
 		id: 'huasheng',
