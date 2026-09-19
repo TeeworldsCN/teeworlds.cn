@@ -95,7 +95,7 @@
 		sfxTotal,
 		sfxWin
 	} from '$lib/zhongqiu/sfx';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { setLayoutTheme } from '$lib/layoutTheme.svelte';
 	import Fa from 'svelte-fa';
 	import {
@@ -1241,7 +1241,16 @@
 		playRerollAnim(sel, afterRoll);
 	};
 
-	const playRerollAnim = (sel: boolean[], done: () => void) => {
+	/**
+	 * 重掷动画。连续两次重掷之间(手动重掷 → 再接再厉触发自动重掷)必须让 DOM
+	 * 真正更新一帧:上一轮的收尾是 `rolling = false; done()` 同步跑完的,
+	 * 如果 done() 里立刻又开一轮,`rolling` 从没变回 false 落到 DOM 上,
+	 * 已经在转的那几颗骰子 class 没变化 → 浏览器不会重播 shake 动画(用户报过)。
+	 * 所以这里先摘掉 rolling、等一帧、再挂上,强制所有选中的骰子重播。
+	 */
+	const playRerollAnim = async (sel: boolean[], done: () => void) => {
+		rolling = false;
+		await tick();
 		pendingRollKind = 'reroll';
 		rolling = true;
 		rollMask = [...sel];
