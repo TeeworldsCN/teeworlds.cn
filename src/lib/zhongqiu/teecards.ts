@@ -1201,10 +1201,10 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'kuaiyu',
 		name: '快雨',
-		desc: '本回合每重掷 1 颗骰子：得分 ×1.25',
+		desc: '本回合每重掷 1 颗骰子：得分 ×1.5',
 		rarity: 'rare',
 		skin: 'mermydon_glow',
-		effect: { type: 'per_reroll', mult: 1.25 }
+		effect: { type: 'per_reroll', mult: 1.5 }
 	},
 	{
 		id: 'jinchan',
