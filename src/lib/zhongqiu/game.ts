@@ -724,7 +724,11 @@ export const calcTeeScore = ({
 	if (baseFloor > level.score)
 		note(floorSrcId, 'card', baseFloor - level.score, 1, `自己 ${floorN} 个${floorFace}`);
 
-	const apply = (eff: TeeEffect, srcId: string, skipTeamWide = false) => {
+	/**
+	 * @param skipTeamWide 正在算「这张卡自己那只 Tee」的轮 —— 全队型效果交给下面「全队那一轮」统一发
+	 * @param onScoredTee  这张卡是不是长在「正在算分的这只 Tee」身上（全队那一轮里，队友的卡是 false）
+	 */
+	const apply = (eff: TeeEffect, srcId: string, skipTeamWide = false, onScoredTee = true) => {
 		switch (eff.type) {
 			case 'level_base_mult': {
 				if (!eff.levelIds.includes(levelId)) break;
@@ -862,9 +866,21 @@ export const calcTeeScore = ({
 				// 流派倍率 = 幂(×per^N):文案是「每拥有一个独特的「X」系角色:得分 ×N」,
 				// 也就是每张同流派卡再乘一层。全套改成乘算之后,这里跟着回幂。
 				else mult *= Math.pow(eff.per, n);
-				// 底分 = 四点颗数(用最终骰子,「1、6 视为 4」已算进去):
-				if (eff.chipsPerFour) chips += ownDice.filter((d) => d === 4).length * eff.chipsPerFour;
-				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `${eff.tag}系 ${n} 张`);
+				// 底分 = 四点颗数(用最终骰子,「1、6 视为 4」已算进去)。
+				// 只算给「长这张卡的那只 Tee」—— 卡面写的是「每有 1 颗 4 点,该 Tee 基础分 +300」。
+				// 这个 case 在全队那一轮里会为**每只同流派 Tee** 跑一遍,不把门就变成
+				// 「凡是同流派 Tee,自己的四点也换 +300」,和文案的「该 Tee」对不上。
+				const fours = ownDice.filter((d) => d === 4).length;
+				const fromFour = eff.chipsPerFour && onScoredTee ? fours * eff.chipsPerFour : 0;
+				chips += fromFour;
+				// 注解要配得上这个数:四点换来的底分不能只写「月系 3 张」(那说的是倍率那半)
+				note(
+					srcId,
+					'card',
+					chips - bc,
+					bm === 0 ? 1 : mult / bm,
+					`${eff.tag}系 ${n} 张${fromFour ? ` · 自己 ${fours} 个4` : ''}`
+				);
 				break;
 			}
 			case 'on_player': {
@@ -1040,7 +1056,7 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'bundle':
-				eff.parts.forEach((p) => apply(p, srcId, skipTeamWide));
+				eff.parts.forEach((p) => apply(p, srcId, skipTeamWide, onScoredTee));
 				break;
 			default:
 				break; // team_mult / economy / interest / extra_roll / set_* / self_mods / level_up / copy_right 不在这里计分
@@ -1049,20 +1065,24 @@ export const calcTeeScore = ({
 
 	// 自己卡牌的效果(跳过全队效果,免得和下面那轮重复计算)
 	for (const { eff, srcId } of self) apply(eff, srcId, true);
-	for (const list of allSelf) {
-		for (const { eff, srcId } of list) {
-			if (eff.type === 'team_chips') apply(eff, srcId, false);
-			else if (eff.type === 'on_player' && eff.teamWide) apply(eff, srcId, false);
+	for (let j = 0; j < allSelf.length; j++) {
+		// 这一轮里跑的是「全队」的效果,但每张卡还是长在某一只 Tee 身上 ——
+		// per_tag 的「四点换底分」只归它自己那只(见上面的 chipsPerFour)。
+		const onScoredTee = j === index;
+		for (const { eff, srcId } of allSelf[j]) {
+			if (eff.type === 'team_chips') apply(eff, srcId, false, onScoredTee);
+			else if (eff.type === 'on_player' && eff.teamWide) apply(eff, srcId, false, onScoredTee);
 			// 流派流的传说档:一张卡把全队同流派都抬起来
-			else if (eff.type === 'per_tag' && eff.teamWide) apply(eff, srcId, false);
+			else if (eff.type === 'per_tag' && eff.teamWide) apply(eff, srcId, false, onScoredTee);
 			// 重复牌倍率:卡在谁身上都生效,但只抬主 Tee(自己那一轮已跳过)
-			else if (eff.type === 'face_count_chips') apply(eff, srcId, false);
+			else if (eff.type === 'face_count_chips') apply(eff, srcId, false, onScoredTee);
 			// 星河:「我」自己的倍率(卡长在别人身上,得利的是「我」)
-			else if (eff.type === 'player_die_mult') apply(eff, srcId, false);
+			else if (eff.type === 'player_die_mult') apply(eff, srcId, false, onScoredTee);
 			// 上面那几种可能被包在 bundle 里(改点卡的「重复牌倍率」就是)
 			else if (eff.type === 'bundle')
 				for (const p of eff.parts)
-					if (p.type === 'face_count_chips' || p.type === 'player_die_mult') apply(p, srcId, false);
+					if (p.type === 'face_count_chips' || p.type === 'player_die_mult')
+						apply(p, srcId, false, onScoredTee);
 		}
 	}
 	// 相邻 Tee 是指向别人的支援卡:站在我左边/右边的人给我加成

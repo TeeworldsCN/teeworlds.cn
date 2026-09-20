@@ -1103,7 +1103,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutuhui',
 		name: '兔儿满堂',
-		desc: '每拥有一个独特的「兔」系角色：该 Tee 得分 ×1.42；每有 1 颗 4 点，基础分 +150',
+		desc: '每拥有一个独特的「兔」系角色：该 Tee 得分 ×1.42；每有 1 颗 4 点，该 Tee 基础分 +150',
 		rarity: 'rare',
 		tag: '兔',
 		skin: 'BunnyViVi',
@@ -1112,7 +1112,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guiyuan',
 		name: '桂苑',
-		desc: '每拥有一个独特的「桂」系角色：该 Tee 得分 ×1.39；每有 1 颗 4 点，基础分 +150',
+		desc: '每拥有一个独特的「桂」系角色：该 Tee 得分 ×1.39；每有 1 颗 4 点，该 Tee 基础分 +150',
 		rarity: 'rare',
 		tag: '桂',
 		skin: 'flower_crown_ghost',
@@ -1121,7 +1121,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuebingfang',
 		name: '饼坊',
-		desc: '每拥有一个独特的「饼」系角色：该 Tee 得分 ×1.26；每有 1 颗 4 点，基础分 +150',
+		desc: '每拥有一个独特的「饼」系角色：该 Tee 得分 ×1.26；每有 1 颗 4 点，该 Tee 基础分 +150',
 		rarity: 'rare',
 		tag: '饼',
 		skin: 'buni',
@@ -1130,7 +1130,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'dengzhen',
 		name: '灯阵',
-		desc: '每拥有一个独特的「灯」系角色：该 Tee 得分 ×1.41；每有 1 颗 4 点，基础分 +150',
+		desc: '每拥有一个独特的「灯」系角色：该 Tee 得分 ×1.41；每有 1 颗 4 点，该 Tee 基础分 +150',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_axolotl',
@@ -1139,7 +1139,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuelun',
 		name: '月轮',
-		desc: '每拥有一个独特的「月」系角色：该 Tee 得分 ×1.36；每有 1 颗 4 点，基础分 +150',
+		desc: '每拥有一个独特的「月」系角色：该 Tee 得分 ×1.36；每有 1 颗 4 点，该 Tee 基础分 +150',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'cloud',
@@ -1148,7 +1148,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'xianlv',
 		name: '仙侣',
-		desc: '每拥有一个独特的「仙」系角色：该 Tee 得分 ×1.41；每有 1 颗 4 点，基础分 +150',
+		desc: '每拥有一个独特的「仙」系角色：该 Tee 得分 ×1.41；每有 1 颗 4 点，该 Tee 基础分 +150',
 		rarity: 'rare',
 		tag: '仙',
 		skin: 'cammostripeangel',
@@ -1157,7 +1157,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yutulinfan',
 		name: '玉兔临凡',
-		desc: '每拥有一个独特的「兔」系角色：所有「兔」系 Tee 得分 ×1.42；每有 1 颗 4 点，基础分 +300',
+		desc: '每拥有一个独特的「兔」系角色：所有「兔」系 Tee 得分 ×1.42；每有 1 颗 4 点，该 Tee 基础分 +300',
 		rarity: 'legendary',
 		tag: '兔',
 		skin: 'usagi',
@@ -1166,7 +1166,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guidian',
 		name: '桂殿',
-		desc: '每拥有一个独特的「桂」系角色：所有「桂」系 Tee 得分 ×1.39；每有 1 颗 4 点，基础分 +300',
+		desc: '每拥有一个独特的「桂」系角色：所有「桂」系 Tee 得分 ×1.39；每有 1 颗 4 点，该 Tee 基础分 +300',
 		rarity: 'legendary',
 		tag: '桂',
 		skin: 'ghost_greensward',
@@ -1175,7 +1175,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'tuanyuanbing',
 		name: '团圆饼',
-		desc: '每拥有一个独特的「饼」系角色：所有「饼」系 Tee 得分 ×1.26；每有 1 颗 4 点，基础分 +300',
+		desc: '每拥有一个独特的「饼」系角色：所有「饼」系 Tee 得分 ×1.26；每有 1 颗 4 点，该 Tee 基础分 +300',
 		rarity: 'legendary',
 		tag: '饼',
 		skin: 'Mint Choco',
@@ -1184,7 +1184,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'changmingdeng',
 		name: '长明灯',
-		desc: '每拥有一个独特的「灯」系角色：所有「灯」系 Tee 得分 ×1.41；每有 1 颗 4 点，基础分 +300',
+		desc: '每拥有一个独特的「灯」系角色：所有「灯」系 Tee 得分 ×1.41；每有 1 颗 4 点，该 Tee 基础分 +300',
 		rarity: 'legendary',
 		tag: '灯',
 		skin: 'glow_cammo',
@@ -1193,7 +1193,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'taiyin',
 		name: '太阴素月',
-		desc: '每拥有一个独特的「月」系角色：所有「月」系 Tee 得分 ×1.36；每有 1 颗 4 点，基础分 +300',
+		desc: '每拥有一个独特的「月」系角色：所有「月」系 Tee 得分 ×1.36；每有 1 颗 4 点，该 Tee 基础分 +300',
 		rarity: 'legendary',
 		tag: '月',
 		skin: 'IceWitch_Queen',
@@ -1202,7 +1202,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'qunxianhui',
 		name: '群仙会',
-		desc: '每拥有一个独特的「仙」系角色：所有「仙」系 Tee 得分 ×1.41；每有 1 颗 4 点，基础分 +300',
+		desc: '每拥有一个独特的「仙」系角色：所有「仙」系 Tee 得分 ×1.41；每有 1 颗 4 点，该 Tee 基础分 +300',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'Drag Queen',
