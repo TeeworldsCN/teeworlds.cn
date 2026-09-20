@@ -281,13 +281,17 @@ export interface TeamTee {
 export const TEAM_LIMIT = 6;
 
 /**
- * 把「我」归位到队首,并保证全队**有且只有一个** isSelf。
+ * 把「我」归位到队首,并保证**至多一个** isSelf。
  *
  * 这是「我」的身份不变量:
  *   1. 已经标了 isSelf 的 Tee 搬到下标 0;
  *   2. 一个都没标(旧存档 / 作弊注入)→ 认 `cardId === null` 那个;
- *   3. 还是没有(存档里「我」丢了)→ 认下标 0(降级,至少不会全队乱套);
- *   4. 多标了 → 只留第一个。
+ *   3. **都没有 → 就一个 isSelf 也不设**。
+ *
+ * 第 3 条是刻意的:「我」可能压根不在队伍里(作弊注入 / 异常存档)。
+ * 这时**不编造一个「我」出来** —— 所有依赖「我」的效果(望月怀远 / 明月共照 /
+ * 星河 / 点数映射 …)自然不触发,而不是把某个队友错当成「我」。
+ * 老实现是「降级认下标 0」,那会让第一只 Tee 凭空获得「我」的身份。
  *
  * 任何改队伍的地方(读档 / 卖 Tee / 归家卖「我」/ 作弊 setTeam)都要过它。
  */
@@ -295,7 +299,8 @@ export const normalizeSelf = (team: TeamTee[]): TeamTee[] => {
 	if (team.length === 0) return team;
 	let idx = team.findIndex((t) => t.isSelf);
 	if (idx < 0) idx = team.findIndex((t) => t.cardId === null);
-	if (idx < 0) idx = 0;
+	// 「我」不在队里:清掉所有 isSelf,别让别人顶替
+	if (idx < 0) return team.map((t) => (t.isSelf ? { ...t, isSelf: false } : t));
 	const out = team.map((t, i) => (i === idx ? { ...t, isSelf: true } : { ...t, isSelf: false }));
 	if (idx !== 0) {
 		const [me] = out.splice(idx, 1);
@@ -622,6 +627,14 @@ export interface ScoreInput {
 	 * 队伍可能被重排(归家卖「我」)、读档、或「我」压根不在队里。
 	 */
 	isSelf: boolean;
+	/**
+	 * 这一局「我」是否在队伍里。
+	 *
+	 * 为 false 时,所有依赖「我的骰面/我的掷骰等级/我的作废颗数」的效果
+	 * 一律不触发 —— 「我」不在,就没有「我的」骰子。
+	 * (不这么判的话,playerDice 是空的,`6 - 0 = 6` 会凭空爆出 ×1.5⁶ 这种数字。)
+	 */
+	hasSelf: boolean;
 	teamCards: (TeeCard | null)[];
 	growth: GrowthMap;
 	buffs: AppliedBuff[];
@@ -662,6 +675,7 @@ export const calcTeeScore = ({
 	allSelf,
 	index,
 	isSelf,
+	hasSelf,
 	teamCards,
 	growth,
 	buffs,
@@ -810,6 +824,7 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'face_count_chips': {
+				if (!hasSelf) break;
 				// 「我」掷出的点数统计 —— 认身份,不认下标
 				if (skipTeamWide || !isSelf) break;
 				{
@@ -952,6 +967,7 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'on_player': {
+				if (!hasSelf) break;
 				// 「我」掷出某等级及以上 → 给**持卡者**加基础分/倍率(文案「该 Tee」)。
 				// teamWide:全队都吃(交给全队那一轮统一发,这里跳过)。
 				if (eff.teamWide && skipTeamWide) break;
@@ -966,6 +982,7 @@ export const calcTeeScore = ({
 			}
 
 			case 'player_die': {
+				if (!hasSelf) break;
 				// 「我」的骰子里有几个 eff.face → 给**这张卡的持有者**加基础分/倍率。
 				// 文案写「该 Tee」:触发看「我」,得利看持卡者。
 				// 所以【不加 isSelf 判定】—— 它在持卡者自己那一轮(self 那轮)结算,
@@ -996,6 +1013,10 @@ export const calcTeeScore = ({
 				// 别的 Tee 算分时不会走到这里 —— 全队那一轮只挑 self_mult / bundle 转发。
 				// 作废颗数按**「我」的**骰子算(文案是「我每有 1 颗作废骰子」),
 				// 不是持卡者自己的 —— 持卡者的骰面与这条无关。playerDice 就是「我」那一手。
+				//
+				// ⚠️ 「我」不在队里时 playerDice 是空的 —— 那会让 6-0=6 颗「作废」,凭空爆出
+				// ×1.5⁶。没有「我」就没有「我的作废骰子」,直接不触发。
+				if (!hasSelf) break;
 				const n = 6 - playerDice.length;
 				if (n <= 0) break;
 				const bc = chips;

@@ -654,6 +654,12 @@
 			},
 			/** 清掉存档(QA 开跑前保证干净) */
 			clearSave: () => clearRun(),
+			/** 直接挂上归家的 pending(QA:测卖「我」之后的队伍状态) */
+			homing: (coins = 8) => {
+				homingSell = coins;
+			},
+			/** 直接跑一次回合结算(QA:会触发归家卖「我」) */
+			settle: () => settleRound(),
 			/** 直接进失败结算屏(QA:测「返回菜单 → 刷新」有没有清局内存档) */
 			gameOver: () => abandonRun(),
 			/** 某个 Tee 现在挂着哪些主动技(QA 排查用) */
@@ -1388,6 +1394,7 @@
 			allSelf: teamCards.map((_, k) => effectiveEffects(teamCards, k)),
 			index: i,
 			isSelf: team[i]?.isSelf === true,
+			hasSelf: team.some((t) => t.isSelf === true),
 			teamCards,
 			growth,
 			buffs: buffsOf(i),
@@ -2561,8 +2568,11 @@
 	/**
 	 * 归家:回合结算时**出售「我」**。
 	 * 刻意不走 sellTee —— 那个会按稀有度给币、还会动卖卡计数;而且关卡中途卖人会让
-	 * currentTee 这类下标错位。这里在回合末整队重排一次,顺手把「我」的身份交给新队首,
-	 * 保证「我」= 下标 0 这个不成文约定继续成立(下关开局挂加成卡/放技能都还认它)。
+	 * currentTee 这类下标错位。这里在回合末整队重排一次。
+	 *
+	 * ⚠️ 「我」是个**单独的 Tee**(只是默认不能卖、默认没有能力),不是什么可以转让的
+	 * 「玩家身份」—— 卖掉之后队伍里就没有「我」了,依赖「我」的效果随之失效。
+	 * 剩下的人照常排队,新队首是普通 Tee(可以正常出售)。
 	 */
 	const homingSettle = () => {
 		const coins = homingSell;
@@ -2731,7 +2741,8 @@
 	};
 
 	const sellTee = (idx: number) => {
-		if (idx === 0) return; // 主 Tee 不可卖
+		// 「我」不能卖 —— 认身份,不认下标。「我」离队后新队首是普通 Tee,可以卖。
+		if (team[idx]?.isSelf) return;
 		sfxSell(); // 收银机「ka-ching」
 		const card = cardOf(team[idx]);
 		if (card) {
@@ -3415,7 +3426,7 @@
 											}}
 										>
 											{#snippet sellBtn()}
-												{#if (phase === 'reward' || phase === 'shop') && i > 0 && tee.cardId}
+												{#if (phase === 'reward' || phase === 'shop') && !tee.isSelf && tee.cardId}
 													<button
 														class="absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/90 text-[10px] font-bold text-white shadow transition hover:bg-red-400"
 														title="卖出 {cardOf(tee)?.name},得 🥮 {rarityOf(cardOf(tee)).sell}"
@@ -3451,7 +3462,9 @@
 												pose={i === currentTee ? teePose : IDLE_POSE}
 												active={i === currentTee && phase === 'rolling'}
 												animate={i === currentTee ? teeAnimClass : ''}
-												sellBtn={(phase === 'reward' || phase === 'shop') && i > 0 && tee.cardId
+												sellBtn={(phase === 'reward' || phase === 'shop') &&
+												!tee.isSelf &&
+												tee.cardId
 													? sellBtn
 													: undefined}
 											>
