@@ -1011,7 +1011,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yiyang',
 		name: '纯阳仙',
-		desc: '四进、五子登科、六博黑：该等级得分 ×2；掷出 3 个同点数：基础分 +90；自己每有 1 颗 1 点：基础分 +20、得分 ×2',
+		desc: '四进、五子登科、六博黑：该等级得分 ×2；掷出 3 个同点数：基础分 +90；自己每有 1 颗 1 点：基础分 +28、得分 ×2',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'clan_wheat',
@@ -1020,14 +1020,14 @@ export const CARDS: TeeCard[] = [
 			parts: [
 				{ type: 'level_base_mult', levelIds: ['si_jin', 'wu_zi', 'liu_bo_hei'], value: 2 },
 				{ type: 'same_face_chips', min: 3, chips: 90 },
-				{ type: 'own_face', face: 1, chips: 20, mult: 2 }
+				{ type: 'own_face', face: 1, chips: 28, mult: 2 }
 			]
 		}
 	},
 	{
 		id: 'shuangbi',
 		name: '桂璧生辉',
-		desc: '四进、五子登科、六博黑：该等级得分 ×2；掷出 3 个同点数：基础分 +90；自己每有 1 颗 2 点：基础分 +20、得分 ×2',
+		desc: '四进、五子登科、六博黑：该等级得分 ×2；掷出 3 个同点数：基础分 +90；自己每有 1 颗 2 点：基础分 +28、得分 ×2',
 		rarity: 'legendary',
 		tag: '桂',
 		skin: 'OnyxNanami_AquaGreen',
@@ -1036,14 +1036,14 @@ export const CARDS: TeeCard[] = [
 			parts: [
 				{ type: 'level_base_mult', levelIds: ['si_jin', 'wu_zi', 'liu_bo_hei'], value: 2 },
 				{ type: 'same_face_chips', min: 3, chips: 90 },
-				{ type: 'own_face', face: 2, chips: 20, mult: 2 }
+				{ type: 'own_face', face: 2, chips: 28, mult: 2 }
 			]
 		}
 	},
 	{
 		id: 'sanqing',
 		name: '三清仙尊',
-		desc: '四进、五子登科、六博黑：该等级得分 ×2；掷出 3 个同点数：基础分 +90；自己每有 1 颗 3 点：基础分 +20、得分 ×2',
+		desc: '四进、五子登科、六博黑：该等级得分 ×2；掷出 3 个同点数：基础分 +90；自己每有 1 颗 3 点：基础分 +28、得分 ×2',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'IceWitch_Druid',
@@ -1052,7 +1052,7 @@ export const CARDS: TeeCard[] = [
 			parts: [
 				{ type: 'level_base_mult', levelIds: ['si_jin', 'wu_zi', 'liu_bo_hei'], value: 2 },
 				{ type: 'same_face_chips', min: 3, chips: 90 },
-				{ type: 'own_face', face: 3, chips: 20, mult: 2 }
+				{ type: 'own_face', face: 3, chips: 28, mult: 2 }
 			]
 		}
 	},
@@ -1068,7 +1068,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'wuyue',
 		name: '五岳桂香',
-		desc: '四进、五子登科、六博黑：该等级得分 ×2；掷出 3 个同点数：基础分 +90；自己每有 1 颗 5 点：基础分 +25、得分 ×2',
+		desc: '四进、五子登科、六博黑：该等级得分 ×2；掷出 3 个同点数：基础分 +90；自己每有 1 颗 5 点：基础分 +21、得分 ×2',
 		rarity: 'legendary',
 		tag: '桂',
 		skin: 'Green ray',
@@ -1077,14 +1077,14 @@ export const CARDS: TeeCard[] = [
 			parts: [
 				{ type: 'level_base_mult', levelIds: ['si_jin', 'wu_zi', 'liu_bo_hei'], value: 2 },
 				{ type: 'same_face_chips', min: 3, chips: 90 },
-				{ type: 'own_face', face: 5, chips: 25, mult: 2 }
+				{ type: 'own_face', face: 5, chips: 21, mult: 2 }
 			]
 		}
 	},
 	{
 		id: 'liulong',
 		name: '六龙仙驭',
-		desc: '四进、五子登科、六博黑：该等级得分 ×2；掷出 3 个同点数：基础分 +90；自己每有 1 颗 6 点：基础分 +25、得分 ×2',
+		desc: '四进、五子登科、六博黑：该等级得分 ×2；掷出 3 个同点数：基础分 +90；自己每有 1 颗 6 点：基础分 +21、得分 ×2',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'dragon 2',
@@ -1093,7 +1093,7 @@ export const CARDS: TeeCard[] = [
 			parts: [
 				{ type: 'level_base_mult', levelIds: ['si_jin', 'wu_zi', 'liu_bo_hei'], value: 2 },
 				{ type: 'same_face_chips', min: 3, chips: 90 },
-				{ type: 'own_face', face: 6, chips: 25, mult: 2 }
+				{ type: 'own_face', face: 6, chips: 21, mult: 2 }
 			]
 		}
 	},
