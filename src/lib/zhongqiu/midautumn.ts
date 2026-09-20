@@ -147,10 +147,10 @@ export interface DiceMods {
 	chain?: DiceMods[];
 	straightFloor?: boolean;
 	faceFloor?: boolean;
-	/** 寒月:本关加成卡的「加值」(chips)一律不生效 */
-	noBuffChips?: boolean;
-	/** 凛月:本关加成卡的「乘值」(mult)一律不生效 */
-	noBuffMult?: boolean;
+	/** 寒月:本关加成卡的「加值」(chips)只算这个比例(0.5 = 只算一半,0 = 全废) */
+	buffChipsScale?: number;
+	/** 凛月:本关加成卡的「乘值」(mult)只算这个比例的**增量**(0.5 = ×5 只算 ×3,0 = 全废) */
+	buffMultScale?: number;
 	fixed?: number[];
 	/** 按下标作废(花生:回合初始投掷整把作废,重掷的那几颗才解除) */
 	voidIdx?: number[];

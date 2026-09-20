@@ -102,9 +102,9 @@ export const BOSSES: Boss[] = [
 		id: 'shiyue',
 		name: '蚀月',
 		emoji: '🌘',
-		desc: '本关掷出的 4 作废；目标 ×0.4',
+		desc: '本关掷出的 4 作废；目标 ×0.3',
 		mods: { void: [4] },
-		targetMult: 0.4,
+		targetMult: 0.3,
 		weight: 0.5
 	},
 	{
@@ -198,9 +198,9 @@ export const BOSSES: Boss[] = [
 		id: 'hanyue',
 		name: '寒月',
 		emoji: '❄️',
-		desc: '本关加成卡的加值无效；目标 ×0.85',
-		mods: { noBuffChips: true },
-		targetMult: 0.85,
+		desc: '本关加成卡的加值只算一半；目标 ×0.7',
+		mods: { buffChipsScale: 0.5 },
+		targetMult: 0.7,
 		weight: 0.5,
 		minRound: 18
 	},
@@ -208,9 +208,9 @@ export const BOSSES: Boss[] = [
 		id: 'linyue',
 		name: '凛月',
 		emoji: '🥶',
-		desc: '本关加成卡的乘值无效；目标 ×0.85',
-		mods: { noBuffMult: true },
-		targetMult: 0.85,
+		desc: '本关加成卡的乘值只算一半；目标 ×0.7',
+		mods: { buffMultScale: 0.5 },
+		targetMult: 0.7,
 		weight: 0.5,
 		minRound: 18
 	}
@@ -584,10 +584,10 @@ export interface ScoreInput {
 	playerRawDice?: number[];
 	/** 当前月饼币(coin_mult 用) */
 	coins?: number;
-	/** 本关加成卡的加值无效(寒月) */
-	noBuffChips?: boolean;
-	/** 本关加成卡的乘值无效(凛月) */
-	noBuffMult?: boolean;
+	/** 本关加成卡的加值只算这个比例(寒月:0.5;缺省 1) */
+	buffChipsScale?: number;
+	/** 本关加成卡的乘值只算这个比例的增量(凛月:0.5;缺省 1) */
+	buffMultScale?: number;
 	/** 田螺:停在这只 Tee 身上(**不生效**)的加成卡 id —— 它们不参与其它任何计算,
 	 *  只给 buff_refund 折算基础分用(所以不能走 buffs,那份是「真挂了」的) */
 	parkedIds?: string[];
@@ -619,8 +619,8 @@ export const calcTeeScore = ({
 	round = 1,
 	leftScore = 0,
 	soldCount = 0,
-	noBuffChips = false,
-	noBuffMult = false,
+	buffChipsScale = 1,
+	buffMultScale = 1,
 	parkedIds = []
 }: ScoreInput): ScoreBreakdown => {
 	{
@@ -666,12 +666,14 @@ export const calcTeeScore = ({
 		/** 加成卡效果 → buffChips / buffMult(支持 bundle 递归) */
 		const applyBuff = (be: typeof eff) => {
 			if (be.type === 'chips') {
-				if (!noBuffChips) buffChips += be.value ?? 0;
+				// 取整:明细行本来就是整数,而 0.5 系数会把 25 变成 12.5 —— 界面按整数显示 13,
+				// 就会和引擎差半个点。记账时就取整,两边完全对得上。
+				buffChips += Math.round((be.value ?? 0) * buffChipsScale);
 			} else if (be.type === 'mult') {
-				if (!noBuffMult) buffMult *= be.value ?? 1;
+				buffMult *= 1 + ((be.value ?? 1) - 1) * buffMultScale;
 			} else if (be.type === 'chips_mult') {
-				if (!noBuffChips) buffChips += be.chips ?? 0;
-				if (!noBuffMult) buffMult *= be.mult ?? 1;
+				buffChips += Math.round((be.chips ?? 0) * buffChipsScale);
+				buffMult *= 1 + ((be.mult ?? 1) - 1) * buffMultScale;
 			} else if (be.type === 'cond') {
 				if (be.cond && condHit(be.cond, levelId, level.score)) {
 					buffChips += be.chips ?? 0;
@@ -738,11 +740,13 @@ export const calcTeeScore = ({
 				// 田螺:身上不生效的加成卡按**原价**折成基础分 ——「不生效」不等于「白买」。
 				// 这批卡不参与任何其它计算(buffs 里没有它们),所以只能在这里、用 parkedIds 算。
 				// 寒月「加值无效」连这个折算一起失效:它本来就是加成卡带来的加值。
-				if (noBuffChips) break;
+				if (!buffChipsScale) break;
 				const parked = parkedIds ?? [];
 				if (!parked.length) break;
 				const bc = chips;
-				chips += parked.reduce((s2, id) => s2 + (BUFF_BY_ID.get(id)?.price ?? 0) * eff.perPrice, 0);
+				chips +=
+					parked.reduce((s2, id) => s2 + (BUFF_BY_ID.get(id)?.price ?? 0) * eff.perPrice, 0) *
+					buffChipsScale;
 				note(srcId, 'card', chips - bc, 1, `停靠 ${parked.length} 张`);
 				break;
 			}

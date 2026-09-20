@@ -1286,8 +1286,8 @@
 	};
 	const scoreInput = (i: number, levelId: string, diceForSum: number[]): ScoreInput => ({
 		// 寒月/凛月:本关加成卡的加值与乘值分别失效
-		noBuffChips: !!boss?.mods?.noBuffChips,
-		noBuffMult: !!boss?.mods?.noBuffMult,
+		buffChipsScale: boss?.mods?.buffChipsScale ?? 1,
+		buffMultScale: boss?.mods?.buffMultScale ?? 1,
 		levelId,
 		self: selfEffects(i),
 		allSelf: teamCards.map((_, k) => effectiveEffects(teamCards, k)),
