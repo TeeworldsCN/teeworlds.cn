@@ -520,6 +520,11 @@
 	let rollDur = $state(0.75); // 旋转动画单次时长(秒),角速度恒定
 
 	let rollIter = $state(1); // 旋转重复次数(慢速档多转几圈)
+	/** 每次掷骰/重掷动画 +1,写进 style 里 —— 只切 class 不重启 CSS 动画:
+	 *  同一帧里先摘后加,浏览器看不到变化,animationstart 根本不触发
+	 *  (射日仙「手动重掷 → 自动重掷」连着两次时,第二次就完全不播)。
+	 *  把代次塞进 style,值一变 CSS 就当作新动画从头播。 */
+	let rollKey = $state(0);
 	let rollTotal = $state(1000); // 摇骰总时长(毫秒,含波浪延迟)
 
 	// ---- Tee 动画 ----
@@ -1423,6 +1428,7 @@
 		if (rolling) return;
 		const gen = ++animGen;
 		pendingRollKind = 'roll';
+		rollKey += 1;
 		rolling = true;
 		hitDice = [];
 		optedDice = [];
@@ -1576,6 +1582,7 @@
 		// 等这一帧的工夫里可能读了档 / 退回标题 / 重开一局 —— 那就别再启动动画了
 		if (gen !== animGen) return;
 		rolling = true;
+		rollKey += 1;
 		rollMask = [...sel];
 		// 被重掷的骰子不再算「改点」:它的点数已经不是我们改出来的那个了。
 		// 撤掉 overlay,同时把 fixed 豁免一起摘掉 —— 否则重掷出来的新点数还豁免点数映射
@@ -4168,6 +4175,17 @@
 	}
 
 	.die.rolling {
+		animation: dice-shake 0.75s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+	}
+
+	/* 「在转」必须压过「命中高亮」:两者都是 animation 简写、特异性相同(0,2,0),
+     谁写在后面谁赢 —— 而 .die.hit 在下面,于是射日仙触发自动重掷时
+     (此时 hitDice 已由上一次判定写好)正在转的骰子被 hit-glow 顶掉,
+     dice-shake 根本不播:class 是 rolling、动画却是 glow。
+     这里把 rolling 提到 (0,3,0),顺序就不再重要。 */
+	.die.rolling.hit,
+	.die.rolling.moded,
+	.die.rolling.voided {
 		animation: dice-shake 0.75s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 	}
 
