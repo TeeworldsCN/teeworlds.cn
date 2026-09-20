@@ -81,6 +81,9 @@ export type TeeEffect =
 	| { type: 'own_face'; face: number; chips?: number; mult?: number; multByCount?: boolean } // 自己最终骰子里每有 1 颗该点数(multByCount: 倍率 = 该点数颗数)
 	// 该 Tee 自己的骰子里每颗 face 点:倍率 **+per**(桂树 —— 乘值在增长,不是再乘一层)
 	| { type: 'own_face_add'; face: number; per: number; base: number }
+	// 桂树:同上,但颗数**跨关累计** —— 本关颗数由引擎回传 ScoreBreakdown.growthAdd,
+	// 调用方在**回合结束**并进 growth(不能当场记:同一回合后面几只 Tee 会立刻吃到)
+	| { type: 'own_face_grow'; face: number; per: number; base: number }
 	// chipsMult 是**基础分侧**的每颗倍率(基础分 ×chipsMult^重掷颗数),mult 才是得分侧
 	| { type: 'per_reroll'; chips?: number; mult?: number; chipsMult?: number } // 本回合每重掷 1 颗骰子
 	| { type: 'per_extra_roll'; per: number } // 每多 1 次投掷机会:倍率 ×per^n
@@ -751,11 +754,11 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guishu',
 		name: '桂树',
-		desc: '该 Tee 得分 ×1.15。每掷出 1 颗 4 点，倍率 +0.05',
+		desc: '该 Tee 得分 ×1.15。每累计掷出 1 颗 4 点，倍率 +0.05',
 		rarity: 'rare',
 		tag: '桂',
 		skin: 'Leafeon',
-		effect: { type: 'own_face_add', face: 4, per: 0.05, base: 1.15 }
+		effect: { type: 'own_face_grow', face: 4, per: 0.05, base: 1.15 }
 	},
 
 	// ======== 传说 10 ========

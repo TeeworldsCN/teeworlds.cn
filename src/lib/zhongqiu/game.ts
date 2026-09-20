@@ -957,6 +957,24 @@ export const calcTeeScore = ({
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `自己 ${n} 个${eff.face}`);
 				break;
 			}
+			case 'own_face_grow': {
+				// 桂树(累计版):倍率 = base + per ×(**历史累计颗数** + 本关颗数)。
+				// 排在后面的 Tee 会立刻吃到刚加的成长(时机与 scaling_mult 对齐)。
+				const n = ownDice.filter((v) => v === eff.face).length;
+				// 历史累计在 growth[srcId] 里(页面在**回合结束**才写进去,所以同一回合里
+				// 排在后面的 Tee 吃不到刚加的成长)
+				const banked = growth[srcId] ?? 0;
+				const beforeAdd = multAdd;
+				multAdd += eff.base - 1 + eff.per * (banked + n);
+				note(
+					srcId,
+					'card',
+					0,
+					1 + beforeAdd === 0 ? 1 : (1 + multAdd) / (1 + beforeAdd),
+					`本关 ${n} 个${eff.face} · 累计 ${banked + n} 个`
+				);
+				break;
+			}
 			case 'own_face_add': {
 				// 该 Tee 自己的骰子里每颗 face 点:倍率 **+per**(桂树)。
 				// 这是「乘值在增长」——同一层倍率上加,不是再乘一层。

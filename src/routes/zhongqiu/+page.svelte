@@ -2373,6 +2373,26 @@
 			economyGained = eco;
 			mooncakes += gained;
 			growth = applyGrowth(allCards(), growth);
+			// 桂树(own_face_grow):把本关掷出的颗数记进去 —— 从**下一关**开始吃到。
+			// 数和引擎计分同一口径(最终骰子),只数这一关真掷过的:countedTee 之后的是
+			// 被「云海」提前收关、根本没投掷的 Tee(它们的 lastDice 还是上一关的)。
+			{
+				const grown: GrowthMap = { ...growth };
+				let any = false;
+				team.forEach((_, k) => {
+					if (k > countedTee) return;
+					const shown = liveDiceValues(team[k].lastDice ?? [], modsFor(k));
+					for (const { eff, srcId } of selfEffects(k)) {
+						if (eff.type !== 'own_face_grow') continue;
+						const n = shown.filter((v) => v === eff.face).length;
+						if (n > 0) {
+							grown[srcId] = (grown[srcId] ?? 0) + n;
+							any = true;
+						}
+					}
+				});
+				if (any) growth = grown;
+			}
 			sfxWin();
 			phase = 'round_end';
 		} else {
