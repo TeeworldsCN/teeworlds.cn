@@ -2,7 +2,7 @@
 	import TeeRender from '$lib/components/TeeRender.svelte';
 	import CardTip from './CardTip.svelte';
 	import BuffTip from './BuffTip.svelte';
-	import { RARITY_INFO } from './teecards';
+	import { RARITY_INFO, cardBorderColor } from './teecards';
 	import type { BuffCard } from './items';
 
 	/**
@@ -36,20 +36,17 @@
 	onfocusout={() => (hover = false)}
 >
 	<div
-		class="flex w-full items-center gap-1 rounded-lg border bg-slate-800/70 px-1.5 py-1 text-left transition sm:h-8 sm:py-0"
-		style="border-color: {color}"
+		class="flex h-8 w-full items-center gap-1 rounded-lg border bg-slate-800/70 px-1.5 text-left transition"
+		style="border-color: {cardBorderColor(color)}"
 	>
-		<span class="h-4 w-4 shrink-0 sm:h-5 sm:w-5">
+		<span class="h-5 w-5 shrink-0">
 			<!-- 未解锁:头像换成默认皮肤(x_spec 那张占位图),不露是哪张卡 -->
 			<TeeRender name={unlocked ? card.skin : 'x_spec'} className="h-full w-full" />
 		</span>
-		<span
-			class="min-w-0 flex-1 truncate text-[11px] leading-tight font-semibold text-slate-200 sm:text-xs"
-		>
+		<span class="min-w-0 flex-1 truncate text-xs leading-tight font-semibold text-slate-200">
 			{unlocked ? card.name : '？？？'}
 		</span>
-		<span class="shrink-0 text-[10px] font-bold text-amber-300 sm:text-[11px]">🥮 {card.price}</span
-		>
+		<span class="shrink-0 text-[11px] font-bold text-amber-300">🥮 {card.price}</span>
 	</div>
 	<!-- 加成卡说明比 Tee 卡长,用宽一档的浮层(和货架上那个 buffPop 同一个宽度) -->
 	<CardTip anchor={wrapEl} {hover} {color} wide>

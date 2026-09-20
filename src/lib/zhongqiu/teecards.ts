@@ -12,6 +12,14 @@ export const RARITY_INFO: Record<Rarity, { label: string; color: string; sell: n
 	legendary: { label: '传说', color: '#fbbf24', sell: 4 }
 };
 
+/**
+ * 卡片描边色:稀有度色 45% 混进透明。
+ * 满色的稀有度描边在深色底上又粗又亮,压到 45% 才和卡面是一个重量级。
+ * TeeCard 的 `.tee-card` 用的是同一口径(CSS 里写死 `color-mix(... 45%, transparent)`,
+ * 因为它要靠 `--rarity` 变量给 hover 阴影复用)—— 改这里记得同步那边。
+ */
+export const cardBorderColor = (color: string) => `color-mix(in srgb, ${color} 45%, transparent)`;
+
 /** 条件:精确等级 / 等级及以上 */
 export type Cond =
 	| 'none'

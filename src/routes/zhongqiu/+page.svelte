@@ -34,6 +34,7 @@
 	} from '$lib/zhongqiu/midautumn';
 	import {
 		RARITY_INFO,
+		cardBorderColor,
 		drawCards,
 		CARD_BY_ID,
 		type TeeCard,
@@ -3073,7 +3074,7 @@
 			<button
 				type="button"
 				class="flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border px-1.5 py-0.5 transition select-none sm:gap-1.5 sm:px-2 sm:py-1 {state}"
-				style="border-color: {rarityColor}"
+				style="border-color: {cardBorderColor(rarityColor)}"
 				title="点选后再点队伍里的 Tee 挂上"
 				onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
 				onpointerenter={(e) => {
@@ -3095,7 +3096,7 @@
 		{:else}
 			<div
 				class="flex shrink-0 items-center gap-1 rounded-lg border px-1.5 py-0.5 transition sm:gap-1.5 sm:px-2 sm:py-1 {state}"
-				style="border-color: {rarityColor}"
+				style="border-color: {cardBorderColor(rarityColor)}"
 				role="button"
 				tabindex="0"
 				title={`${card.name}:${card.desc} · 持续 ${card.turns} 关`}
@@ -3998,7 +3999,7 @@
 													? 'bg-amber-400/15 ring-2 ring-amber-400'
 													: ''} {!sold && mooncakes < card.price ? 'opacity-50' : ''}"
 												style={!locked && !sold
-													? `border-color: ${RARITY_INFO[card.rarity].color}`
+													? `border-color: ${cardBorderColor(RARITY_INFO[card.rarity].color)}`
 													: ''}
 												onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
 												onclick={() => !sold && (shopPick = picked ? null : card)}
