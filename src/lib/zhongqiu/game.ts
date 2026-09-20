@@ -1193,18 +1193,18 @@ export const calcTeeScore = ({
 	if (rerollBaseMult !== 1)
 		// 射日仙:底分和所有筹码一起放大 —— 这是对整个小计的乘,出乘算行才对得上卡面
 		note(rerollBaseSrc, 'card', 0, rerollBaseMult, `重掷 ${rerolled} 颗`);
-	// 主动技的加值:和值技(点数和 ×N 计入基础分)与田螺(停靠卡价格 ×N)都走这里 ——
-	// **必须在乘算之前**进 chips,不然这份分吃不到该 Tee 的倍率链(卡面写的是「计入基础分」)。
 	for (const sc of skillChips) {
 		chips += sc.chips;
 		note(sc.srcId, 'card', sc.chips, 1, sc.from);
 	}
-	const raw = Math.round((base + chips + buffChips) * mult * buffMult);
+	// 主动技的加值:和值技(点数和 ×N 计入基础分)与田螺都走这里 ——
+	// **必须在乘算之前**进 chips、乘算也要并进 mult,不然这份分吃不到倍率链。
 	if (skillMult) {
 		const bm = mult;
 		mult *= skillMult.mult;
 		note(skillMult.srcId, 'card', 0, bm === 0 ? 1 : mult / bm, skillMult.from);
 	}
+	const raw = Math.round((base + chips + buffChips) * mult * buffMult);
 	const netChips = chips + buffChips;
 	const total = swapped !== null || allowNegative || netChips < 0 ? raw : Math.max(0, raw);
 	return {
