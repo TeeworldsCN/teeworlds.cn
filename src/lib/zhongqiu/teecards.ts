@@ -442,7 +442,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuexialaoren',
 		name: '月下老人',
-		desc: '回合结算时：左右两人本关得分的 100% + 150 分加进全队分，自己的得分 ×2',
+		desc: '回合结算时：左右两人本关得分的 100% + 150 分加进全队分，自己的得分 ×3.5',
 		rarity: 'legendary',
 		skin: 'OLD Tee',
 		tag: '月',
@@ -450,7 +450,7 @@ export const CARDS: TeeCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'relay_pct', from: 'both', pct: 1, flat: 150 },
-				{ type: 'mult', value: 2 }
+				{ type: 'mult', value: 3.5 }
 			]
 		}
 	},
@@ -774,11 +774,11 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'jinyuebing',
 		name: '金饼',
-		desc: '得分 ×3',
+		desc: '得分 ×5',
 		rarity: 'legendary',
 		tag: '饼',
 		skin: 'candy_apple',
-		effect: { type: 'mult', value: 3 }
+		effect: { type: 'mult', value: 5 }
 	},
 	{
 		id: 'guihuashu',
@@ -791,11 +791,11 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuegongxianzi',
 		name: '仙子临凡',
-		desc: '三红及以上：得分 ×4',
+		desc: '三红及以上：得分 ×5',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'IceWitch_AccurateAngel',
-		effect: { type: 'cond', cond: 'san_hong_plus', mult: 4 }
+		effect: { type: 'cond', cond: 'san_hong_plus', mult: 5 }
 	},
 	{
 		id: 'changepair',
@@ -830,7 +830,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'chijin',
 		name: '赤金仙丹',
-		desc: '得分 ×2；三红及以上倍率再增长 ×2.5',
+		desc: '得分 ×2；三红及以上倍率再增长 ×3',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'FireCrystalCat',
@@ -838,7 +838,7 @@ export const CARDS: TeeCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'mult', value: 2 },
-				{ type: 'cond', cond: 'san_hong_plus', mult: 2.5 }
+				{ type: 'cond', cond: 'san_hong_plus', mult: 3 }
 			]
 		}
 	},

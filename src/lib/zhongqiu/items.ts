@@ -229,52 +229,52 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'qinghui',
 		name: '清辉',
-		desc: '得分 ×2.5',
+		desc: '得分 ×4',
 		rarity: 'legendary',
 		skin: 'AmethystCrystalCat',
 		price: 7,
 		turns: 1,
-		effect: { type: 'mult', value: 2.5 }
+		effect: { type: 'mult', value: 4 }
 	},
 	{
 		id: 'jinguiguan',
 		name: '金桂冠',
-		desc: '得分 ×3',
+		desc: '得分 ×5',
 		rarity: 'legendary',
 		skin: 'Golden Shroom',
 		price: 8,
 		turns: 1,
-		effect: { type: 'mult', value: 3 }
+		effect: { type: 'mult', value: 5 }
 	},
 	{
 		id: 'yueshen',
 		name: '月神面纱',
-		desc: '得分 ×2.4',
+		desc: '得分 ×4',
 		rarity: 'legendary',
 		skin: 'pinkcrystal',
 		price: 8,
 		turns: 2,
-		effect: { type: 'mult', value: 2.4 }
+		effect: { type: 'mult', value: 4 }
 	},
 	{
 		id: 'yusheng',
 		name: '玉绳',
-		desc: '得分 ×2.6',
+		desc: '得分 ×4',
 		rarity: 'legendary',
 		skin: 'HTF_whitepinky',
 		price: 10,
 		turns: 3,
-		effect: { type: 'mult', value: 2.6 }
+		effect: { type: 'mult', value: 4 }
 	},
 	{
 		id: 'jiuzhuan',
 		name: '九转金丹',
-		desc: '得分 ×3.2',
+		desc: '得分 ×5',
 		rarity: 'legendary',
 		skin: 'angel_toast_kiinmn',
 		price: 9,
 		turns: 1,
-		effect: { type: 'mult', value: 3.2 }
+		effect: { type: 'mult', value: 5 }
 	},
 
 	// ======== 加算+乘算 4 ========
@@ -301,22 +301,22 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'jingui',
 		name: '金桂流心',
-		desc: '基础分 +60，得分 ×2.2',
+		desc: '基础分 +60，得分 ×3',
 		rarity: 'legendary',
 		skin: 'OnyxNanami_Yellow',
 		price: 8,
 		turns: 2,
-		effect: { type: 'chips_mult', chips: 60, mult: 2.2 }
+		effect: { type: 'chips_mult', chips: 60, mult: 3 }
 	},
 	{
 		id: 'yuehun',
 		name: '月魂',
-		desc: '基础分 +60，得分 ×2',
+		desc: '基础分 +60，得分 ×3',
 		rarity: 'legendary',
 		skin: 'aristocats_marie_glow',
 		price: 9,
 		turns: 1,
-		effect: { type: 'chips_mult', chips: 60, mult: 2 }
+		effect: { type: 'chips_mult', chips: 60, mult: 3 }
 	},
 
 	// ======== 和值流(只此一张,故意稀有) ========
@@ -345,32 +345,32 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guiyin',
 		name: '桂荫庇佑',
-		desc: '投掷出再接再厉时：得分 ×2.4',
+		desc: '投掷出再接再厉时：得分 ×3.5',
 		rarity: 'rare',
 		skin: 'Lahm_blue',
 		price: 5,
 		turns: 2,
-		effect: { type: 'cond', cond: 'none', mult: 2.4 }
+		effect: { type: 'cond', cond: 'none', mult: 3.5 }
 	},
 	{
 		id: 'yueshenbiyou',
 		name: '月神庇佑',
-		desc: '投掷出再接再厉时：得分 ×3',
+		desc: '投掷出再接再厉时：得分 ×4',
 		rarity: 'legendary',
 		skin: 'IceWitch_MushDeer',
 		price: 8,
 		turns: 1,
-		effect: { type: 'cond', cond: 'none', mult: 3 }
+		effect: { type: 'cond', cond: 'none', mult: 4 }
 	},
 	{
 		id: 'changongbiyou',
 		name: '蟾宫庇佑',
-		desc: '投掷出再接再厉时：得分 ×2.5',
+		desc: '投掷出再接再厉时：得分 ×4',
 		rarity: 'legendary',
 		skin: 'clefairy',
 		price: 9,
 		turns: 3,
-		effect: { type: 'cond', cond: 'none', mult: 2.5 }
+		effect: { type: 'cond', cond: 'none', mult: 4 }
 	},
 
 	// ======== 多投掷(×2.33,压高稀有度) 5 ========
