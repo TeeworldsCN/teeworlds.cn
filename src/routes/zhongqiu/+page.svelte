@@ -1,6 +1,18 @@
 <script lang="ts">
 	import TeeRender, { type TeePose } from '$lib/components/TeeRender.svelte';
 	import TeeCardView from '$lib/zhongqiu/TeeCard.svelte';
+	import Codex from '$lib/zhongqiu/Codex.svelte';
+	import BuffTip from '$lib/zhongqiu/BuffTip.svelte';
+	import {
+		unlockTees,
+		unlockBuffs,
+		unlockBuffIds,
+		codexReset,
+		codexUnlockAll,
+		codexRaw,
+		teeUnlockedCount,
+		buffUnlockedCount
+	} from '$lib/zhongqiu/codex.svelte';
 	import { EMOTE } from '$lib/stores/skins';
 	import {
 		applyDiceMods,
@@ -507,6 +519,8 @@
 	let sellBoost = $state(false);
 	let optedDice = $state<number[]>([]); // 本次判定命中的骰子索引
 	let showRules = $state(false);
+	/** 队友图鉴(跨局元进度,不解锁也能开) */
+	let showCodex = $state(false);
 	/** 音效开关(状态存 localStorage) */
 	let sfxOn = $state(true);
 	const toggleSfx = () => {
@@ -622,6 +636,7 @@
 			addBuff: (id: string, n = 1) => {
 				if (!BUFF_BY_ID.has(id)) return warnId('加成卡', id);
 				buffInventory = { ...buffInventory, [id]: (buffInventory[id] ?? 0) + n };
+				unlockBuffs([{ id }]);
 			},
 			buff: (teeIdx: number, buffId: string) => {
 				const bc = BUFF_BY_ID.get(buffId);
@@ -664,6 +679,8 @@
 			gameOver: () => abandonRun(),
 			/** 某个 Tee 现在挂着哪些主动技(QA 排查用) */
 			skills: (i: number) => skillsFor(i),
+			/** 相当于点「返回菜单」:清局内存档 + 回到标题页(QA 要用标题页的入口) */
+			title: () => restart(),
 			/**
 			 * 给某个 Tee 用指定骰面算一次分(QA:验证「我」的身份判定 / 星河这类加成归属)。
 			 * 不碰真实战局状态,只调引擎 —— 返回 total 与明细行。
@@ -723,6 +740,7 @@
 				if (!bc) return warnId('加成卡', buffId);
 				if (!team[teeIdx]) return warnId('Tee（下标）', String(teeIdx));
 				buffInventory = { ...buffInventory, [buffId]: (buffInventory[buffId] ?? 0) + 1 };
+				unlockBuffs([bc]);
 				applyBuffToTee(bc, teeIdx);
 			},
 			/** 强制下一次蜜枣的 1% 判定(不传 = 必定中) */
@@ -788,7 +806,7 @@
 					return;
 				}
 				if (p === 'draft') {
-					draftChoices = shuffle(CARDS.filter((c) => c.rarity === 'common')).slice(0, 5);
+					drawDraftChoices();
 					draftPicked = opts.picked ? [...opts.picked] : [];
 					phase = 'draft';
 					return;
@@ -859,13 +877,12 @@
 					return;
 				}
 				if (p === 'reward') {
-					rewardChoices = drawCards(3);
-					lastRewardIdx = -1;
+					drawRewardChoices();
 					phase = 'reward';
 					return;
 				}
 				if (p === 'shop') {
-					shopBuffs = drawShopItems(shopLocks);
+					drawShopChoices();
 					shopPick = null;
 					shopSold = [];
 					phase = 'shop';
@@ -917,7 +934,15 @@
 					lastDice: t.lastDice,
 					lastVoid: t.lastVoid ?? []
 				}))
-			})
+			}),
+
+			/** 图鉴:QA / 调试入口 */
+			codexOpen: () => (showCodex = true),
+			codexClose: () => (showCodex = false),
+			codexReset: () => codexReset(),
+			codexUnlockAll: () => codexUnlockAll(),
+			codexRaw: () => codexRaw(),
+			codexCounts: () => ({ tee: teeUnlockedCount(), buff: buffUnlockedCount() })
 		};
 		(window as unknown as Record<string, unknown>).__cheat = api;
 		console.log(
@@ -997,7 +1022,7 @@
 		sfxClick();
 		resetRun();
 		clearRun(); // 新开一局:把上一局的存档清掉
-		draftChoices = shuffle(CARDS.filter((c) => c.rarity === 'common')).slice(0, 5);
+		drawDraftChoices();
 		draftPicked = [];
 		team = [];
 		phase = 'draft';
@@ -1132,6 +1157,9 @@
 		sellBoost = d.sellBoost ?? false;
 		sellBoostPending = d.sellBoostPending ?? false;
 		shopBuffs = d.shopBuffs.map((id) => BUFF_BY_ID.get(id)).filter((b): b is BuffCard => !!b);
+		// 老存档 / 跨会话:货架上和仓库里的卡补登记一次图鉴
+		unlockBuffs(shopBuffs);
+		unlockBuffIds(Object.keys(d.buffInventory));
 		shopSold = d.shopSold;
 		shopLocks = d.shopLocks;
 		buffInventory = d.buffInventory;
@@ -2676,11 +2704,29 @@
 		phase = 'game_over';
 	};
 
+	/** 抽 3 选 1 并登记图鉴 —— 刷出来过就算解锁,不用真的选它 */
+	const drawRewardChoices = () => {
+		rewardChoices = drawCards(3);
+		lastRewardIdx = -1;
+		unlockTees(rewardChoices);
+	};
+
+	/** 抽货架并登记图鉴 —— 摆出来过就算解锁 */
+	const drawShopChoices = () => {
+		shopBuffs = drawShopItems(shopLocks);
+		unlockBuffs(shopBuffs);
+	};
+
+	/** 抽开局 5 选 2 并登记图鉴 —— 刷出来过就算解锁(和 3 选 1 同理) */
+	const drawDraftChoices = () => {
+		draftChoices = shuffle(CARDS.filter((c) => c.rarity === 'common')).slice(0, 5);
+		unlockTees(draftChoices);
+	};
+
 	const nextReward = () => {
 		sfxClick();
 		phase = 'reward';
-		rewardChoices = drawCards(3);
-		lastRewardIdx = -1;
+		drawRewardChoices();
 		refreshPrice = 1; // 新的一次选卡 = 新的一轮集市,刷新价从头算
 	};
 
@@ -2689,8 +2735,7 @@
 		if (mooncakes < refreshPrice) return;
 		mooncakes -= refreshPrice;
 		refreshPrice += 1; // 越刷越贵
-		rewardChoices = drawCards(3);
-		lastRewardIdx = -1;
+		drawRewardChoices();
 	};
 
 	const pickReward = (idx: number) => {
@@ -2718,7 +2763,7 @@
 	const openShop = () => {
 		sfxClick();
 		phase = 'shop';
-		shopBuffs = drawShopItems(shopLocks);
+		drawShopChoices();
 		shopPick = null;
 		shopPeek = null;
 		shopSold = [];
@@ -2730,7 +2775,7 @@
 		if (mooncakes < refreshPrice) return;
 		mooncakes -= refreshPrice;
 		refreshPrice += 1; // 越刷越贵
-		shopBuffs = drawShopItems(shopLocks);
+		drawShopChoices();
 		shopPick = null;
 		shopPeek = null;
 		shopSold = [];
@@ -2749,6 +2794,7 @@
 		mooncakes -= card.price;
 		if (sfxOn) sfxCoin();
 		buffInventory = { ...buffInventory, [card.id]: (buffInventory[card.id] ?? 0) + 1 };
+		unlockBuffs([card]); // 进过仓库的卡一定算见过(商店之外拿到的也走这里)
 		shopSold = [...shopSold, card.id];
 		// 买走之后这格自动解锁：免得「已买」永远占着货架
 		shopLocks = shopLocks.map((id, k) => (shopBuffs[k]?.id === card.id && id ? null : id));
@@ -3000,12 +3046,7 @@
 		<div
 			class="pointer-events-none z-50 w-max max-w-[17rem] rounded-lg border border-sky-400/50 bg-slate-950/95 px-2.5 py-1.5 text-center text-[11px] leading-snug shadow-xl {cls}"
 		>
-			<div class="font-semibold" style="color: {RARITY_INFO[card.rarity].color}">
-				{card.name}
-				<span class="ml-1 font-normal text-sky-300">持续 {card.turns} 关</span>
-			</div>
-			<div class="mt-0.5 text-slate-300">{card.desc}</div>
-			<div class="mt-1 text-[10px] text-slate-400">点队伍里的 Tee 挂上</div>
+			<BuffTip {card} />
 		</div>
 	{/snippet}
 
@@ -3276,6 +3317,12 @@
 							onclick={() => (showRules = true)}
 						>
 							🎲 博饼等级一览
+						</button>
+						<button
+							class="mt-1.5 w-full rounded-lg border border-sky-500/30 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-200 transition hover:bg-sky-400/20"
+							onclick={() => (showCodex = true)}
+						>
+							📖 队友图鉴
 						</button>
 					</div>
 				</div>
@@ -4131,6 +4178,9 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- ================= 队友图鉴 ================= -->
+	<Codex bind:show={showCodex} />
 
 	<!-- ================= 出售确认 ================= -->
 	{#if sellAsk !== null && team[sellAsk] && cardOf(team[sellAsk])}

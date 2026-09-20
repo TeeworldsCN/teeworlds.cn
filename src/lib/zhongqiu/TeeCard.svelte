@@ -43,6 +43,8 @@
 		active?: boolean;
 		/** 动画 class(队伍:tee-throw / tee-celebrate 等) */
 		animate?: string;
+		/** 未解锁(图鉴):名字显示 ？？？、头像也不露,但描边保留稀有度色 */
+		locked?: boolean;
 	};
 
 	let {
@@ -61,13 +63,15 @@
 		sellBtn,
 		selected = false,
 		active = false,
-		animate = ''
+		animate = '',
+		locked = false
 	}: Props = $props();
 
 	const rarity = $derived(card?.rarity);
 	const rinfo = $derived(rarity ? RARITY_INFO[rarity] : null);
-	const teeSkin = $derived(card?.skin ?? (skin || 'x_spec'));
-	const teeName = $derived(card?.name ?? name);
+	/** 未解锁:头像换成默认皮肤(x_spec 那张占位图),不露是哪只 Tee */
+	const teeSkin = $derived(locked ? 'x_spec' : (card?.skin ?? (skin || 'x_spec')));
+	const teeName = $derived(locked ? '？？？' : (card?.name ?? name));
 
 	let wrapEl: HTMLElement | undefined = $state();
 	/** 鼠标 hover / 键盘聚焦 —— 触屏那套「点一下固定显示」在 CardTip 里 */
