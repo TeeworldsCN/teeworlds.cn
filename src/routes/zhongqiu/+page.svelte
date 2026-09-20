@@ -480,8 +480,6 @@
 	let paintMode: boolean | null = null;
 	/** 这一笔最后落到的骰子;手快划过时用它把中间跳过的补上 */
 	let paintLast = -1;
-	/** pointerdown 已经把这一下处理掉了 —— 紧跟其后的那个 click 要吞掉,别切换两次 */
-	let diePickHandled = false;
 	let rollMask = $state<boolean[]>(Array(6).fill(true));
 	/**
 	 * 动画代次。每开一次掷骰/重掷动画 +1;重开、读档、退出游戏也 +1 ——
@@ -1527,7 +1525,6 @@
 		if (e.pointerType === 'mouse' && e.button !== 0) return;
 		paintMode = !rerollSel[i];
 		paintLast = i;
-		diePickHandled = true; // 轻点这一下已经处理完,别让 click 再切回去
 		setReroll(i, paintMode);
 		sfxClick();
 	};
@@ -1545,11 +1542,8 @@
 	};
 
 	const endPaint = () => {
-		if (paintMode === null) return;
 		paintMode = null;
 		paintLast = -1;
-		// 轻点的 click 在 pointerup 之后、定时器之前触发:先让它读到标记,再清掉
-		setTimeout(() => (diePickHandled = false), 0);
 	};
 
 	const confirmReroll = () => {
@@ -3440,11 +3434,15 @@
 										class:selecting={choosing}
 										onpointerdown={(e) => startPaint(i, e)}
 										oncontextmenu={(e) => choosing && e.preventDefault()}
-										onclick={() => {
+										onclick={(e) => {
 											if (choosing) {
-												// 点选/拖选都在 pointerdown 里做完了;这里只接住键盘 Space/Enter 触发的 click
-												if (diePickHandled) return;
-												toggleReroll(i);
+												// 选中已经在 pointerdown 里做完了,指针合成的 click 必须吞掉,
+												// 否则轻点会切两次(按下选中 → 松手取消)。
+												// 判据是 detail:指针的 click 带点击计数(detail ≥ 1),
+												// 键盘 Space/Enter 与程序化 click 都是 detail === 0。
+												// ⚠️ 别改成「看刚才有没有 pointerdown」的时间窗:触摸合成的 click
+												// 可能比 pointerup 晚几百毫秒,时间窗会失效。
+												if (e.detail === 0) toggleReroll(i);
 												return;
 											}
 											if (pendingAction) onDieClick(i);
