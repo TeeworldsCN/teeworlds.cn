@@ -335,12 +335,12 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'manyuezhufu',
 		name: '满月祝福',
-		desc: '投掷出再接再厉时：得分 ×1.5',
+		desc: '投掷出再接再厉时：得分 ×1.8',
 		rarity: 'common',
 		skin: 'twinbop_glow',
 		price: 3,
 		turns: 2,
-		effect: { type: 'cond', cond: 'none', mult: 1.5 }
+		effect: { type: 'cond', cond: 'none', mult: 1.8 }
 	},
 	{
 		id: 'guiyin',
@@ -612,7 +612,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'shibei',
 		name: '拾贝',
-		desc: '自己每有 1 颗 5 点：基础分 +65；每有 1 颗 6 点：基础分 −25',
+		desc: '自己每有 1 颗 5 点：基础分 +90；每有 1 颗 6 点：基础分 −25',
 		rarity: 'common',
 		skin: 'Seal',
 		price: 3,
@@ -620,7 +620,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'own_face', face: 5, chips: 65 },
+				{ type: 'own_face', face: 5, chips: 90 },
 				{ type: 'own_face', face: 6, chips: -25 }
 			]
 		}
@@ -628,7 +628,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'duzhuo',
 		name: '独酌',
-		desc: '自己每有 1 颗 6 点：基础分 +70；每有 1 颗 3 点：基础分 −30',
+		desc: '自己每有 1 颗 6 点：基础分 +95；每有 1 颗 3 点：基础分 −30',
 		rarity: 'common',
 		skin: 'coffee_cup',
 		price: 3,
@@ -636,7 +636,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'own_face', face: 6, chips: 70 },
+				{ type: 'own_face', face: 6, chips: 95 },
 				{ type: 'own_face', face: 3, chips: -30 }
 			]
 		}
@@ -644,7 +644,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'shouzhuo',
 		name: '守拙',
-		desc: '自己每有 1 颗 4 点：基础分 +60；每有 1 颗 2 点：基础分 −25',
+		desc: '自己每有 1 颗 4 点：基础分 +85；每有 1 颗 2 点：基础分 −25',
 		rarity: 'common',
 		skin: 'Graylynx',
 		price: 3,
@@ -652,7 +652,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'own_face', face: 4, chips: 60 },
+				{ type: 'own_face', face: 4, chips: 85 },
 				{ type: 'own_face', face: 2, chips: -25 }
 			]
 		}
@@ -660,7 +660,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guxing',
 		name: '孤星',
-		desc: '自己每有 1 颗 1 点：基础分 +80；每有 1 颗 5 点：基础分 −35',
+		desc: '自己每有 1 颗 1 点：基础分 +110；每有 1 颗 5 点：基础分 −35',
 		rarity: 'common',
 		skin: 'Blue ray',
 		price: 3,
@@ -668,7 +668,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'own_face', face: 1, chips: 80 },
+				{ type: 'own_face', face: 1, chips: 110 },
 				{ type: 'own_face', face: 5, chips: -35 }
 			]
 		}

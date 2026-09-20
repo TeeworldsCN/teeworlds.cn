@@ -370,10 +370,10 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'shiyue',
 		name: '拾遗',
-		desc: '「我」最终骰子里每个 4，该 Tee 基础分 +40',
+		desc: '「我」最终骰子里每个 4，该 Tee 基础分 +30',
 		rarity: 'common',
 		skin: 'small_star',
-		effect: { type: 'player_die', face: 4, chips: 40 }
+		effect: { type: 'player_die', face: 4, chips: 30 }
 	},
 	{
 		id: 'guiying',
@@ -893,10 +893,10 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'dianjiang',
 		name: '点将',
-		desc: '自己每有 1 颗 6 点：基础分 +30',
+		desc: '自己每有 1 颗 6 点：基础分 +35',
 		rarity: 'common',
 		skin: 'glow_brownbear',
-		effect: { type: 'own_face', face: 6, chips: 30 }
+		effect: { type: 'own_face', face: 6, chips: 35 }
 	},
 	{
 		id: 'guyue',
@@ -935,14 +935,14 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'zhaixing',
 		name: '摘星',
-		desc: '自己每有 1 颗 6 点：基础分 +65；每有 1 颗 1 点：基础分 −10',
+		desc: '自己每有 1 颗 6 点：基础分 +45；每有 1 颗 1 点：基础分 −15',
 		rarity: 'common',
 		skin: 'glow_mermyfox',
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'own_face', face: 6, chips: 65 },
-				{ type: 'own_face', face: 1, chips: -10 }
+				{ type: 'own_face', face: 6, chips: 45 },
+				{ type: 'own_face', face: 1, chips: -15 }
 			]
 		}
 	},

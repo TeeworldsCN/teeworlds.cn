@@ -12,7 +12,7 @@
 	 * Boss 的「起始关卡」不是手写的:拿 bossPool() 逐关试,和游戏里抽 Boss 用同一份规则。
 	 */
 	type Table = 'tee' | 'buff' | 'boss';
-	type Col = 'name' | 'rarity' | 'price' | 'minRound' | 'desc';
+	type Col = 'name' | 'rarity' | 'turns' | 'price' | 'minRound' | 'desc';
 	type Dir = 1 | -1;
 	type Sort = { col: Col; dir: Dir };
 
@@ -26,6 +26,8 @@
 		/** Boss 没有皮肤,用 emoji */
 		emoji?: string;
 		rarity?: Rarity;
+		/** 加成卡:生效关数 */
+		turns?: number;
 		price?: number;
 		/** 从第几关起有机会抽到(Boss 关) */
 		minRound?: number;
@@ -44,6 +46,7 @@
 		index,
 		name: c.name,
 		rarity: c.rarity,
+		turns: c.turns,
 		price: c.price,
 		desc: c.desc,
 		skin: c.skin
@@ -73,6 +76,8 @@
 				return a.index - b.index; // 代码内顺序
 			case 'rarity':
 				return RARITY_RANK[a.rarity ?? 'common'] - RARITY_RANK[b.rarity ?? 'common'];
+			case 'turns':
+				return (a.turns ?? 0) - (b.turns ?? 0);
 			case 'price':
 				return (a.price ?? 0) - (b.price ?? 0);
 			case 'minRound':
@@ -205,6 +210,7 @@
 					<tr>
 						{@render headCell('buff', sorts.buff, 'name', '名称', 'min-w-32')}
 						{@render headCell('buff', sorts.buff, 'rarity', '稀有度')}
+						{@render headCell('buff', sorts.buff, 'turns', '持续关数')}
 						{@render headCell('buff', sorts.buff, 'price', '价格')}
 						{@render headCell('buff', sorts.buff, 'desc', '描述', 'w-full')}
 					</tr>
@@ -214,6 +220,7 @@
 						<tr class="border-b border-slate-700/50 last:border-b-0 hover:bg-slate-700/25">
 							{@render nameCell(row)}
 							{@render rarityCell(row.rarity)}
+							<td class="px-2 py-1.5 whitespace-nowrap text-slate-300">{row.turns} 关</td>
 							<td class="px-2 py-1.5 whitespace-nowrap text-amber-300">🥮 {row.price}</td>
 							{@render descCell(row.desc)}
 						</tr>
