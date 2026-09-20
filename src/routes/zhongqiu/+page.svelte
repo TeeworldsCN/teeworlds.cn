@@ -2753,6 +2753,7 @@
 	// 货架在桌面会换行长高 → 已在货架上压 sm:max-h + overflow-y-auto,否则
 	// 收了很多加成卡时会被顶出屏幕(实测 1280×800 reward 溢出 85px)。
 	const showItemBar = $derived(phase === 'round_end' && buffEntries.length > 0);
+
 	const settleReserveLines = $derived(
 		Math.min(
 			(boss?.mods ? 1 : 0) + 1 + Math.max(0, ...team.map((_, i) => potentialSources(i))) + 1,
@@ -2861,6 +2862,15 @@
 	);
 
 	const showTeamPanel = $derived(phase !== 'round_end' && phase !== 'game_over');
+
+	/**
+	 * 桌面(lg+)双列:左「仓库 + 队伍」,右「掷骰 / 3 选 1 / 集市 / 结算」。
+	 * 单列时容器宽 1024px 而内容只有 ~600px,右边大片留白;分栏后左列固定
+	 * 22rem、右列吃掉剩余宽度,同时解掉「队伍 + 面板」抢竖直空间的问题
+	 * (reward 面板本身高,以前和队伍叠着放,1280×800 会溢出)。
+	 * 只在队伍面板存在时分栏;结算/结束那种整屏面板仍走单列。
+	 */
+	const deskSplit = $derived(showTeamPanel);
 </script>
 
 <svelte:head>
@@ -2999,7 +3009,9 @@
 			: ''}
 	>
 		<div
-			class="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col px-2 pt-2 pb-2 max-[365px]:pt-1 max-[365px]:pb-1 sm:px-6 sm:pt-4 sm:pb-6"
+			class="relative z-10 mx-auto flex w-full max-w-5xl {deskSplit
+				? 'lg:max-w-7xl'
+				: ''} flex-1 flex-col px-2 pt-2 pb-2 max-[365px]:pt-1 max-[365px]:pb-1 sm:px-6 sm:pt-4 sm:pb-6"
 		>
 			{#snippet recordsBar()}
 				<!-- 标题屏同款的战绩条:选卡阶段用它代替关卡 HUD(那时还没有关卡) -->
@@ -3245,739 +3257,778 @@
 			{:else}
 				{@render hud()}
 
-				<!-- ================= 队伍 & 道具 ================= -->
-				{#if showTeamPanel}
+				<!-- 桌面双列:左列 = 仓库 + 队伍,右列 = 阶段面板。
+				     contents 让移动端完全等价于「没有这两个 div」:flex 链不断,
+				     panel-fill 照样吃得到高度。 -->
+				<div
+					class="contents {deskSplit
+						? 'lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-stretch lg:gap-4'
+						: ''}"
+				>
 					<div
-						class="mt-2.5 rounded-xl border border-slate-700/60 bg-slate-900/60 px-2.5 py-2 backdrop-blur-sm max-[365px]:mt-1.5 max-[365px]:py-1 sm:mt-4 sm:rounded-2xl sm:p-3"
+						class="contents {deskSplit ? 'lg:flex lg:min-h-0 lg:flex-col lg:overflow-y-auto' : ''}"
 					>
-						<div
-							class="flex items-center justify-between gap-2 text-[11px] text-slate-400 sm:text-xs"
-						>
-							<span class="shrink-0">👥 博饼队伍({team.length}/{TEAM_LIMIT})</span>
+						<!-- ================= 队伍 & 道具 ================= -->
+						{#if showTeamPanel}
+							<div
+								class="mt-2.5 rounded-xl border border-slate-700/60 bg-slate-900/60 px-2.5 py-2 backdrop-blur-sm max-[365px]:mt-1.5 max-[365px]:py-1 sm:mt-4 sm:rounded-2xl sm:p-3"
+							>
+								<div
+									class="flex items-center justify-between gap-2 text-[11px] text-slate-400 sm:text-xs"
+								>
+									<span class="shrink-0">👥 博饼队伍({team.length}/{TEAM_LIMIT})</span>
 
-							<span class="hidden text-slate-500 sm:inline">轮流上前掷骰，队伍总分为总奖品</span>
-						</div>
-
-						<!-- 加成卡:掷骰前点选再点到 Tee 身上,故排在最前 -->
-						{#if showBuffShelf}
-							<div class="mt-1 border-t border-sky-500/20 pt-1">
-								<div class="flex items-center justify-between gap-2 text-[11px] text-slate-400">
-									<span>
-										✨ 加成卡
-										{#if phase === 'intro'}
-											<span class="text-sky-300">· 点选后点 Tee 挂上</span>
-										{/if}
-									</span>
-									<span class="shrink-0 text-slate-500">持续 1~3 关</span>
-								</div>
-								<!-- 所有宽度统一芯片:手机单行横滑,桌面换行 -->
-								<div class="relative">
-									<div
-										class="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5 sm:max-h-[4.75rem] sm:flex-wrap sm:gap-2 sm:overflow-y-auto"
+									<span class="hidden text-slate-500 sm:inline">轮流上前掷骰，队伍总分为总奖品</span
 									>
-										{#each buffEntries as [id, count]}
-											{@const card = BUFF_BY_ID.get(id)!}
-											<div class="relative shrink-0">
-												{@render buffChip(card, count, canEquipBuff)}
-												{#if shownBuff?.id === card.id}
-													<!-- 桌面:说明浮在悬停/选中的芯片上方 -->
-													{@render buffPop(
-														card,
-														'absolute bottom-full left-0 mb-1 hidden sm:block'
-													)}
+								</div>
+
+								<!-- 加成卡:掷骰前点选再点到 Tee 身上,故排在最前 -->
+								{#if showBuffShelf}
+									<div class="mt-1 border-t border-sky-500/20 pt-1">
+										<div class="flex items-center justify-between gap-2 text-[11px] text-slate-400">
+											<span>
+												✨ 加成卡
+												{#if phase === 'intro'}
+													<span class="text-sky-300">· 点选后点 Tee 挂上</span>
 												{/if}
+											</span>
+											<span class="shrink-0 text-slate-500">持续 1~3 关</span>
+										</div>
+										<!-- 所有宽度统一芯片:手机单行横滑,桌面换行 -->
+										<div class="relative">
+											<div
+												class="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5 sm:max-h-[4.75rem] sm:flex-wrap sm:gap-2 sm:overflow-y-auto"
+											>
+												{#each buffEntries as [id, count]}
+													{@const card = BUFF_BY_ID.get(id)!}
+													<div class="relative shrink-0">
+														{@render buffChip(card, count, canEquipBuff)}
+														{#if shownBuff?.id === card.id}
+															<!-- 桌面:说明浮在悬停/选中的芯片上方 -->
+															{@render buffPop(
+																card,
+																'absolute bottom-full left-0 mb-1 hidden sm:block'
+															)}
+														{/if}
+													</div>
+												{/each}
 											</div>
+											{#if shownBuff}
+												<!-- 手机:横滑容器会裁掉芯片内的绝对定位,说明居中挂在容器上 -->
+												{@render buffPop(
+													shownBuff,
+													'absolute bottom-full left-1/2 mb-1 -translate-x-1/2 sm:hidden'
+												)}
+											{/if}
+										</div>
+									</div>
+								{/if}
+
+								<!-- 队伍:中秋集市阶段也用普通卡(去掉结果行省高度) -->
+								<div class="mt-2 flex flex-wrap gap-1.5 sm:gap-2 {marketTeam ? 'market-team' : ''}">
+									{#each team as tee, i (i)}
+										<div
+											role="button"
+											tabindex={canEquipBuff && selectedBuff ? 0 : -1}
+											class="rounded-xl p-0.5 transition {canEquipBuff && selectedBuff
+												? 'bg-amber-400/5 ring-1 ring-amber-400/70'
+												: ''}"
+											onclick={() => selectedBuff && applyBuffToTee(selectedBuff, i)}
+											onkeydown={(e) => {
+												if ((e.key === 'Enter' || e.key === ' ') && selectedBuff) {
+													e.preventDefault();
+													applyBuffToTee(selectedBuff, i);
+												}
+											}}
+										>
+											{#snippet sellBtn()}
+												{#if (phase === 'reward' || phase === 'shop') && i > 0 && tee.cardId}
+													<button
+														class="absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/90 text-[10px] font-bold text-white shadow transition hover:bg-red-400"
+														title="卖出 {cardOf(tee)?.name},得 🥮 {rarityOf(cardOf(tee)).sell}"
+														onclick={() => {
+															sfxClick();
+															sellAsk = i; // 先问一句,确认了再真卖
+														}}
+													>
+														×
+													</button>
+												{/if}
+											{/snippet}
+											<TeeCardView
+												card={cardOf(tee)}
+												skin={tee.playerSkin ?? 'x_spec'}
+												name="我"
+												desc={cardOf(tee)?.desc}
+												tipExtra={tee.cardId
+													? `卖出得 🥮 ${rarityOf(cardOf(tee)).sell}`
+													: undefined}
+												tipList={teeTipList(tee)}
+												badge={(team[i]?.refundPending?.length ?? 0) > 0
+													? `🐚${team[i]?.refundPending?.length}`
+													: tee.buffs.length > 0
+														? `✨${tee.buffs.length}`
+														: undefined}
+												skillBadge={skillsFor(i).length > 0
+													? (tee.charge ?? 0) > 0
+														? `⚡${tee.charge}`
+														: '⚡'
+													: undefined}
+												emote={i === currentTee ? teeEmote : EMOTE.normal}
+												pose={i === currentTee ? teePose : IDLE_POSE}
+												active={i === currentTee && phase === 'rolling'}
+												animate={i === currentTee ? teeAnimClass : ''}
+												sellBtn={(phase === 'reward' || phase === 'shop') && i > 0 && tee.cardId
+													? sellBtn
+													: undefined}
+											>
+												{#snippet actions()}
+													<!-- 两种状态都占两行:待掷(1 行)→ 点数+等级(2 行)会让整队高度跳 14px -->
+													{#if phase === 'shop'}
+														<!-- 中秋集市阶段:回合已结算,结果看结算面板;省一行高度给 6 人满队 -->
+													{:else if i <= countedTee}
+														<!-- 投过了就显示分数:0 分/负分也算结果,别退回「待掷」(countedTee = 最后一只结算完的) -->
+														<div
+															class="text-[10px] font-bold {tee.lastScore > 0
+																? 'text-amber-300'
+																: 'text-slate-400'}"
+														>
+															{formatScore(tee.lastScore)}
+														</div>
+														<div class="text-[9px] text-slate-500">
+															{getRollLevel(tee.lastLevelId).name}
+														</div>
+													{:else}
+														<!-- 不写投掷次数:角标已经有加成卡(右)和技能(左)两处计数,玩家自己数 -->
+														<div class="text-[10px] font-bold text-slate-600">待掷</div>
+														<div class="text-[9px] text-slate-500">&nbsp;</div>
+													{/if}
+												{/snippet}
+											</TeeCardView>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						<!-- ================= 精简道具条(不需要操作道具的阶段) ================= -->
+						{#if showItemBar}
+							<div class="relative mt-2.5">
+								<div
+									class="flex items-center gap-1.5 overflow-x-auto rounded-xl border border-sky-500/20 bg-slate-900/60 px-2.5 py-1.5 backdrop-blur-sm sm:flex-wrap sm:overflow-visible sm:rounded-2xl"
+								>
+									{#each buffEntries as [id, count]}
+										{@const card = BUFF_BY_ID.get(id)!}
+										<div class="relative shrink-0">
+											{@render buffChip(card, count)}
+											{#if peekBuff?.id === card.id}
+												{@render buffPop(card, 'absolute bottom-full left-0 mb-1 hidden sm:block')}
+											{/if}
+										</div>
+									{/each}
+								</div>
+								{#if peekBuff}
+									{@render buffPop(
+										peekBuff,
+										'absolute bottom-full left-1/2 mb-1 -translate-x-1/2 sm:hidden'
+									)}
+								{/if}
+							</div>
+						{/if}
+					</div>
+
+					<!-- 右列:掷骰 / 3 选 1 / 集市 / 结算 -->
+					<div class="contents {deskSplit ? 'lg:flex lg:min-h-0 lg:flex-col' : ''}">
+						<!-- ================= 骰子区 ================= -->
+						{#if phase === 'intro' || phase === 'rolling'}
+							<div
+								bind:this={dicePanelEl}
+								class="panel-fill mt-2.5 rounded-xl border border-amber-500/25 bg-slate-900/70 px-2.5 py-2 backdrop-blur-sm max-[365px]:mt-1.5 max-[365px]:py-1.5 sm:mt-4 sm:rounded-2xl sm:p-4"
+							>
+								{#if phase === 'intro'}
+									<!-- Boss 说明已在 HUD 上,这里不重复(小屏高度宝贵) -->
+									<div class="w-full text-center">
+										<button
+											class="w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 max-[365px]:py-2 sm:w-auto sm:px-10 sm:text-lg"
+											onclick={startRolling}
+										>
+											🎲 {boss ? '迎战掷骰' : '开始掷骰'}
+										</button>
+									</div>
+								{:else}
+									<!-- 单颗骰子封顶 56px(行宽 = 6×56 + 5×间隙):手机宽屏/平板/PC 都不再放大 -->
+									<div
+										class="mx-auto mt-2 grid w-full max-w-[22.25rem] grid-cols-6 gap-1 max-[365px]:mt-1.5 sm:mt-2.5 sm:max-w-[23.5rem] sm:gap-2"
+										role="group"
+										aria-label="骰子(选重掷时可拖拽多选)"
+										onpointermove={dragPaint}
+									>
+										{#each [0, 1, 2, 3, 4, 5] as i}
+											<button
+												class="die min-w-0 {dieOffTarget(i) ? 'opacity-30' : ''} {dieRolling(i)
+													? 'rolling'
+													: ''} {hitDice.includes(i) ? 'hit' : ''} {choosing && rerollSel[i]
+													? 'marked'
+													: ''} {diceModded(i) ? 'moded' : ''} {choosing ||
+												(pendingAction && pendingAction.kind !== 'voidpick')
+													? 'cursor-pointer hover:scale-110'
+													: 'cursor-default'}"
+												style={`animation-duration: ${rollDur}s; animation-delay: ${dieDelay(i)}s; animation-iteration-count: ${rollIter}`}
+												disabled={!choosing &&
+													(!pendingAction || pendingAction.kind === 'voidpick')}
+												class:voided={dieVoid(i)}
+												data-die={i}
+												class:selecting={choosing}
+												onpointerdown={(e) => startPaint(i, e)}
+												oncontextmenu={(e) => choosing && e.preventDefault()}
+												onclick={(e) => {
+													if (choosing) {
+														// 选中已经在 pointerdown 里做完了,指针合成的 click 必须吞掉,
+														// 否则轻点会切两次(按下选中 → 松手取消)。
+														// 判据是 detail:指针的 click 带点击计数(detail ≥ 1),
+														// 键盘 Space/Enter 与程序化 click 都是 detail === 0。
+														// ⚠️ 别改成「看刚才有没有 pointerdown」的时间窗:触摸合成的 click
+														// 可能比 pointerup 晚几百毫秒,时间窗会失效。
+														if (e.detail === 0) toggleReroll(i);
+														return;
+													}
+													if (pendingAction) onDieClick(i);
+												}}
+											>
+												<!-- 骰面用内联 SVG:不依赖 ::after/container-query/:has(),老浏览器也能渲染 -->
+												<svg class="die-face" viewBox="0 0 24 24" aria-hidden="true">
+													{#each PIP_POS as [cx, cy], idx}
+														{#if showPip(dice[i], idx + 1)}
+															<circle
+																{cx}
+																{cy}
+																r="2.6"
+																class:red={!dieRolling(i) && dice[i] === 4}
+															/>
+														{/if}
+													{/each}
+												</svg>
+												{#if diceModded(i)}
+													<!-- 点数被改造:原始点阵淡化,叠一个半透明的「实际点数」 -->
+													{#if dieVoid(i)}
+														<span class="die-void" title={`${dice[i]} 点本关作废:不算任何牌型`}
+															>✕</span
+														>
+													{:else}
+														<span class="die-mod" class:is-four={shownDice[i] === 4}
+															>{shownDice[i]}</span
+														>
+													{/if}
+												{/if}
+												{#if choosing && rerollSel[i]}
+													<span class="reroll-mark">↻</span>
+												{/if}
+											</button>
 										{/each}
 									</div>
-									{#if shownBuff}
-										<!-- 手机:横滑容器会裁掉芯片内的绝对定位,说明居中挂在容器上 -->
+
+									<!-- 交互提示:视觉上排在骰子上面(order-first) ——
+							     发动 / 重掷的标题和按钮紧贴骰子,拇指按下去不会盖住骰面。
+							     高度按最高的状态预留(min-h),换状态时骰子不会上下跳。 -->
+									<div
+										class="order-first mt-1.5 flex min-h-6 items-center justify-center gap-2 text-center text-xs max-[365px]:text-[10px] sm:mt-2 sm:min-h-8 sm:text-sm"
+									>
+										{#if pointPicker}
+											<!-- 点数选择直接顶掉标题行:不占下方布局,骰子一动不动 -->
+											{#each pointChoices() as v}
+												<button
+													class="h-6 w-7 shrink-0 rounded-lg bg-slate-700 text-xs font-bold text-slate-200 transition hover:bg-amber-500 hover:text-amber-950 max-[365px]:w-6 sm:h-8 sm:w-10 sm:text-sm {pendingAction?.kind ===
+														'set_any' && v === 4
+														? 'ring-2 ring-red-400'
+														: ''}"
+													onclick={() => pickPoint(v)}
+												>
+													{v}
+												</button>
+											{/each}
+										{:else if pendingActive}
+											<!-- 充能技能:结算播完,等玩家决定要不要发动 -->
+											<span class="text-fuchsia-300">
+												⚡ <b>{cardById(pendingActive.srcId)?.name ?? '技能'}</b>
+												{#if pendingActive.skill === 'chips'}
+													+{formatScore(pendingActive.value)} 分
+												{:else if pendingActive.skill === 'left_chips'}
+													左侧 +{formatScore(pendingActive.value)} 分
+												{:else if pendingActive.skill === 'sum'}
+													按本 Tee 点数和结算
+												{:else if pendingActive.skill === 'mult'}
+													该 Tee 总分 ×{formatMult(pendingActive.mult ?? 1)}{pendingActive.cost
+														? ` · 花 🥮 ${pendingActive.cost}`
+														: ''}
+												{:else if pendingActive.skill === 'end_round'}
+													结束本关 · 未投角色 +🥮 {pendingActive.perTee ?? 0}
+												{:else if pendingActive.skill === 'sell_self'}
+													回合结算时出售「我」 +🥮 {pendingActive.coins ?? 0}
+												{:else if pendingActive.skill === 'to_four'}
+													把一颗骰子改为 4 点，之后可反复改四点
+												{:else if pendingActive.skill === 'parked'}
+													{#if parkedInfo(currentTee).n > 0}
+														停靠 {parkedInfo(currentTee).n} 张，共 🥮 {parkedInfo(currentTee).price} →
+														基础分 +{formatScore(
+															Math.round(
+																parkedInfo(currentTee).price * parkedPer(pendingActive.srcId)
+															)
+														)}，返还的月饼币减半
+													{:else}
+														身上没有停靠的卡（发动只会白白减半返还）
+													{/if}
+												{:else}
+													本关重掷
+												{/if}
+											</span>
+											<button
+												class="shrink-0 rounded-lg bg-gradient-to-b from-fuchsia-400 to-fuchsia-600 px-3 py-0.5 text-xs font-bold whitespace-nowrap text-fuchsia-950 shadow transition hover:from-fuchsia-300 hover:to-fuchsia-500 active:scale-95 sm:px-5 sm:py-1 sm:text-sm"
+												onclick={useActive}
+											>
+												⚡ 发动
+											</button>
+											<button
+												class="shrink-0 rounded-lg border border-slate-500 bg-slate-700 px-3 py-0.5 text-xs font-semibold whitespace-nowrap text-slate-200 transition hover:bg-slate-600 sm:px-4 sm:py-1 sm:text-sm"
+												onclick={skipActive}
+											>
+												留着
+											</button>
+										{:else if choosing}
+											<span class="hidden text-cyan-300 sm:inline">
+												点骰子挑出要<b>重掷</b>的(还能重掷 {rollsLeft} 次)
+											</span>
+											<button
+												class="rounded-lg bg-gradient-to-b from-cyan-400 to-cyan-600 px-4 py-0.5 text-xs font-bold text-cyan-950 shadow transition hover:from-cyan-300 hover:to-cyan-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:from-cyan-400 disabled:hover:to-cyan-600 sm:px-5 sm:py-1 sm:text-sm"
+												onclick={confirmReroll}
+												disabled={!rerollSel.some(Boolean)}
+											>
+												🎲 重掷 {rerollSel.filter(Boolean).length} 颗
+											</button>
+											<button
+												class="rounded-lg border border-slate-500 bg-slate-700 px-3 py-0.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 sm:px-4 sm:py-1 sm:text-sm"
+												onclick={skipReroll}
+											>
+												保留全部
+											</button>
+										{:else if pendingAction?.kind === 'set_point'}
+											<span class="text-cyan-300"
+												>{opSrcName(pendingAction.srcId)} ✨ 选一颗{#if pendingAction.from}&nbsp;{pendingAction.from}
+													点{/if}骰子改为 {pendingAction.point} 点{#if pendingAction.count > 1}(还剩
+													{pendingAction.count} 颗){/if}</span
+											>
+										{:else if pendingAction?.kind === 'bump'}
+											<span class="text-cyan-300"
+												>{opSrcName(pendingAction.srcId)} ✨ 点骰子让它 {(pendingAction.step ?? 1) <
+												0
+													? '−1'
+													: '+1'}{#if pendingAction.count > 1}(还剩
+													{pendingAction.count} 颗){/if}</span
+											>
+										{:else if pendingAction?.kind === 'voidpick'}
+											<span class="text-cyan-300"
+												>{opSrcName(pendingAction.srcId)} ✨ 选一个点数,本关该点数不作废</span
+											>
+										{:else if pendingAction?.kind === 'set_any'}
+											<span class="text-cyan-300"
+												>{opSrcName(pendingAction.srcId)} ✨ 选一颗{#if pendingAction.from}&nbsp;{pendingAction.from}
+													点{/if}骰子{#if pendingAction.options}改为 {pendingAction.options.join(
+														' / '
+													)} 点{:else}改为任意点数{/if}{#if pendingAction.count > 1}(还剩
+													{pendingAction.count} 颗){/if}</span
+											>
+										{:else if rolling}
+											<span class="text-slate-400">{currentTeeCard?.name ?? '我'} 正在博饼...</span>
+										{:else}
+											<span class="text-slate-400">{currentTeeCard?.name ?? '我'} 掷出了...</span>
+										{/if}
+										{#if pendingAction}
+											<button
+												class="shrink-0 rounded-lg border border-slate-500 bg-slate-700 px-3 py-0.5 text-xs font-semibold whitespace-nowrap text-slate-200 transition hover:bg-slate-600 sm:px-4 sm:py-1 sm:text-sm"
+												onclick={skipSetOp}
+											>
+												跳过改点
+											</button>
+										{/if}
+									</div>
+
+									<!-- 最近结果: 结算动画逐条弹出 -->
+									<!-- 结果区按本轮行数预先占位:未弹出的行用不可见空行顶着,
+						     文字逐条弹出时高度不变,居中的骰子不会被顶上去 -->
+									<div
+										bind:this={stepsEl}
+										onscroll={keepSettleScroll}
+										class="no-scrollbar mt-2 flex shrink-0 flex-col items-center justify-start gap-0 overflow-y-auto overscroll-contain text-xs leading-[1.1] max-[365px]:mt-1.5 max-[365px]:text-[10px] max-[365px]:leading-[1.1] sm:mt-2.5 sm:overflow-visible sm:text-sm sm:leading-normal"
+										style={stepsMaxH ? `max-height: ${stepsMaxH}px` : ''}
+									>
+										{#each Array.from({ length: Math.max(settleReserveLines, settleSteps.length) }, (_, i) => i) as i (i)}
+											{#if i <= settleIdx && settleSteps[i]}
+												<div class="settle-step {settleSteps[i].cls}">{settleSteps[i].text}</div>
+											{:else}
+												<div class="invisible" aria-hidden="true">&nbsp;</div>
+											{/if}
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{/if}
+
+						<!-- ================= 回合确认(全队掷完, 结算前) ================= -->
+						{#if phase === 'round_confirm'}
+							<div
+								class="panel-fill mt-2.5 rounded-xl border border-amber-500/25 bg-slate-900/70 px-2.5 py-2.5 text-center backdrop-blur-sm max-[365px]:py-2 sm:mt-4 sm:rounded-2xl sm:p-4"
+							>
+								<!-- 主内容在「剩余空间」里居中,好让下面的放弃按钮贴到面板底沿 -->
+								<div class="my-auto w-full">
+									<div class="hidden text-sm font-bold text-amber-200 sm:block sm:text-lg">
+										🌕 回合结算
+									</div>
+									<!-- 结算区按本轮行数预先占位(未弹的行用不可见空行顶着):
+					     否则团队倍率卡一条条弹出时,下面的按钮会被顶下去 -->
+									<div
+										class="mt-1 flex flex-col items-center justify-center gap-0.5 text-xs sm:text-sm"
+									>
+										{#each Array.from({ length: Math.max(teamSettleReserveLines, teamSettleSteps.length) }, (_, i) => i) as i (i)}
+											{#if teamSettleSteps.length === 0 && i === 0}
+												<div class="text-[11px] text-slate-400 sm:text-xs">
+													全队已掷完,各 Tee 得分合计
+													<span class="font-bold text-slate-200"
+														>{formatScore(team.reduce((s, t) => s + t.lastScore, 0))}</span
+													>
+												</div>
+											{:else if teamSettleSteps[i] && i <= teamSettleIdx}
+												<div class="settle-step {teamSettleSteps[i].cls}">
+													{teamSettleSteps[i].text}
+												</div>
+											{:else}
+												<div class="invisible" aria-hidden="true">&nbsp;</div>
+											{/if}
+										{/each}
+									</div>
+									<!-- 结算期间保持按钮占位,不换成一行文字:44px 塌成 20px 会把上面的结算文字顶下去 -->
+									<button
+										class="mt-2.5 w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:cursor-default disabled:opacity-60 disabled:hover:from-amber-400 disabled:hover:to-amber-600 sm:w-auto sm:px-10 sm:text-lg"
+										onclick={confirmRound}
+										disabled={teamSettling}
+									>
+										{teamSettling ? '结算中...' : '🥮 结算回合'}
+									</button>
+								</div>
+								<!-- 放弃：小一号字 + 右下角 + 宽度自适应（不铺满），免得点「结算回合」时误触 -->
+								<div class="mt-2 flex w-full justify-end">
+									<button
+										class="rounded-lg px-2 py-1 text-[11px] text-slate-500 transition hover:bg-slate-800/70 hover:text-slate-300 active:scale-95 disabled:opacity-40 sm:text-xs"
+										onclick={abandonRun}
+										disabled={teamSettling}
+									>
+										放弃结算并结束游戏
+									</button>
+								</div>
+							</div>
+						{/if}
+
+						<!-- ================= 过关结算 ================= -->
+						{#if phase === 'round_end'}
+							<div
+								class="panel-fill mt-2.5 rounded-xl border border-emerald-400/40 bg-slate-900/80 px-3 py-3 text-center backdrop-blur-sm max-[365px]:py-2 sm:mt-4 sm:rounded-2xl sm:p-6"
+							>
+								<div class="result-banner">
+									<div class="text-3xl sm:text-4xl">🌕</div>
+									<div class="mt-1 text-xl font-bold text-emerald-300 sm:text-2xl">
+										过关！月饼到手！
+									</div>
+									<div class="mt-1.5 text-xs text-slate-300 sm:text-sm">
+										本关得分 <span class="font-bold text-amber-300">{formatScore(roundTotal)}</span>
+										/ 目标
+										{formatScore(target)}
+									</div>
+									<div class="mt-1 text-xs text-slate-400 sm:text-sm">
+										本局总分 <span class="font-bold text-amber-200">{formatScore(runScore)}</span>
+									</div>
+									<div
+										class="mx-auto mt-2.5 flex max-w-md flex-col gap-1 text-xs text-slate-400 sm:text-sm"
+									>
+										<div class="flex justify-between rounded bg-slate-800/60 px-3 py-1">
+											<span>过关奖励</span><span class="font-bold text-amber-300"
+												>🥮 +{roundRewardGained}</span
+											>
+										</div>
+										{#if overflowGained > 0}
+											<div class="flex justify-between rounded bg-slate-800/60 px-3 py-1">
+												<span>溢出奖励（每超出目标 50% +1，上限 8）</span><span
+													class="font-bold text-amber-300">🥮 +{overflowGained}</span
+												>
+											</div>
+										{/if}
+										{#if economyGained > 0}
+											<div class="flex justify-between rounded bg-slate-800/60 px-3 py-1">
+												<span>经商收益</span><span class="font-bold text-amber-300"
+													>🥮 +{economyGained}</span
+												>
+											</div>
+										{/if}
+									</div>
+									<button
+										class="mt-3.5 w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 sm:w-auto sm:px-10 sm:text-lg"
+										onclick={nextReward}
+									>
+										🏮 去组建 Tee 队
+									</button>
+								</div>
+							</div>
+						{/if}
+
+						<!-- ================= 集市: 3 选 1 ================= -->
+						{#if phase === 'reward'}
+							<div
+								class="panel-fill panel-auto mt-2.5 rounded-xl border border-amber-500/30 bg-slate-900/80 px-2.5 py-2.5 backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-6"
+							>
+								<div class="text-center">
+									<div class="text-base font-bold text-amber-200 sm:text-xl">
+										🏮 组建 Tee 队 · 免费选 1 张 Tee 卡
+									</div>
+								</div>
+								<div class="mt-2.5 flex justify-center gap-2 sm:mt-4 sm:gap-4">
+									{#each rewardChoices as card, idx}
+										<TeeCardView {card} desc={card.desc} selected={lastRewardIdx === idx}>
+											{#snippet actions()}
+												<button
+													class="w-full rounded-lg border border-amber-500/40 bg-amber-500/80 py-1 text-xs font-bold text-amber-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40 max-[365px]:py-0.5"
+													onclick={() => canPickReward && pickReward(idx)}
+													disabled={lastRewardIdx >= 0 || !canPickReward}
+												>
+													{lastRewardIdx === idx ? '已选 ✓' : '选择'}
+												</button>
+											{/snippet}
+										</TeeCardView>
+									{/each}
+								</div>
+								<div class="mt-3 flex justify-center gap-2 sm:gap-3">
+									<button
+										class="rounded-lg border border-slate-500 bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
+										onclick={refreshReward}
+										disabled={mooncakes < refreshPrice || lastRewardIdx >= 0}
+									>
+										<Fa icon={faRotate} class="mr-1 inline" />刷新(🥮 {refreshPrice})
+									</button>
+									<button
+										class="rounded-lg border border-slate-500 bg-slate-700 px-5 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 sm:px-6 sm:py-2 sm:text-sm"
+										onclick={openShop}
+									>
+										<Fa icon={faStore} class="mr-1 inline" />跳过 →
+									</button>
+								</div>
+							</div>
+						{/if}
+
+						<!-- ================= 中秋集市 ================= -->
+						{#if phase === 'shop'}
+							<div
+								class="panel-fill mt-2.5 rounded-xl border border-amber-500/30 bg-slate-900/80 px-2.5 py-1.5 backdrop-blur-sm max-[365px]:py-1 sm:mt-4 sm:rounded-2xl sm:p-6"
+							>
+								<div class="flex items-center justify-between">
+									<div class="text-base font-bold text-amber-200 sm:text-xl">🛒 中秋集市</div>
+									<div class="text-xs text-amber-300 sm:text-sm">🥮 {mooncakes}</div>
+								</div>
+
+								<div class="mt-1 flex items-baseline justify-between sm:mt-3">
+									<div class="text-xs font-bold text-sky-300 sm:text-sm">✨ 加成卡</div>
+									<div class="text-[10px] text-slate-500">掷骰前挂到 Tee 身上</div>
+								</div>
+								<!-- 中秋集市货架:和队伍面板同款的小芯片,固定 3 列等宽(两排对齐) -->
+								<div
+									class="relative mt-1 grid grid-cols-3 gap-1.5 max-[365px]:gap-1 sm:mt-2 sm:gap-2"
+								>
+									{#each shopBuffs as card, ci}
+										{@const picked = shopPick?.id === card.id}
+										{@const sold = shopSold.includes(card.id)}
+										{@const locked = !!shopLocks[ci]}
+										<div class="relative">
+											<!-- 格子:手机两行(名字一行、价格+锁定一行,四字名才放得下),sm 起恢复单行 -->
+											<div
+												role="button"
+												tabindex={sold ? -1 : 0}
+												aria-disabled={sold}
+												class="flex w-full flex-col gap-0.5 rounded-lg border px-1.5 py-1 text-left transition {sold
+													? 'cursor-default'
+													: 'cursor-pointer'} sm:h-8 sm:flex-row sm:items-center sm:gap-1 sm:py-0 sm:pr-5 {locked
+													? 'border-dashed border-violet-400/70 bg-violet-400/10'
+													: sold
+														? 'border-slate-700/50 bg-slate-900/50 opacity-45'
+														: 'bg-slate-800/70'} {picked
+													? 'bg-amber-400/15 ring-2 ring-amber-400'
+													: ''} {!sold && mooncakes < card.price ? 'opacity-50' : ''}"
+												style={!locked && !sold
+													? `border-color: ${RARITY_INFO[card.rarity].color}`
+													: ''}
+												onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
+												onclick={() => !sold && (shopPick = picked ? null : card)}
+												ondblclick={() => {
+													// 触摸设备上双击会被浏览器当成缩放,而且误触代价是直接花钱
+													if (!lastPointerWasMouse) return;
+													if (!sold) buyBuff(card);
+												}}
+												onkeydown={(e) => {
+													if ((e.key === 'Enter' || e.key === ' ') && !sold) {
+														e.preventDefault();
+														shopPick = picked ? null : card;
+													}
+												}}
+												onpointerenter={(e) => {
+													if (e.pointerType !== 'touch') shopPeek = card;
+												}}
+												onpointerleave={(e) => {
+													if (e.pointerType !== 'touch' && shopPeek?.id === card.id)
+														shopPeek = null;
+												}}
+											>
+												<span class="flex min-w-0 items-center gap-1">
+													<span class="h-4 w-4 shrink-0 sm:h-5 sm:w-5"
+														><TeeRender name={card.skin} className="h-full w-full" /></span
+													>
+													<span
+														class="min-w-0 flex-1 truncate text-[11px] leading-tight font-semibold text-slate-200 sm:text-xs"
+														>{card.name}</span
+													>
+												</span>
+												<!-- 第二行:手机上是价格(右侧让位给锁定按钮),sm 起 contents 把它摊回同一行 -->
+												<span class="flex items-center pr-6 sm:contents">
+													<span class="text-[10px] font-bold text-amber-300 sm:text-[11px]"
+														>{sold ? '已买' : `🥮 ${card.price}`}</span
+													>
+												</span>
+											</div>
+											<!-- 锁定:锁住的格子刷新/下次进中秋集市都不变(手机放右下,sm 起回到右上) -->
+											<button
+												class="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center text-[10px] sm:top-0 sm:bottom-auto sm:h-8 sm:w-5 {locked
+													? 'text-violet-300'
+													: 'text-slate-500 hover:text-slate-300'}"
+												title={locked ? '已锁定：刷新和下次进中秋集市都不会变' : '锁定这格商品'}
+												aria-label={locked ? '解锁' : '锁定'}
+												onclick={(e) => {
+													e.stopPropagation();
+													toggleLock(ci);
+												}}
+											>
+												<Fa icon={locked ? faLock : faLockOpen} />
+											</button>
+											<!-- 悬停/选中时的说明浮层(同一时刻只渲染一张):按列对齐,免得左右两列超出面板 -->
+											{#if shownShopBuff?.id === card.id}
+												{@render buffPop(
+													card,
+													`absolute bottom-full z-50 mb-1 hidden sm:block ${
+														ci % 3 === 0
+															? 'left-0'
+															: ci % 3 === 1
+																? 'left-1/2 -translate-x-1/2'
+																: 'right-0'
+													}`
+												)}
+											{/if}
+										</div>
+									{/each}
+									<!-- 手机没有 hover:选中的那张居中浮在货架上方 -->
+									{#if shownShopBuff}
 										{@render buffPop(
-											shownBuff,
+											shownShopBuff,
 											'absolute bottom-full left-1/2 mb-1 -translate-x-1/2 sm:hidden'
 										)}
 									{/if}
 								</div>
-							</div>
-						{/if}
 
-						<!-- 队伍:中秋集市阶段也用普通卡(去掉结果行省高度) -->
-						<div class="mt-2 flex flex-wrap gap-1.5 sm:gap-2 {marketTeam ? 'market-team' : ''}">
-							{#each team as tee, i (i)}
-								<div
-									role="button"
-									tabindex={canEquipBuff && selectedBuff ? 0 : -1}
-									class="rounded-xl p-0.5 transition {canEquipBuff && selectedBuff
-										? 'bg-amber-400/5 ring-1 ring-amber-400/70'
-										: ''}"
-									onclick={() => selectedBuff && applyBuffToTee(selectedBuff, i)}
-									onkeydown={(e) => {
-										if ((e.key === 'Enter' || e.key === ' ') && selectedBuff) {
-											e.preventDefault();
-											applyBuffToTee(selectedBuff, i);
-										}
-									}}
-								>
-									{#snippet sellBtn()}
-										{#if (phase === 'reward' || phase === 'shop') && i > 0 && tee.cardId}
-											<button
-												class="absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/90 text-[10px] font-bold text-white shadow transition hover:bg-red-400"
-												title="卖出 {cardOf(tee)?.name},得 🥮 {rarityOf(cardOf(tee)).sell}"
-												onclick={() => {
-													sfxClick();
-													sellAsk = i; // 先问一句,确认了再真卖
-												}}
-											>
-												×
-											</button>
-										{/if}
-									{/snippet}
-									<TeeCardView
-										card={cardOf(tee)}
-										skin={tee.playerSkin ?? 'x_spec'}
-										name="我"
-										desc={cardOf(tee)?.desc}
-										tipExtra={tee.cardId ? `卖出得 🥮 ${rarityOf(cardOf(tee)).sell}` : undefined}
-										tipList={teeTipList(tee)}
-										badge={(team[i]?.refundPending?.length ?? 0) > 0
-											? `🐚${team[i]?.refundPending?.length}`
-											: tee.buffs.length > 0
-												? `✨${tee.buffs.length}`
-												: undefined}
-										skillBadge={skillsFor(i).length > 0
-											? (tee.charge ?? 0) > 0
-												? `⚡${tee.charge}`
-												: '⚡'
-											: undefined}
-										emote={i === currentTee ? teeEmote : EMOTE.normal}
-										pose={i === currentTee ? teePose : IDLE_POSE}
-										active={i === currentTee && phase === 'rolling'}
-										animate={i === currentTee ? teeAnimClass : ''}
-										sellBtn={(phase === 'reward' || phase === 'shop') && i > 0 && tee.cardId
-											? sellBtn
-											: undefined}
-									>
-										{#snippet actions()}
-											<!-- 两种状态都占两行:待掷(1 行)→ 点数+等级(2 行)会让整队高度跳 14px -->
-											{#if phase === 'shop'}
-												<!-- 中秋集市阶段:回合已结算,结果看结算面板;省一行高度给 6 人满队 -->
-											{:else if i <= countedTee}
-												<!-- 投过了就显示分数:0 分/负分也算结果,别退回「待掷」(countedTee = 最后一只结算完的) -->
-												<div
-													class="text-[10px] font-bold {tee.lastScore > 0
-														? 'text-amber-300'
-														: 'text-slate-400'}"
-												>
-													{formatScore(tee.lastScore)}
-												</div>
-												<div class="text-[9px] text-slate-500">
-													{getRollLevel(tee.lastLevelId).name}
-												</div>
-											{:else}
-												<!-- 不写投掷次数:角标已经有加成卡(右)和技能(左)两处计数,玩家自己数 -->
-												<div class="text-[10px] font-bold text-slate-600">待掷</div>
-												<div class="text-[9px] text-slate-500">&nbsp;</div>
-											{/if}
-										{/snippet}
-									</TeeCardView>
+								<!-- 说明改由 tooltip 承担(悬停/点按货架格子),这里只留一行锁的提示 -->
+								<div class="mt-1 text-[10px] leading-none text-slate-500">
+									点道具看说明 · 🔒 锁住的格子刷新/下关都不变
 								</div>
-							{/each}
-						</div>
-					</div>
-				{/if}
 
-				<!-- ================= 精简道具条(不需要操作道具的阶段) ================= -->
-				{#if showItemBar}
-					<div class="relative mt-2.5">
-						<div
-							class="flex items-center gap-1.5 overflow-x-auto rounded-xl border border-sky-500/20 bg-slate-900/60 px-2.5 py-1.5 backdrop-blur-sm sm:flex-wrap sm:overflow-visible sm:rounded-2xl"
-						>
-							{#each buffEntries as [id, count]}
-								{@const card = BUFF_BY_ID.get(id)!}
-								<div class="relative shrink-0">
-									{@render buffChip(card, count)}
-									{#if peekBuff?.id === card.id}
-										{@render buffPop(card, 'absolute bottom-full left-0 mb-1 hidden sm:block')}
-									{/if}
-								</div>
-							{/each}
-						</div>
-						{#if peekBuff}
-							{@render buffPop(
-								peekBuff,
-								'absolute bottom-full left-1/2 mb-1 -translate-x-1/2 sm:hidden'
-							)}
-						{/if}
-					</div>
-				{/if}
-
-				<!-- ================= 骰子区 ================= -->
-				{#if phase === 'intro' || phase === 'rolling'}
-					<div
-						bind:this={dicePanelEl}
-						class="panel-fill mt-2.5 rounded-xl border border-amber-500/25 bg-slate-900/70 px-2.5 py-2 backdrop-blur-sm max-[365px]:mt-1.5 max-[365px]:py-1.5 sm:mt-4 sm:rounded-2xl sm:p-4"
-					>
-						{#if phase === 'intro'}
-							<!-- Boss 说明已在 HUD 上,这里不重复(小屏高度宝贵) -->
-							<div class="w-full text-center">
-								<button
-									class="w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 max-[365px]:py-2 sm:w-auto sm:px-10 sm:text-lg"
-									onclick={startRolling}
-								>
-									🎲 {boss ? '迎战掷骰' : '开始掷骰'}
-								</button>
-							</div>
-						{:else}
-							<!-- 单颗骰子封顶 56px(行宽 = 6×56 + 5×间隙):手机宽屏/平板/PC 都不再放大 -->
-							<div
-								class="mx-auto mt-2 grid w-full max-w-[22.25rem] grid-cols-6 gap-1 max-[365px]:mt-1.5 sm:mt-2.5 sm:max-w-[23.5rem] sm:gap-2"
-								role="group"
-								aria-label="骰子(选重掷时可拖拽多选)"
-								onpointermove={dragPaint}
-							>
-								{#each [0, 1, 2, 3, 4, 5] as i}
-									<button
-										class="die min-w-0 {dieOffTarget(i) ? 'opacity-30' : ''} {dieRolling(i)
-											? 'rolling'
-											: ''} {hitDice.includes(i) ? 'hit' : ''} {choosing && rerollSel[i]
-											? 'marked'
-											: ''} {diceModded(i) ? 'moded' : ''} {choosing ||
-										(pendingAction && pendingAction.kind !== 'voidpick')
-											? 'cursor-pointer hover:scale-110'
-											: 'cursor-default'}"
-										style={`animation-duration: ${rollDur}s; animation-delay: ${dieDelay(i)}s; animation-iteration-count: ${rollIter}`}
-										disabled={!choosing && (!pendingAction || pendingAction.kind === 'voidpick')}
-										class:voided={dieVoid(i)}
-										data-die={i}
-										class:selecting={choosing}
-										onpointerdown={(e) => startPaint(i, e)}
-										oncontextmenu={(e) => choosing && e.preventDefault()}
-										onclick={(e) => {
-											if (choosing) {
-												// 选中已经在 pointerdown 里做完了,指针合成的 click 必须吞掉,
-												// 否则轻点会切两次(按下选中 → 松手取消)。
-												// 判据是 detail:指针的 click 带点击计数(detail ≥ 1),
-												// 键盘 Space/Enter 与程序化 click 都是 detail === 0。
-												// ⚠️ 别改成「看刚才有没有 pointerdown」的时间窗:触摸合成的 click
-												// 可能比 pointerup 晚几百毫秒,时间窗会失效。
-												if (e.detail === 0) toggleReroll(i);
-												return;
-											}
-											if (pendingAction) onDieClick(i);
-										}}
-									>
-										<!-- 骰面用内联 SVG:不依赖 ::after/container-query/:has(),老浏览器也能渲染 -->
-										<svg class="die-face" viewBox="0 0 24 24" aria-hidden="true">
-											{#each PIP_POS as [cx, cy], idx}
-												{#if showPip(dice[i], idx + 1)}
-													<circle {cx} {cy} r="2.6" class:red={!dieRolling(i) && dice[i] === 4} />
-												{/if}
-											{/each}
-										</svg>
-										{#if diceModded(i)}
-											<!-- 点数被改造:原始点阵淡化,叠一个半透明的「实际点数」 -->
-											{#if dieVoid(i)}
-												<span class="die-void" title={`${dice[i]} 点本关作废:不算任何牌型`}>✕</span>
-											{:else}
-												<span class="die-mod" class:is-four={shownDice[i] === 4}
-													>{shownDice[i]}</span
-												>
-											{/if}
-										{/if}
-										{#if choosing && rerollSel[i]}
-											<span class="reroll-mark">↻</span>
-										{/if}
-									</button>
-								{/each}
-							</div>
-
-							<!-- 交互提示:视觉上排在骰子上面(order-first) ——
-							     发动 / 重掷的标题和按钮紧贴骰子,拇指按下去不会盖住骰面。
-							     高度按最高的状态预留(min-h),换状态时骰子不会上下跳。 -->
-							<div
-								class="order-first mt-1.5 flex min-h-6 items-center justify-center gap-2 text-center text-xs max-[365px]:text-[10px] sm:mt-2 sm:min-h-8 sm:text-sm"
-							>
-								{#if pointPicker}
-									<!-- 点数选择直接顶掉标题行:不占下方布局,骰子一动不动 -->
-									{#each pointChoices() as v}
+								<!-- 购买和「下一关」分置两端:一个花钱、一个离开,挨在一起太容易点错 -->
+								<div class="mt-1.5 flex items-center justify-between gap-2 sm:mt-2 sm:gap-3">
+									<div class="flex items-center gap-1.5 sm:gap-2">
 										<button
-											class="h-6 w-7 shrink-0 rounded-lg bg-slate-700 text-xs font-bold text-slate-200 transition hover:bg-amber-500 hover:text-amber-950 max-[365px]:w-6 sm:h-8 sm:w-10 sm:text-sm {pendingAction?.kind ===
-												'set_any' && v === 4
-												? 'ring-2 ring-red-400'
-												: ''}"
-											onclick={() => pickPoint(v)}
+											class="rounded-lg border border-slate-500 bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
+											onclick={refreshShop}
+											disabled={mooncakes < refreshPrice || shopLocks.every((l) => l)}
 										>
-											{v}
+											<Fa icon={faRotate} class="mr-1 inline" />刷新(🥮 {refreshPrice})
 										</button>
-									{/each}
-								{:else if pendingActive}
-									<!-- 充能技能:结算播完,等玩家决定要不要发动 -->
-									<span class="text-fuchsia-300">
-										⚡ <b>{cardById(pendingActive.srcId)?.name ?? '技能'}</b>
-										{#if pendingActive.skill === 'chips'}
-											+{formatScore(pendingActive.value)} 分
-										{:else if pendingActive.skill === 'left_chips'}
-											左侧 +{formatScore(pendingActive.value)} 分
-										{:else if pendingActive.skill === 'sum'}
-											按本 Tee 点数和结算
-										{:else if pendingActive.skill === 'mult'}
-											该 Tee 总分 ×{formatMult(pendingActive.mult ?? 1)}{pendingActive.cost
-												? ` · 花 🥮 ${pendingActive.cost}`
-												: ''}
-										{:else if pendingActive.skill === 'end_round'}
-											结束本关 · 未投角色 +🥮 {pendingActive.perTee ?? 0}
-										{:else if pendingActive.skill === 'sell_self'}
-											回合结算时出售「我」 +🥮 {pendingActive.coins ?? 0}
-										{:else if pendingActive.skill === 'to_four'}
-											把一颗骰子改为 4 点，之后可反复改四点
-										{:else if pendingActive.skill === 'parked'}
-											{#if parkedInfo(currentTee).n > 0}
-												停靠 {parkedInfo(currentTee).n} 张，共 🥮 {parkedInfo(currentTee).price} → 基础分
-												+{formatScore(
-													Math.round(parkedInfo(currentTee).price * parkedPer(pendingActive.srcId))
-												)}，返还的月饼币减半
-											{:else}
-												身上没有停靠的卡（发动只会白白减半返还）
-											{/if}
-										{:else}
-											本关重掷
-										{/if}
-									</span>
+										<button
+											class="rounded-lg border border-emerald-400/60 bg-emerald-500/20 px-3 py-1.5 text-xs font-bold whitespace-nowrap text-emerald-200 transition hover:bg-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
+											onclick={() => shopPick && buyBuff(shopPick)}
+											disabled={!shopPick || mooncakes < shopPick.price}
+										>
+											{shopPick ? `买 🥮 ${shopPick.price}` : '买'}
+										</button>
+									</div>
 									<button
-										class="shrink-0 rounded-lg bg-gradient-to-b from-fuchsia-400 to-fuchsia-600 px-3 py-0.5 text-xs font-bold whitespace-nowrap text-fuchsia-950 shadow transition hover:from-fuchsia-300 hover:to-fuchsia-500 active:scale-95 sm:px-5 sm:py-1 sm:text-sm"
-										onclick={useActive}
+										class="rounded-lg bg-gradient-to-b from-amber-400 to-amber-600 px-6 py-1.5 text-xs font-bold text-amber-950 transition hover:from-amber-300 hover:to-amber-500 sm:px-8 sm:py-2 sm:text-sm"
+										onclick={nextRound}
 									>
-										⚡ 发动
+										下一关 →
 									</button>
-									<button
-										class="shrink-0 rounded-lg border border-slate-500 bg-slate-700 px-3 py-0.5 text-xs font-semibold whitespace-nowrap text-slate-200 transition hover:bg-slate-600 sm:px-4 sm:py-1 sm:text-sm"
-										onclick={skipActive}
-									>
-										留着
-									</button>
-								{:else if choosing}
-									<span class="hidden text-cyan-300 sm:inline">
-										点骰子挑出要<b>重掷</b>的(还能重掷 {rollsLeft} 次)
-									</span>
-									<button
-										class="rounded-lg bg-gradient-to-b from-cyan-400 to-cyan-600 px-4 py-0.5 text-xs font-bold text-cyan-950 shadow transition hover:from-cyan-300 hover:to-cyan-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:from-cyan-400 disabled:hover:to-cyan-600 sm:px-5 sm:py-1 sm:text-sm"
-										onclick={confirmReroll}
-										disabled={!rerollSel.some(Boolean)}
-									>
-										🎲 重掷 {rerollSel.filter(Boolean).length} 颗
-									</button>
-									<button
-										class="rounded-lg border border-slate-500 bg-slate-700 px-3 py-0.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 sm:px-4 sm:py-1 sm:text-sm"
-										onclick={skipReroll}
-									>
-										保留全部
-									</button>
-								{:else if pendingAction?.kind === 'set_point'}
-									<span class="text-cyan-300"
-										>{opSrcName(pendingAction.srcId)} ✨ 选一颗{#if pendingAction.from}&nbsp;{pendingAction.from}
-											点{/if}骰子改为 {pendingAction.point} 点{#if pendingAction.count > 1}(还剩
-											{pendingAction.count} 颗){/if}</span
-									>
-								{:else if pendingAction?.kind === 'bump'}
-									<span class="text-cyan-300"
-										>{opSrcName(pendingAction.srcId)} ✨ 点骰子让它 {(pendingAction.step ?? 1) < 0
-											? '−1'
-											: '+1'}{#if pendingAction.count > 1}(还剩
-											{pendingAction.count} 颗){/if}</span
-									>
-								{:else if pendingAction?.kind === 'voidpick'}
-									<span class="text-cyan-300"
-										>{opSrcName(pendingAction.srcId)} ✨ 选一个点数,本关该点数不作废</span
-									>
-								{:else if pendingAction?.kind === 'set_any'}
-									<span class="text-cyan-300"
-										>{opSrcName(pendingAction.srcId)} ✨ 选一颗{#if pendingAction.from}&nbsp;{pendingAction.from}
-											点{/if}骰子{#if pendingAction.options}改为 {pendingAction.options.join(' / ')} 点{:else}改为任意点数{/if}{#if pendingAction.count > 1}(还剩
-											{pendingAction.count} 颗){/if}</span
-									>
-								{:else if rolling}
-									<span class="text-slate-400">{currentTeeCard?.name ?? '我'} 正在博饼...</span>
-								{:else}
-									<span class="text-slate-400">{currentTeeCard?.name ?? '我'} 掷出了...</span>
-								{/if}
-								{#if pendingAction}
-									<button
-										class="shrink-0 rounded-lg border border-slate-500 bg-slate-700 px-3 py-0.5 text-xs font-semibold whitespace-nowrap text-slate-200 transition hover:bg-slate-600 sm:px-4 sm:py-1 sm:text-sm"
-										onclick={skipSetOp}
-									>
-										跳过改点
-									</button>
-								{/if}
-							</div>
-
-							<!-- 最近结果: 结算动画逐条弹出 -->
-							<!-- 结果区按本轮行数预先占位:未弹出的行用不可见空行顶着,
-						     文字逐条弹出时高度不变,居中的骰子不会被顶上去 -->
-							<div
-								bind:this={stepsEl}
-								onscroll={keepSettleScroll}
-								class="no-scrollbar mt-2 flex shrink-0 flex-col items-center justify-start gap-0 overflow-y-auto overscroll-contain text-xs leading-[1.1] max-[365px]:mt-1.5 max-[365px]:text-[10px] max-[365px]:leading-[1.1] sm:mt-2.5 sm:overflow-visible sm:text-sm sm:leading-normal"
-								style={stepsMaxH ? `max-height: ${stepsMaxH}px` : ''}
-							>
-								{#each Array.from({ length: Math.max(settleReserveLines, settleSteps.length) }, (_, i) => i) as i (i)}
-									{#if i <= settleIdx && settleSteps[i]}
-										<div class="settle-step {settleSteps[i].cls}">{settleSteps[i].text}</div>
-									{:else}
-										<div class="invisible" aria-hidden="true">&nbsp;</div>
-									{/if}
-								{/each}
+								</div>
 							</div>
 						{/if}
-					</div>
-				{/if}
 
-				<!-- ================= 回合确认(全队掷完, 结算前) ================= -->
-				{#if phase === 'round_confirm'}
-					<div
-						class="panel-fill mt-2.5 rounded-xl border border-amber-500/25 bg-slate-900/70 px-2.5 py-2.5 text-center backdrop-blur-sm max-[365px]:py-2 sm:mt-4 sm:rounded-2xl sm:p-4"
-					>
-						<!-- 主内容在「剩余空间」里居中,好让下面的放弃按钮贴到面板底沿 -->
-						<div class="my-auto w-full">
-							<div class="hidden text-sm font-bold text-amber-200 sm:block sm:text-lg">
-								🌕 回合结算
-							</div>
-							<!-- 结算区按本轮行数预先占位(未弹的行用不可见空行顶着):
-					     否则团队倍率卡一条条弹出时,下面的按钮会被顶下去 -->
+						<!-- ================= 游戏结束 ================= -->
+						{#if phase === 'game_over'}
 							<div
-								class="mt-1 flex flex-col items-center justify-center gap-0.5 text-xs sm:text-sm"
+								class="panel-fill panel-auto mt-2.5 rounded-xl border border-slate-600/60 bg-slate-900/85 px-3 py-3 text-center backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-6"
 							>
-								{#each Array.from({ length: Math.max(teamSettleReserveLines, teamSettleSteps.length) }, (_, i) => i) as i (i)}
-									{#if teamSettleSteps.length === 0 && i === 0}
-										<div class="text-[11px] text-slate-400 sm:text-xs">
-											全队已掷完,各 Tee 得分合计
-											<span class="font-bold text-slate-200"
-												>{formatScore(team.reduce((s, t) => s + t.lastScore, 0))}</span
-											>
-										</div>
-									{:else if teamSettleSteps[i] && i <= teamSettleIdx}
-										<div class="settle-step {teamSettleSteps[i].cls}">
-											{teamSettleSteps[i].text}
-										</div>
-									{:else}
-										<div class="invisible" aria-hidden="true">&nbsp;</div>
-									{/if}
-								{/each}
-							</div>
-							<!-- 结算期间保持按钮占位,不换成一行文字:44px 塌成 20px 会把上面的结算文字顶下去 -->
-							<button
-								class="mt-2.5 w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:cursor-default disabled:opacity-60 disabled:hover:from-amber-400 disabled:hover:to-amber-600 sm:w-auto sm:px-10 sm:text-lg"
-								onclick={confirmRound}
-								disabled={teamSettling}
-							>
-								{teamSettling ? '结算中...' : '🥮 结算回合'}
-							</button>
-						</div>
-						<!-- 放弃：小一号字 + 右下角 + 宽度自适应（不铺满），免得点「结算回合」时误触 -->
-						<div class="mt-2 flex w-full justify-end">
-							<button
-								class="rounded-lg px-2 py-1 text-[11px] text-slate-500 transition hover:bg-slate-800/70 hover:text-slate-300 active:scale-95 disabled:opacity-40 sm:text-xs"
-								onclick={abandonRun}
-								disabled={teamSettling}
-							>
-								放弃结算并结束游戏
-							</button>
-						</div>
-					</div>
-				{/if}
-
-				<!-- ================= 过关结算 ================= -->
-				{#if phase === 'round_end'}
-					<div
-						class="panel-fill mt-2.5 rounded-xl border border-emerald-400/40 bg-slate-900/80 px-3 py-3 text-center backdrop-blur-sm max-[365px]:py-2 sm:mt-4 sm:rounded-2xl sm:p-6"
-					>
-						<div class="result-banner">
-							<div class="text-3xl sm:text-4xl">🌕</div>
-							<div class="mt-1 text-xl font-bold text-emerald-300 sm:text-2xl">
-								过关！月饼到手！
-							</div>
-							<div class="mt-1.5 text-xs text-slate-300 sm:text-sm">
-								本关得分 <span class="font-bold text-amber-300">{formatScore(roundTotal)}</span> /
-								目标
-								{formatScore(target)}
-							</div>
-							<div class="mt-1 text-xs text-slate-400 sm:text-sm">
-								本局总分 <span class="font-bold text-amber-200">{formatScore(runScore)}</span>
-							</div>
-							<div
-								class="mx-auto mt-2.5 flex max-w-md flex-col gap-1 text-xs text-slate-400 sm:text-sm"
-							>
-								<div class="flex justify-between rounded bg-slate-800/60 px-3 py-1">
-									<span>过关奖励</span><span class="font-bold text-amber-300"
-										>🥮 +{roundRewardGained}</span
-									>
-								</div>
-								{#if overflowGained > 0}
-									<div class="flex justify-between rounded bg-slate-800/60 px-3 py-1">
-										<span>溢出奖励（每超出目标 50% +1，上限 8）</span><span
-											class="font-bold text-amber-300">🥮 +{overflowGained}</span
+								<div class="text-3xl sm:text-4xl">🌘</div>
+								<div class="mt-1 text-xl font-bold text-slate-200 sm:text-2xl">博饼结束</div>
+								<div class="mt-2 text-xs text-slate-400 sm:text-sm">
+									倒在了 <span class="font-bold text-slate-200">第 {finalRound} 关</span> · 本关得分
+									<span class="font-bold text-slate-100">{formatScore(finalScore)}</span> / {formatScore(
+										target
+									)}
+									<div class="mt-1">
+										本局总分 <span class="font-bold text-amber-300"
+											>{formatScore(finalRunScore)}</span
 										>
 									</div>
-								{/if}
-								{#if economyGained > 0}
-									<div class="flex justify-between rounded bg-slate-800/60 px-3 py-1">
-										<span>经商收益</span><span class="font-bold text-amber-300"
-											>🥮 +{economyGained}</span
-										>
-									</div>
-								{/if}
-							</div>
-							<button
-								class="mt-3.5 w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 sm:w-auto sm:px-10 sm:text-lg"
-								onclick={nextReward}
-							>
-								🏮 去组建 Tee 队
-							</button>
-						</div>
-					</div>
-				{/if}
-
-				<!-- ================= 集市: 3 选 1 ================= -->
-				{#if phase === 'reward'}
-					<div
-						class="panel-fill panel-auto mt-2.5 rounded-xl border border-amber-500/30 bg-slate-900/80 px-2.5 py-2.5 backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-6"
-					>
-						<div class="text-center">
-							<div class="text-base font-bold text-amber-200 sm:text-xl">
-								🏮 组建 Tee 队 · 免费选 1 张 Tee 卡
-							</div>
-						</div>
-						<div class="mt-2.5 flex justify-center gap-2 sm:mt-4 sm:gap-4">
-							{#each rewardChoices as card, idx}
-								<TeeCardView {card} desc={card.desc} selected={lastRewardIdx === idx}>
-									{#snippet actions()}
-										<button
-											class="w-full rounded-lg border border-amber-500/40 bg-amber-500/80 py-1 text-xs font-bold text-amber-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40 max-[365px]:py-0.5"
-											onclick={() => canPickReward && pickReward(idx)}
-											disabled={lastRewardIdx >= 0 || !canPickReward}
-										>
-											{lastRewardIdx === idx ? '已选 ✓' : '选择'}
-										</button>
-									{/snippet}
-								</TeeCardView>
-							{/each}
-						</div>
-						<div class="mt-3 flex justify-center gap-2 sm:gap-3">
-							<button
-								class="rounded-lg border border-slate-500 bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
-								onclick={refreshReward}
-								disabled={mooncakes < refreshPrice || lastRewardIdx >= 0}
-							>
-								<Fa icon={faRotate} class="mr-1 inline" />刷新(🥮 {refreshPrice})
-							</button>
-							<button
-								class="rounded-lg border border-slate-500 bg-slate-700 px-5 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 sm:px-6 sm:py-2 sm:text-sm"
-								onclick={openShop}
-							>
-								<Fa icon={faStore} class="mr-1 inline" />跳过 →
-							</button>
-						</div>
-					</div>
-				{/if}
-
-				<!-- ================= 中秋集市 ================= -->
-				{#if phase === 'shop'}
-					<div
-						class="panel-fill mt-2.5 rounded-xl border border-amber-500/30 bg-slate-900/80 px-2.5 py-1.5 backdrop-blur-sm max-[365px]:py-1 sm:mt-4 sm:rounded-2xl sm:p-6"
-					>
-						<div class="flex items-center justify-between">
-							<div class="text-base font-bold text-amber-200 sm:text-xl">🛒 中秋集市</div>
-							<div class="text-xs text-amber-300 sm:text-sm">🥮 {mooncakes}</div>
-						</div>
-
-						<div class="mt-1 flex items-baseline justify-between sm:mt-3">
-							<div class="text-xs font-bold text-sky-300 sm:text-sm">✨ 加成卡</div>
-							<div class="text-[10px] text-slate-500">掷骰前挂到 Tee 身上</div>
-						</div>
-						<!-- 中秋集市货架:和队伍面板同款的小芯片,固定 3 列等宽(两排对齐) -->
-						<div class="relative mt-1 grid grid-cols-3 gap-1.5 max-[365px]:gap-1 sm:mt-2 sm:gap-2">
-							{#each shopBuffs as card, ci}
-								{@const picked = shopPick?.id === card.id}
-								{@const sold = shopSold.includes(card.id)}
-								{@const locked = !!shopLocks[ci]}
-								<div class="relative">
-									<!-- 格子:手机两行(名字一行、价格+锁定一行,四字名才放得下),sm 起恢复单行 -->
+								</div>
+								{#if isNewBest}
 									<div
-										role="button"
-										tabindex={sold ? -1 : 0}
-										aria-disabled={sold}
-										class="flex w-full flex-col gap-0.5 rounded-lg border px-1.5 py-1 text-left transition {sold
-											? 'cursor-default'
-											: 'cursor-pointer'} sm:h-8 sm:flex-row sm:items-center sm:gap-1 sm:py-0 sm:pr-5 {locked
-											? 'border-dashed border-violet-400/70 bg-violet-400/10'
-											: sold
-												? 'border-slate-700/50 bg-slate-900/50 opacity-45'
-												: 'bg-slate-800/70'} {picked
-											? 'bg-amber-400/15 ring-2 ring-amber-400'
-											: ''} {!sold && mooncakes < card.price ? 'opacity-50' : ''}"
-										style={!locked && !sold
-											? `border-color: ${RARITY_INFO[card.rarity].color}`
-											: ''}
-										onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
-										onclick={() => !sold && (shopPick = picked ? null : card)}
-										ondblclick={() => {
-											// 触摸设备上双击会被浏览器当成缩放,而且误触代价是直接花钱
-											if (!lastPointerWasMouse) return;
-											if (!sold) buyBuff(card);
-										}}
-										onkeydown={(e) => {
-											if ((e.key === 'Enter' || e.key === ' ') && !sold) {
-												e.preventDefault();
-												shopPick = picked ? null : card;
-											}
-										}}
-										onpointerenter={(e) => {
-											if (e.pointerType !== 'touch') shopPeek = card;
-										}}
-										onpointerleave={(e) => {
-											if (e.pointerType !== 'touch' && shopPeek?.id === card.id) shopPeek = null;
-										}}
+										class="result-banner mx-auto mt-2.5 inline-block rounded-full border border-amber-400/60 bg-amber-400/15 px-4 py-1 text-xs font-bold text-amber-300 sm:text-sm"
 									>
-										<span class="flex min-w-0 items-center gap-1">
-											<span class="h-4 w-4 shrink-0 sm:h-5 sm:w-5"
-												><TeeRender name={card.skin} className="h-full w-full" /></span
-											>
-											<span
-												class="min-w-0 flex-1 truncate text-[11px] leading-tight font-semibold text-slate-200 sm:text-xs"
-												>{card.name}</span
-											>
-										</span>
-										<!-- 第二行:手机上是价格(右侧让位给锁定按钮),sm 起 contents 把它摊回同一行 -->
-										<span class="flex items-center pr-6 sm:contents">
-											<span class="text-[10px] font-bold text-amber-300 sm:text-[11px]"
-												>{sold ? '已买' : `🥮 ${card.price}`}</span
-											>
-										</span>
+										🏆 新纪录!
 									</div>
-									<!-- 锁定:锁住的格子刷新/下次进中秋集市都不变(手机放右下,sm 起回到右上) -->
-									<button
-										class="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center text-[10px] sm:top-0 sm:bottom-auto sm:h-8 sm:w-5 {locked
-											? 'text-violet-300'
-											: 'text-slate-500 hover:text-slate-300'}"
-										title={locked ? '已锁定：刷新和下次进中秋集市都不会变' : '锁定这格商品'}
-										aria-label={locked ? '解锁' : '锁定'}
-										onclick={(e) => {
-											e.stopPropagation();
-											toggleLock(ci);
-										}}
-									>
-										<Fa icon={locked ? faLock : faLockOpen} />
-									</button>
-									<!-- 悬停/选中时的说明浮层(同一时刻只渲染一张):按列对齐,免得左右两列超出面板 -->
-									{#if shownShopBuff?.id === card.id}
-										{@render buffPop(
-											card,
-											`absolute bottom-full z-50 mb-1 hidden sm:block ${
-												ci % 3 === 0
-													? 'left-0'
-													: ci % 3 === 1
-														? 'left-1/2 -translate-x-1/2'
-														: 'right-0'
-											}`
-										)}
-									{/if}
+								{/if}
+								<div class="mt-2.5 flex justify-center gap-2 text-xs sm:gap-6 sm:text-sm">
+									<div class="rounded-lg bg-slate-800/70 px-3 py-1.5 sm:px-4 sm:py-2">
+										<div class="text-base font-bold text-amber-300 sm:text-lg">
+											{formatScore(save.bestScore)}
+										</div>
+										<div class="text-[10px] text-slate-400 sm:text-xs">最高总分</div>
+									</div>
+									<div class="rounded-lg bg-slate-800/70 px-3 py-1.5 sm:px-4 sm:py-2">
+										<div class="text-base font-bold text-slate-100 sm:text-lg">
+											{save.bestRound}
+										</div>
+										<div class="text-[10px] text-slate-400 sm:text-xs">最高关数</div>
+									</div>
+									<div class="rounded-lg bg-slate-800/70 px-3 py-1.5 sm:px-4 sm:py-2">
+										<div class="text-base font-bold text-slate-100 sm:text-lg">{save.plays}</div>
+										<div class="text-[10px] text-slate-400 sm:text-xs">总游玩局数</div>
+									</div>
 								</div>
-							{/each}
-							<!-- 手机没有 hover:选中的那张居中浮在货架上方 -->
-							{#if shownShopBuff}
-								{@render buffPop(
-									shownShopBuff,
-									'absolute bottom-full left-1/2 mb-1 -translate-x-1/2 sm:hidden'
-								)}
-							{/if}
-						</div>
-
-						<!-- 说明改由 tooltip 承担(悬停/点按货架格子),这里只留一行锁的提示 -->
-						<div class="mt-1 text-[10px] leading-none text-slate-500">
-							点道具看说明 · 🔒 锁住的格子刷新/下关都不变
-						</div>
-
-						<!-- 购买和「下一关」分置两端:一个花钱、一个离开,挨在一起太容易点错 -->
-						<div class="mt-1.5 flex items-center justify-between gap-2 sm:mt-2 sm:gap-3">
-							<div class="flex items-center gap-1.5 sm:gap-2">
-								<button
-									class="rounded-lg border border-slate-500 bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
-									onclick={refreshShop}
-									disabled={mooncakes < refreshPrice || shopLocks.every((l) => l)}
-								>
-									<Fa icon={faRotate} class="mr-1 inline" />刷新(🥮 {refreshPrice})
-								</button>
-								<button
-									class="rounded-lg border border-emerald-400/60 bg-emerald-500/20 px-3 py-1.5 text-xs font-bold whitespace-nowrap text-emerald-200 transition hover:bg-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4 sm:py-2 sm:text-sm"
-									onclick={() => shopPick && buyBuff(shopPick)}
-									disabled={!shopPick || mooncakes < shopPick.price}
-								>
-									{shopPick ? `买 🥮 ${shopPick.price}` : '买'}
-								</button>
-							</div>
-							<button
-								class="rounded-lg bg-gradient-to-b from-amber-400 to-amber-600 px-6 py-1.5 text-xs font-bold text-amber-950 transition hover:from-amber-300 hover:to-amber-500 sm:px-8 sm:py-2 sm:text-sm"
-								onclick={nextRound}
-							>
-								下一关 →
-							</button>
-						</div>
-					</div>
-				{/if}
-
-				<!-- ================= 游戏结束 ================= -->
-				{#if phase === 'game_over'}
-					<div
-						class="panel-fill panel-auto mt-2.5 rounded-xl border border-slate-600/60 bg-slate-900/85 px-3 py-3 text-center backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-6"
-					>
-						<div class="text-3xl sm:text-4xl">🌘</div>
-						<div class="mt-1 text-xl font-bold text-slate-200 sm:text-2xl">博饼结束</div>
-						<div class="mt-2 text-xs text-slate-400 sm:text-sm">
-							倒在了 <span class="font-bold text-slate-200">第 {finalRound} 关</span> · 本关得分
-							<span class="font-bold text-slate-100">{formatScore(finalScore)}</span> / {formatScore(
-								target
-							)}
-							<div class="mt-1">
-								本局总分 <span class="font-bold text-amber-300">{formatScore(finalRunScore)}</span>
-							</div>
-						</div>
-						{#if isNewBest}
-							<div
-								class="result-banner mx-auto mt-2.5 inline-block rounded-full border border-amber-400/60 bg-amber-400/15 px-4 py-1 text-xs font-bold text-amber-300 sm:text-sm"
-							>
-								🏆 新纪录!
+								<div class="mt-3 flex justify-center gap-2 sm:gap-3">
+									<button
+										class="rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-6 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 sm:px-10 sm:text-lg"
+										onclick={startGame}
+									>
+										🎲 再来一局
+									</button>
+									<button
+										class="rounded-xl border border-slate-500 bg-slate-700 px-4 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 sm:px-6 sm:text-sm"
+										onclick={restart}
+									>
+										返回菜单
+									</button>
+								</div>
 							</div>
 						{/if}
-						<div class="mt-2.5 flex justify-center gap-2 text-xs sm:gap-6 sm:text-sm">
-							<div class="rounded-lg bg-slate-800/70 px-3 py-1.5 sm:px-4 sm:py-2">
-								<div class="text-base font-bold text-amber-300 sm:text-lg">
-									{formatScore(save.bestScore)}
-								</div>
-								<div class="text-[10px] text-slate-400 sm:text-xs">最高总分</div>
-							</div>
-							<div class="rounded-lg bg-slate-800/70 px-3 py-1.5 sm:px-4 sm:py-2">
-								<div class="text-base font-bold text-slate-100 sm:text-lg">{save.bestRound}</div>
-								<div class="text-[10px] text-slate-400 sm:text-xs">最高关数</div>
-							</div>
-							<div class="rounded-lg bg-slate-800/70 px-3 py-1.5 sm:px-4 sm:py-2">
-								<div class="text-base font-bold text-slate-100 sm:text-lg">{save.plays}</div>
-								<div class="text-[10px] text-slate-400 sm:text-xs">总游玩局数</div>
-							</div>
-						</div>
-						<div class="mt-3 flex justify-center gap-2 sm:gap-3">
-							<button
-								class="rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-6 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 sm:px-10 sm:text-lg"
-								onclick={startGame}
-							>
-								🎲 再来一局
-							</button>
-							<button
-								class="rounded-xl border border-slate-500 bg-slate-700 px-4 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 sm:px-6 sm:text-sm"
-								onclick={restart}
-							>
-								返回菜单
-							</button>
-						</div>
 					</div>
-				{/if}
+				</div>
 			{/if}
 
 			<div
