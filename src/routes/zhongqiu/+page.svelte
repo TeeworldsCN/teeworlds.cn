@@ -2833,7 +2833,7 @@
 
 	// 只剩「过关结算」阶段要这条无标题的精简道具条(那里队伍面板已收起)。
 	// 3 选 1 改用队伍上方的货架了,不再重复摆一遍。
-	// 货架在桌面会换行长高 → 已在货架上压 sm:max-h + overflow-y-auto,否则
+	// 货架在桌面(两列 lg+)会换行长高 → 已在货架上压 lg:max-h + overflow-y-auto,否则
 	// 收了很多加成卡时 reward/shop 会被顶出屏幕(实测 1280×800 溢出 85px)。
 
 	// ---- 分阶段布局（移动端单屏）----
@@ -2849,7 +2849,7 @@
 	);
 	// 只剩「过关结算」阶段要这条无标题的精简道具条(那里队伍面板已收起)。
 	// 3 选 1 改用队伍上方的货架了,不再重复摆一遍。
-	// 货架在桌面会换行长高 → 已在货架上压 sm:max-h + overflow-y-auto,否则
+	// 货架在桌面(两列 lg+)会换行长高 → 已在货架上压 lg:max-h + overflow-y-auto,否则
 	// 收了很多加成卡时会被顶出屏幕(实测 1280×800 reward 溢出 85px)。
 	const showItemBar = $derived(phase === 'round_end' && buffEntries.length > 0);
 
@@ -3393,30 +3393,26 @@
 											</span>
 											<span class="shrink-0 text-slate-500">持续 1~3 关</span>
 										</div>
-										<!-- 所有宽度统一芯片:手机单行横滑,桌面换行 -->
+										<!-- 芯片行:单列(手机/平板)单行横滑;两列 PC(lg+)才换行 + 限高内滚 ——
+										     和 deskSplit 用同一个断点(sm: 会让「单列但 ≥640px」错用竖排版式) -->
 										<div class="relative">
 											<div
-												class="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5 sm:max-h-[4.75rem] sm:flex-wrap sm:gap-2 sm:overflow-y-auto"
+												class="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5 lg:max-h-[4.75rem] lg:flex-wrap lg:gap-2 lg:overflow-y-auto"
 											>
 												{#each buffEntries as [id, count]}
 													{@const card = BUFF_BY_ID.get(id)!}
-													<div class="relative shrink-0">
+													<div class="shrink-0">
 														{@render buffChip(card, count, canEquipBuff)}
-														{#if shownBuff?.id === card.id}
-															<!-- 桌面:说明浮在悬停/选中的芯片上方 -->
-															{@render buffPop(
-																card,
-																'absolute bottom-full left-0 mb-1 hidden sm:block'
-															)}
-														{/if}
 													</div>
 												{/each}
 											</div>
 											{#if shownBuff}
-												<!-- 手机:横滑容器会裁掉芯片内的绝对定位,说明居中挂在容器上 -->
+												<!-- 说明浮层挂在**横滑容器之外**:容器是 overflow 滚动区(手机横滑 / lg+ 换行内滚),
+												     挂在里面会被 bottom-full 探出去的那截裁掉 —— DOM 里有、屏幕上看不见。
+												     一行紧凑卡带,居中显示即可,不必再按芯片逐一定位。 -->
 												{@render buffPop(
 													shownBuff,
-													'absolute bottom-full left-1/2 mb-1 -translate-x-1/2 sm:hidden'
+													'absolute bottom-full left-1/2 mb-1 -translate-x-1/2'
 												)}
 											{/if}
 										</div>
@@ -3520,19 +3516,15 @@
 								>
 									{#each buffEntries as [id, count]}
 										{@const card = BUFF_BY_ID.get(id)!}
-										<div class="relative shrink-0">
+										<div class="shrink-0">
 											{@render buffChip(card, count)}
-											{#if peekBuff?.id === card.id}
-												{@render buffPop(card, 'absolute bottom-full left-0 mb-1 hidden sm:block')}
-											{/if}
 										</div>
 									{/each}
 								</div>
 								{#if peekBuff}
-									{@render buffPop(
-										peekBuff,
-										'absolute bottom-full left-1/2 mb-1 -translate-x-1/2 sm:hidden'
-									)}
+									<!-- 和货架同理:浮层必须挂在**横滑容器之外** —— 容器是 overflow 滚动区,
+									     挂在里面会被 bottom-full 探出去的那截裁掉(DOM 里有、屏幕上看不见)。 -->
+									{@render buffPop(peekBuff, 'absolute bottom-full left-1/2 mb-1 -translate-x-1/2')}
 								{/if}
 							</div>
 						{/if}
