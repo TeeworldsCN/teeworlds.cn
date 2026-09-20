@@ -390,7 +390,11 @@
 									: sk.skill === 'sell_self'
 										? `回合结算时出售「我」 +🥮 ${sk.coins ?? 0}`
 										: sk.skill === 'parked'
-											? '停靠的卡折成基础分（返还减半）'
+											? (() => {
+													const p = parkedInfo(i);
+													const v = Math.round(p.price * parkedPer(sk.srcId));
+													return `停靠 ${p.n} 张（共 🥮 ${p.price}）折成基础分 +${formatScore(v)}，返还减半`;
+												})()
 											: '本关重掷';
 			lines.push({
 				// 时机(掷完可发动)卡牌 desc 里已经写全,这里只说还能不能发动
@@ -2026,6 +2030,36 @@
 		return null;
 	};
 
+	/** 田螺:停靠了几张、总价多少(提示里要写清发动值多少分) */
+	const parkedInfo = (i: number): { n: number; price: number } => {
+		const pend = team[i]?.refundPending ?? [];
+		if (pend.length)
+			return {
+				n: pend.length,
+				price: pend.reduce((s, r) => s + (BUFF_BY_ID.get(r.cardId)?.price ?? 0), 0)
+			};
+		// 掷完那一刻 refundPending 已经清空(原价已付),但 lastSettle 里留着那批返还行
+		if (i === currentTee && lastSettle)
+			return {
+				n: lastSettle.buffBack.length,
+				price: lastSettle.buffBack.reduce((s, r) => s + r.coins, 0)
+			};
+		return { n: 0, price: 0 };
+	};
+
+	/** 田螺主动技的折算率(卡里写的是 12) */
+	const parkedPer = (srcId: string): number => {
+		let per = 12;
+		const walk = (e: unknown) => {
+			if (!e || typeof e !== 'object') return;
+			const o = e as { type?: string; skill?: string; perPrice?: number; parts?: unknown[] };
+			if (o.type === 'bundle') o.parts?.forEach(walk);
+			else if (o.type === 'active' && o.skill === 'parked' && o.perPrice) per = o.perPrice;
+		};
+		walk(cardById(srcId)?.effect);
+		return per;
+	};
+
 	const afterSettle = () => {
 		const sk = usableActive(currentTee);
 		if (sk) {
@@ -3406,7 +3440,14 @@
 										{:else if pendingActive.skill === 'to_four'}
 											把一颗骰子改为 4 点，之后可反复改四点
 										{:else if pendingActive.skill === 'parked'}
-											停靠的卡按价格 ×12 计入基础分，返还的月饼币减半
+											{#if parkedInfo(currentTee).n > 0}
+												停靠 {parkedInfo(currentTee).n} 张，共 🥮 {parkedInfo(currentTee).price} → 基础分
+												+{formatScore(
+													Math.round(parkedInfo(currentTee).price * parkedPer(pendingActive.srcId))
+												)}，返还的月饼币减半
+											{:else}
+												身上没有停靠的卡（发动只会白白减半返还）
+											{/if}
 										{:else}
 											本关重掷
 										{/if}
