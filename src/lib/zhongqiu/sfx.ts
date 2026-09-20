@@ -304,29 +304,16 @@ export const sfxPick = (n = 1, on = true) => {
 	const step = pickQueue++ * 0.03;
 	const t0 = now + 0.004 + step;
 	const k = Math.min(Math.max(n, 1), 6);
-	// 和 sfxRoll 同一套材质:带通噪声的「石子」声,只是基频降到低音区
-	// 选中 520 → 870Hz(逐档上行),取消更闷更低
-	const freq = on ? 520 + (k - 1) * 70 : 430;
+	// 就是 sfxRoll 里那记 click 的音区(900~3300Hz 的清脆骰子),不往下压 ——
+	// 压在 520Hz 那种会变成「擦桌子」。取音区中段:选中 1300 → 2900Hz
+	// (逐档上行),取消 950Hz 略低一点但仍然清脆。
+	const freq = on ? 1300 + (k - 1) * 320 : 950;
 	click(t0, {
 		freq,
-		q: 1.3,
-		dur: 0.05 * R(),
-		gain: on ? 0.14 : 0.1
+		q: on ? 1.1 : 0.9,
+		dur: 0.045 * R(),
+		gain: on ? 0.15 : 0.11
 	});
-	// 掷骰里那记低频隆隆的短促版:给一点「桌面」的分量
-	if (bus) {
-		const o = ctx.createOscillator();
-		const g = ctx.createGain();
-		o.type = 'sine';
-		o.frequency.setValueAtTime(95, t0);
-		o.frequency.exponentialRampToValueAtTime(58, t0 + 0.09 * R());
-		g.gain.setValueAtTime(0.0001, t0);
-		g.gain.linearRampToValueAtTime(on ? 0.07 : 0.05, t0 + 0.008);
-		g.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.09 * R());
-		o.connect(g).connect(bus);
-		o.start(t0);
-		o.stop(t0 + 0.11 * R());
-	}
 };
 
 export const sfxCoin = () => {
