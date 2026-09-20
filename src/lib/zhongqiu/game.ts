@@ -242,10 +242,21 @@ export const getBossById = (id: string): Boss => BOSSES.find((b) => b.id === id)
 // ---- 队伍 ----
 
 export interface TeamTee {
-	/** 卡牌 id,主 Tee(玩家皮肤)为 null */
+	/** 卡牌 id。没有卡的那种 Tee 是「我」 */
 	cardId: string | null;
-	/** 玩家皮肤(仅主 Tee) */
-	playerSkin?: string;
+	/**
+	 * 这张是不是「我」。
+	 *
+	 * 以前靠「下标 0 = 我」这个不成文约定,但那是位置不是身份:归家卖「我」、读档、
+	 * 作弊注入队伍都可能让队首变成别人,于是所有「依赖我」的效果(望月怀远/明月共照/
+	 * 星河/点数映射…)都会认错人 —— 而「我」本来就可能不在队伍里。
+	 * 现在显式记在数据上,下标怎么排都不会认错。
+	 *
+	 * 不变量(由 normalizeSelf 维持):isSelf 的那个 Tee 永远排在队首。
+	 */
+	isSelf?: boolean;
+	/**「我」的皮肤(纯外观;身份判定一律看 isSelf) */
+	selfSkin?: string;
 	/** 本关该 Tee 的得分(掷完后) */
 	lastScore: number;
 	lastLevelId: string;
@@ -268,6 +279,30 @@ export interface TeamTee {
 }
 
 export const TEAM_LIMIT = 6;
+
+/**
+ * 把「我」归位到队首,并保证全队**有且只有一个** isSelf。
+ *
+ * 这是「我」的身份不变量:
+ *   1. 已经标了 isSelf 的 Tee 搬到下标 0;
+ *   2. 一个都没标(旧存档 / 作弊注入)→ 认 `cardId === null` 那个;
+ *   3. 还是没有(存档里「我」丢了)→ 认下标 0(降级,至少不会全队乱套);
+ *   4. 多标了 → 只留第一个。
+ *
+ * 任何改队伍的地方(读档 / 卖 Tee / 归家卖「我」/ 作弊 setTeam)都要过它。
+ */
+export const normalizeSelf = (team: TeamTee[]): TeamTee[] => {
+	if (team.length === 0) return team;
+	let idx = team.findIndex((t) => t.isSelf);
+	if (idx < 0) idx = team.findIndex((t) => t.cardId === null);
+	if (idx < 0) idx = 0;
+	const out = team.map((t, i) => (i === idx ? { ...t, isSelf: true } : { ...t, isSelf: false }));
+	if (idx !== 0) {
+		const [me] = out.splice(idx, 1);
+		out.unshift(me);
+	}
+	return out;
+};
 
 export type GrowthMap = Record<string, number>;
 
@@ -580,6 +615,13 @@ export interface ScoreInput {
 	allSelf: EffectiveEffect[][];
 	/** 该 Tee 在队伍里的位置 */
 	index: number;
+	/**
+	 * 该 Tee 是不是「我」。
+	 *
+	 * ⚠️ 不要再用 `index === 0` 判「我」——那是位置,不是身份。
+	 * 队伍可能被重排(归家卖「我」)、读档、或「我」压根不在队里。
+	 */
+	isSelf: boolean;
 	teamCards: (TeeCard | null)[];
 	growth: GrowthMap;
 	buffs: AppliedBuff[];
@@ -619,6 +661,7 @@ export const calcTeeScore = ({
 	self,
 	allSelf,
 	index,
+	isSelf,
 	teamCards,
 	growth,
 	buffs,
@@ -767,7 +810,8 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'face_count_chips': {
-				if (skipTeamWide || index !== 0) break;
+				// 「我」掷出的点数统计 —— 认身份,不认下标
+				if (skipTeamWide || !isSelf) break;
 				{
 					const raw = playerRawDice ?? playerDice ?? [];
 					const hits = raw.filter((d) => d === eff.face).length;
@@ -908,7 +952,9 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'on_player': {
-				if (eff.teamWide ? skipTeamWide : index === 0) break;
+				// 「我」掷出某等级及以上 → 给**持卡者**加基础分/倍率(文案「该 Tee」)。
+				// teamWide:全队都吃(交给全队那一轮统一发,这里跳过)。
+				if (eff.teamWide && skipTeamWide) break;
 				const pl = getRollLevel(playerLevelId);
 				if (!condHit(eff.cond, playerLevelId, pl.score)) break;
 				const bc = chips;
@@ -918,32 +964,48 @@ export const calcTeeScore = ({
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `我掷出${pl.name}`);
 				break;
 			}
+
 			case 'player_die': {
-				if (index === 0) break;
+				// 「我」的骰子里有几个 eff.face → 给**这张卡的持有者**加基础分/倍率。
+				// 文案写「该 Tee」:触发看「我」,得利看持卡者。
+				// 所以【不加 isSelf 判定】—— 它在持卡者自己那一轮(self 那轮)结算,
+				// 别的 Tee 算分时不会走到这里(全队那一轮也不转发它)。
 				const n = playerDice.filter((v) => v === eff.face).length;
 				if (n <= 0) break;
 				const bc = chips;
 				const bm = mult;
 				if (eff.chips) chips += eff.chips * n;
 				if (eff.mult) mult *= Math.pow(eff.mult, n);
-				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `我的 ${n} 个${eff.face}`);
+				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `我 ${n} 个${eff.face}`);
+				break;
+			}
+
+			case 'self_mult': {
+				// 「我」的得分 ×per(无条件)。归「我」——持卡者是谁不重要。
+				// 只在「全队那一轮」被调(见下方 allSelf 循环),所以持卡者≠「我」时也生效。
+				if (!isSelf) break;
+				const before = { chips, mult };
+				mult *= eff.per;
+				note(srcId, 'card', chips - before.chips, before.mult === 0 ? 1 : mult / before.mult);
 				break;
 			}
 			case 'player_die_mult': {
-				// 星河:「我」每有 1 颗**作废**的骰子,「我」自己的得分 ×per(幂:×per^颗数)。
-				// 文案是「每有 1 颗作废骰子:得分 ×per」—— 按幂口径,每颗再乘一层。
-				// 作废颗数 = 6 − 活骰子数(ownDice 在 index===0 时就是「我」那一手,已剔掉作废),
-				// 所以掷出的 4 越多倍率越高,但那些 4 不参与牌型 —— 两头自己权衡。
-				if (index !== 0) break;
-				const n = 6 - ownDice.length;
+				// 星河:「我」每有 1 颗**作废**的骰子,给**这张卡的持有者**加基础分/倍率。
+				// 文案写「该 Tee」—— 受益人是持卡者自己,不是「我」。
+				// 所以【不加 isSelf 判定】:它在持卡者自己那一轮(self 那轮)结算。
+				// 别的 Tee 算分时不会走到这里 —— 全队那一轮只挑 self_mult / bundle 转发。
+				// 作废颗数按**「我」的**骰子算(文案是「我每有 1 颗作废骰子」),
+				// 不是持卡者自己的 —— 持卡者的骰面与这条无关。playerDice 就是「我」那一手。
+				const n = 6 - playerDice.length;
 				if (n <= 0) break;
 				const bc = chips;
-				if (eff.chips) chips += eff.chips * n; // 每颗作废的基础分(星河 +30/颗)
+				if (eff.chips) chips += eff.chips * n; // 每颗作废 +30
 				const bm = mult;
-				mult *= Math.pow(eff.per, n);
+				mult *= Math.pow(eff.per, n); // ×1.5^n
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `我作废 ${n} 颗`);
 				break;
 			}
+
 			case 'sum_chips': {
 				const before = { chips, mult };
 				chips += eff.per * diceSum;
@@ -1117,14 +1179,16 @@ export const calcTeeScore = ({
 			// 流派流的传说档:一张卡把全队同流派都抬起来
 			else if (eff.type === 'per_tag' && eff.teamWide) apply(eff, srcId, false, onScoredTee);
 			// 重复牌倍率:卡在谁身上都生效,但只抬主 Tee(自己那一轮已跳过)
-			else if (eff.type === 'face_count_chips') apply(eff, srcId, false, onScoredTee);
-			// 星河:「我」自己的倍率(卡长在别人身上,得利的是「我」)
-			else if (eff.type === 'player_die_mult') apply(eff, srcId, false, onScoredTee);
-			// 上面那几种可能被包在 bundle 里(改点卡的「重复牌倍率」就是)
-			else if (eff.type === 'bundle')
-				for (const p of eff.parts)
-					if (p.type === 'face_count_chips' || p.type === 'player_die_mult')
-						apply(p, srcId, false, onScoredTee);
+			// self_mult(「我」得分 ×N)与 player_die_mult(给持卡者)归属不同:
+			//   · self_mult  → 落在「我」身上,持卡者是谁不重要 → 在这一轮(全队)转发;
+			//   · player_die_mult → 落在持卡者身上 → 已经在上面 self 那一轮算过,不再转发。
+			// bundle 里两种都可能包着,逐个挑出来。
+			else if (eff.type === 'self_mult') apply(eff, srcId, false, onScoredTee);
+			else if (eff.type === 'bundle') {
+				for (const p of eff.parts) {
+					if (p.type === 'self_mult') apply(p, srcId, false, onScoredTee);
+				}
+			}
 		}
 	}
 	// 相邻 Tee 是指向别人的支援卡:站在我左边/右边的人给我加成
@@ -1397,6 +1461,10 @@ const RUN_VERSION = 5;
 
 export type RunTeamSlot = {
 	cardId: string | null;
+	/** 这张是不是「我」(存档里必须带上:身份不能靠下标推) */
+	isSelf?: boolean;
+	/**「我」的皮肤(纯外观) */
+	selfSkin?: string;
 	buffs: { cardId: string; turnsLeft: number }[];
 	lastScore: number;
 	lastLevelId: string;

@@ -40,6 +40,7 @@
 		playerDiceMods,
 		mergeMods,
 		TEAM_LIMIT,
+		normalizeSelf,
 		activeReady,
 		activeSkills,
 		applyBuffLevelFloor,
@@ -145,10 +146,6 @@
 			window.visualViewport?.removeEventListener('resize', measure);
 		};
 	});
-
-	// ---- 皮肤（主 Tee） ----
-
-	const SELF_SKIN = 'tuzi';
 
 	// ---- 存档 ----
 
@@ -661,6 +658,50 @@
 			gameOver: () => abandonRun(),
 			/** 某个 Tee 现在挂着哪些主动技(QA 排查用) */
 			skills: (i: number) => skillsFor(i),
+			/**
+			 * 给某个 Tee 用指定骰面算一次分(QA:验证「我」的身份判定 / 星河这类加成归属)。
+			 * 不碰真实战局状态,只调引擎 —— 返回 total 与明细行。
+			 */
+			scoreWith: (i: number, dice: number[]) => {
+				const mods = modsFor(i);
+				const level = judgeRoll(dice, mods);
+				const shown = liveDiceValues(dice, mods);
+				const b = calcTeeScore(scoreInput(i, level.id, shown));
+				return {
+					levelId: level.id,
+					total: b.total,
+					lines: b.sources.map((s) => `${s.srcId} +${s.chips} x${s.mult}`)
+				};
+			},
+			/**
+			 * 模拟「我」先掷出这一手(把骰面记到「我」身上),再给任意一只 Tee 算分。
+			 * 星河那类「按我作废几颗给该 Tee 加成」的效果必须这样测 —— 单看某一只
+			 * Tee 的 scoreWith 时,「我」的骰面还是空的,自然吃不到加成。
+			 */
+			scoreWithSelfDice: (dice: number[]) => {
+				const meIdx = team.findIndex((t) => t.isSelf === true);
+				if (meIdx < 0) return { error: '队伍里没有「我」' };
+				// 记「我」这一手(和 finalizeTee 一样:存原始骰面 + 判定的等级)
+				const mods = modsFor(meIdx);
+				const lv = judgeRoll(dice, mods);
+				team[meIdx].lastDice = [...dice];
+				team[meIdx].lastLevelId = lv.id;
+				// 每只 Tee 都用同一手「我」的骰面算一遍,方便对照
+				return team.map((_, k) => {
+					const m = modsFor(k);
+					const l2 = judgeRoll(dice, m);
+					const sh = liveDiceValues(dice, m);
+					const b = calcTeeScore(scoreInput(k, l2.id, sh));
+					return {
+						i: k,
+						cardId: team[k].cardId,
+						isSelf: team[k].isSelf === true,
+						levelId: l2.id,
+						total: b.total,
+						lines: b.sources.map((s) => `${s.srcId} +${s.chips} x${s.mult}`)
+					};
+				});
+			},
 			/** 直接设「累计卖出几个 Tee」+ 挂上「卖过卡」标记(QA 快测饼铺掌柜/夜市饼摊) */
 			sold: (n: number) => {
 				soldTees = n;
@@ -690,6 +731,7 @@
 					...team,
 					{
 						cardId: c.id,
+						isSelf: false,
 						lastScore: 0,
 						lastLevelId: 'none',
 						lastDice: [1, 1, 1, 1, 1, 1],
@@ -706,14 +748,17 @@
 				ids.forEach((id) => {
 					if (id !== null && !cardById(id)) warnId('Tee 卡', id);
 				});
-				team = ids.map((id) => ({
-					cardId: id,
-					playerSkin: id === null ? SELF_SKIN : undefined,
-					lastScore: 0,
-					lastLevelId: 'none',
-					lastDice: [1, 1, 1, 1, 1, 1],
-					buffs: []
-				}));
+				// 「我」= cardId 为 null 的那个;normalizeSelf 会把它归位到队首
+				team = normalizeSelf(
+					ids.map((id) => ({
+						cardId: id,
+						isSelf: id === null,
+						lastScore: 0,
+						lastLevelId: 'none',
+						lastDice: [1, 1, 1, 1, 1, 1],
+						buffs: []
+					}))
+				);
 				currentTee = 0;
 			},
 			jump: (
@@ -853,6 +898,9 @@
 				teamSettleText: teamSettleSteps.map((s) => s.text).join(' | '),
 				team: team.map((t) => ({
 					cardId: t.cardId,
+					// 身份必须存:读档时不能靠下标猜「我」是谁
+					isSelf: t.isSelf === true,
+					selfSkin: t.selfSkin,
 					lastScore: t.lastScore,
 					lastLevelId: t.lastLevelId,
 					buffs: t.buffs,
@@ -980,6 +1028,9 @@
 			growth,
 			team: team.map((t) => ({
 				cardId: t.cardId,
+				// 身份必须存:读档时不能靠下标猜「我」是谁
+				isSelf: t.isSelf === true,
+				selfSkin: t.selfSkin,
 				buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft })),
 				lastScore: t.lastScore,
 				lastLevelId: t.lastLevelId,
@@ -1056,20 +1107,24 @@
 		mooncakes = d.mooncakes;
 		runScore = d.runScore;
 		growth = d.growth;
-		team = d.team.map((t, i) => ({
-			cardId: t.cardId,
-			playerSkin: i === 0 ? SELF_SKIN : undefined,
-			lastScore: t.lastScore,
-			lastLevelId: t.lastLevelId,
-			lastDice: t.lastDice,
-			lastVoid: t.lastVoid ?? [],
-			buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft })),
-			charge: t.charge ?? 0,
-			refundPending: t.refundPending ?? [],
-			skillChips: t.skillChips ?? [],
-			skillMult: t.skillMult,
-			refundHalved: t.refundHalved ?? false
-		}));
+		team = normalizeSelf(
+			d.team.map((t) => ({
+				cardId: t.cardId,
+				// 新存档带 isSelf;老存档没这字段 → normalizeSelf 按 cardId===null 推
+				isSelf: t.isSelf,
+				selfSkin: t.selfSkin,
+				lastScore: t.lastScore,
+				lastLevelId: t.lastLevelId,
+				lastDice: t.lastDice,
+				lastVoid: t.lastVoid ?? [],
+				buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft })),
+				charge: t.charge ?? 0,
+				refundPending: t.refundPending ?? [],
+				skillChips: t.skillChips ?? [],
+				skillMult: t.skillMult,
+				refundHalved: t.refundHalved ?? false
+			}))
+		);
 		soldTees = d.soldTees;
 		sellBoost = d.sellBoost ?? false;
 		sellBoostPending = d.sellBoostPending ?? false;
@@ -1231,7 +1286,7 @@
 		team = [
 			{
 				cardId: null,
-				playerSkin: SELF_SKIN,
+				isSelf: true,
 				lastScore: 0,
 				lastLevelId: 'none',
 				lastDice: [1, 1, 1, 1, 1, 1],
@@ -1239,6 +1294,7 @@
 			},
 			...starters.map((c) => ({
 				cardId: c.id,
+				isSelf: false,
 				lastScore: 0,
 				lastLevelId: 'none',
 				lastDice: [1, 1, 1, 1, 1, 1],
@@ -1267,10 +1323,17 @@
 		return false;
 	};
 	/** 该 Tee 身上**真正生效**的加成卡(田螺 → 空)。所有读 buffs 的地方都走这里 */
+	/**
+	 * 这只 Tee 是不是「我」。
+	 *
+	 * 一律用这个判断 —— 不要写 `i === 0`:那是位置,不是身份。
+	 * 队伍会被重排(归家卖「我」)、读档、作弊注入;而且「我」可能不在队里。
+	 */
+	const selfOf = (i: number) => team[i]?.isSelf === true;
 	const buffsOf = (i: number): AppliedBuff[] => (hasBuffRefund(i) ? [] : (team[i]?.buffs ?? []));
 	/** 该 Tee 可用的主动技(「我」= 自己的 + 别人卡上授予「我」的) */
 	const skillsFor = (i: number): ActiveSkill[] =>
-		i === 0 ? playerActiveSkills(teamCards) : activeSkills(selfEffects(i), buffsOf(i));
+		selfOf(i) ? playerActiveSkills(teamCards) : activeSkills(selfEffects(i), buffsOf(i));
 	/** 花生:这只 Tee 回合初始投掷整把作废 */
 	const hasFirstRollVoid = (i: number): boolean => {
 		for (const { eff } of selfEffects(i)) if (eff.type === 'first_roll_void') return true;
@@ -1309,40 +1372,48 @@
 		for (const { eff } of selfEffects(i)) if (eff.type === 'jackpot') return eff;
 		return null;
 	};
-	const scoreInput = (i: number, levelId: string, diceForSum: number[]): ScoreInput => ({
-		// 寒月/凛月:本关加成卡的加值与乘值分别失效
-		buffChipsScale: boss?.mods?.buffChipsScale ?? 1,
-		buffMultScale: boss?.mods?.buffMultScale ?? 1,
-		levelId,
-		self: selfEffects(i),
-		allSelf: teamCards.map((_, k) => effectiveEffects(teamCards, k)),
-		index: i,
-		teamCards,
-		growth,
-		buffs: buffsOf(i),
-		// 田螺:身上那批「不生效」的卡不进 buffs(它们不能生效),单独给计分折算用
-		// 发动过的主动技加值(卡面写「计入基础分」那类):和筹码一起进乘算
-		skillChips: team[i]?.skillChips ?? [],
-		skillMult: team[i]?.skillMult,
-		teamSize: team.length,
-		diceSum: diceForSum.reduce((a, b) => a + b, 0),
-		ownDice: [...diceForSum],
-		rerolled: rerollCount,
-		// 多出来的投掷机会(per_extra_roll 用)
-		extraRolls: Math.max(0, rollsFor(i) - BASE_ROLLS),
-		stuckRerolls,
-		playerLevelId: i === 0 ? levelId : (team[0]?.lastLevelId ?? 'none'),
-		playerDice: i === 0 ? diceForSum : liveDiceValues(team[0]?.lastDice ?? [], modsFor(0)),
-		// 原样点数:只剔作废,不做 map/shift(重复牌倍率要数真实骰面)
-		playerRawDice:
-			i === 0 ? rawLiveDice(dice, modsFor(0)) : rawLiveDice(team[0]?.lastDice ?? [], modsFor(0)),
-		// 新机制的上下文：经济流用币、成长/负分用关数、支援流用左邻已结算的分
-		coins: mooncakes,
-		round,
-		leftScore: i > 0 ? (team[i - 1]?.lastScore ?? 0) : (team[team.length - 1]?.lastScore ?? 0),
-		soldCount: soldTees,
-		sellBoost
-	});
+	const scoreInput = (i: number, levelId: string, diceForSum: number[]): ScoreInput => {
+		// 「我」是谁:身份看 isSelf,不看下标(队伍可能被重排,「我」也可能不在队里)
+		const isMe = team[i]?.isSelf === true;
+		const selfIdx = team.findIndex((t) => t.isSelf === true);
+		const selfTee = selfIdx >= 0 ? team[selfIdx] : undefined;
+		const selfLiveDice = liveDiceValues(selfTee?.lastDice ?? [], modsFor(selfIdx));
+		const selfRawDice = rawLiveDice(selfTee?.lastDice ?? [], modsFor(selfIdx));
+		return {
+			// 寒月/凛月:本关加成卡的加值与乘值分别失效
+			buffChipsScale: boss?.mods?.buffChipsScale ?? 1,
+			buffMultScale: boss?.mods?.buffMultScale ?? 1,
+			levelId,
+			self: selfEffects(i),
+			allSelf: teamCards.map((_, k) => effectiveEffects(teamCards, k)),
+			index: i,
+			isSelf: team[i]?.isSelf === true,
+			teamCards,
+			growth,
+			buffs: buffsOf(i),
+			// 田螺:身上那批「不生效」的卡不进 buffs(它们不能生效),单独给计分折算用
+			// 发动过的主动技加值(卡面写「计入基础分」那类):和筹码一起进乘算
+			skillChips: team[i]?.skillChips ?? [],
+			skillMult: team[i]?.skillMult,
+			teamSize: team.length,
+			diceSum: diceForSum.reduce((a, b) => a + b, 0),
+			ownDice: [...diceForSum],
+			rerolled: rerollCount,
+			// 多出来的投掷机会(per_extra_roll 用)
+			extraRolls: Math.max(0, rollsFor(i) - BASE_ROLLS),
+			stuckRerolls,
+			playerLevelId: isMe ? levelId : (selfTee?.lastLevelId ?? 'none'),
+			playerDice: isMe ? diceForSum : selfLiveDice,
+			// 原样点数:只剔作废,不做 map/shift(重复牌倍率要数真实骰面)
+			playerRawDice: isMe ? rawLiveDice(dice, modsFor(i)) : selfRawDice,
+			// 新机制的上下文：经济流用币、成长/负分用关数、支援流用左邻已结算的分
+			coins: mooncakes,
+			round,
+			leftScore: i > 0 ? (team[i - 1]?.lastScore ?? 0) : (team[team.length - 1]?.lastScore ?? 0),
+			soldCount: soldTees,
+			sellBoost
+		};
+	};
 
 	/** 该 Tee 本回合可投掷几次 */
 	const rollsFor = (i: number) => rollsAllowed(selfEffects(i), buffsOf(i), boss?.rollsBonus ?? 0);
@@ -1361,8 +1432,8 @@
 				extra,
 				mergeMods(
 					selfDiceMods(selfEffects(i), buffsOf(i)),
-					// 只有主 Tee 吃队友的「我掷出的 X 视为 4」「我掷出的 4 作废」规则
-					i === 0 ? playerDiceMods(teamCards) : undefined
+					// 只有「我」吃队友的「我掷出的 X 视为 4」「我掷出的 4 作废」规则
+					selfOf(i) ? playerDiceMods(teamCards) : undefined
 				)
 			),
 			boss?.mods
@@ -2076,7 +2147,8 @@
 		if (!tee) return null;
 		for (const sk of skillsFor(i)) {
 			if (!activeReady(tee, sk)) continue;
-			if (sk.skill === 'left_chips' && i === 0) continue;
+			// 「左侧」不能指向自己(归家/云海那类「我」的主动技不在此列)
+			if (sk.skill === 'left_chips' && selfOf(i)) continue;
 			if (sk.skill === 'to_four') continue; // 改骰子的主动技在判定前就处理掉了
 			// 猜谜:月饼币不够就不弹(弹了也点不动)
 			if (sk.cost && mooncakes < sk.cost) continue;
@@ -2502,9 +2574,9 @@
 		sellBoostPending = true;
 		sfxSell();
 		if (team.length <= 1) return; // 只剩「我」一个时就别卖了(入口已经拦过,兑底)
-		const rest = team.slice(1);
-		rest[0] = { ...rest[0], playerSkin: SELF_SKIN };
-		team = rest;
+		// 移除**真正的「我」**(isSelf 那个),而不是「保留下标 0 之外」——
+		// 后者在队伍被重排过时会卖掉别人。卖完剩下的人重新归位。
+		team = normalizeSelf(team.filter((t) => !t.isSelf));
 		currentTee = 0;
 		countedTee = Math.min(countedTee, Math.max(0, team.length - 1));
 	};
@@ -2604,6 +2676,7 @@
 			...team,
 			{
 				cardId: card.id,
+				isSelf: false,
 				lastScore: 0,
 				lastLevelId: 'none',
 				lastDice: [1, 1, 1, 1, 1, 1],
@@ -2704,7 +2777,7 @@
 	const moonShiftPct = $derived(Math.min(100, Math.pow(Math.max(0, moonPhase), 1.5) * 100));
 	const progressFillPct = $derived(Math.min(100, Math.round(rawProgress * 100)));
 	const progressPct = $derived(Math.max(0, Math.round(rawProgress * 100)));
-	const currentTeeCard = $derived(cardOf(team[currentTee] ?? team[0]));
+	const currentTeeCard = $derived(cardOf(team[currentTee] ?? team.find((t) => t.isSelf)));
 	const canPickReward = $derived(team.length < TEAM_LIMIT);
 
 	/** 倍率显示:最多两位小数、去掉末尾 0
@@ -3357,7 +3430,7 @@
 											{/snippet}
 											<TeeCardView
 												card={cardOf(tee)}
-												skin={tee.playerSkin ?? 'x_spec'}
+												skin={tee.selfSkin ?? 'x_spec'}
 												name="我"
 												desc={cardOf(tee)?.desc}
 												tipExtra={tee.cardId

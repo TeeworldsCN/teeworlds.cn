@@ -140,10 +140,13 @@ export type TeeEffect =
 	// 花生:本回合**首次投掷整把作废**;重掷过的那几颗解除作废;
 	// 重掷完之后,重掷的骰子里只要和别人同点数就作废(判定在页面侧,这里只是声明+给工具读)
 	| { type: 'first_roll_void' }
-	// 星河:「我」掷出的这些点数作废(和 map_player_die 一样是全队收集、只作用在「我」身上;
-	// 持有者自己什么也不吃 —— 跟破晓/望舒同一族)
+	// 星河:「我」掷出的这些点数作废(和 map_player_die 一样是全队收集、只作用在「我」身上)
 	| { type: 'player_void_die'; faces: number[] }
-	// 星河:按「我」**作废**的骰子数,把「我」自己的得分 ×per×作废颗数(唯一真的把倍率给「我」的一张)
+	// 「我」的得分 ×per(无条件)。持卡者是谁不重要 —— 加成一律落在「我」身上。
+	// 星河:「我」得分 ×2 就是它。
+	| { type: 'self_mult'; per: number }
+	// 按「我」**作废**的骰子数,把**该 Tee**(持卡者)的得分 ×per^颗数、基础分 +chips×颗数。
+	// 星河的「该 Tee 基础分 +30、得分 ×1.5」就是它 —— 受益人是持卡者,不是「我」。
 	| { type: 'player_die_mult'; per: number; chips?: number }
 	// (「该 Tee 基础分 +30」用普通的 chips 就行 —— 那种效果天然落在持有者身上)
 	// 蜜枣:该回合**首次投掷**按几率直接变成 faces(不看骰子)
@@ -668,13 +671,17 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yinhe',
 		name: '星河',
-		desc: '「我」掷出的 4 点作废；「我」每有 1 颗作废骰子：基础分 +30、得分 ×1.5',
+		desc: '「我」得分 ×2;「我」掷出的 4 点作废;「我」每有 1 颗作废骰子:该 Tee 基础分 +30、得分 ×1.5',
 		rarity: 'rare',
 		skin: 'astronaut',
 		effect: {
 			type: 'bundle',
 			parts: [
+				// 「我」得分 ×2(无条件,加成落在「我」身上)
+				{ type: 'self_mult', per: 2 },
+				// 「我」掷出的 4 点作废
 				{ type: 'player_void_die', faces: [4] },
+				// 「我」每有 1 颗作废骰子:该 Tee(持卡者)基础分 +30、得分 ×1.5
 				{ type: 'player_die_mult', per: 1.5, chips: 30 }
 			]
 		}
