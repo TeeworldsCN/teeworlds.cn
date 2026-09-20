@@ -53,7 +53,8 @@
 
 - [x] `qa/copy.ts`：新效果类型 → 文案主张映射（`cost:`/`coins:`/`coinper:`/`chance:`/`faces:`/`kw:end_round`/`kw:sell_self`/`kw:buffoff`/`kw:buffback`/`kw:first_roll`/`kw:reroll_unvoid`/`kw:dup_void`）；`audit()` 遇到没映射的效果改成**报错**而不是崩
 - [x] `cards.csv` 重新导出（7 张卡的 desc 已更新）
-- [x] `qa.sh redesign`：7 张卡 + 存读档 + UI 挂载拦截的回归套件（`qa/redesign/*.js`，一张卡一个脚本避开 CDP 30s 超时）
+- [x] `qa.sh save`：存读档回归套件（`qa/save-a.js` / `qa/save-b.js`）—— 局内存读档 + 元存档不丢。
+- [x] ~~`qa.sh redesign`：7 张卡的回归套件（`qa/redesign/*.js`）~~ 已删（2025-09 · 见文件末尾「已删的旧套件」）
 - [x] `qa/scan.js`：重开清场改成按 `state()` 判（选卡阶段的卡面说明里有「作废/同点」，用 body 文案会误报）
 - [x] `qa/shift.js`：结算动画采样只在 `phase === 'round_confirm'` 时进行（动画比采样窗口短时会把换屏后的空面板报成位移），并把速度固定 1x
 - [x] ⚠️ `balance.ts band` / `sim.ts` / `run.ts` 未建模新机制（1%、返还、主动技）→ 强度表里这几张会静默失效，结论只当参考
@@ -173,15 +174,17 @@
 
 ## 4. 验证 ✅
 
-| 检查                            | 结果                                                 |
-| ------------------------------- | ---------------------------------------------------- |
-| `bun run check`                 | 0 errors / 0 warnings                                |
-| `bun run format`                | 已跑                                                 |
-| `tools/zhongqiu/qa.sh copy`     | 全部通过 ✓（Tee 109 / 加成 65 / Boss 17 / 等级示例） |
-| `tools/zhongqiu/qa.sh int`      | 37251 次计分，全部整数 ✓                             |
-| `tools/zhongqiu/qa.sh scan`     | 三档视口全部通过 ✓                                   |
-| `tools/zhongqiu/qa.sh shift`    | 三档视口全部通过 ✓（顺手修了采样窗口的误报）         |
-| `tools/zhongqiu/qa.sh redesign` | 11 个用例（30+ 断言）全部通过 ✓                      |
+| 检查                         | 结果                                                 |
+| ---------------------------- | ---------------------------------------------------- |
+| `bun run check`              | 0 errors / 0 warnings                                |
+| `bun run format`             | 已跑                                                 |
+| `tools/zhongqiu/qa.sh copy`  | 全部通过 ✓（Tee 109 / 加成 65 / Boss 17 / 等级示例） |
+| `tools/zhongqiu/qa.sh int`   | 37251 次计分，全部整数 ✓                             |
+| `tools/zhongqiu/qa.sh scan`  | 三档视口全部通过 ✓                                   |
+| `tools/zhongqiu/qa.sh shift` | 三档视口全部通过 ✓（顺手修了采样窗口的误报）         |
+| `tools/zhongqiu/qa.sh save`  | 存读档 2 个用例全部通过 ✓                            |
+
+（原 `qa.sh redesign` 的 26 个重做卡回归脚本已删 —— 见文末「已删的旧套件」。）
 
 浏览器手测覆盖：7 张卡的掷骰→重掷→结算→技能→回合结算全链路、加成卡真实挂载 UI、读档（田螺返还/归家 pending 存档不丢不重）、以及 320×568 / 375×667 / 1280×800 三档下田螺 3 行返还 + 归家行的布局不溢出。
 
@@ -217,3 +220,15 @@
 2. **田螺的 `refundPending` 没进存盘**：`runSnapshot` 漏写 → 读档后待返还的月饼币凭空消失（用例抓到）。
 3. **幽灵流程**：结算/技能收尾的 `setTimeout` 没代次守卫 → 读档/重开/换关后仍会推进流程（顺手统一加了 `animGen` 守卫）。
 4. **卡在「掷骰中」出不来**：`resetRoundState` 不清 `rolling/settling/teeAnim` —— 动画被代次守卫掐掉时 `rolling` 会永远停在 true，下一关点「开始掷骰」没反应（换关/重开现在会把动画态一起归零）。
+
+## 已删的旧套件：`qa.sh redesign`（2025-09 删）
+
+`qa/redesign/*.js`（26 个脚本，一张重做卡一个）是「重做卡」那轮留下的回归，当时锁的是**当时的数值**：
+
+- 星河 ×2.5/颗 → 后来调成 1.5/颗 ⇒ 用例里 `×2.5^2 = 250`、结算行 `星河 ×6.3` 全红；
+- 七星灯 `per 2` → `per 1.85`、喜钱 ×2.5→×3.5、仙蟾 ×2→×3、月宫广寒 ×1.3→×2、花生系数 50→2 ⇒ 同类全红。
+
+也就是说这些用例在每次调平衡时都会变成「噪音」，而它们真正抓 bug 的价值（当年抓到花生判定反了、田螺存盘漏字段）已经在**当时**兑现了。所以整批删掉，只留不看数值的 **`qa.sh save`**（存读档 2 个用例，仍全绿）。
+
+> 现在守平衡/结算的是不看死数值的那几套：`qa.sh copy`（文案↔实现）、`qa.sh int`（计分必须整数）、`qa.sh scan` / `shift`（三档视口布局），以及不变量检查（`109 卡 × 78 手 × 各种 buff`：界面算术 × 引擎总分必须相等）。
+> 如需找回旧脚本：备份在 `/tmp/qa-redesign-backup.tar.gz`（重启即失）。
