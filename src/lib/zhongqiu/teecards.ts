@@ -278,12 +278,12 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'huasheng',
 		name: '花生',
-		desc: '本回合首次投掷的骰子全部作废；重掷的骰子不作废；重掷后有同点数的骰子作废；基础分 + 未作废点数和 × 未作废颗数 × 50',
+		desc: '本回合首次投掷的骰子全部作废；重掷的骰子不作废；重掷后有同点数的骰子作废；基础分 + 未作废点数和 × 未作废颗数 × 2',
 		rarity: 'common',
 		skin: 'burnttoast_kiinmn',
 		effect: {
 			type: 'bundle',
-			parts: [{ type: 'first_roll_void' }, { type: 'live_sum_chips', per: 50 }]
+			parts: [{ type: 'first_roll_void' }, { type: 'live_sum_chips', per: 2 }]
 		}
 	},
 	{
