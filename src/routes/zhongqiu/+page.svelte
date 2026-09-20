@@ -1843,10 +1843,11 @@
 			src.from ? ` · ${src.from}` : '';
 		// 3a) 加算阶段
 		for (const src of lastBreakdown.sources) {
-			// 逆向:不是加算,是「改写」—— 写清改写成了多少、替换掉了什么
+			// 逆向:不是加算,是「改写」。只写「多少 → 多少」
+			// (卡面自己会说「基础分替换为…」,动画再啰嗦一遍就太长了)
 			if (src.swap) {
 				steps.push({
-					text: `${nameOf(src)} → ${formatScore(src.chips)}${whyOf(src)}`,
+					text: `${nameOf(src)} ${formatScore(src.swap.from)} → ${formatScore(src.chips)}`,
 					cls: 'text-rose-300',
 					kind: 'swap'
 				});
