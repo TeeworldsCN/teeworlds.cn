@@ -91,6 +91,7 @@
 		sfxLog,
 		sfxLevel,
 		sfxLose,
+		sfxPick,
 		sfxRoll,
 		sfxSell,
 		sfxSetRate,
@@ -1493,18 +1494,19 @@
 
 	const toggleReroll = (i: number) => {
 		if (!choosing) return;
-		sfxClick();
 		const next = [...rerollSel];
 		next[i] = !next[i];
 		rerollSel = next;
+		sfxPick(next.filter(Boolean).length, next[i]);
 	};
 
-	/** 把某颗骰子设成指定选中态(拖拽整笔用) */
+	/** 把某颗骰子设成指定选中态(拖拽整笔用)。状态真的变了才发声。 */
 	const setReroll = (i: number, v: boolean) => {
 		if (i < 0 || i > 5 || rerollSel[i] === v) return;
 		const next = [...rerollSel];
 		next[i] = v;
 		rerollSel = next;
+		sfxPick(next.filter(Boolean).length, v);
 	};
 
 	/** 屏幕坐标落在哪颗骰子上(-1 = 没落在骰子上) */
@@ -1526,7 +1528,6 @@
 		paintMode = !rerollSel[i];
 		paintLast = i;
 		setReroll(i, paintMode);
-		sfxClick();
 	};
 
 	/** 拖拽经过:整笔统一成 paintMode;手快跳过的骰子也补齐 */

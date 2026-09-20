@@ -283,6 +283,52 @@ export const sfxClick = () => {
 	tone(note(12), t0, 0.05, { type: 'sine', gain: 0.06 });
 };
 
+/** 重掷选骰:每改一颗骰子的选中状态响一下。
+ *  上行为「选中」(音高随已选颗数递升 → 一排扫过去是上行的),下行为「取消」。
+/** 重掷选骰:每改一颗骰子的选中状态响一下。
+ *  用的是**掷骰那套石子材质**(click 的带通噪声),只是压到低音区、单颗一发,
+ *  再带一点掷骰里那个低频隆隆的短促版,听起来像骰子在桌面上蹭了一下。
+ *  上行为「选中」、下行为「取消」;音高随已选颗数在低音区小幅递升,
+ *  一排扫过去是一串上行,但整体是闷的,不刺耳。
+ *  一帧里连改好几颗(拖拽跳格补齐)会排队错开,听起来是一串快速摩擦声。 */
+let pickQueue = 0;
+let pickQueueAt = 0;
+export const sfxPick = (n = 1, on = true) => {
+	log(on ? 'pick:' + n : 'unpick:' + n);
+	initSfx();
+	if (!ctx || !enabled) return;
+	const now = ctx.currentTime;
+	// 同一批(60ms 内)的改选往后排,每颗错开 30ms
+	if (now - pickQueueAt > 0.06) pickQueue = 0;
+	pickQueueAt = now;
+	const step = pickQueue++ * 0.03;
+	const t0 = now + 0.004 + step;
+	const k = Math.min(Math.max(n, 1), 6);
+	// 和 sfxRoll 同一套材质:带通噪声的「石子」声,只是基频降到低音区
+	// 选中 520 → 870Hz(逐档上行),取消更闷更低
+	const freq = on ? 520 + (k - 1) * 70 : 430;
+	click(t0, {
+		freq,
+		q: 1.3,
+		dur: 0.05 * R(),
+		gain: on ? 0.14 : 0.1
+	});
+	// 掷骰里那记低频隆隆的短促版:给一点「桌面」的分量
+	if (bus) {
+		const o = ctx.createOscillator();
+		const g = ctx.createGain();
+		o.type = 'sine';
+		o.frequency.setValueAtTime(95, t0);
+		o.frequency.exponentialRampToValueAtTime(58, t0 + 0.09 * R());
+		g.gain.setValueAtTime(0.0001, t0);
+		g.gain.linearRampToValueAtTime(on ? 0.07 : 0.05, t0 + 0.008);
+		g.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.09 * R());
+		o.connect(g).connect(bus);
+		o.start(t0);
+		o.stop(t0 + 0.11 * R());
+	}
+};
+
 export const sfxCoin = () => {
 	log('coin');
 	initSfx();
