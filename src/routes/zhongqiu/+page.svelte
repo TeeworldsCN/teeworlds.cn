@@ -1348,14 +1348,20 @@
 	/** 效果里(含 bundle)有没有这一种 */
 	const hasEffect = (eff: TeeEffect, type: TeeEffect['type']): boolean =>
 		eff.type === type || (eff.type === 'bundle' && eff.parts.some((p) => hasEffect(p, type)));
-	/** 高照这条线的四张卡:谁先投掷谁当模板 */
-	const SHARE_CARDS = ['denglong', 'zhideng', 'qixingdeng', 'lianzhudeng'];
+	/** 高照这条线的四张卡:谁先投掷谁当模板,**也只抄给这四张** */
 	/**
 	 * 高照:队伍里有高照时,「高照/串珠/七星灯/连珠灯」里**首先投掷**的那只 Tee 的最终骰面,
-	 * 决定其他 Tee 回合内首次投掷的点数(不是「我」,是这四张里的第一个)。
-	 * 模板自己没得抄;排在她前面投的 Tee 也没得抄(那时模板还没产生)。
+	 * 决定**这条线里其他 Tee** 回合内首次投掷的点数(不是「我」,是这四张里的第一个)。
+	 *
+	 * ⚠️ 抄的**范围只有这条线自己**(denglong/zhideng/qixingdeng/lianzhudeng)——
+	 * 不加这层过滤的话,模板后面所有 Tee 都会被换成模板的骰面,等于「全队陪跑」:
+	 * 一条 4 张的连线会把队伍里不相关的 Tee 也一起改写,「其他 Tee」被误读成「全队其他人」。
+	 *
+	 * 模板自己没得抄;排在她前面投的 Tee 也没得抄(那时模板还没产生);
+	 * 不在线上(或没挂卡)的 Tee 一律照常自己掷。
 	 * 投掷顺序就是队伍下标顺序,countedTee = 最后一只结算完的 Tee。
 	 */
+	const SHARE_CARDS = ['denglong', 'zhideng', 'qixingdeng', 'lianzhudeng'];
 	const sharedFirstDice = (i: number): number[] | null => {
 		if (!allCards().some((c) => hasEffect(c.effect, 'shared_first_roll'))) return null;
 		let src = -1;
@@ -1366,6 +1372,9 @@
 			break; // 只看这四张里的第一只,它没投就还没模板
 		}
 		if (src < 0 || src === i) return null;
+		// 只有这条线上的 Tee 才吃复制(「其他 Tee」= 这条线里的其他 Tee)
+		const selfCid = team[i]?.cardId;
+		if (!selfCid || !SHARE_CARDS.includes(selfCid)) return null;
 		const first = team[src]?.lastDice;
 		if (!first || first.length !== 6) return null;
 		// 作废状态也一起抄:先记下来,rollCurrent 定格那一步挂到这一手上

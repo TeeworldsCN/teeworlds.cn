@@ -166,9 +166,9 @@ export type TeeEffect =
 	| { type: 'stuck_reroll_chips'; per: number }
 	// 掷出 min 个同点数(任意点数)就 +chips,有几组算几组(点数线的橙卡)
 	| { type: 'same_face_chips'; min: number; chips: number }
-	// 高照:本回合**首个投掷者**的最终骰子状态(点数 + 作废)→ 其他 Tee 回合内首次投掷的骰子
-	// (判定在页面侧:换人开掷时拿 team[0].lastDice 当下发牌面)
-	| { type: 'shared_first_roll' } // 只有高照带这条;文案点名的四张是「谁先投谁当模板」(连点数与作废状态一起抄)
+	// 高照:「高照/串珠/七星灯/连珠灯」里**首个投掷者**的最终骰子状态(点数 + 作废)
+	//      → **这条线里其他 Tee** 回合内首次投掷的骰子(线上的 Tee 才吃复制,线外不抄)
+	| { type: 'shared_first_roll' } // 只有高照带这条;点名的四张既是「模板候选」也是「复制对象」
 	| { type: 'bundle'; parts: TeeEffect[] }; // 复合:多个效果同时生效
 
 export type Tag = '兔' | '桂' | '饼' | '灯' | '月' | '仙';
@@ -301,7 +301,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'denglong',
 		name: '高照',
-		desc: '「高照」在队伍中时：「高照」「串珠」「七星灯」「连珠灯」里首先投掷的那个 Tee，其最终的骰子状态决定其他 Tee 回合内首次投掷的骰子',
+		desc: '「高照」在队伍中时：「高照」「串珠」「七星灯」「连珠灯」里首先投掷的那个 Tee，其最终的骰子状态决定这四张里其他 Tee 回合内首次投掷的骰子',
 		rarity: 'common',
 		skin: 'red_flame',
 		effect: { type: 'shared_first_roll' }
