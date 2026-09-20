@@ -2732,6 +2732,11 @@
 						: ''
 	);
 
+	// 只剩「过关结算」阶段要这条无标题的精简道具条(那里队伍面板已收起)。
+	// 3 选 1 改用队伍上方的货架了,不再重复摆一遍。
+	// 货架在桌面会换行长高 → 已在货架上压 sm:max-h + overflow-y-auto,否则
+	// 收了很多加成卡时 reward/shop 会被顶出屏幕(实测 1280×800 溢出 85px)。
+
 	// ---- 分阶段布局（移动端单屏）----
 	// 手机屏幕只有 ~590px 可用高度，一律铺开必然要滚动。
 	// 按阶段只保留该阶段真正要用的面板，其余收成一行道具条。
@@ -2743,10 +2748,10 @@
 	const showBuffShelf = $derived(
 		(phase === 'intro' || phase === 'shop' || phase === 'reward') && buffEntries.length > 0
 	);
-	// 3 选 1 也把仓库摆出来(那里能卖 Tee、要决定留哪些卡):实测面板下方还剩 106~163px,
-	// 道具条一行 ~48px(手机横滑)/ sm 换行后 ~56px,放得下。
 	// 只剩「过关结算」阶段要这条无标题的精简道具条(那里队伍面板已收起)。
 	// 3 选 1 改用队伍上方的货架了,不再重复摆一遍。
+	// 货架在桌面会换行长高 → 已在货架上压 sm:max-h + overflow-y-auto,否则
+	// 收了很多加成卡时会被顶出屏幕(实测 1280×800 reward 溢出 85px)。
 	const showItemBar = $derived(phase === 'round_end' && buffEntries.length > 0);
 	const settleReserveLines = $derived(
 		Math.min(
@@ -3268,7 +3273,7 @@
 								<!-- 所有宽度统一芯片:手机单行横滑,桌面换行 -->
 								<div class="relative">
 									<div
-										class="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5 sm:flex-wrap sm:gap-2 sm:overflow-visible"
+										class="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5 sm:max-h-[4.75rem] sm:flex-wrap sm:gap-2 sm:overflow-y-auto"
 									>
 										{#each buffEntries as [id, count]}
 											{@const card = BUFF_BY_ID.get(id)!}
