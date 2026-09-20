@@ -389,7 +389,9 @@
 									? `结束本关 · 未投角色 +🥮 ${sk.perTee ?? 0}`
 									: sk.skill === 'sell_self'
 										? `回合结算时出售「我」 +🥮 ${sk.coins ?? 0}`
-										: '本关重掷';
+										: sk.skill === 'parked'
+											? '停靠的卡折成基础分（返还减半）'
+											: '本关重掷';
 			lines.push({
 				// 时机(掷完可发动)卡牌 desc 里已经写全,这里只说还能不能发动
 				text: `⚡ ${nm}:${what}${(tee.charge ?? 0) > 0 ? `(冷却 ${tee.charge} 关)` : '（可发动）'}`,
@@ -3403,6 +3405,8 @@
 											回合结算时出售「我」 +🥮 {pendingActive.coins ?? 0}
 										{:else if pendingActive.skill === 'to_four'}
 											把一颗骰子改为 4 点，之后可反复改四点
+										{:else if pendingActive.skill === 'parked'}
+											停靠的卡按价格 ×12 计入基础分，返还的月饼币减半
 										{:else}
 											本关重掷
 										{/if}
