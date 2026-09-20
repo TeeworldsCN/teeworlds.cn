@@ -142,8 +142,11 @@ export type TeeEffect =
 	// (「该 Tee 基础分 +30」用普通的 chips 就行 —— 那种效果天然落在持有者身上)
 	// 蜜枣:该回合**首次投掷**按几率直接变成 faces(不看骰子)
 	| { type: 'jackpot'; chance: number; faces: number[] }
-	// 田螺:该 Tee 身上的加成卡不生效;掷完按原价返还月饼币
-	| { type: 'buff_refund' }
+	// 田螺:该 Tee 身上的加成卡不生效;每张按其价格折算成基础分;掷完按原价返还月饼币
+	// (perPrice = 每 1 月饼币价格折多少基础分。12 是抄「底分卡」的行情:底分卡的
+	//  分/价 中位在 16 上下,压到 12 → 存卡永远不如用掉一张合适的底分卡,
+	//  但能把用不上的卡(以及糍粑 8.3 这种低于行情的)救回来 —— 这正是田螺的定位)
+	| { type: 'buff_refund'; perPrice: number }
 	// 夜市饼摊:上回合卖出过 Tee → 本回合该 Tee 得分 ×mult(不累积、不限次数)
 	| { type: 'next_round_sell_mult'; mult: number }
 	// 饼铺掌柜(一):每累计卖出 1 个 Tee,基础分 +per
@@ -732,10 +735,10 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'tianluo',
 		name: '田螺',
-		desc: '该 Tee 身上的加成卡不生效；掷完按原价返还其月饼币',
+		desc: '该 Tee 身上的加成卡不生效；每张按其价格 ×12 折算成基础分，掷完原价返还月饼币',
 		rarity: 'rare',
 		skin: 'Frog',
-		effect: { type: 'buff_refund' }
+		effect: { type: 'buff_refund', perPrice: 12 }
 	},
 	{
 		id: 'yunhai',

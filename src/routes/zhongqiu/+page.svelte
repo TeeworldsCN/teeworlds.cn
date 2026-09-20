@@ -1295,6 +1295,8 @@
 		teamCards,
 		growth,
 		buffs: buffsOf(i),
+		// 田螺:身上那批「不生效」的卡不进 buffs(它们不能生效),单独给计分折算用
+		parkedIds: (team[i]?.refundPending ?? []).map((r) => r.cardId),
 		teamSize: team.length,
 		diceSum: diceForSum.reduce((a, b) => a + b, 0),
 		ownDice: [...diceForSum],

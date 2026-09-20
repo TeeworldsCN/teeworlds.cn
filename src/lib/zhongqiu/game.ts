@@ -588,6 +588,9 @@ export interface ScoreInput {
 	noBuffChips?: boolean;
 	/** 本关加成卡的乘值无效(凛月) */
 	noBuffMult?: boolean;
+	/** 田螺:停在这只 Tee 身上(**不生效**)的加成卡 id —— 它们不参与其它任何计算,
+	 *  只给 buff_refund 折算基础分用(所以不能走 buffs,那份是「真挂了」的) */
+	parkedIds?: string[];
 	/** 当前关卡数(reverse.perRound / growth_mult 用) */
 	round?: number;
 	leftScore?: number;
@@ -617,7 +620,8 @@ export const calcTeeScore = ({
 	leftScore = 0,
 	soldCount = 0,
 	noBuffChips = false,
-	noBuffMult = false
+	noBuffMult = false,
+	parkedIds = []
 }: ScoreInput): ScoreBreakdown => {
 	{
 		const seenEngine = new Set<string>();
@@ -730,6 +734,18 @@ export const calcTeeScore = ({
 	 */
 	const apply = (eff: TeeEffect, srcId: string, skipTeamWide = false, onScoredTee = true) => {
 		switch (eff.type) {
+			case 'buff_refund': {
+				// 田螺:身上不生效的加成卡按**原价**折成基础分 ——「不生效」不等于「白买」。
+				// 这批卡不参与任何其它计算(buffs 里没有它们),所以只能在这里、用 parkedIds 算。
+				// 寒月「加值无效」连这个折算一起失效:它本来就是加成卡带来的加值。
+				if (noBuffChips) break;
+				const parked = parkedIds ?? [];
+				if (!parked.length) break;
+				const bc = chips;
+				chips += parked.reduce((s2, id) => s2 + (BUFF_BY_ID.get(id)?.price ?? 0) * eff.perPrice, 0);
+				note(srcId, 'card', chips - bc, 1, `停靠 ${parked.length} 张`);
+				break;
+			}
 			case 'level_base_mult': {
 				if (!eff.levelIds.includes(levelId)) break;
 				baseMult *= eff.value;
