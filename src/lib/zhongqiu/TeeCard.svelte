@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import { RARITY_INFO, type TeeCard } from './teecards';
 	import TeeRender, { type TeePose } from '$lib/components/TeeRender.svelte';
+	import CardTip from './CardTip.svelte';
 
 	/**
 	 * 统一 Tee 小卡。三处复用(队伍 / 3 选 1 / 中秋集市):
@@ -68,125 +69,19 @@
 	const teeSkin = $derived(card?.skin ?? (skin || 'x_spec'));
 	const teeName = $derived(card?.name ?? name);
 
-	// ---- tooltip 挂到 body 下:脱离所有 overflow:hidden / transform 的祖先 ----
 	let wrapEl: HTMLElement | undefined = $state();
-	let tipEl: HTMLElement | undefined = $state();
-	/** 视口坐标(position: fixed)。null = 还没量过,先挪到屏幕外 */
-	let tipPos = $state<{ left: number; top: number } | null>(null);
-	/** 挂到 body 后 CSS 的 .group:hover 够不着了,用 JS 开关 */
-	let tipOpen = $state(false);
-	/** 触屏上的固定显示:点别处才收(触摸指针抬指后立刻 pointerleave) */
-	let touchHold = false;
-
-	/**
-	 * 提示框已经是 body 的直接子节点,所以这里算的全是**视口坐标** ——
-	 * 既不用折算祖先的 transform: scale,也不会被 overflow: hidden 切掉。
-	 */
-	const positionTip = () => {
-		if (!tipEl || !wrapEl) return;
-		// visualViewport 才是「真正看得见」的区域:桌面版网站 / 双指缩放时它会窄于 innerWidth,
-		// 只钳 innerWidth 的话提示框会跑到屏幕外看不到
-		const vv = window.visualViewport;
-		const vLeft = vv ? vv.offsetLeft : 0;
-		const vTop = vv ? vv.offsetTop : 0;
-		const vRight = vLeft + (vv ? vv.width : window.innerWidth);
-		const vBottom = vTop + (vv ? vv.height : window.innerHeight);
-		const wr = wrapEl.getBoundingClientRect();
-		const tw = tipEl.offsetWidth;
-		const th = tipEl.offsetHeight;
-		const pad = 8;
-		// 水平:先当居中,贴边就钳进来
-		const left = Math.max(
-			vLeft + pad,
-			Math.min(wr.left + wr.width / 2 - tw / 2, vRight - pad - tw)
-		);
-		// 垂直:优先放卡片上方;上方不够翻到下方;下方也放不下就贴住可视区顶部
-		let top = wr.top - pad - th;
-		if (top < vTop + pad) {
-			const below = wr.bottom + pad;
-			top = below + th > vBottom - pad ? vTop + pad : below;
-		}
-		tipPos = { left: Math.round(left), top: Math.round(top) };
-	};
-
-	/** 把提示框节点搬到 body 下:不受任何祖先的 overflow / transform 影响 */
-	const portal = (node: HTMLElement) => {
-		document.body.appendChild(node);
-		scheduleTip();
-		return {
-			destroy: () => node.remove()
-		};
-	};
-
-	/**
-	 * 重算入口:resize / 缩放 / 祖先布局变化都走这里。
-	 * 下一帧再算 —— resize 事件里读到的 rect 还是旧布局,直接算会取到过时的位置;
-	 * 同一帧内多次触发只算一次。
-	 */
-	let tipRaf = 0;
-	const scheduleTip = () => {
-		if (tipRaf) return;
-		tipRaf = requestAnimationFrame(() => {
-			tipRaf = 0;
-			positionTip();
-		});
-	};
-
-	$effect(() => {
-		if (!tipEl || !wrapEl) return;
-		positionTip();
-		const ro = new ResizeObserver(scheduleTip);
-		ro.observe(tipEl);
-		// 卡片本身/祖先的布局变化也会让提示框错位(队伍满员换卡、结算行增高……)
-		const roWrap = new ResizeObserver(scheduleTip);
-		roWrap.observe(wrapEl);
-		window.addEventListener('resize', scheduleTip);
-		// 手机「桌面版网站」+ 双指缩放:变的是 visualViewport,window 的 resize 不一定触发
-		window.visualViewport?.addEventListener('resize', scheduleTip);
-		window.visualViewport?.addEventListener('scroll', scheduleTip);
-		// 触屏:点卡片以外的地方收掉固定显示的提示框
-		const onDocDown = (e: PointerEvent) => {
-			if (!touchHold) return;
-			if (e.target instanceof Node && wrapEl?.contains(e.target)) return;
-			touchHold = false;
-			tipOpen = false;
-		};
-		document.addEventListener('pointerdown', onDocDown);
-		return () => {
-			ro.disconnect();
-			roWrap.disconnect();
-			document.removeEventListener('pointerdown', onDocDown);
-			window.removeEventListener('resize', scheduleTip);
-			window.visualViewport?.removeEventListener('resize', scheduleTip);
-			window.visualViewport?.removeEventListener('scroll', scheduleTip);
-			if (tipRaf) cancelAnimationFrame(tipRaf);
-		};
-	});
+	/** 鼠标 hover / 键盘聚焦 —— 触屏那套「点一下固定显示」在 CardTip 里 */
+	let hover = $state(false);
 </script>
 
 <div
 	class="group relative w-[86px] shrink-0 max-[365px]:w-[74px]"
 	role="group"
 	bind:this={wrapEl}
-	onpointerenter={() => {
-		tipOpen = true;
-		scheduleTip();
-	}}
-	onpointerleave={() => {
-		if (!touchHold) tipOpen = false;
-	}}
-	onpointerdown={(e) => {
-		// 触屏没有 hover:点一下固定显示,点别处再收 —— 和接管前的 CSS :hover 行为一致
-		if (e.pointerType !== 'touch') return;
-		touchHold = true;
-		tipOpen = true;
-		scheduleTip();
-	}}
-	onfocusin={() => {
-		tipOpen = true;
-		scheduleTip();
-	}}
-	onfocusout={() => (tipOpen = false)}
+	onpointerenter={() => (hover = true)}
+	onpointerleave={() => (hover = false)}
+	onfocusin={() => (hover = true)}
+	onfocusout={() => (hover = false)}
 >
 	<div
 		class="tee-card {selected ? 'ring-2 ring-emerald-400' : ''} {active
@@ -222,16 +117,7 @@
 	</div>
 
 	{#if desc || tipExtra || tipList?.length}
-		<div
-			bind:this={tipEl}
-			use:portal
-			class="tip pointer-events-none fixed z-40 w-max max-w-[min(13rem,calc(100vw-2.5rem))] rounded-lg border px-2.5 py-1.5 text-center text-xs leading-snug text-slate-200 shadow-xl {tipOpen
-				? 'tip-open'
-				: ''}"
-			style={`border-color: color-mix(in srgb, var(--rarity, #94a3b8) 50%, transparent); background: rgba(2, 6, 23, 0.95);${
-				tipPos ? `left: ${tipPos.left}px; top: ${tipPos.top}px;` : 'left: -9999px; top: -9999px;'
-			}`}
-		>
+		<CardTip anchor={wrapEl} {hover} color={rinfo?.color}>
 			{desc}
 			{#if tipExtra}
 				<div class="mt-1 text-[10px] font-semibold text-amber-300">{tipExtra}</div>
@@ -246,7 +132,7 @@
 					{/each}
 				</div>
 			{/if}
-		</div>
+		</CardTip>
 	{/if}
 
 	{#if actions}
@@ -257,17 +143,6 @@
 </div>
 
 <style>
-	/* hover 说明淡入淡出。节点挂在 body 下,祖先选择器(.group:hover)够不着,
-	 * 所以开关由 JS 的 onpointerenter / onfocusin 控制 */
-	.tip {
-		opacity: 0;
-		transition: opacity 0.15s ease;
-	}
-
-	.tip.tip-open {
-		opacity: 1;
-	}
-
 	.tee-card {
 		/* 角标(⚡/✨)和卖出 ✕ 都 absolute 在卡内,锚点必须是卡片本体,
 		 * 否则会锚到外层容器(卡 + 分数行),左下角标会掉到分数行下面 */
