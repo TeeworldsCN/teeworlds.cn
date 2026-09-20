@@ -324,6 +324,15 @@
 		if (!canEquipBuff) return;
 		const cur = buffInventory[card.id] ?? 0;
 		if (cur <= 0) return;
+		// 全局规则:同一只 Tee 上同名加成卡只能挂 1 张(不同类型不同名的可以叠)。
+		// 田螺那条路上卡不进 buffs,所以两边都查。
+		if (
+			(team[idx].buffs ?? []).some((b) => b.cardId === card.id) ||
+			(team[idx].refundPending ?? []).some((r) => r.cardId === card.id)
+		) {
+			sfxClick();
+			return;
+		}
 		const next: Record<string, number> = {};
 		for (const [k, v] of Object.entries(buffInventory)) {
 			if (k === card.id) {
@@ -1288,6 +1297,8 @@
 		diceSum: diceForSum.reduce((a, b) => a + b, 0),
 		ownDice: [...diceForSum],
 		rerolled: rerollCount,
+		// 多出来的投掷机会(per_extra_roll 用)
+		extraRolls: Math.max(0, rollsFor(i) - BASE_ROLLS),
 		stuckRerolls,
 		playerLevelId: i === 0 ? levelId : (team[0]?.lastLevelId ?? 'none'),
 		playerDice: i === 0 ? diceForSum : liveDiceValues(team[0]?.lastDice ?? [], modsFor(0)),

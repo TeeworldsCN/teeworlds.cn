@@ -301,12 +301,12 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'jingui',
 		name: '金桂流心',
-		desc: '基础分 +60，得分 ×1.6',
+		desc: '基础分 +60，得分 ×2.2',
 		rarity: 'legendary',
 		skin: 'OnyxNanami_Yellow',
 		price: 8,
 		turns: 2,
-		effect: { type: 'chips_mult', chips: 60, mult: 1.6 }
+		effect: { type: 'chips_mult', chips: 60, mult: 2.2 }
 	},
 	{
 		id: 'yuehun',
@@ -399,9 +399,9 @@ export const BUFF_CARDS: BuffCard[] = [
 		id: 'yuetuchu',
 		name: '玉兔杵',
 		desc: '可多投掷 1 次',
-		rarity: 'legendary',
+		rarity: 'rare',
 		skin: 'luoxiaohei_rabbit',
-		price: 10,
+		price: 8,
 		turns: 2,
 		effect: { type: 'roll', count: 1 }
 	},
@@ -463,12 +463,12 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'hebi',
 		name: '合璧符',
-		desc: '连号 4 颗及以上：连号每多 1 颗，得分 ×1.5',
+		desc: '连号 4 颗及以上：连号每多 1 颗，得分 ×1.85',
 		rarity: 'rare',
 		skin: 'skeyster',
 		price: 7,
 		turns: 2,
-		effect: { type: 'straight_mult', per: 1.5, from: 3 }
+		effect: { type: 'straight_mult', per: 1.85, from: 3 }
 	},
 	{
 		id: 'yueyachi',

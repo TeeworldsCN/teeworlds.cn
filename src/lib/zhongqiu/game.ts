@@ -573,6 +573,8 @@ export interface ScoreInput {
 	diceSum: number;
 	ownDice?: number[];
 	rerolled?: number;
+	/** 本回合多出来的投掷机会(per_extra_roll 用) */
+	extraRolls?: number;
 	/** 本回合「重掷之后点数没变」的次数(猜谜) */
 	stuckRerolls?: number;
 	/** 本回合开始前卖过 Tee(夜市饼摊:卖过就 ×2,卖几个都只算一次) */
@@ -604,6 +606,7 @@ export const calcTeeScore = ({
 	diceSum,
 	ownDice = [],
 	rerolled = 0,
+	extraRolls = 0,
 	stuckRerolls = 0,
 	sellBoost = false,
 	playerLevelId,
@@ -856,9 +859,9 @@ export const calcTeeScore = ({
 				const bc = chips;
 				const bm = mult;
 				if (eff.as === 'chips') chips += eff.per * n;
-				// 流派倍率走线性(×per×N),不再是 ×per^N —— 5 张时 per^5 要 per>⁴√5≈1.495
-				// 才追得平 5×per,低 per 的团队卡会被指数压死;线性后牌面所见即所得。
-				else mult *= eff.per * n;
+				// 流派倍率 = 幂(×per^N):文案是「每拥有一个独特的「X」系角色:得分 ×N」,
+				// 也就是每张同流派卡再乘一层。全套改成乘算之后,这里跟着回幂。
+				else mult *= Math.pow(eff.per, n);
 				// 底分 = 四点颗数(用最终骰子,「1、6 视为 4」已算进去):
 				if (eff.chipsPerFour) chips += ownDice.filter((d) => d === 4).length * eff.chipsPerFour;
 				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `${eff.tag}系 ${n} 张`);
@@ -887,14 +890,15 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'player_die_mult': {
-				// 星河:「我」每有 1 颗**作废**的骰子,「我」自己的得分 ×per×颗数(线性)。
+				// 星河:「我」每有 1 颗**作废**的骰子,「我」自己的得分 ×per(幂:×per^颗数)。
+				// 文案是「每有 1 颗作废骰子:得分 ×per」—— 按幂口径,每颗再乘一层。
 				// 作废颗数 = 6 − 活骰子数(ownDice 在 index===0 时就是「我」那一手,已剔掉作废),
 				// 所以掷出的 4 越多倍率越高,但那些 4 不参与牌型 —— 两头自己权衡。
 				if (index !== 0) break;
 				const n = 6 - ownDice.length;
 				if (n <= 0) break;
 				const bm = mult;
-				mult *= eff.per * n;
+				mult *= Math.pow(eff.per, n);
 				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `我作废 ${n} 颗`);
 				break;
 			}
@@ -952,6 +956,14 @@ export const calcTeeScore = ({
 				// 倍率按一位小数取整:结算行写的是 ×2.3,实际乘的也得是 2.3
 				mult *= Math.round(Math.pow(eff.per, run - from) * 10) / 10;
 				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `连号 ${run} 颗`);
+				break;
+			}
+			case 'per_extra_roll': {
+				// 每多 1 次投掷机会(自身 +1 也算):倍率 ×per^n —— 配同名加成卡规则,上限可预期
+				if (extraRolls <= 0) break;
+				const bm = mult;
+				mult *= Math.pow(eff.per, extraRolls);
+				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `多掷 ${extraRolls} 次`);
 				break;
 			}
 			case 'per_reroll': {
