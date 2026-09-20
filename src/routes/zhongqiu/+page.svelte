@@ -641,6 +641,8 @@
 			},
 			/** 清掉存档(QA 开跑前保证干净) */
 			clearSave: () => clearRun(),
+			/** 直接进失败结算屏(QA:测「返回菜单 → 刷新」有没有清局内存档) */
+			gameOver: () => abandonRun(),
 			/** 某个 Tee 现在挂着哪些主动技(QA 排查用) */
 			skills: (i: number) => skillsFor(i),
 			/** 直接设「累计卖出几个 Tee」+ 挂上「卖过卡」标记(QA 快测饼铺掌柜/夜市饼摊) */
@@ -2501,10 +2503,15 @@
 
 	const restart = () => {
 		sfxClick();
+		// 结束界面点「返回菜单」= 这一局到此为止:必须清掉局内存档,
+		// 否则刷新时 loadRun() 还会读到 phase='game_over' 的快照,直接跳回结束界面
+		clearRun();
+		resetRun();
+		team = [];
 		phase = 'idle';
 		draftChoices = [];
 		draftPicked = [];
-		save = getSave();
+		save = getSave(); // 元存档(最高分/累计游玩)保留
 	};
 
 	// ---- 展示 ----
