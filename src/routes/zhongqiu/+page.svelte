@@ -841,6 +841,9 @@
 					lastLevelId: t.lastLevelId,
 					buffs: t.buffs,
 					refundPending: t.refundPending ?? [],
+					skillChips: t.skillChips ?? [],
+					skillMult: t.skillMult,
+					refundHalved: t.refundHalved ?? false,
 					charge: t.charge ?? 0,
 					lastDice: t.lastDice,
 					lastVoid: t.lastVoid ?? []
@@ -967,7 +970,10 @@
 				lastDice: t.lastDice,
 				lastVoid: t.lastVoid ?? [],
 				charge: t.charge ?? 0,
-				refundPending: t.refundPending ?? []
+				refundPending: t.refundPending ?? [],
+				skillChips: t.skillChips ?? [],
+				skillMult: t.skillMult,
+				refundHalved: t.refundHalved ?? false
 			})),
 			soldTees,
 			sellBoost,
@@ -1043,7 +1049,10 @@
 			lastVoid: t.lastVoid ?? [],
 			buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft })),
 			charge: t.charge ?? 0,
-			refundPending: t.refundPending ?? []
+			refundPending: t.refundPending ?? [],
+			skillChips: t.skillChips ?? [],
+			skillMult: t.skillMult,
+			refundHalved: t.refundHalved ?? false
 		}));
 		soldTees = d.soldTees;
 		sellBoost = d.sellBoost ?? false;
@@ -1296,7 +1305,9 @@
 		growth,
 		buffs: buffsOf(i),
 		// 田螺:身上那批「不生效」的卡不进 buffs(它们不能生效),单独给计分折算用
-		parkedIds: (team[i]?.refundPending ?? []).map((r) => r.cardId),
+		// 发动过的主动技加值(卡面写「计入基础分」那类):和筹码一起进乘算
+		skillChips: team[i]?.skillChips ?? [],
+		skillMult: team[i]?.skillMult,
 		teamSize: team.length,
 		diceSum: diceForSum.reduce((a, b) => a + b, 0),
 		ownDice: [...diceForSum],
@@ -1943,13 +1954,10 @@
 
 		// 田螺:身上的加成卡不生效 —— 挂载时就不入库,掷完按原价返还(逐张一行)
 		const buffBack = settleTianluo(currentTee);
-		settleSteps = buildSettleSteps(
-			rawLevel.id,
-			level,
-			tee,
-			refundUnusedItems(currentTee),
-			buffBack
-		);
+		// 主动技可能在**结算动画之后**才发动,而且改的是「基础分」——
+		// 把这次结算的参数留着,发动时整条重算(不用重放动画)
+		lastSettle = { levelId: rawLevel.id, refunds: refundUnusedItems(currentTee), buffBack };
+		settleSteps = buildSettleSteps(rawLevel.id, level, tee, lastSettle.refunds, buffBack);
 		settleIdx = -1;
 		settling = true;
 		const stepMs = 380 / speed;
@@ -2023,6 +2031,39 @@
 			return;
 		}
 		advanceAfterTee();
+	};
+
+	/** 上一次结算的参数(主动技改基础分之后,靠它重算整条链) */
+	let lastSettle: {
+		levelId: string;
+		refunds: string[];
+		buffBack: { name: string; coins: number }[];
+	} | null = null;
+
+	/**
+	 * 主动技改了「基础分」之后重算这只 Tee:乘算必须吃到这份加值 ——
+	 * 所以不是 `lastScore += x`,而是把加值当计分入参重跑一遍,再重建结算行
+	 * (加值那行会自然排在乘算行**前面**,和卡面「计入基础分」一致)。
+	 */
+	const rescoreTee = (i: number) => {
+		const lv = lastLevel;
+		if (!lv || !team[i]) return;
+		const prev = team[i].lastScore ?? 0;
+		lastBreakdown = calcTeeScore(
+			scoreInput(i, lv.id, liveDiceValues(team[i].lastDice ?? [], modsFor(i)))
+		);
+		team[i].lastScore = lastBreakdown.total;
+		currentScore += lastBreakdown.total - prev;
+		if (lastSettle) {
+			settleSteps = buildSettleSteps(
+				lastSettle.levelId,
+				lv,
+				team[i],
+				lastSettle.refunds,
+				lastSettle.buffBack
+			);
+			settleIdx = settleSteps.length - 1;
+		}
 	};
 
 	/** 发动主动技能 */
@@ -2133,28 +2174,28 @@
 			return;
 		}
 		// 和值类主动技:参数在卡自己的效果里(per / from / mult),按当前点数和结算
-		if (sk.skill === 'sum') {
-			const eff = cardById(sk.srcId)?.effect;
-			const pr = eff && eff.type === 'active' && eff.skill === 'sum' ? eff : null;
-			// 作废的骰子不计入和值(和判定同口径)
-			const sum = liveDiceValues(tee.lastDice ?? [], modsFor(i)).reduce((a, b) => a + b, 0);
-			const gain = Math.round(sum * (pr?.per ?? 1));
-			to.lastScore += gain;
-			currentScore += gain;
-			let m = 1;
-			if (pr?.mult && pr.from !== undefined && sum > pr.from) {
-				m = Math.pow(pr.mult, sum - pr.from);
-				currentScore += to.lastScore * (m - 1);
-				to.lastScore *= m;
+		// 田螺:停靠的卡**已经按原价返还过**,发动就把它们折成基础分,并把返还收回一半
+		if (sk.skill === 'parked') {
+			let per = 12;
+			const walk = (e: unknown) => {
+				if (!e || typeof e !== 'object') return;
+				const o = e as { type?: string; skill?: string; perPrice?: number; parts?: unknown[] };
+				if (o.type === 'bundle') o.parts?.forEach(walk);
+				else if (o.type === 'active' && o.skill === 'parked' && o.perPrice) per = o.perPrice;
+			};
+			walk(cardById(sk.srcId)?.effect);
+			const rows = lastSettle?.buffBack ?? [];
+			const paid = rows.reduce((s2, r) => s2 + r.coins, 0);
+			if (paid > 0) {
+				tee.skillChips = [{ srcId: sk.srcId, chips: paid * per, from: `停靠 ${rows.length} 张` }];
+				const back = Math.ceil(paid / 2);
+				mooncakes -= back;
+				sfxCoin();
+				if (lastSettle)
+					lastSettle.buffBack = rows.map((r) => ({ name: r.name, coins: Math.ceil(r.coins / 2) }));
+				tee.refundHalved = true;
+				rescoreTee(i);
 			}
-			settleSteps = [
-				...settleSteps,
-				{
-					text: `⚡ ${name} · 点数和 ${sum} → +${formatScore(gain)}${m > 1 ? ` ×${formatMult(m)}` : ''}`,
-					cls: 'text-fuchsia-300',
-					kind: 'chip'
-				}
-			];
 			settleIdx = settleSteps.length - 1;
 			sfxTotal(true);
 			setTimeout(() => {
@@ -2163,6 +2204,27 @@
 			}, 700 / speed);
 			return;
 		}
+		if (sk.skill === 'sum') {
+			const eff = cardById(sk.srcId)?.effect;
+			const pr = eff && eff.type === 'active' && eff.skill === 'sum' ? eff : null;
+			// 作废的骰子不计入和值(和判定同口径)
+			const sum = liveDiceValues(tee.lastDice ?? [], modsFor(i)).reduce((a, b) => a + b, 0);
+			const gain = Math.round(sum * (pr?.per ?? 1));
+			const m =
+				pr?.mult && pr.from !== undefined && sum > pr.from ? Math.pow(pr.mult, sum - pr.from) : 1;
+			// 卡面是「点数和 ×N **计入基础分**」—— 设成计分入参再重算,这份分才吃得到倍率链
+			// (以前是 lastScore += gain,加在乘算之后)。
+			to.skillChips = [{ srcId: sk.srcId, chips: gain, from: `点数和 ${sum}` }];
+			to.skillMult = m > 1 ? { srcId: sk.srcId, mult: m, from: `点数和 ${sum}` } : undefined;
+			rescoreTee(i);
+			sfxTotal(true);
+			setTimeout(() => {
+				if (gen !== animGen) return;
+				advanceAfterTee();
+			}, 700 / speed);
+			return;
+		}
+
 		to.lastScore += sk.value;
 		currentScore += sk.value;
 		const who = sk.skill === 'left_chips' ? `左侧 ${cardOf(to)?.name ?? '我'}` : '本 Tee';

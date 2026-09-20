@@ -94,6 +94,9 @@ export type TeeEffect =
 	// 原来三张卡的乘数全锁在「对堂(6 连)」上,而那是 ~1.5% 的事件,等于按不出来。
 	| { type: 'straight_mult'; per: number; from?: number }
 	| { type: 'active'; skill: 'chips' | 'left_chips' | 'retry'; value?: number; cooldown: number }
+	// 田螺:掷完可发动 —— 停靠的加成卡按价格 ×perPrice **计入基础分**,返还减半;
+	// 不发动就照旧按原价返还(发动 = 拿分,不发动 = 拿钱)
+	| { type: 'active'; skill: 'parked'; perPrice: number; cooldown: number }
 	// 和值类主动技:发动时按**当前骰子点数和**结算,所以参数不是固定 value
 	| { type: 'active'; skill: 'sum'; per: number; from?: number; mult?: number; cooldown: number }
 	// 改骰子的主动技(连珠灯):发动后先改一颗骰子为 4 点,再把任意四点改成任意点数。
@@ -145,11 +148,11 @@ export type TeeEffect =
 	// (「该 Tee 基础分 +30」用普通的 chips 就行 —— 那种效果天然落在持有者身上)
 	// 蜜枣:该回合**首次投掷**按几率直接变成 faces(不看骰子)
 	| { type: 'jackpot'; chance: number; faces: number[] }
-	// 田螺:该 Tee 身上的加成卡不生效;每张按其价格折算成基础分;掷完按原价返还月饼币
-	// (perPrice = 每 1 月饼币价格折多少基础分。12 是抄「底分卡」的行情:底分卡的
+	// 田螺:该 Tee 身上的加成卡不生效、掷完原价返还;掷完可发动主动技(见 active/parked)
+	// 田螺:该 Tee 身上的加成卡不生效、掷完原价返还;掷完可发动主动技(见 active/parked)
 	//  分/价 中位在 16 上下,压到 12 → 存卡永远不如用掉一张合适的底分卡,
 	//  但能把用不上的卡(以及糍粑 8.3 这种低于行情的)救回来 —— 这正是田螺的定位)
-	| { type: 'buff_refund'; perPrice: number }
+	| { type: 'buff_refund' }
 	// 夜市饼摊:上回合卖出过 Tee → 本回合该 Tee 得分 ×mult(不累积、不限次数)
 	| { type: 'next_round_sell_mult'; mult: number }
 	// 饼铺掌柜(一):每累计卖出 1 个 Tee,基础分 +per
@@ -738,10 +741,16 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'tianluo',
 		name: '田螺',
-		desc: '该 Tee 身上的加成卡不生效；每张按其价格 ×12 折算成基础分，掷完原价返还月饼币',
+		desc: '该 Tee 身上的加成卡不生效、掷完原价返还；掷完可发动：停靠的卡按价格 ×12 计入基础分，返还减半',
 		rarity: 'rare',
 		skin: 'Frog',
-		effect: { type: 'buff_refund', perPrice: 12 }
+		effect: {
+			type: 'bundle',
+			parts: [
+				{ type: 'buff_refund' },
+				{ type: 'active', skill: 'parked', perPrice: 12, cooldown: 0 }
+			]
+		}
 	},
 	{
 		id: 'yunhai',

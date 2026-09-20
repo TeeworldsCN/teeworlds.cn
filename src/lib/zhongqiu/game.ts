@@ -259,6 +259,12 @@ export interface TeamTee {
 	 * 「哪张卡、原价多少月饼币」,掷完之后按原价返还(结算动画逐张弹)。
 	 */
 	refundPending?: { cardId: string; coins: number }[];
+	/** 田螺:发动过主动技 → 返还减半 */
+	refundHalved?: boolean;
+	/** 发动过的主动技加值/乘算:算进该 Tee 的**基础分**(乘算之前),跟着存盘走 */
+	skillChips?: { srcId: string; chips: number; from?: string }[];
+	skillMult?: { srcId: string; mult: number; from?: string };
+	/** 发动过的主动技加值/乘算:算进该 Tee 的**基础分**(乘算之前),跟着存盘走 */
 }
 
 export const TEAM_LIMIT = 6;
@@ -396,7 +402,16 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 
 export interface ActiveSkill {
 	srcId: string;
-	skill: 'chips' | 'left_chips' | 'retry' | 'sum' | 'to_four' | 'mult' | 'end_round' | 'sell_self';
+	skill:
+		| 'chips'
+		| 'left_chips'
+		| 'retry'
+		| 'sum'
+		| 'to_four'
+		| 'mult'
+		| 'end_round'
+		| 'sell_self'
+		| 'parked';
 	/** 固定加分(chips/left_chips 用);和值类(sum)在卡自己的效果里读参数,这里是 0 */
 	value: number;
 	cooldown: number;
@@ -585,12 +600,14 @@ export interface ScoreInput {
 	/** 当前月饼币(coin_mult 用) */
 	coins?: number;
 	/** 本关加成卡的加值只算这个比例(寒月:0.5;缺省 1) */
+	/** 主动技的「计入基础分」加值(和值技 / 田螺):必须和筹码一起进乘算,不能事后加 */
+	skillChips?: { srcId: string; chips: number; from?: string }[];
+	skillMult?: { srcId: string; mult: number; from?: string };
 	buffChipsScale?: number;
 	/** 本关加成卡的乘值只算这个比例的增量(凛月:0.5;缺省 1) */
 	buffMultScale?: number;
-	/** 田螺:停在这只 Tee 身上(**不生效**)的加成卡 id —— 它们不参与其它任何计算,
-	 *  只给 buff_refund 折算基础分用(所以不能走 buffs,那份是「真挂了」的) */
-	parkedIds?: string[];
+	/** 主动技的「计入基础分」加值(和值技 / 田螺):必须和筹码一起进乘算,不能事后加 */
+	/** 主动技附带的乘算(和值技「超过 N 后每点 ×p」) */
 	/** 当前关卡数(reverse.perRound / growth_mult 用) */
 	round?: number;
 	leftScore?: number;
@@ -619,9 +636,10 @@ export const calcTeeScore = ({
 	round = 1,
 	leftScore = 0,
 	soldCount = 0,
+	skillChips = [],
+	skillMult,
 	buffChipsScale = 1,
-	buffMultScale = 1,
-	parkedIds = []
+	buffMultScale = 1
 }: ScoreInput): ScoreBreakdown => {
 	{
 		const seenEngine = new Set<string>();
@@ -736,20 +754,6 @@ export const calcTeeScore = ({
 	 */
 	const apply = (eff: TeeEffect, srcId: string, skipTeamWide = false, onScoredTee = true) => {
 		switch (eff.type) {
-			case 'buff_refund': {
-				// 田螺:身上不生效的加成卡按**原价**折成基础分 ——「不生效」不等于「白买」。
-				// 这批卡不参与任何其它计算(buffs 里没有它们),所以只能在这里、用 parkedIds 算。
-				// 寒月「加值无效」连这个折算一起失效:它本来就是加成卡带来的加值。
-				if (!buffChipsScale) break;
-				const parked = parkedIds ?? [];
-				if (!parked.length) break;
-				const bc = chips;
-				chips +=
-					parked.reduce((s2, id) => s2 + (BUFF_BY_ID.get(id)?.price ?? 0) * eff.perPrice, 0) *
-					buffChipsScale;
-				note(srcId, 'card', chips - bc, 1, `停靠 ${parked.length} 张`);
-				break;
-			}
 			case 'level_base_mult': {
 				if (!eff.levelIds.includes(levelId)) break;
 				baseMult *= eff.value;
@@ -1189,7 +1193,18 @@ export const calcTeeScore = ({
 	if (rerollBaseMult !== 1)
 		// 射日仙:底分和所有筹码一起放大 —— 这是对整个小计的乘,出乘算行才对得上卡面
 		note(rerollBaseSrc, 'card', 0, rerollBaseMult, `重掷 ${rerolled} 颗`);
+	// 主动技的加值:和值技(点数和 ×N 计入基础分)与田螺(停靠卡价格 ×N)都走这里 ——
+	// **必须在乘算之前**进 chips,不然这份分吃不到该 Tee 的倍率链(卡面写的是「计入基础分」)。
+	for (const sc of skillChips) {
+		chips += sc.chips;
+		note(sc.srcId, 'card', sc.chips, 1, sc.from);
+	}
 	const raw = Math.round((base + chips + buffChips) * mult * buffMult);
+	if (skillMult) {
+		const bm = mult;
+		mult *= skillMult.mult;
+		note(skillMult.srcId, 'card', 0, bm === 0 ? 1 : mult / bm, skillMult.from);
+	}
 	const netChips = chips + buffChips;
 	const total = swapped !== null || allowNegative || netChips < 0 ? raw : Math.max(0, raw);
 	return {
@@ -1390,6 +1405,11 @@ export type RunTeamSlot = {
 	charge?: number;
 	/** 田螺:待按原价返还的加成卡(掷完就付) */
 	refundPending?: { cardId: string; coins: number }[];
+	/** 田螺:发动过主动技 → 返还减半 */
+	refundHalved?: boolean;
+	/** 发动过的主动技加值/乘算:算进该 Tee 的**基础分**(乘算之前),跟着存盘走 */
+	skillChips?: { srcId: string; chips: number; from?: string }[];
+	skillMult?: { srcId: string; mult: number; from?: string };
 	/** 这一手哪些骰子作废(高照抄作废状态用) */
 	lastVoid?: number[];
 };
