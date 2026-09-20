@@ -2738,12 +2738,16 @@
 
 	const marketTeam = $derived(phase === 'reward' || phase === 'shop');
 	// 中秋集市阶段也显示（只看不用：挂卡只在掷骰前），否则卖掉/买卡的决策少了信息
-	const showBuffShelf = $derived((phase === 'intro' || phase === 'shop') && buffEntries.length > 0);
+	// 3 选 1(reward)同样要摆:那里能卖 Tee、要决定留哪些卡 —— 且要和别的界面一样
+	// 放在**队伍上方**带「✨ 加成卡」标题,而不是缩到面板下方的无标题道具条。
+	const showBuffShelf = $derived(
+		(phase === 'intro' || phase === 'shop' || phase === 'reward') && buffEntries.length > 0
+	);
 	// 3 选 1 也把仓库摆出来(那里能卖 Tee、要决定留哪些卡):实测面板下方还剩 106~163px,
 	// 道具条一行 ~48px(手机横滑)/ sm 换行后 ~56px,放得下。
-	const showItemBar = $derived(
-		(phase === 'round_end' || phase === 'reward') && buffEntries.length > 0
-	);
+	// 只剩「过关结算」阶段要这条无标题的精简道具条(那里队伍面板已收起)。
+	// 3 选 1 改用队伍上方的货架了,不再重复摆一遍。
+	const showItemBar = $derived(phase === 'round_end' && buffEntries.length > 0);
 	const settleReserveLines = $derived(
 		Math.min(
 			(boss?.mods ? 1 : 0) + 1 + Math.max(0, ...team.map((_, i) => potentialSources(i))) + 1,
