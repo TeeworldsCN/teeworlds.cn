@@ -138,7 +138,7 @@ export type TeeEffect =
 	// 持有者自己什么也不吃 —— 跟破晓/望舒同一族)
 	| { type: 'player_void_die'; faces: number[] }
 	// 星河:按「我」**作废**的骰子数,把「我」自己的得分 ×per×作废颗数(唯一真的把倍率给「我」的一张)
-	| { type: 'player_die_mult'; per: number }
+	| { type: 'player_die_mult'; per: number; chips?: number }
 	// (「该 Tee 基础分 +30」用普通的 chips 就行 —— 那种效果天然落在持有者身上)
 	// 蜜枣:该回合**首次投掷**按几率直接变成 faces(不看骰子)
 	| { type: 'jackpot'; chance: number; faces: number[] }
@@ -659,15 +659,14 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yinhe',
 		name: '星河',
-		desc: '「我」掷出的 4 点作废；「我」每有 1 颗作废骰子，得分 ×1.5；该 Tee 基础分 +30',
+		desc: '「我」掷出的 4 点作废；「我」每有 1 颗作废骰子：基础分 +30、得分 ×1.5',
 		rarity: 'rare',
 		skin: 'astronaut',
 		effect: {
 			type: 'bundle',
 			parts: [
 				{ type: 'player_void_die', faces: [4] },
-				{ type: 'player_die_mult', per: 1.5 },
-				{ type: 'chips', value: 30 }
+				{ type: 'player_die_mult', per: 1.5, chips: 30 }
 			]
 		}
 	},

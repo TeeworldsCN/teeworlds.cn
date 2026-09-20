@@ -897,9 +897,11 @@ export const calcTeeScore = ({
 				if (index !== 0) break;
 				const n = 6 - ownDice.length;
 				if (n <= 0) break;
+				const bc = chips;
+				if (eff.chips) chips += eff.chips * n; // 每颗作废的基础分(星河 +30/颗)
 				const bm = mult;
 				mult *= Math.pow(eff.per, n);
-				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `我作废 ${n} 颗`);
+				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, `我作废 ${n} 颗`);
 				break;
 			}
 			case 'sum_chips': {
