@@ -79,19 +79,19 @@
 			<!-- 两个 tab -->
 			<div class="flex flex-wrap gap-1.5 px-3 pt-2.5 sm:px-4">
 				<button class={tabCls(tab === 'tee')} onclick={() => (tab = 'tee')}>
-					🥮 Tee 卡
+					Tee 卡
 					<span class="font-normal text-slate-400">{teeUnlockedCount()}/{CARDS.length}</span>
 				</button>
 				<button class={tabCls(tab === 'buff')} onclick={() => (tab = 'buff')}>
-					✨ 加成卡
+					加成卡
 					<span class="font-normal text-slate-400">{buffUnlockedCount()}/{BUFF_CARDS.length}</span>
 				</button>
 			</div>
 
 			<!-- 卡片列表(只有这里滚动;浮层是 portal 到 body 的,不会被它裁) -->
-			<div class="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
+			<div class="mt-3 min-h-0 flex-1 overflow-y-auto px-3 pb-3 sm:px-4">
 				{#if tab === 'tee'}
-					<div class="flex flex-wrap justify-center gap-2 sm:justify-start">
+					<div class="flex flex-wrap justify-center gap-2">
 						{#each teeList as { card, unlocked } (card.id)}
 							<TeeCardView {card} locked={!unlocked} desc={unlocked ? card.desc : '尚未解锁'} />
 						{/each}
