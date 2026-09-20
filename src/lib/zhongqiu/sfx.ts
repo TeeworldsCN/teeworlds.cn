@@ -303,14 +303,14 @@ export const sfxPick = (n = 1, on = true) => {
 	pickQueueAt = now;
 	const step = pickQueue++ * 0.03;
 	const t0 = now + 0.004 + step;
-	const k = Math.min(Math.max(n, 1), 6);
-	// 就是 sfxRoll 里那记 click 的音区(900~3300Hz 的清脆骰子),不往下压 ——
-	// 压在 520Hz 那种会变成「擦桌子」。取音区中段:选中 1300 → 2900Hz
-	// (逐档上行),取消 950Hz 略低一点但仍然清脆。
-	const freq = on ? 1300 + (k - 1) * 320 : 950;
+	// 和 sfxRoll 同一个音区(那里是 900 + rand×1500),但**不按颗数递升** ——
+	// 递升在快速划过时会连成一个音阶,听着像在「唱」,很怪。
+	// 每次随机取一个音高:一排扫过去就是一串高低不一的骰子碰撞声。
+	// 取消更闷一点(取音区下半段),好和选中区分开。
+	const freq = on ? 900 + Math.random() * 1500 : 780 + Math.random() * 900;
 	click(t0, {
 		freq,
-		q: on ? 1.1 : 0.9,
+		q: 1 + Math.random(),
 		dur: 0.045 * R(),
 		gain: on ? 0.15 : 0.11
 	});
