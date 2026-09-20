@@ -1838,12 +1838,15 @@
 			src.kind === 'card'
 				? (cardById(src.srcId)?.name ?? src.srcId)
 				: (BUFF_BY_ID.get(src.srcId)?.name ?? src.srcId);
+		// 来源自带的一句话注解(「我作废 2 颗」「连号 5 颗」「等级分 ×3」)—— 存了却一直没渲染
+		const whyOf = (src: (typeof lastBreakdown.sources)[number]) =>
+			src.from ? ` · ${src.from}` : '';
 		// 3a) 加算阶段
 		for (const src of lastBreakdown.sources) {
 			// 逆向:不是加算,是「改写」—— 写清改写成了多少、替换掉了什么
 			if (src.swap) {
 				steps.push({
-					text: `${nameOf(src)} → ${formatScore(src.chips)}`,
+					text: `${nameOf(src)} → ${formatScore(src.chips)}${whyOf(src)}`,
 					cls: 'text-rose-300',
 					kind: 'swap'
 				});
@@ -1851,7 +1854,7 @@
 			}
 			if (!src.chips) continue;
 			steps.push({
-				text: `${nameOf(src)} ${src.chips < 0 ? '−' : '+'}${formatScore(Math.abs(src.chips))}`,
+				text: `${nameOf(src)} ${src.chips < 0 ? '−' : '+'}${formatScore(Math.abs(src.chips))}${whyOf(src)}`,
 				cls: 'text-amber-300',
 				kind: 'chip'
 			});
@@ -1860,7 +1863,7 @@
 		for (const src of lastBreakdown.sources) {
 			if (src.mult === 1) continue;
 			steps.push({
-				text: `${nameOf(src)} ×${formatMult(src.mult)}`,
+				text: `${nameOf(src)} ×${formatMult(src.mult)}${whyOf(src)}`,
 				cls: 'text-purple-300',
 				kind: 'mult'
 			});

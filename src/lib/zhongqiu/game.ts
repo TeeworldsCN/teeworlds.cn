@@ -1095,22 +1095,11 @@ export const calcTeeScore = ({
 	const baseScaled = baseRaw * baseMult;
 	// 射日仙:每重掷一颗,整块基础分 ×N —— 等级底分、卡牌筹码、加成卡筹码一起放大
 	// (所以它能和道具的倍率叠着爆;作用在基础分侧而不是得分侧)
-	const preScale = baseScaled + chips + buffChips;
 	if (rerollBaseMult !== 1) {
 		chips *= rerollBaseMult;
 		buffChips *= rerollBaseMult;
 	}
 	const base = baseScaled * rerollBaseMult;
-	// 进士这类「等级基础分翻倍」:差值单独出一行,不然玩家只看到总分变了
-	if (baseMult !== 1) note(baseMultSrc, 'card', baseScaled - baseRaw, 1, `等级基础分 ×${baseMult}`);
-	if (rerollBaseMult !== 1)
-		note(
-			rerollBaseSrc,
-			'card',
-			preScale * (rerollBaseMult - 1),
-			1,
-			`重掷 ${rerolled} 颗 · 基础分 ×${Math.round(rerollBaseMult * 10) / 10}`
-		);
 	// 逆向:chips 全部结算完、mult 之前,把「本回合已得的净值」整个替换掉 ——
 	// chips = reverseBase − 净值。掷得越漂亮(净值越高)逆向分越低,反之吃惩罚。
 	const net = base + chips + buffChips;
@@ -1132,6 +1121,16 @@ export const calcTeeScore = ({
 	// 取整放在**唯一的出口**上,所以回合内的乘算仍然精确,只是最终得分是整数。
 	// 先长再乘:加算到倍率的部分在这里统一乘进最终倍率
 	mult *= 1 + multAdd;
+	// 这两条都是「把基础分侧那半截放大」,以前都把差值塞进 chips 槽,界面就渲染成「+N」——
+	// 和卡面写的「×N」对不上(射日仙最明显:×1.5/颗 却显示成 +3900)。
+	// 现在按各自真实语义出:能整块放大的(射日仙)出乘算行,只动等级底分的(进士系)留在加算行但带注解。
+	if (baseMult !== 1)
+		// 进士系只把等级底分翻倍,后面加进来的筹码不跟着走 ——
+		// 出成 ×N 会让界面把筹码也乘上去,和引擎对不上,所以只能是「+差值」+「等级分 ×N」注解。
+		note(baseMultSrc, 'card', baseScaled - baseRaw, 1, `等级分 ×${baseMult}`);
+	if (rerollBaseMult !== 1)
+		// 射日仙:底分和所有筹码一起放大 —— 这是对整个小计的乘,出乘算行才对得上卡面
+		note(rerollBaseSrc, 'card', 0, rerollBaseMult, `重掷 ${rerolled} 颗`);
 	const raw = Math.round((base + chips + buffChips) * mult * buffMult);
 	const netChips = chips + buffChips;
 	const total = swapped !== null || allowNegative || netChips < 0 ? raw : Math.max(0, raw);
