@@ -255,8 +255,6 @@ export interface TeamTee {
 	 * 不变量(由 normalizeSelf 维持):isSelf 的那个 Tee 永远排在队首。
 	 */
 	isSelf?: boolean;
-	/**「我」的皮肤(纯外观;身份判定一律看 isSelf) */
-	selfSkin?: string;
 	/** 本关该 Tee 的得分(掷完后) */
 	lastScore: number;
 	lastLevelId: string;
@@ -1484,8 +1482,6 @@ export type RunTeamSlot = {
 	cardId: string | null;
 	/** 这张是不是「我」(存档里必须带上:身份不能靠下标推) */
 	isSelf?: boolean;
-	/**「我」的皮肤(纯外观) */
-	selfSkin?: string;
 	buffs: { cardId: string; turnsLeft: number }[];
 	lastScore: number;
 	lastLevelId: string;

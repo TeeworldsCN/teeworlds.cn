@@ -906,7 +906,6 @@
 					cardId: t.cardId,
 					// 身份必须存:读档时不能靠下标猜「我」是谁
 					isSelf: t.isSelf === true,
-					selfSkin: t.selfSkin,
 					lastScore: t.lastScore,
 					lastLevelId: t.lastLevelId,
 					buffs: t.buffs,
@@ -1036,7 +1035,6 @@
 				cardId: t.cardId,
 				// 身份必须存:读档时不能靠下标猜「我」是谁
 				isSelf: t.isSelf === true,
-				selfSkin: t.selfSkin,
 				buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft })),
 				lastScore: t.lastScore,
 				lastLevelId: t.lastLevelId,
@@ -1118,7 +1116,6 @@
 				cardId: t.cardId,
 				// 新存档带 isSelf;老存档没这字段 → normalizeSelf 按 cardId===null 推
 				isSelf: t.isSelf,
-				selfSkin: t.selfSkin,
 				lastScore: t.lastScore,
 				lastLevelId: t.lastLevelId,
 				lastDice: t.lastDice,
@@ -1348,6 +1345,15 @@
 	/** 效果里(含 bundle)有没有这一种 */
 	const hasEffect = (eff: TeeEffect, type: TeeEffect['type']): boolean =>
 		eff.type === type || (eff.type === 'bundle' && eff.parts.some((p) => hasEffect(p, type)));
+	/**
+	 *「我」的皮肤:固定 tuzi。
+	 *
+	 * 这里是**写死的常量**,不是可配置字段 —— 「我」没有自定义皮肤功能。
+	 * 以前 TeamTee 上挂过一个 `selfSkin` 外观字段,但它从来没人赋值(所有建队点
+	 * 都没写它),渲染只能靠 `?? 'x_spec'` 兜底,等于「我」一直显示的是 x_spec。
+	 * 现在直接固定成 tuzi,并把那个空转的字段整条拆掉。
+	 */
+	const SELF_SKIN = 'tuzi';
 	/** 高照这条线的四张卡:谁先投掷谁当模板,**也只抄给这四张** */
 	/**
 	 * 高照:队伍里有高照时,「高照/串珠/七星灯/连珠灯」里**首先投掷**的那只 Tee 的最终骰面,
@@ -3450,7 +3456,7 @@
 											{/snippet}
 											<TeeCardView
 												card={cardOf(tee)}
-												skin={tee.selfSkin ?? 'x_spec'}
+												skin={SELF_SKIN}
 												name="我"
 												desc={cardOf(tee)?.desc}
 												tipExtra={tee.cardId
