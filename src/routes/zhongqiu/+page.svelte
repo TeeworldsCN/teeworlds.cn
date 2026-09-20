@@ -476,6 +476,12 @@
 	let homingSell = $state<number | null>(null);
 	let choosing = $state(false); // 正在选要重掷的骰子
 	let rerollSel = $state<boolean[]>(Array(6).fill(false));
+	/** 拖拽多选:按下那一刻定的「这一笔是选中(true)还是取消(false)」,null = 没在拖 */
+	let paintMode: boolean | null = null;
+	/** 这一笔最后落到的骰子;手快划过时用它把中间跳过的补上 */
+	let paintLast = -1;
+	/** pointerdown 已经把这一下处理掉了 —— 紧跟其后的那个 click 要吞掉,别切换两次 */
+	let diePickHandled = false;
 	let rollMask = $state<boolean[]>(Array(6).fill(true));
 	/**
 	 * 动画代次。每开一次掷骰/重掷动画 +1;重开、读档、退出游戏也 +1 ——
@@ -1493,6 +1499,57 @@
 		const next = [...rerollSel];
 		next[i] = !next[i];
 		rerollSel = next;
+	};
+
+	/** 把某颗骰子设成指定选中态(拖拽整笔用) */
+	const setReroll = (i: number, v: boolean) => {
+		if (i < 0 || i > 5 || rerollSel[i] === v) return;
+		const next = [...rerollSel];
+		next[i] = v;
+		rerollSel = next;
+	};
+
+	/** 屏幕坐标落在哪颗骰子上(-1 = 没落在骰子上) */
+	const dieIndexAt = (x: number, y: number) => {
+		const el = document.elementFromPoint(x, y);
+		// 骰面上还压着 svg / 点数 / ↻ 这些子元素,靠 closest 找回按钮
+		const host = el?.closest?.('[data-die]') as HTMLElement | null;
+		const v = Number(host?.dataset.die);
+		return Number.isInteger(v) && v >= 0 && v <= 5 ? v : -1;
+	};
+
+	/**
+	 * 按下骰子:没选中的 → 这一笔是「批量选中」;已选中的 → 这一笔是「批量取消」。
+	 * 按下的这一颗立刻生效(所以轻点仍然是切换),之后划过的都跟随同一笔。
+	 */
+	const startPaint = (i: number, e: PointerEvent) => {
+		if (!choosing || rolling) return;
+		if (e.pointerType === 'mouse' && e.button !== 0) return;
+		paintMode = !rerollSel[i];
+		paintLast = i;
+		diePickHandled = true; // 轻点这一下已经处理完,别让 click 再切回去
+		setReroll(i, paintMode);
+		sfxClick();
+	};
+
+	/** 拖拽经过:整笔统一成 paintMode;手快跳过的骰子也补齐 */
+	const dragPaint = (e: PointerEvent) => {
+		if (paintMode === null) return;
+		const i = dieIndexAt(e.clientX, e.clientY);
+		if (i < 0) return;
+		if (paintLast >= 0) {
+			for (let k = Math.min(paintLast, i); k <= Math.max(paintLast, i); k += 1)
+				setReroll(k, paintMode);
+		}
+		paintLast = i;
+	};
+
+	const endPaint = () => {
+		if (paintMode === null) return;
+		paintMode = null;
+		paintLast = -1;
+		// 轻点的 click 在 pointerup 之后、定时器之前触发:先让它读到标记,再清掉
+		setTimeout(() => (diePickHandled = false), 0);
 	};
 
 	const confirmReroll = () => {
@@ -2811,6 +2868,9 @@
 	/>
 </svelte:head>
 
+<!-- 拖拽多选:手指/鼠标可能停在骰子外面松开,收笔必须挂在 window 上 -->
+<svelte:window onpointerup={endPaint} onpointercancel={endPaint} onblur={endPaint} />
+
 <div
 	class="relative flex min-h-full flex-col overflow-hidden text-slate-200"
 	style={fitScale < 1 ? `height: ${availH}px` : ''}
@@ -3359,6 +3419,9 @@
 							<!-- 单颗骰子封顶 56px(行宽 = 6×56 + 5×间隙):手机宽屏/平板/PC 都不再放大 -->
 							<div
 								class="mx-auto mt-2 grid w-full max-w-[22.25rem] grid-cols-6 gap-1 max-[365px]:mt-1.5 sm:mt-2.5 sm:max-w-[23.5rem] sm:gap-2"
+								role="group"
+								aria-label="骰子(选重掷时可拖拽多选)"
+								onpointermove={dragPaint}
 							>
 								{#each [0, 1, 2, 3, 4, 5] as i}
 									<button
@@ -3371,9 +3434,21 @@
 											? 'cursor-pointer hover:scale-110'
 											: 'cursor-default'}"
 										style={`animation-duration: ${rollDur}s; animation-delay: ${dieDelay(i)}s; animation-iteration-count: ${rollIter}`}
-										onclick={() => (choosing ? toggleReroll(i) : pendingAction && onDieClick(i))}
 										disabled={!choosing && (!pendingAction || pendingAction.kind === 'voidpick')}
 										class:voided={dieVoid(i)}
+										data-die={i}
+										class:selecting={choosing}
+										onpointerdown={(e) => startPaint(i, e)}
+										oncontextmenu={(e) => choosing && e.preventDefault()}
+										onclick={() => {
+											if (choosing) {
+												// 点选/拖选都在 pointerdown 里做完了;这里只接住键盘 Space/Enter 触发的 click
+												if (diePickHandled) return;
+												toggleReroll(i);
+												return;
+											}
+											if (pendingAction) onDieClick(i);
+										}}
 									>
 										<!-- 骰面用内联 SVG:不依赖 ::after/container-query/:has(),老浏览器也能渲染 -->
 										<svg class="die-face" viewBox="0 0 24 24" aria-hidden="true">
@@ -4151,6 +4226,13 @@
 			0 0 7px rgb(255 255 255 / 0.75);
 		pointer-events: none;
 		user-select: none;
+	}
+
+	/* 选重掷时骰子区整块吃掉触摸手势:免得「从骰子上起手」被浏览器当成滚页面 */
+	.die.selecting {
+		touch-action: none;
+		user-select: none;
+		-webkit-user-select: none;
 	}
 
 	.die.marked {
