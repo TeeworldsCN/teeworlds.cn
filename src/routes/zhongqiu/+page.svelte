@@ -2528,8 +2528,16 @@
 	const currentTeeCard = $derived(cardOf(team[currentTee] ?? team[0]));
 	const canPickReward = $derived(team.length < TEAM_LIMIT);
 
-	/** 倍率显示:最多一位小数、去掉末尾 0(×2.56 → ×2.6、×4.10 → ×4.1、×2 → ×2) */
-	const formatMult = (m: number): string => String(Math.round(m * 10) / 10);
+	/** 倍率显示:最多两位小数、去掉末尾 0
+	 *  (×2.25 → ×2.25、×1.15 → ×1.15、×2.3 → ×2.3、×2 → ×2)。
+	 *
+	 *  引擎的倍率本来就不保证是一位小数 —— 桂树 1.15、per_tag 1.42^2=2.0164、射日仙 1.5^3=3.375、
+	 *  全队 ×1.35 —— 只显示一位的话,玩家拿计算器一验就对不上(最坏差 4.35%)。
+	 *  所以是**提高显示精度**,而不是把引擎数值 round 到一位(那是在改平衡)。 */
+	const formatMult = (m: number): string => {
+		// 先固定两位再削掉末尾 0:2.00 → 2、1.30 → 1.3、1.15 → 1.15
+		return (Math.round(m * 100) / 100).toFixed(2).replace(/\.?0+$/, '');
+	};
 
 	const formatScore = (n: number) => n.toLocaleString('zh-CN');
 
