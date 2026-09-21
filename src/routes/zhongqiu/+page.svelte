@@ -2,6 +2,8 @@
 	import { ZQ_TEST_BUILD } from '$lib/zhongqiu/test-build';
 	import TeeRender, { type TeePose } from '$lib/components/TeeRender.svelte';
 	import TeeCardView from '$lib/zhongqiu/TeeCard.svelte';
+	// 自带的 emoji 字体子集(Noto Color Emoji v2.051):只在这一页生效,见文件里的说明
+	import '$lib/zhongqiu/emoji-font.css';
 	import Codex from '$lib/zhongqiu/Codex.svelte';
 	import BuffTip from '$lib/zhongqiu/BuffTip.svelte';
 	import CardTip from '$lib/zhongqiu/CardTip.svelte';
@@ -3239,7 +3241,7 @@
 
 <!-- 禁选:这是个游戏,连点带拖时不该把面板文字选中(图鉴里单独放开,见 Codex) -->
 <div
-	class="relative flex min-h-full flex-col overflow-hidden text-slate-200 select-none"
+	class="zq-emoji relative flex min-h-full flex-col overflow-hidden text-slate-200 select-none"
 	style={fitScale < 1 ? `height: ${availH}px` : ''}
 >
 	{#snippet buffPop(card: BuffCard, cls: string)}

@@ -3,6 +3,8 @@
 	import { bossPool, BOSSES } from '$lib/zhongqiu/game';
 	import { BUFF_CARDS } from '$lib/zhongqiu/items';
 	import { CARDS, RARITY_INFO, type Rarity } from '$lib/zhongqiu/teecards';
+	// 活动页自带的 emoji 字体子集(卡池表里的 Boss emoji 也要长得一样)
+	import '$lib/zhongqiu/emoji-font.css';
 
 	/**
 	 * 中秋博饼 · 卡池一览(开发/查表用)
@@ -167,7 +169,7 @@
 	<td class="px-2 py-1.5 leading-snug text-slate-300">{desc}</td>
 {/snippet}
 
-<div class="mx-auto max-w-6xl p-3 pb-16 text-slate-200">
+<div class="zq-emoji mx-auto max-w-6xl p-3 pb-16 text-slate-200">
 	<div class="mt-2 mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
 		<h1 class="text-xl font-bold text-amber-200">卡池一览</h1>
 		<a class="text-xs text-sky-400 hover:underline" href="/zhongqiu">← 回中秋博饼</a>

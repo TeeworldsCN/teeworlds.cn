@@ -1,0 +1,41 @@
+/**
+ * 活动页自带的 emoji 字体 —— **只给 /zhongqiu 用,不是全站字体**。
+ *
+ * 为什么自己带:活动页 emoji 密度很高(🥮 ⚡ 🎲 🌕 ✨ …),而系统 emoji 字体各平台
+ * 长相完全不同(Windows 的 Segoe / 苹果的 Apple Color Emoji / 安卓的 Noto),
+ * 没装 emoji 字体的环境(比如构建机、部分 Linux)更是直接显示豆腐块。
+ *
+ * 这份是 **Noto Color Emoji v2.051 的精简子集**:扫活动页源码得到的 46 个码位,
+ * woff2 87KB + ttf 94KB(原版 10.2MB,许可证见 static/fonts/OFL.txt)。
+ * 那 46 个以外的字符照旧交给系统字体:页面里的 → ← ✓ ✕ 这些本来就不是彩色 emoji,
+ * Noto Color Emoji 里也没有,不需要跟着下载。
+ *
+ * 生成脚本是 tools/zhongqiu/build-emoji-font.py(该目录是本地工具目录,不入库)。
+ * 想让新加的 emoji 也走这份字体:直接用,然后重跑那个脚本;
+ * tools/zhongqiu/qa.sh emoji 会盯着「页面上出现的 emoji 是不是都被它画出来了」。
+ */
+@font-face {
+	font-family: 'Zhongqiu Emoji';
+	src:
+		url('/fonts/zhongqiu-emoji.woff2') format('woff2'),
+		url('/fonts/zhongqiu-emoji.ttf') format('truetype');
+	font-style: normal;
+	font-weight: 100 900;
+	/* 字体到得晚就先让系统 emoji 顶着(有就更好看,没有也只是豆腐块),
+	   别像 block 那样把 emoji 先藏起来 —— 活动页的 emoji 常常是句子的正文 */
+	font-display: swap;
+}
+
+/**
+ * 字体栈:自带的那份放**最前面**。
+ *
+ * 为什么不插在系统 sans 后面:不少系统 sans 自己就带一部分 emoji 的单色字形 ——
+ * 本机 DejaVu 就把 🌕 画成一个空心圆、把 🔊 画成豆腐块 —— 插在后面这些码位\*\*轮不到
+ * 我们的彩色字体。这份字体只含 emoji 码位、没有任何文字字形,所以放最前面不会影响
+ * 正文:正文会逐字回退到后面的系统 sans。尾部保留系统 emoji 字体,兜我们没打包的那些。
+ */
+.zq-emoji {
+	font-family:
+		'Zhongqiu Emoji', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+		'Segoe UI Symbol', 'Noto Color Emoji';
+}

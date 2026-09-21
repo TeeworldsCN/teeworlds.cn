@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	// 说明框 portal 到 body 下,继承不到页面根节点的字体栈 —— 自己带上自带的 emoji 字体
+	import '$lib/zhongqiu/emoji-font.css';
 
 	/**
 	 * 卡片悬浮说明:portal 到 body + `position: fixed` 定位到锚点上方。
@@ -137,7 +139,7 @@
 <div
 	bind:this={el}
 	use:portal
-	class="tip pointer-events-none fixed w-max {wide
+	class="zq-emoji tip pointer-events-none fixed w-max {wide
 		? 'max-w-[min(17rem,calc(100vw-2.5rem))]'
 		: 'max-w-[min(13rem,calc(100vw-2.5rem))]'} rounded-lg border bg-slate-950/95 px-2.5 py-1.5 text-center text-[11px] leading-snug text-slate-200 shadow-xl {z} {open
 		? 'tip-open'
