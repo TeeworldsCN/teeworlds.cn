@@ -276,7 +276,8 @@ export const CARDS: TeeCard[] = [
 		desc: '三红及以上：得分 ×1.8',
 		rarity: 'common',
 		tag: '兔',
-		skin: 'bunny',
+		// 原来的 'bunny' 是只深棕兔,小卡上缩到 48px 就是一坨黑影;换成金橙色的兔儿爷
+		skin: 'HaiMo_TuZi_huang',
 		effect: { type: 'cond', cond: 'san_hong_plus', mult: 1.8 }
 	},
 	{

@@ -43,10 +43,6 @@
 		active?: boolean;
 		/** 动画 class(队伍:tee-throw / tee-celebrate 等) */
 		animate?: string;
-		/** 未解锁(图鉴):不露皮肤、不写名字,整体压一点透明度,只保留稀有度描边 */
-		locked?: boolean;
-		/** 皮肤懒加载(图鉴里上百张卡:滚到哪加载哪) */
-		lazy?: boolean;
 	};
 
 	let {
@@ -65,20 +61,14 @@
 		sellBtn,
 		selected = false,
 		active = false,
-		animate = '',
-		locked = false,
-		lazy = false
+		animate = ''
 	}: Props = $props();
 
 	const rarity = $derived(card?.rarity);
 	const rinfo = $derived(rarity ? RARITY_INFO[rarity] : null);
-	/**
-	 * 皮肤名。未解锁传**空串**:TeeRender 自带一份 x_spec 兜底图(本地常量),
-	 * 空名字它就直接用那份,一次网络都不走 —— 写 'x_spec' 反而会去服务器拉一次同名皮肤。
-	 */
-	const teeSkin = $derived(locked ? '' : (card?.skin ?? skin));
-	/** 名字:未解锁留空(string 为空,模板里用 &nbsp; 占住行高,免得卡片矮一截) */
-	const teeName = $derived(locked ? '' : (card?.name ?? name));
+	/** 头像:卡牌用卡上的皮肤;没有卡(「我」)用传进来的 skin */
+	const teeSkin = $derived(card?.skin ?? skin);
+	const teeName = $derived(card?.name ?? name);
 
 	let wrapEl: HTMLElement | undefined = $state();
 	/** 鼠标 hover / 键盘聚焦 —— 触屏那套「点一下固定显示」在 CardTip 里 */
@@ -95,7 +85,7 @@
 	onfocusout={() => (hover = false)}
 >
 	<div
-		class="tee-card {locked ? 'opacity-35' : ''} {selected ? 'ring-2 ring-emerald-400' : ''} {active
+		class="tee-card {selected ? 'ring-2 ring-emerald-400' : ''} {active
 			? '-translate-y-1 border-amber-400/70 bg-amber-400/10 shadow-lg shadow-amber-900/30'
 			: ''} {animate}"
 		style={`--rarity: ${rinfo?.color ?? '#94a3b8'}`}
@@ -118,12 +108,12 @@
 			</div>
 		{/if}
 		<div class="mx-auto h-12 w-12 max-[365px]:h-10 max-[365px]:w-10">
-			<TeeRender name={teeSkin} {emote} {pose} className="h-full w-full" {lazy} />
+			<TeeRender name={teeSkin} {emote} {pose} className="h-full w-full" />
 		</div>
 		<div
 			class="mt-1 w-full truncate text-center text-xs font-semibold text-slate-200 max-[365px]:text-[11px]"
 		>
-			{#if teeName}{teeName}{:else}&nbsp;{/if}
+			{teeName}
 		</div>
 	</div>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ZQ_TEST_BUILD } from '$lib/zhongqiu/test-build';
 	import TeeRender, { type TeePose } from '$lib/components/TeeRender.svelte';
 	import TeeCardView from '$lib/zhongqiu/TeeCard.svelte';
 	import Codex from '$lib/zhongqiu/Codex.svelte';
@@ -619,8 +620,9 @@
 	onMount(() => {
 		sfxOn = loadSfxPref();
 		sfxSetRate(speed);
-		// 作弊引擎： DEV 或 URL 带 ？cheat 时启用
-		if (import.meta.env.DEV || new URLSearchParams(location.search).has('cheat')) {
+		// 作弊引擎:只在开发态或**测试 build** 里启用(见 $lib/zhongqiu/test-build)。
+		// 生产构建里这两个条件都是常量 false → 整段被 DCE 掉,不只是「藏起来」。
+		if (import.meta.env.DEV || ZQ_TEST_BUILD) {
 			(window as unknown as Record<string, unknown>).__sfxLog = sfxLog;
 			enableCheat();
 		}
