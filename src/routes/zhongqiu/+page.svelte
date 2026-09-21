@@ -342,6 +342,15 @@
 	 */
 	const canEquipBuff = $derived(phase === 'intro');
 
+	/** 一次性提示(挂载被拒之类):2.6 秒后自己消失,下一次提示重新计时 */
+	let toast = $state<string | null>(null);
+	let toastTimer: ReturnType<typeof setTimeout> | undefined;
+	const showToast = (msg: string) => {
+		clearTimeout(toastTimer);
+		toast = msg;
+		toastTimer = setTimeout(() => (toast = null), 2600);
+	};
+
 	const applyBuffToTee = (card: BuffCard, idx: number) => {
 		if (!canEquipBuff) return;
 		const cur = buffInventory[card.id] ?? 0;
@@ -353,6 +362,8 @@
 			(team[idx].refundPending ?? []).some((r) => r.cardId === card.id)
 		) {
 			sfxClick();
+			// 只听见「嗒」一声、卡没上去,玩家不知道发生了什么 —— 说清楚
+			showToast(`这只 Tee 上已经有「${card.name}」了，同名加成卡只能挂 1 张`);
 			return;
 		}
 		const next: Record<string, number> = {};
@@ -3589,10 +3600,13 @@
 											<span class="shrink-0 text-slate-500">持续 1~3 关</span>
 										</div>
 										<!-- 芯片行:单列(手机/平板)单行横滑;两列 PC(lg+)才换行 + 限高内滚 ——
-										     和 deskSplit 用同一个断点(sm: 会让「单列但 ≥640px」错用竖排版式) -->
+										     和 deskSplit 用同一个断点(sm: 会让「单列但 ≥640px」错用竖排版式)。
+										     选中态那圈 ring 画在盒子**外面**,贴着滚动区边缘会被裁掉 ——
+										     所以留内边距给 outline:窄屏 p-0.5(只多 2px 高),lg 下 p-1
+										     (限高同步 +0.5rem,不然少了 8px 内容高会少显示小半行) -->
 										<div class="relative">
 											<div
-												class="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5 lg:max-h-[4.75rem] lg:flex-wrap lg:gap-2 lg:overflow-y-auto"
+												class="mt-1.5 flex gap-1.5 overflow-x-auto p-0.5 lg:max-h-[5.25rem] lg:flex-wrap lg:gap-2 lg:overflow-y-auto lg:p-1"
 											>
 												{#each buffEntries as [id, count]}
 													{@const card = BUFF_BY_ID.get(id)!}
@@ -4319,6 +4333,23 @@
 	<!-- ================= 队友图鉴 ================= -->
 	<Codex bind:show={showCodex} />
 
+	<!-- ================= 一次性提示 ================= -->
+	<!-- 不参与布局(fixed):掛卡被拒之类的一句话提示,2.6 秒后自己消失。
+	     pointer-events 关掉,免得挡住下面要点的按钮 -->
+	{#if toast}
+		<div
+			class="pointer-events-none fixed inset-x-0 bottom-14 z-[70] flex justify-center px-4 sm:bottom-16"
+			role="status"
+			aria-live="polite"
+		>
+			<div
+				class="toast-pop max-w-[20rem] rounded-xl border border-amber-400/40 bg-slate-900/95 px-3.5 py-2 text-center text-xs font-semibold text-amber-100 shadow-xl backdrop-blur-sm sm:text-sm"
+			>
+				{toast}
+			</div>
+		</div>
+	{/if}
+
 	<!-- ================= 出售确认 ================= -->
 	{#if sellAsk !== null && team[sellAsk] && cardOf(team[sellAsk])}
 		{@const sold = cardOf(team[sellAsk])}
@@ -4741,6 +4772,22 @@
 		from {
 			opacity: 0;
 			transform: translateY(6px) scale(0.92);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	/* ---- 一次性提示(toast) ---- */
+	.toast-pop {
+		animation: toast-pop 0.22s ease both;
+	}
+
+	@keyframes toast-pop {
+		from {
+			opacity: 0;
+			transform: translateY(10px) scale(0.96);
 		}
 		to {
 			opacity: 1;
