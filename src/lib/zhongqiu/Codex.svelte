@@ -51,7 +51,7 @@
 
 {#if show}
 	<div
-		class="fixed inset-0 z-50 flex cursor-default items-center justify-center bg-black/60 p-2 backdrop-blur-sm sm:p-4"
+		class="fixed inset-0 z-[80] flex cursor-default items-center justify-center bg-black/60 p-2 backdrop-blur-sm sm:p-4"
 		role="presentation"
 		onclick={(e) => {
 			if (e.target === e.currentTarget) show = false;

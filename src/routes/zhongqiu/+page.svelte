@@ -321,8 +321,16 @@
 	let shopPeek = $state<BuffCard | null>(null);
 	/** 同一时刻只弹一个说明浮层:悬停优先于选中,否则两个浮层会叠在一起。
 	 *  选中只在开局编队有效——到了中秋集市它挂不上任何东西,别把上一次的选中带过来。 */
-	const shownBuff = $derived(peekBuff ?? (phase === 'intro' ? selectedBuff : null));
-	const shownShopBuff = $derived(shopPeek ?? shopPick);
+	/**
+	 * 有弹窗开着:图鉴 / 规则 / 出售确认。
+	 * 写成函数而不是 $derived:那几个开关声明在文件更靠后(它们才是弹窗逻辑的正文),
+	 * 这里直接引用会踩 TDZ;函数体只在真正读的时候求值,顺序无所谓。
+	 */
+	const modalOpen = () => showCodex || showRules || sellAsk !== null;
+	const shownBuff = $derived(
+		modalOpen() ? null : (peekBuff ?? (phase === 'intro' ? selectedBuff : null))
+	);
+	const shownShopBuff = $derived(modalOpen() ? null : (shopPeek ?? shopPick));
 	// 阶段一切换,悬停说明就作废 —— 指针的 leave 事件不会补发,
 	// 否则上一屏 hover 过的那张会拖着一张陈旧浮层跟到下一屏。
 	$effect(() => {
@@ -330,6 +338,19 @@
 		peekBuff = null;
 		shopPeek = null;
 		buffTipAnchors = {}; // 芯片会整个重渲染,旧锚点指向已卸载的节点
+	});
+	// 弹窗打开时把悬停说明一并收掉(指针的 leave 不会补发),并且在 body 上挂个标记:
+	// 说明浮层是 portal 到 body 的,拿不到页面这根祖先链,只能靠这个标记让 CSS 收掉它们 ——
+	// 否则 TenCard/货架那些按住不动的浮层会隔着遮罩浮在弹窗上面。
+	$effect(() => {
+		if (!modalOpen()) return;
+		peekBuff = null;
+		shopPeek = null;
+	});
+	$effect(() => {
+		const open = modalOpen();
+		document.body.classList.toggle('zq-modal-open', open);
+		return () => document.body.classList.remove('zq-modal-open');
 	});
 	/** 待确认的出售:被点 ✕ 的 Tee 下标(null = 没弹窗) */
 	let sellAsk = $state<number | null>(null);
@@ -4417,7 +4438,7 @@
 	     pointer-events 关掉,免得挡住下面要点的按钮 -->
 	{#if toast}
 		<div
-			class="pointer-events-none fixed inset-x-0 bottom-14 z-[70] flex justify-center px-4 sm:bottom-16"
+			class="pointer-events-none fixed inset-x-0 bottom-14 z-[90] flex justify-center px-4 sm:bottom-16"
 			role="status"
 			aria-live="polite"
 		>
@@ -4434,7 +4455,7 @@
 		{@const sold = cardOf(team[sellAsk])}
 		{@const losses = sellLossList(sellAsk)}
 		<div
-			class="fixed inset-0 z-50 flex cursor-default items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+			class="fixed inset-0 z-[80] flex cursor-default items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
 			role="presentation"
 			onclick={(e) => {
 				if (e.target === e.currentTarget) sellAsk = null;
@@ -4493,7 +4514,7 @@
 	<!-- ================= 规则弹窗 ================= -->
 	{#if showRules}
 		<div
-			class="fixed inset-0 z-50 flex cursor-default items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+			class="fixed inset-0 z-[80] flex cursor-default items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
 			role="presentation"
 			onclick={(e) => {
 				if (e.target === e.currentTarget) showRules = false;
@@ -4548,6 +4569,16 @@
 </div>
 
 <style>
+	/* 弹窗(图鉴 / 规则 / 出售确认)打开时,说明浮层一律收掉。
+	   浮层 portal 到 body、fixed 定位,拿不到页面根节点的祖先链 ——
+	   只靠 modalOpen 收页面自己那几处不够:TeeCard 的 hover 态活在子组件里
+	   (触屏上 pointerleave 要等下一次点别处才发),所以这里用 body 上的标记兜住全部。 */
+	/* 整条选择器都要 global:浮层是 CardTip 渲染、portal 到 body 的节点,
+	   带上本组件的 scoping 类就永远匹配不上(踩过)。这里靠 body 上的标记隔离作用域。 */
+	:global(body.zq-modal-open .tip) {
+		display: none;
+	}
+
 	/* ---- 夜空 ---- */
 
 	/* 星群:静态,不做动画 —— 上面的面板都带 backdrop-blur,星星一动模糊就得每帧重算 */
