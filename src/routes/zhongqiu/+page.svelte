@@ -3351,13 +3351,13 @@
 							<li>⑥ 队伍最多 {TEAM_LIMIT} 人</li>
 						</ul>
 						<button
-							class="mt-2 w-full rounded-lg border border-amber-500/30 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-400/20 active:scale-[0.98] sm:text-sm"
+							class="mt-2 w-full rounded-lg border border-amber-500/30 bg-amber-400/10 px-3 py-1.5 text-sm font-semibold text-amber-200 transition hover:bg-amber-400/20 active:scale-[0.98]"
 							onclick={() => (showRules = true)}
 						>
 							🎲 博饼等级一览
 						</button>
 						<button
-							class="mt-1.5 w-full rounded-lg border border-sky-500/30 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-200 transition hover:bg-sky-400/20"
+							class="mt-1.5 w-full rounded-lg border border-sky-500/30 bg-sky-400/10 px-3 py-1.5 text-sm font-semibold text-sky-200 transition hover:bg-sky-400/20 active:scale-[0.98]"
 							onclick={() => (showCodex = true)}
 						>
 							📖 队友图鉴
