@@ -36,12 +36,14 @@
 	onfocusout={() => (hover = false)}
 >
 	<div
-		class="flex h-8 w-full items-center gap-1 rounded-lg border bg-slate-800/70 px-1.5 text-left transition"
+		class="flex h-8 w-full items-center gap-1 rounded-lg border bg-slate-800/70 px-1.5 text-left transition {!unlocked
+			? 'opacity-35'
+			: ''}"
 		style="border-color: {cardBorderColor(color)}"
 	>
 		<span class="h-5 w-5 shrink-0">
-			<!-- 未解锁也照旧显示本人皮肤(不再换 x_spec 占位图),藏名字就够了 -->
-			<TeeRender name={card.skin} className="h-full w-full" lazy />
+			<!-- 未解锁:名字留空、皮肤名也传空 —— TeeRender 用自带的 x_spec 兜底图(不走网络) -->
+			<TeeRender name={unlocked ? card.skin : ''} className="h-full w-full" lazy />
 		</span>
 		<span class="min-w-0 flex-1 truncate text-xs leading-tight font-semibold text-slate-200">
 			{#if unlocked}{card.name}{:else}&nbsp;{/if}

@@ -99,7 +99,7 @@
 								{card}
 								locked={!unlocked}
 								lazy
-								desc={unlocked ? card.desc : '尚未解锁'}
+								desc={unlocked ? card.desc : '尚未发现'}
 							/>
 						{/each}
 					</div>

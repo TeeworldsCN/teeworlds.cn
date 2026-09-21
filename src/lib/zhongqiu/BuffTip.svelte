@@ -24,4 +24,4 @@
 		<span class="ml-1 font-normal text-sky-300">持续 {card.turns} 关</span>
 	</div>
 {/if}
-<div class="mt-0.5 text-slate-300">{locked ? '尚未解锁' : card.desc}</div>
+<div class="mt-0.5 text-slate-300">{locked ? '尚未发现' : card.desc}</div>

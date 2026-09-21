@@ -43,7 +43,7 @@
 		active?: boolean;
 		/** 动画 class(队伍:tee-throw / tee-celebrate 等) */
 		animate?: string;
-		/** 未解锁(图鉴):名字那一行留空(头像照旧显示本人皮肤),描边保留稀有度色 */
+		/** 未解锁(图鉴):不露皮肤、不写名字,整体压一点透明度,只保留稀有度描边 */
 		locked?: boolean;
 		/** 皮肤懒加载(图鉴里上百张卡:滚到哪加载哪) */
 		lazy?: boolean;
@@ -72,9 +72,11 @@
 
 	const rarity = $derived(card?.rarity);
 	const rinfo = $derived(rarity ? RARITY_INFO[rarity] : null);
-	/** 头像:未解锁也用**本人皮肤** —— 不再拿 x_spec 占位(那张灰白的默认 Tee
-	 *  在深色底上看着像渲染坏了);藏住名字就已经足够不剧透 */
-	const teeSkin = $derived(card?.skin ?? (skin || 'x_spec'));
+	/**
+	 * 皮肤名。未解锁传**空串**:TeeRender 自带一份 x_spec 兜底图(本地常量),
+	 * 空名字它就直接用那份,一次网络都不走 —— 写 'x_spec' 反而会去服务器拉一次同名皮肤。
+	 */
+	const teeSkin = $derived(locked ? '' : (card?.skin ?? skin));
 	/** 名字:未解锁留空(string 为空,模板里用 &nbsp; 占住行高,免得卡片矮一截) */
 	const teeName = $derived(locked ? '' : (card?.name ?? name));
 
@@ -93,7 +95,7 @@
 	onfocusout={() => (hover = false)}
 >
 	<div
-		class="tee-card {selected ? 'ring-2 ring-emerald-400' : ''} {active
+		class="tee-card {locked ? 'opacity-35' : ''} {selected ? 'ring-2 ring-emerald-400' : ''} {active
 			? '-translate-y-1 border-amber-400/70 bg-amber-400/10 shadow-lg shadow-amber-900/30'
 			: ''} {animate}"
 		style={`--rarity: ${rinfo?.color ?? '#94a3b8'}`}
