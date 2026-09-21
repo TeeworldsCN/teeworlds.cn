@@ -62,6 +62,9 @@
 			const below = ar.bottom + pad;
 			top = below + th > vBottom - pad ? vTop + pad : below;
 		}
+		// 最后再夹一次:锚点在视口下方(比如芯片被滚到滚动区外面)时,上面那套
+		// 只会让它留在屏幕外 —— 兜底夹进可视区,至少看得见。
+		top = Math.min(Math.max(top, vTop + pad), Math.max(vTop + pad, vBottom - pad - th));
 		pos = { left: Math.round(left), top: Math.round(top) };
 	};
 

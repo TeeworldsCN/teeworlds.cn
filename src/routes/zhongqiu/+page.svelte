@@ -178,7 +178,7 @@
 	let save = $state(getSave());
 	/** 打赏入口(爱发电) —— 至少玩过一局后,亮在「返回标题」上方 */
 	const DONATE_URL =
-		'https://ifdian.net/order/create?user_id=86452e60dba811ed862c5254001e7c00&remark=%E4%B8%BA%E6%9C%88%E5%AE%AB%E6%8A%95%E9%AA%B0%E6%89%93%E8%B5%8F&affiliate_code=ddnet-zq';
+		'https://ifdian.net/order/create?user_id=86452e60dba811ed862c5254001e7c00&remark=%E4%B8%BA%E4%B8%AD%E7%A7%8B%E5%8D%9A%E9%A5%BC%E5%A4%A7%E4%BC%9A%E6%89%93%E8%B5%8F&affiliate_code=ddnet-zq';
 	/** 至少玩过一局之后才亮出来(plays 在每局结束时 +1) */
 	const showDonate = $derived(save.plays >= 1);
 	let mooncakes = $state(0);
@@ -3232,8 +3232,9 @@
 <!-- 拖拽多选:手指/鼠标可能停在骰子外面松开,收笔必须挂在 window 上 -->
 <svelte:window onpointerup={endPaint} onpointercancel={endPaint} onblur={endPaint} />
 
+<!-- 禁选:这是个游戏,连点带拖时不该把面板文字选中(图鉴里单独放开,见 Codex) -->
 <div
-	class="relative flex min-h-full flex-col overflow-hidden text-slate-200"
+	class="relative flex min-h-full flex-col overflow-hidden text-slate-200 select-none"
 	style={fitScale < 1 ? `height: ${availH}px` : ''}
 >
 	{#snippet buffPop(card: BuffCard, cls: string)}
@@ -3499,28 +3500,18 @@
 					<div
 						class="mt-3 w-full rounded-xl border border-slate-700/60 bg-slate-900/70 p-3 text-left backdrop-blur-sm sm:mt-5 sm:rounded-2xl sm:p-4"
 					>
-						<div class="mb-1.5 text-sm font-bold text-amber-200">📜 玩法说明</div>
-						<ul class="space-y-1 text-xs leading-snug text-slate-400 sm:space-y-1.5 sm:text-sm">
-							<li>
-								① 开局 <b class="text-slate-200">3 人成队</b>；全队轮流掷 6 骰，总分达标即过关
-							</li>
-							<li>
-								② 每人每回合掷 <b class="text-cyan-300">2 次</b>：第一掷后可挑骰子<b>重掷</b>
-								，卡牌能加到 3 次以上
-							</li>
-							<li>
-								③ 过关进<b class="text-amber-300">组建 Tee 队</b>：免费 3 选 1 换卡，中秋集市买<b
-									class="text-sky-300">加成卡</b
-								>
-							</li>
-							<li>
-								④ <b class="text-sky-300">加成卡</b>掷骰前挂到 Tee 上，持续 1~3 关，可叠加
-							</li>
-							<li>
-								⑤ 每 3 关一位<b class="text-red-300">月宫守卫</b>：目标翻倍、点数生变
-							</li>
-							<li>⑥ 队伍最多 {TEAM_LIMIT} 人</li>
-						</ul>
+						<!-- 玩法说明只讲「这是个什么游戏」,不写步骤 —— 细节留给
+						     「博饼等级一览」和「队友图鉴」两个弹窗 -->
+						<div class="space-y-2 text-xs leading-snug text-slate-400 sm:text-sm">
+							<p>
+								组建你的投掷 <b class="text-amber-300">Tee 队</b>，轮流投掷骰子，得分达标即可过关。
+							</p>
+							<p>
+								过关可获得<b class="text-amber-300">月饼币</b>，利用 Tee 的<b
+									class="text-fuchsia-300">技能</b
+								>和中秋集市购买的<b class="text-sky-300">加成卡</b>努力闯关吧！
+							</p>
+						</div>
 						<button
 							class="mt-2 w-full rounded-lg border border-amber-500/30 bg-amber-400/10 px-3 py-1.5 text-sm font-semibold text-amber-200 transition hover:bg-amber-400/20 active:scale-[0.98]"
 							onclick={() => (showRules = true)}
@@ -4633,7 +4624,7 @@
 	}
 
 	.die.voided .die-face circle {
-		opacity: 0.22;
+		opacity: 0.6;
 	}
 
 	.die-mod.is-four {
@@ -4647,13 +4638,23 @@
 		align-items: flex-end;
 		justify-content: center;
 		padding-bottom: 2%;
-		font-size: 1.5rem;
+		/* 作废:整颗骰子盖一层**斜条纹** + 红叉。
+		   「作废」和「视为 N 点」都是红色标记,只差一个字形,一眼分不开(用户反馈);
+		   条纹让人不用看字就知道「这颗不算」,和「视为」的纯数字彻底区分开。
+		   条纹要**淡而稀** —— 太密太重会把底下的点数盖掉(又反馈过一次)。 */
+		background-image: repeating-linear-gradient(
+			45deg,
+			rgb(220 38 38 / 0.16) 0 3px,
+			transparent 3px 20px
+		);
+		border-radius: 10px;
+		font-size: 1.6rem;
 		font-weight: 900;
 		line-height: 1;
-		color: rgb(220 38 38 / 0.85);
+		color: rgb(185 28 28 / 0.95);
 		text-shadow:
-			0 0 3px rgb(255 255 255 / 0.95),
-			0 0 8px rgb(255 255 255 / 0.7);
+			0 0 2px rgb(255 255 255 / 0.9),
+			0 0 6px rgb(255 255 255 / 0.55);
 		pointer-events: none;
 		user-select: none;
 	}

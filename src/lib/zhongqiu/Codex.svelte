@@ -57,8 +57,9 @@
 			if (e.target === e.currentTarget) show = false;
 		}}
 	>
+		<!-- select-text:活动页整体是 select-none,图鉴这里放开 —— 卡面描述就是拿来复制的 -->
 		<div
-			class="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-amber-500/30 bg-slate-900"
+			class="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-amber-500/30 bg-slate-900 select-text"
 			role="dialog"
 			aria-modal="true"
 			aria-label="队友图鉴"
