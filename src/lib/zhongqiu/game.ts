@@ -285,6 +285,14 @@ export interface TeamTee {
 	/** 发动过的主动技加值/乘算:算进该 Tee 的**基础分**(乘算之前),跟着存盘走 */
 	skillChips?: { srcId: string; chips: number; from?: string }[];
 	skillMult?: { srcId: string; mult: number; from?: string };
+	/**
+	 * 桂树那类「每累计掷出 1 颗 X 点,倍率 +N」的累计 —— **按 Tee 记,不按卡**:
+	 * 同名的两只各算各的;这只 Tee 被卖掉,它的数就跟着一起消失(新入队的那只从 0 开始)。
+	 * 键 = 卡 id(一只 Tee 上同一张卡只有一张,不会撞)。
+	 */
+	faceGrow?: GrowthMap;
+	/** 饼铺掌柜那类「每累计卖出 1 个 Tee」:这只 Tee **入队之后**卖掉过几个 */
+	sold?: number;
 	/** 发动过的主动技加值/乘算:算进该 Tee 的**基础分**(乘算之前),跟着存盘走 */
 }
 
@@ -469,7 +477,7 @@ export interface ActiveSkill {
 	cost?: number;
 	/** 得分倍率(猜谜) */
 	mult?: number;
-	/** 结束本关时,每个尚未投掷的角色给多少月饼币(云海) */
+	/** 结束本关时,每个尚未投掷的 Tee 给多少月饼币(云海) */
 	perTee?: number;
 	/** 出售「我」换多少月饼币(归家) */
 	coins?: number;
@@ -986,7 +994,7 @@ export const calcTeeScore = ({
 				const bc = chips;
 				const bm = mult;
 				if (eff.as === 'chips') chips += eff.per * n;
-				// 流派倍率 = 幂(×per^N):文案是「每拥有一个独特的「X」系角色:得分 ×N」,
+				// 流派倍率 = 幂(×per^N):文案是「每拥有一个独特的「X」系 Tee:得分 ×N」,
 				// 也就是每张同流派卡再乘一层。全套改成乘算之后,这里跟着回幂。
 				else mult *= Math.pow(eff.per, n);
 				// 底分 = 四点颗数(用最终骰子,「1、6 视为 4」已算进去)。
@@ -1554,6 +1562,10 @@ export type RunTeamSlot = {
 	skillMult?: { srcId: string; mult: number; from?: string };
 	/** 这一手哪些骰子作废(高照抄作废状态用) */
 	lastVoid?: number[];
+	/** 桂树那类累计(按 Tee 记,不按卡);老存档没有 → 按空处理 */
+	faceGrow?: GrowthMap;
+	/** 饼铺掌柜那类:这只 Tee 入队后卖掉的 Tee 数;老存档没有 → 按 0 处理 */
+	sold?: number;
 };
 
 export type RunOp =

@@ -466,7 +466,7 @@
 							: sk.skill === 'mult'
 								? `该 Tee 得分 ×${formatMult(sk.mult ?? 1)}（花 🥮 ${sk.cost ?? 0}）`
 								: sk.skill === 'end_round'
-									? `结束本关 · 未投角色 +🥮 ${sk.perTee ?? 0}`
+									? `结束本关 · 未投 Tee +🥮 ${sk.perTee ?? 0}`
 									: sk.skill === 'sell_self'
 										? `回合结算时出售「我」 +🥮 ${sk.coins ?? 0}`
 										: '本关重掷';
@@ -479,6 +479,25 @@
 		if (card?.effect.type === 'scaling_mult') {
 			const layers = growth[card.id] ?? 0;
 			lines.push({ text: `成长: ×${1 + layers}(已叠 ${layers} 层)`, cls: 'text-emerald-300' });
+		}
+		// 累计类效果:把「攒到几」直接摆在技能栏下面 —— 玩家不用去猜现在叠到多少了。
+		// 这两本账都记在**这只 Tee 自己**身上(不按卡):同名的两只各算各的,被卖掉就跟着走。
+		for (const { eff, srcId } of selfEffects(i)) {
+			const nm = cardById(srcId)?.name ?? srcId;
+			if (eff.type === 'own_face_grow') {
+				// 桂树:本关还没掷,所以「当前倍率」按已有的累计算(掷完那关的会在回合结束加进来)
+				const n = tee.faceGrow?.[srcId] ?? 0;
+				lines.push({
+					text: `🌳 ${nm}:累计掷出 ${n} 颗 ${eff.face} 点 · 当前倍率 ×${formatMult(eff.base + eff.per * n)}`,
+					cls: 'text-emerald-300'
+				});
+			} else if (eff.type === 'sold_chips') {
+				const n = tee.sold ?? 0;
+				lines.push({
+					text: `🥮 ${nm}:累计卖出 ${n} 个 Tee · +${formatScore(n * eff.per)} 分`,
+					cls: 'text-emerald-300'
+				});
+			}
 		}
 		for (const b of buffsOf(i)) {
 			const bc = BUFF_BY_ID.get(b.cardId);
@@ -604,6 +623,16 @@
 	let hitDice = $state<number[]>([]);
 	/** 累计卖出过几个 Tee(饼铺掌柜的基础分按它算) */
 	let soldTees = $state(0);
+	/**
+	 * 记一次「卖掉一个 Tee」:记在**每只还在队里的 Tee 自己**的账上(饼铺掌柜按这个算),
+	 * 全局那本账也照记(夜市饼摊要「本关卖过」,统计/QA 也看它)。
+	 * 口径:累计从这只 Tee **入队那一刻**开始;它自己被卖掉时这本账跟着一起走 ——
+	 * 所以同名的两只各算各的,卖掉的那只不会把数算到别人头上。
+	 */
+	const markTeeSold = () => {
+		soldTees += 1;
+		for (const t of team) t.sold = (t.sold ?? 0) + 1;
+	};
 	/** 已经卖出、还没被「下回合」消费掉(夜市饼摊) */
 	let sellBoostPending = $state(false);
 	/** 本回合开始前卖过 Tee → 本回合该 Tee 得分 ×2 */
@@ -825,7 +854,14 @@
 			/** 直接设「累计卖出几个 Tee」+ 挂上「卖过卡」标记(QA 快测饼铺掌柜/夜市饼摊) */
 			sold: (n: number) => {
 				soldTees = n;
+				// 饼铺掌柜看的是**每只 Tee 自己**的账,所以两个都写
+				for (const t of team) t.sold = n;
 				sellBoostPending = n > 0;
+			},
+			/** 直接设某只 Tee 的累计(桂树那本账) faceGrow(1, 'guishu', 7) */
+			faceGrow: (teeIdx: number, cardId: string, n: number) => {
+				if (!team[teeIdx]) return warnId('Tee（下标）', String(teeIdx));
+				team[teeIdx].faceGrow = { ...(team[teeIdx].faceGrow ?? {}), [cardId]: n };
 			},
 			/** 动画速度档位(0=1x 1=2x 2=3x),QA 跑流程时调快 */
 			speed: (i: number) => {
@@ -1023,6 +1059,8 @@
 					lastScore: t.lastScore,
 					lastLevelId: t.lastLevelId,
 					buffs: t.buffs,
+					faceGrow: t.faceGrow,
+					sold: t.sold ?? 0,
 					refundPending: t.refundPending ?? [],
 					skillChips: t.skillChips ?? [],
 					skillMult: t.skillMult,
@@ -1160,6 +1198,8 @@
 				// 身份必须存:读档时不能靠下标猜「我」是谁
 				isSelf: t.isSelf === true,
 				buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft })),
+				faceGrow: t.faceGrow,
+				sold: t.sold,
 				lastScore: t.lastScore,
 				lastLevelId: t.lastLevelId,
 				lastDice: t.lastDice,
@@ -1248,6 +1288,8 @@
 				lastDice: t.lastDice,
 				lastVoid: t.lastVoid ?? [],
 				buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft })),
+				faceGrow: t.faceGrow,
+				sold: t.sold,
 				charge: t.charge ?? 0,
 				refundPending: t.refundPending ?? [],
 				skillChips: t.skillChips ?? [],
@@ -1558,7 +1600,8 @@
 			isSelf: team[i]?.isSelf === true,
 			hasSelf: team.some((t) => t.isSelf === true),
 			teamCards,
-			growth,
+			// 桂树的累计按 Tee 记(同名的两只各算各的),全局那张表留给 scaling_mult / growth_mult
+			growth: { ...growth, ...(team[i]?.faceGrow ?? {}) },
 			buffs: buffsOf(i),
 			// 田螺:身上那批「不生效」的卡不进 buffs(它们不能生效),单独给计分折算用
 			// 发动过的主动技加值(卡面写「计入基础分」那类):和筹码一起进乘算
@@ -1579,7 +1622,8 @@
 			coins: mooncakes,
 			round,
 			leftScore: i > 0 ? (team[i - 1]?.lastScore ?? 0) : (team[team.length - 1]?.lastScore ?? 0),
-			soldCount: soldTees,
+			// 饼铺掌柜:这只 Tee 入队之后卖掉的个数(不是全局销量)
+			soldCount: team[i]?.sold ?? 0,
 			sellBoost
 		};
 	};
@@ -2431,7 +2475,7 @@
 			if (sk.cost && mooncakes < sk.cost) continue;
 			// 归家:队里只剩「我」一个就没人可卖;本关已经发动过也不再弹
 			if (sk.skill === 'sell_self' && (team.length <= 1 || homingSell !== null)) continue;
-			// 云海:自己已经是最后一个 Tee(没有「尚未投掷」的角色)就不弹了
+			// 云海:自己已经是最后一个 Tee(没有「尚未投掷」的 Tee)就不弹了
 			if (sk.skill === 'end_round' && i >= team.length - 1) continue;
 			// 田螺:没有停靠的卡就没什么可折的(弹了也只能「白白减半」)
 			if (sk.skill === 'parked' && !tee.parkRows?.length) continue;
@@ -2595,7 +2639,7 @@
 			}, 700 / speed);
 			return;
 		}
-		// 云海:立刻结束本关 —— 直接跳到结算按钮,还没投掷的角色按人头给币
+		// 云海:立刻结束本关 —— 直接跳到结算按钮,还没投掷的 Tee 按人头给币
 		if (sk.skill === 'end_round') {
 			const left = Math.max(0, team.length - 1 - i);
 			const gain = left * (sk.perTee ?? 0);
@@ -2866,8 +2910,8 @@
 		// 那时绝不能退而求其次去卖队首 —— 那是把「我」的身份错安在别人头上。
 		if (!team.some((t) => t.isSelf)) return;
 		mooncakes += coins;
-		// 「我」被卖也算一次(夜市饼摊/饼铺掌柜都要算上)
-		soldTees += 1;
+		// 「我」被卖也算一次(夜市饼摊要「卖过」,饼铺掌柜按**每只 Tee 自己**的账算)
+		markTeeSold();
 		sellBoostPending = true;
 		sfxSell();
 		if (team.length <= 1) return; // 只剩「我」一个时就别卖了(入口已经拦过,兑底)
@@ -2899,26 +2943,20 @@
 			economyGained = eco;
 			mooncakes += gained;
 			growth = applyGrowth(allCards(), growth);
-			// 桂树(own_face_grow):把本关掷出的颗数记进去 —— 从**下一关**开始吃到。
+			// 桂树(own_face_grow):把本关掷出的颗数记进**这只 Tee 自己**的账 —— 从下一关开始吃到。
 			// 数和引擎计分同一口径(最终骰子),只数这一关真掷过的:countedTee 之后的是
 			// 被「云海」提前收关、根本没投掷的 Tee(它们的 lastDice 还是上一关的)。
-			{
-				const grown: GrowthMap = { ...growth };
-				let any = false;
-				team.forEach((_, k) => {
-					if (k > countedTee) return;
-					const shown = liveDiceValues(team[k].lastDice ?? [], modsFor(k));
-					for (const { eff, srcId } of selfEffects(k)) {
-						if (eff.type !== 'own_face_grow') continue;
-						const n = shown.filter((v) => v === eff.face).length;
-						if (n > 0) {
-							grown[srcId] = (grown[srcId] ?? 0) + n;
-							any = true;
-						}
-					}
-				});
-				if (any) growth = grown;
-			}
+			// 按 Tee 记(不按卡):同名的两只各算各的,这只被卖掉它的数就没了。
+			team.forEach((t, k) => {
+				if (k > countedTee) return;
+				const shown = liveDiceValues(t.lastDice ?? [], modsFor(k));
+				for (const { eff, srcId } of selfEffects(k)) {
+					if (eff.type !== 'own_face_grow') continue;
+					const n = shown.filter((v) => v === eff.face).length;
+					if (n > 0)
+						t.faceGrow = { ...(t.faceGrow ?? {}), [srcId]: (t.faceGrow?.[srcId] ?? 0) + n };
+				}
+			});
 			sfxWin();
 			phase = 'round_end';
 		} else {
@@ -3082,8 +3120,8 @@
 		const card = cardOf(team[idx]);
 		if (card) {
 			mooncakes += rarityOf(card).sell;
-			// 卖卡计数:累计给饼铺掌柜的基础分,同时给夜市饼摊挂上「下回合 ×2」
-			soldTees += 1;
+			// 卖卡计数:记在每只 Tee 自己身上(饼铺掌柜的基础分),同时给夜市饼摊挂「下回合 ×2」
+			markTeeSold();
 			sellBoostPending = true;
 		}
 		team = team.filter((_, i) => i !== idx);
@@ -3990,7 +4028,7 @@
 														? ` · 花 🥮 ${pendingActive.cost}`
 														: ''}
 												{:else if pendingActive.skill === 'end_round'}
-													结束本关 · 未投角色 +🥮 {pendingActive.perTee ?? 0}
+													结束本关 · 未投 Tee +🥮 {pendingActive.perTee ?? 0}
 												{:else if pendingActive.skill === 'sell_self'}
 													回合结算时出售「我」 +🥮 {pendingActive.coins ?? 0}
 												{:else if pendingActive.skill === 'to_four'}
