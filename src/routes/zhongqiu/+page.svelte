@@ -949,7 +949,9 @@
 					refundHalved: t.refundHalved ?? false,
 					charge: t.charge ?? 0,
 					lastDice: t.lastDice,
-					lastVoid: t.lastVoid ?? []
+					lastVoid: t.lastVoid ?? [],
+					parkRows: t.parkRows ?? [],
+					parkAsked: t.parkAsked ?? false
 				}))
 			}),
 
@@ -1086,7 +1088,9 @@
 				refundPending: t.refundPending ?? [],
 				skillChips: t.skillChips ?? [],
 				skillMult: t.skillMult,
-				refundHalved: t.refundHalved ?? false
+				refundHalved: t.refundHalved ?? false,
+				parkRows: t.parkRows ?? [],
+				parkAsked: t.parkAsked ?? false
 			})),
 			soldTees,
 			sellBoost,
@@ -1167,7 +1171,9 @@
 				refundPending: t.refundPending ?? [],
 				skillChips: t.skillChips ?? [],
 				skillMult: t.skillMult,
-				refundHalved: t.refundHalved ?? false
+				refundHalved: t.refundHalved ?? false,
+				parkRows: t.parkRows ?? [],
+				parkAsked: t.parkAsked ?? false
 			}))
 		);
 		soldTees = d.soldTees;
@@ -1298,8 +1304,17 @@
 			dice = [...tee.lastDice];
 			lastLevel = level;
 			diceSum = liveDiceValues(tee.lastDice, modsFor(currentTee)).reduce((a, b) => a + b, 0);
+			// 田螺的主动技还没答(提示在结算动画之前弹的):刷新回来要停在这一步等答案,
+			// 不能像「已经结算完」那样直接推进 —— 否则读一次档就把发动机会跳过去了。
+			if (pendingActive) {
+				settleSteps = [];
+				settleIdx = -1;
+				settling = false;
+				settlePreview = 0;
+				return;
+			}
 			// 不传 refunds:道具在判定时已经归还过了,这里只是补个显示
-			settleSteps = buildSettleSteps(level.id, level, tee, []);
+			settleSteps = buildSettleSteps(level.id, level, tee, [], tee.parkRows ?? []);
 			settleIdx = settleSteps.length - 1;
 			settling = false;
 			settlePreview = 0;
@@ -1544,11 +1559,26 @@
 		}
 	};
 
+	/**
+	 * 每关清一次:主动技的加值/乘算是**这一关这一手**的基础分,不能漏到下一关。
+	 * (以前没人清 skillChips —— 田螺 / 点数和发动过一次之后,之后每一关都白拿那笔分。)
+	 */
+	const clearRoundSkillState = () => {
+		for (const t of team) {
+			t.skillChips = [];
+			t.skillMult = undefined;
+			t.refundHalved = false;
+			t.parkRows = [];
+			t.parkAsked = false;
+		}
+	};
+
 	const beginRound = () => {
 		// 夜市饼摊:上一段间隙(集市/结算)里卖过 Tee → 本回合 ×2
 		sellBoost = sellBoostPending;
 		sellBoostPending = false;
 		resetRoundState();
+		clearRoundSkillState();
 		boss = isBossRound(round) ? getBoss(round) : null;
 		target = Math.round(roundTarget(round) * (boss?.targetMult ?? 1));
 		for (const t of team) {
@@ -1995,6 +2025,9 @@
 			out.push({ name: c?.name ?? r.cardId, coins: r.coins });
 		}
 		if (!out.length) return [];
+		// 这几行留着:提示里要写「发动值多少分」,结算动画要逐张弹 ——
+		// 而且读档回来还要重画(存盘带着走)
+		team[i].parkRows = out;
 		team[i].buffs = [];
 		team[i].refundPending = [];
 		mooncakes += out.reduce((s, x) => s + x.coins, 0);
@@ -2102,6 +2135,17 @@
 				cls: 'text-cyan-300',
 				kind: 'chip'
 			});
+		// 4c） 田螺发动了主动技：把那批返还的一半收回。
+		// 上面几行照旧是**原价**（钱先进来、动画里看得见），这里单独一行说清扣多少 ——
+		// 比「逐行改成减半后的数」清楚，也不会出现「按行取整加起来对不上」的情况。
+		if (tee.refundHalved && buffBack.length) {
+			const back = Math.ceil(buffBack.reduce((s, b) => s + b.coins, 0) / 2);
+			steps.push({
+				text: `🐚 田螺：发动技能 -🥮 ${back}`,
+				cls: 'text-cyan-300',
+				kind: 'chip'
+			});
+		}
 		// 5） 合计
 		steps.push({
 			text: `= ${formatScore(lastBreakdown.total)} 分`,
@@ -2163,16 +2207,44 @@
 
 		// 田螺:身上的加成卡不生效 —— 挂载时就不入库,掷完按原价返还(逐张一行)
 		const buffBack = settleTianluo(currentTee);
-		// 主动技可能在**结算动画之后**才发动,而且改的是「基础分」——
-		// 把这次结算的参数留着,发动时整条重算(不用重放动画)
+		// 结算参数留着:动画是在主动技答完之后才播的,那时才建这几行
 		lastSettle = { levelId: rawLevel.id, refunds: refundUnusedItems(currentTee), buffBack };
-		settleSteps = buildSettleSteps(rawLevel.id, level, tee, lastSettle.refunds, buffBack);
+		// 田螺的主动技在结算动画**之前**问 —— 它的加值计入基础分,答完动画里就是最终数字。
+		// (以前问在动画之后,只能「播完了再改数字」:要重写已经弹过的行,而且「这一关问过没有」
+		//   没人管 —— 上一关的加值会漏到下一关。)
+		const act = usableActive(currentTee);
+		if (act?.skill === 'parked') {
+			tee.parkAsked = true;
+			pendingActive = act;
+			return;
+		}
+		playSettle();
+	};
+
+	/**
+	 * 播当前这只 Tee 的结算动画。数字必须已经**定稿**(主动技要么没问、要么问完了),
+	 * 所以这里只负责把 settleSteps 一行行弹出来,末尾接 next()。
+	 */
+	const playSettle = (next: () => void = afterSettle) => {
+		const tee = team[currentTee];
+		const lv = lastLevel;
+		if (!tee || !lv) return;
+		// 读档回来时 lastSettle 不在(没存),用 Tee 身上留着的那批停靠行补显示
+		const refunds = lastSettle?.refunds ?? [];
+		const buffBack = lastSettle?.buffBack ?? tee.parkRows ?? [];
+		settleSteps = buildSettleSteps(
+			lastSettle?.levelId ?? tee.lastLevelId,
+			lv,
+			tee,
+			refunds,
+			buffBack
+		);
 		settleIdx = -1;
 		settling = true;
 		const stepMs = 380 / speed;
 		// 进度条跟着结算动画走。
 		// 注意:分数在 finalizeTee 里**已经加过**了(currentScore += lastBreakdown.total),
-		const settleTotal = lastBreakdown.total;
+		const settleTotal = tee.lastScore ?? 0;
 		settlePreview = -settleTotal;
 		settleSteps.forEach((_, i) => {
 			setTimeout(
@@ -2181,8 +2253,8 @@
 					settlePreview = -settleTotal + Math.round(settleTotal * ((i + 1) / settleSteps.length));
 					const st = settleSteps[i];
 					if (!st) return;
-					if (st.kind === 'total') sfxTotal(lastBreakdown.total > 0);
-					else sfxStep(i, st.kind, level.score);
+					if (st.kind === 'total') sfxTotal(settleTotal > 0);
+					else sfxStep(i, st.kind, lv.score);
 					// 只把「正在展示的这一行」滚进可视区,不做「永远贴底」——
 					// 结算框里那些不可见的占位行会把 scrollHeight 撑得很大,贴底就会把上面的行推走
 					if (stepsEl) {
@@ -2208,7 +2280,7 @@
 				teeAnim = '';
 				setTimeout(() => {
 					if (gen !== animGen) return;
-					afterSettle();
+					next();
 				}, 600 / speed);
 			},
 			(settleSteps.length + 1) * stepMs
@@ -2229,26 +2301,22 @@
 			if (sk.skill === 'sell_self' && (team.length <= 1 || homingSell !== null)) continue;
 			// 云海:自己已经是最后一个 Tee(没有「尚未投掷」的角色)就不弹了
 			if (sk.skill === 'end_round' && i >= team.length - 1) continue;
+			// 田螺:没有停靠的卡就没什么可折的(弹了也只能「白白减半」);
+			// 这一关已经问过也不再弹 —— 冷却 0,不复位就会在动画之后又弹一次
+			if (sk.skill === 'parked' && (!tee.parkRows?.length || tee.parkAsked)) continue;
 			return sk;
 		}
 		return null;
 	};
 
-	/** 田螺:停靠了几张、总价多少(提示里要写清发动值多少分) */
+	/**
+	 * 田螺:这批停靠卡有几张、原价共多少(提示里要写清发动值多少分)。
+	 * 掷完那一刻 refundPending 就清空了(原价已付),但 settleTianluo 把行留在了
+	 * `tee.parkRows` 上 —— 存盘也带着,所以读档回来提示与动画都还在。
+	 */
 	const parkedInfo = (i: number): { n: number; price: number } => {
-		const pend = team[i]?.refundPending ?? [];
-		if (pend.length)
-			return {
-				n: pend.length,
-				price: pend.reduce((s, r) => s + (BUFF_BY_ID.get(r.cardId)?.price ?? 0), 0)
-			};
-		// 掷完那一刻 refundPending 已经清空(原价已付),但 lastSettle 里留着那批返还行
-		if (i === currentTee && lastSettle)
-			return {
-				n: lastSettle.buffBack.length,
-				price: lastSettle.buffBack.reduce((s, r) => s + r.coins, 0)
-			};
-		return { n: 0, price: 0 };
+		const rows = team[i]?.parkRows ?? [];
+		return { n: rows.length, price: rows.reduce((s, r) => s + r.coins, 0) };
 	};
 
 	/** 田螺主动技的折算率(卡里写的是 12) */
@@ -2413,35 +2481,22 @@
 			}, 700 / speed);
 			return;
 		}
-		// 和值类主动技:参数在卡自己的效果里(per / from / mult),按当前点数和结算
-		// 田螺:停靠的卡**已经按原价返还过**,发动就把它们折成基础分,并把返还收回一半
+		// 田螺:停靠的卡**已经按原价返还过**,发动就把它们折成基础分,并把返还收回一半。
+		// 这一步在结算动画**之前**(finalizeTee 里就问),所以动画里那几行原价照旧,
+		// 只多一行「发动技能 -🥮 N」;答完才播动画 —— 不用再改已经弹出去的数字。
 		if (sk.skill === 'parked') {
-			let per = 12;
-			const walk = (e: unknown) => {
-				if (!e || typeof e !== 'object') return;
-				const o = e as { type?: string; skill?: string; perPrice?: number; parts?: unknown[] };
-				if (o.type === 'bundle') o.parts?.forEach(walk);
-				else if (o.type === 'active' && o.skill === 'parked' && o.perPrice) per = o.perPrice;
-			};
-			walk(cardById(sk.srcId)?.effect);
-			const rows = lastSettle?.buffBack ?? [];
+			const rows = lastSettle?.buffBack ?? tee.parkRows ?? [];
 			const paid = rows.reduce((s2, r) => s2 + r.coins, 0);
 			if (paid > 0) {
-				tee.skillChips = [{ srcId: sk.srcId, chips: paid * per, from: `停靠 ${rows.length} 张` }];
-				const back = Math.ceil(paid / 2);
-				mooncakes -= back;
+				tee.skillChips = [
+					{ srcId: sk.srcId, chips: paid * parkedPer(sk.srcId), from: `停靠 ${rows.length} 张` }
+				];
+				mooncakes -= Math.ceil(paid / 2);
 				sfxCoin();
-				if (lastSettle)
-					lastSettle.buffBack = rows.map((r) => ({ name: r.name, coins: Math.ceil(r.coins / 2) }));
 				tee.refundHalved = true;
 				rescoreTee(i);
 			}
-			settleIdx = settleSteps.length - 1;
-			sfxTotal(true);
-			setTimeout(() => {
-				if (gen !== animGen) return;
-				advanceAfterTee();
-			}, 700 / speed);
+			playSettle(advanceAfterTee);
 			return;
 		}
 		if (sk.skill === 'sum') {
@@ -2488,10 +2543,16 @@
 	const skipActive = () => {
 		sfxClick();
 		const wasDice = pendingActive?.skill === 'to_four';
+		const wasParked = pendingActive?.skill === 'parked';
 		pendingActive = null;
 		// 改骰子的主动技跳过了,不是收尾 —— 还要接着走改点/判定
 		if (wasDice) {
 			beginSetOps();
+			return;
+		}
+		// 田螺:结算动画还在等这个答案(提示在动画之前弹的) —— 答完这里才播
+		if (wasParked) {
+			playSettle(advanceAfterTee);
 			return;
 		}
 		advanceAfterTee();
@@ -2510,6 +2571,7 @@
 		usedOpCount = {};
 		rerollAllUsed = false;
 		countedTee = -1; // 本关重来 → 所有 Tee 回到「待掷」
+		clearRoundSkillState(); // 主动技的加值也是「本关一次」,重来就要收回
 		settleSteps = [];
 		settleIdx = -1;
 		pendingAction = null;
@@ -3750,17 +3812,12 @@
 												{:else if pendingActive.skill === 'to_four'}
 													把一颗骰子改为 4 点，之后可反复改四点
 												{:else if pendingActive.skill === 'parked'}
-													{#if parkedInfo(currentTee).n > 0}
-														<!-- 不再写「共 🥮 N」:那批返还**结算动画里已经加上去了**,写成收益会
-														     让人以为发动还能多拿;这里只写代价 → 收益 -->
-														是否要：减半的月饼数 → 基础分 +{formatScore(
-															Math.round(
-																parkedInfo(currentTee).price * parkedPer(pendingActive.srcId)
-															)
-														)}
-													{:else}
-														身上没有停靠的卡（发动只会白白减半返还）
-													{/if}
+													<!-- 代价 → 收益:那批原价返还等会儿在结算动画里逐张弹,这里不写「共 🥮 N」 -->
+													是否要：减半的月饼数 → 基础分 +{formatScore(
+														Math.round(
+															parkedInfo(currentTee).price * parkedPer(pendingActive.srcId)
+														)
+													)}
 												{:else}
 													本关重掷
 												{/if}

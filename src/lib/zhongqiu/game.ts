@@ -270,6 +270,13 @@ export interface TeamTee {
 	refundPending?: { cardId: string; coins: number }[];
 	/** 田螺:发动过主动技 → 返还减半 */
 	refundHalved?: boolean;
+	/**
+	 * 田螺:本次掷骰**已经按原价付过**的那几行(结算动画逐张弹)。
+	 * 留着它是为了读档回来能重画 —— 发动提示和结算动画都长在这上面。
+	 */
+	parkRows?: { name: string; coins: number }[];
+	/** 田螺:这一关已经问过发动了(冷却 0,不复位就会在动画之后又弹一次) */
+	parkAsked?: boolean;
 	/** 发动过的主动技加值/乘算:算进该 Tee 的**基础分**(乘算之前),跟着存盘走 */
 	skillChips?: { srcId: string; chips: number; from?: string }[];
 	skillMult?: { srcId: string; mult: number; from?: string };
@@ -1511,6 +1518,10 @@ export type RunTeamSlot = {
 	refundPending?: { cardId: string; coins: number }[];
 	/** 田螺:发动过主动技 → 返还减半 */
 	refundHalved?: boolean;
+	/** 田螺:已经按原价付过的那几行(结算动画逐张弹,读档后靠它重画) */
+	parkRows?: { name: string; coins: number }[];
+	/** 田螺:这一关已经问过发动了 */
+	parkAsked?: boolean;
 	/** 发动过的主动技加值/乘算:算进该 Tee 的**基础分**(乘算之前),跟着存盘走 */
 	skillChips?: { srcId: string; chips: number; from?: string }[];
 	skillMult?: { srcId: string; mult: number; from?: string };
