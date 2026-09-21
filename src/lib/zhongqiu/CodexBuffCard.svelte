@@ -50,6 +50,6 @@
 	</div>
 	<!-- 加成卡说明比 Tee 卡长,用宽一档的浮层(和货架上那个 buffPop 同一个宽度) -->
 	<CardTip anchor={wrapEl} {hover} {color} wide>
-		<BuffTip {card} locked={!unlocked} foot={null} />
+		<BuffTip {card} locked={!unlocked} />
 	</CardTip>
 </div>

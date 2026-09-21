@@ -761,6 +761,9 @@ export const calcTeeScore = ({
 	// 加成卡: chips 累加, mult 连乘
 	let buffChips = 0;
 	let buffMult = 1;
+	/** 加成卡里的「基础分翻倍」(桂花糖浆):作用在基础分侧,乘算链在它后面 */
+	let buffBaseMult = 1;
+	let buffBaseSrc = '';
 	for (const b of buffs) {
 		const eff = BUFF_BY_ID.get(b.cardId)?.effect;
 		if (!eff) continue;
@@ -772,6 +775,10 @@ export const calcTeeScore = ({
 				// 取整:明细行本来就是整数,而 0.5 系数会把 25 变成 12.5 —— 界面按整数显示 13,
 				// 就会和引擎差半个点。记账时就取整,两边完全对得上。
 				buffChips += Math.round((be.value ?? 0) * buffChipsScale);
+			} else if (be.type === 'base_mult') {
+				// 和 mult 同一套口径:凛月的「加成卡乘值只算一半」也管它
+				buffBaseMult *= 1 + ((be.value ?? 1) - 1) * buffMultScale;
+				buffBaseSrc = b.cardId;
 			} else if (be.type === 'mult') {
 				buffMult *= 1 + ((be.value ?? 1) - 1) * buffMultScale;
 			} else if (be.type === 'chips_mult') {
@@ -1290,6 +1297,15 @@ export const calcTeeScore = ({
 			swap: { from: net }
 		});
 	}
+	// 加成卡的「基础分翻倍」:整块放大(等级底分 + 卡牌筹码 + 加成卡筹码)。
+	// 放在 reverse/swap **之后**:逆向是「把净值整个改写掉」,改写完的那份基础分再翻倍。
+	const baseDoubled = base * buffBaseMult;
+	if (buffBaseMult !== 1) {
+		chips *= buffBaseMult;
+		buffChips *= buffBaseMult;
+		// 出成乘算行:卡面写的就是「基础分翻倍」,渲染成「+N」对不上
+		note(buffBaseSrc, 'buff', 0, buffBaseMult, '基础分翻倍');
+	}
 	// 一律取整。加减项本来就是整数(底分 10/20/40…、筹码 5/10/25…),小数只可能来自
 	// 倍率相乘(×1.35×N、×1.4、×2.5 这类),而最小的一手也有 10 分、典型得分几百到上万 ——
 	// 那半个点没有任何玩法意义,却让记分板一直挂着小数点、结算时又要突变成整数。
@@ -1317,11 +1333,11 @@ export const calcTeeScore = ({
 		mult *= skillMult.mult;
 		note(skillMult.srcId, 'card', 0, bm === 0 ? 1 : mult / bm, skillMult.from);
 	}
-	const raw = Math.round((base + chips + buffChips) * mult * buffMult);
+	const raw = Math.round((baseDoubled + chips + buffChips) * mult * buffMult);
 	const netChips = chips + buffChips;
 	const total = swapped !== null || allowNegative || netChips < 0 ? raw : Math.max(0, raw);
 	return {
-		base,
+		base: baseDoubled,
 		chips: chips + buffChips,
 		mult: mult * buffMult,
 		teamMult: 1,

@@ -9,6 +9,9 @@ export interface BuffEffect {
 	type:
 		| 'chips'
 		| 'mult'
+		// 基础分**整块** ×value(等级底分 + 卡牌筹码 + 其他加成卡筹码都跟着走),
+		// 乘算链在它后面 —— 所以是「基础分翻倍」而不是「得分翻倍」
+		| 'base_mult'
 		| 'chips_mult'
 		| 'level_floor'
 		| 'roll'
@@ -127,12 +130,12 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guihuatangjiang',
 		name: '桂花糖浆',
-		desc: '基础分 +110',
+		desc: '基础分翻倍',
 		rarity: 'rare',
 		skin: 'cupcakesprinkle',
 		price: 6,
-		turns: 2,
-		effect: { type: 'chips', value: 110 }
+		turns: 1,
+		effect: { type: 'base_mult', value: 2 }
 	},
 	{
 		id: 'lianrongshuang',

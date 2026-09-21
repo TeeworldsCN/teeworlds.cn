@@ -3,6 +3,7 @@
 	import TeeCardView from '$lib/zhongqiu/TeeCard.svelte';
 	import Codex from '$lib/zhongqiu/Codex.svelte';
 	import BuffTip from '$lib/zhongqiu/BuffTip.svelte';
+	import CardTip from '$lib/zhongqiu/CardTip.svelte';
 	import {
 		unlockTees,
 		unlockBuffs,
@@ -295,6 +296,12 @@
 	let selectedBuff = $state<BuffCard | null>(null);
 	/** 仅查看说明的加成卡(没选中的芯片 hover / 点按):仓库里的卡点一下看说明 */
 	let peekBuff = $state<BuffCard | null>(null);
+	/**
+	 * 加成卡说明浮层的锚点(芯片本身)。浮层走 CardTip:portal 到 body + fixed ——
+	 * 以前挂在芯片旁边的一个 absolute div,而队伍面板在 lg 既是 overflow-y-auto 的
+	 * 滚动区、又带 backdrop-blur(自成一个层叠上下文),提示框一冒头就被裁/被 HUD 盖住。
+	 */
+	let buffTipAnchor = $state<HTMLElement | undefined>();
 	/** 中秋集市货架的悬停说明(和 peekBuff 分开:同一屏里仓库和货架会同时存在) */
 	let shopPeek = $state<BuffCard | null>(null);
 	/** 同一时刻只弹一个说明浮层:悬停优先于选中,否则两个浮层会叠在一起。
@@ -3258,18 +3265,26 @@
 				type="button"
 				class="flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border px-1.5 py-0.5 transition select-none sm:gap-1.5 sm:px-2 sm:py-1 {state}"
 				style="border-color: {cardBorderColor(rarityColor)}"
-				title="点选后再点队伍里的 Tee 挂上"
-				onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
+				onpointerdown={(e) => {
+					lastPointerWasMouse = e.pointerType === 'mouse';
+					buffTipAnchor = e.currentTarget as HTMLElement;
+				}}
 				onpointerenter={(e) => {
-					if (e.pointerType !== 'touch') peekBuff = card;
+					if (e.pointerType === 'touch') return;
+					peekBuff = card;
+					buffTipAnchor = e.currentTarget as HTMLElement;
 				}}
 				onpointerleave={(e) => {
 					if (e.pointerType !== 'touch' && peekBuff?.id === card.id) peekBuff = null;
 				}}
-				onclick={() => toggleSelectBuff(card)}
+				onclick={(e) => {
+					buffTipAnchor = e.currentTarget as HTMLElement;
+					toggleSelectBuff(card);
+				}}
 				onkeydown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.preventDefault();
+						buffTipAnchor = e.currentTarget as HTMLElement;
 						toggleSelectBuff(card);
 					}
 				}}
@@ -3282,21 +3297,27 @@
 				style="border-color: {cardBorderColor(rarityColor)}"
 				role="button"
 				tabindex="0"
-				title={`${card.name}:${card.desc} · 持续 ${card.turns} 关`}
-				onpointerdown={(e) => (lastPointerWasMouse = e.pointerType === 'mouse')}
+				onpointerdown={(e) => {
+					lastPointerWasMouse = e.pointerType === 'mouse';
+					buffTipAnchor = e.currentTarget as HTMLElement;
+				}}
 				onpointerenter={(e) => {
-					if (e.pointerType !== 'touch') peekBuff = card;
+					if (e.pointerType === 'touch') return;
+					peekBuff = card;
+					buffTipAnchor = e.currentTarget as HTMLElement;
 				}}
 				onpointerleave={(e) => {
 					if (e.pointerType !== 'touch' && peekBuff?.id === card.id) peekBuff = null;
 				}}
-				onclick={() => {
+				onclick={(e) => {
 					// 触屏没 hover:点一下看说明,再点收起(鼠标已经有 hover 了,不抢点击)
+					buffTipAnchor = e.currentTarget as HTMLElement;
 					if (!lastPointerWasMouse) peekBuff = peekBuff?.id === card.id ? null : card;
 				}}
 				onkeydown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.preventDefault();
+						buffTipAnchor = e.currentTarget as HTMLElement;
 						peekBuff = peekBuff?.id === card.id ? null : card;
 					}
 				}}
@@ -3616,12 +3637,7 @@
 								{#if showBuffShelf}
 									<div class="mt-1 border-t border-sky-500/20 pt-1">
 										<div class="flex items-center justify-between gap-2 text-[11px] text-slate-400">
-											<span>
-												✨ 加成卡
-												{#if phase === 'intro'}
-													<span class="text-sky-300">· 点选后点 Tee 挂上</span>
-												{/if}
-											</span>
+											<span>✨ 加成卡</span>
 											<span class="shrink-0 text-slate-500">持续 1~3 关</span>
 										</div>
 										<!-- 芯片行:单列(手机/平板)单行横滑;两列 PC(lg+)才换行 + 限高内滚 ——
@@ -3641,13 +3657,10 @@
 												{/each}
 											</div>
 											{#if shownBuff}
-												<!-- 说明浮层挂在**横滑容器之外**:容器是 overflow 滚动区(手机横滑 / lg+ 换行内滚),
-												     挂在里面会被 bottom-full 探出去的那截裁掉 —— DOM 里有、屏幕上看不见。
-												     一行紧凑卡带,居中显示即可,不必再按芯片逐一定位。 -->
-												{@render buffPop(
-													shownBuff,
-													'absolute bottom-full left-1/2 mb-1 -translate-x-1/2'
-												)}
+												<!-- 浮层走 CardTip(portal 到 body + fixed):既不会被滚动区裁,也不会被 HUD 盖 -->
+												<CardTip anchor={buffTipAnchor} hover={true} color="#38bdf8" wide>
+													<BuffTip card={shownBuff} />
+												</CardTip>
 											{/if}
 										</div>
 									</div>
@@ -3750,9 +3763,10 @@
 									{/each}
 								</div>
 								{#if peekBuff}
-									<!-- 和货架同理:浮层必须挂在**横滑容器之外** —— 容器是 overflow 滚动区,
-									     挂在里面会被 bottom-full 探出去的那截裁掉(DOM 里有、屏幕上看不见)。 -->
-									{@render buffPop(peekBuff, 'absolute bottom-full left-1/2 mb-1 -translate-x-1/2')}
+									<!-- 同上:走 CardTip(portal + fixed),不受道具条滚动区 / HUD 限制 -->
+									<CardTip anchor={buffTipAnchor} hover={true} color="#38bdf8" wide>
+										<BuffTip card={peekBuff} />
+									</CardTip>
 								{/if}
 							</div>
 						{/if}
