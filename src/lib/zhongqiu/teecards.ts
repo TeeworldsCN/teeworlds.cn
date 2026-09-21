@@ -1253,7 +1253,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'meiyue',
 		name: '柳眉',
-		desc: '「我」掷出的 2 点视为 4 点；本关「我」每有 1 颗 2 点，基础分 +250',
+		desc: '「我」掷出的 2 点视为 4 点；本关「我」每掷出 1 颗 2 点，该 Tee 的基础分 +250',
 		rarity: 'rare',
 		skin: 'green_stripe',
 		effect: {
@@ -1267,7 +1267,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'xinyue',
 		name: '朔日',
-		desc: '「我」掷出的 3 点视为 4 点；本关「我」每有 1 颗 3 点，基础分 +400',
+		desc: '「我」掷出的 3 点视为 4 点；本关「我」每掷出 1 颗 3 点，该 Tee 的基础分 +400',
 		rarity: 'legendary',
 		skin: 'IceWitch_Snow',
 		effect: {
@@ -1281,7 +1281,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'sanxingzhao',
 		name: '三星照',
-		desc: '「我」掷出的 3 点视为 4 点；本关「我」每有 1 颗 3 点，基础分 +250',
+		desc: '「我」掷出的 3 点视为 4 点；本关「我」每掷出 1 颗 3 点，该 Tee 的基础分 +250',
 		rarity: 'rare',
 		skin: 'sunwateregg',
 		effect: {
@@ -1295,7 +1295,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'shangxian',
 		name: '上弦',
-		desc: '「我」掷出的 5 点视为 4 点；本关「我」每有 1 颗 5 点，基础分 +250',
+		desc: '「我」掷出的 5 点视为 4 点；本关「我」每掷出 1 颗 5 点，该 Tee 的基础分 +250',
 		rarity: 'rare',
 		skin: 'IceWitch_DeerSakura',
 		effect: {

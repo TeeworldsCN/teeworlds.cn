@@ -295,6 +295,26 @@ export const liveDiceValues = (dice: number[], mods?: DiceMods): number[] => {
 export const rawLiveDice = (dice: number[], mods?: DiceMods): number[] =>
 	dice.filter((_, i) => !isVoidDie(dice, i, mods));
 
+/**
+ * 「每**掷出** 1 颗 X 点」的计数:**原投掷的算,改成 X 点的也算,同一颗只算一次**。
+ *
+ * ⚠️ 只服务文案写「每掷出」的那一族(三星照 / 柳眉 / 朔日 / 上弦)。
+ *    文案写「每有」「最终骰子里」的(拾遗 / 明月共照 / 拾贝 / 桂树 / 月系四点 …)
+ *    一律只数**最终骰面**,别拿这个函数去换 —— 两套口径是故意分开的:
+ *      · 每有   = 最终判定的点数(被改走的就不算)
+ *      · 每掷出 = 掷出来是什么就算什么
+ *    三星照自己就把 3 改成了 4:只数最终骰面,它那句「每掷出 1 颗 3 点」永远是 0。
+ *
+ * 同一颗两个数组都命中(原投掷就是 3、也没被改走)时只记一次。
+ * 两个数组都必须是**剔过作废**的同序数组(liveDiceValues / rawLiveDice),
+ * 否则作废的骰子会被数进来。
+ */
+export const faceHits = (face: number, shown: number[], raw?: number[]): number => {
+	let n = 0;
+	for (let i = 0; i < shown.length; i++) if (shown[i] === face || raw?.[i] === face) n += 1;
+	return n;
+};
+
 /** mods(含 chain)里是否有「解除作废」 */
 export const hasClearVoid = (mods?: DiceMods): boolean => {
 	if (!mods) return false;

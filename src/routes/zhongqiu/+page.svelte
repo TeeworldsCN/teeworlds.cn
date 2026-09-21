@@ -1542,7 +1542,6 @@
 		return null;
 	};
 	const scoreInput = (i: number, levelId: string, diceForSum: number[]): ScoreInput => {
-		// 「我」是谁:身份看 isSelf,不看下标(队伍可能被重排,「我」也可能不在队里)
 		const isMe = team[i]?.isSelf === true;
 		const selfIdx = team.findIndex((t) => t.isSelf === true);
 		const selfTee = selfIdx >= 0 ? team[selfIdx] : undefined;
@@ -4490,9 +4489,6 @@
 						</div>
 					</div>
 				{/if}
-				<div class="mt-3 text-[11px] leading-snug text-slate-400">
-					卖掉后这张卡永久离队，换来的月饼币可以立刻在中秋集市里花。
-				</div>
 				<div class="mt-3.5 flex justify-center gap-2">
 					<button
 						class="rounded-xl border border-slate-500 bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-600"

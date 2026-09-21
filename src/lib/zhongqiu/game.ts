@@ -1,5 +1,6 @@
 // 月宫掷骰 · 游戏核心逻辑(关卡、Boss、计分、存档)
 import {
+	faceHits,
 	getRollLevel,
 	hasClearVoid,
 	judgeRoll,
@@ -860,15 +861,19 @@ export const calcTeeScore = ({
 			}
 			case 'face_count_chips': {
 				if (!hasSelf) break;
-				// 「我」掷出的点数统计 —— 认身份,不认下标
-				if (skipTeamWide || !isSelf) break;
+				// 「我」掷出的点数统计 —— 触发看「我」的骰面,**得利方是持卡者**(文案「该 Tee」)。
+				// 所以【不加 isSelf 判定】:「我」自己是无卡的那只,卡永远挂在队友身上,
+				// 加了这道门这张卡就是废卡(用户报过「三星照发挥不出来」)。
+				// ⚠️ 别再拿 skipTeamWide 当门:self 那一轮(持卡者自己)就是带 skipTeamWide=true 跑的,
+				// 而全队那一轮又不转发它 —— 那样这张卡永远不触发(三星照的 +250 从来没生效过)。
+				// 它属于「持卡者自己那一轮结算」,和 player_die / on_player 同一套路。
 				{
-					const raw = playerRawDice ?? playerDice ?? [];
-					const hits = raw.filter((d) => d === eff.face).length;
+					// 原投掷的和改点后的都算(同一颗只算一次)—— 三星照自己就把 3 改成了 4
+					const hits = faceHits(eff.face, playerDice ?? [], playerRawDice);
 					if (hits > 0) {
 						const bc = chips;
 						chips += eff.chips * hits;
-						note(srcId, 'card', chips - bc, 1, `${hits} 颗 ${eff.face}`);
+						note(srcId, 'card', chips - bc, 1, `我 ${hits} 颗 ${eff.face}`);
 					}
 				}
 				break;
@@ -1022,6 +1027,8 @@ export const calcTeeScore = ({
 				// 文案写「该 Tee」:触发看「我」,得利看持卡者。
 				// 所以【不加 isSelf 判定】—— 它在持卡者自己那一轮(self 那轮)结算,
 				// 别的 Tee 算分时不会走到这里(全队那一轮也不转发它)。
+				// ⚠️ 只数**最终骰面**(文案「「我」最终骰子里每个 4」)—— 这是「每有」口径;
+				// 三星照那族写「每掷出」,才要连原投掷一起数(faceHits)。两套别混。
 				const n = playerDice.filter((v) => v === eff.face).length;
 				if (n <= 0) break;
 				const bc = chips;
