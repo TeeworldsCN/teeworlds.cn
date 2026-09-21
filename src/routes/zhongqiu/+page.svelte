@@ -674,6 +674,11 @@
 			homing: (coins = 8) => {
 				homingSell = coins;
 			},
+			/** 直接卖某只(绕过按钮):QA 验「最后一只卖不掉」的兕底守卫 */
+			sell: (i: number) => {
+				if (!team[i]) return warnId('Tee（下标）', String(i));
+				sellTee(i);
+			},
 			/** 直接跑一次回合结算(QA:会触发归家卖「我」) */
 			settle: () => settleRound(),
 			/** 直接进失败结算屏(QA:测「返回菜单 → 刷新」有没有清局内存档) */
@@ -2815,6 +2820,9 @@
 	const sellTee = (idx: number) => {
 		// 「我」不能卖 —— 认身份,不认下标。「我」离队后新队首是普通 Tee,可以卖。
 		if (team[idx]?.isSelf) return;
+		// 队里只剩这一只也不能卖:卖掉队伍就空了 —— 那不是「更弱的队伍」,是没队伍。
+		// (踩过:归家卖完「我」之后,最后一只照样挂着出售按钮,卖了 team=[] / currentTee=-1。)
+		if (team.length <= 1) return;
 		sfxSell(); // 收银机「ka-ching」
 		const card = cardOf(team[idx]);
 		if (card) {
@@ -2832,6 +2840,25 @@
 		const idx = sellAsk;
 		sellAsk = null;
 		if (idx !== null) sellTee(idx);
+	};
+
+	/**
+	 * 这只 Tee 能不能卖(出售按钮 / 卡面提示 / sellTee 兕底共用这一条,不要各写一份)。
+	 *
+	 * 除了阶段和身份,还要看**卖完还剩不剩人**:队伍可以少到只剩 1 只,
+	 * 但不能归零 —— 归零之后没队伍可掷、currentTee 也会变成 -1。
+	 */
+	const canSellTee = (i: number): boolean =>
+		(phase === 'reward' || phase === 'shop') &&
+		team.length > 1 &&
+		!team[i]?.isSelf &&
+		!!team[i]?.cardId;
+
+	/** 卡面提示里的附加行:能卖报卖价,最后一只要说明为什么没按钮 */
+	const teeTipExtra = (i: number): string | undefined => {
+		const t = team[i];
+		if (!t?.cardId) return undefined; // 「我」没卡,谈不上卖
+		return team.length > 1 ? `卖出得 🥮 ${rarityOf(cardOf(t)).sell}` : '最后一个 Tee 不能出售';
 	};
 
 	const nextRound = () => {
@@ -3495,7 +3522,7 @@
 											}}
 										>
 											{#snippet sellBtn()}
-												{#if (phase === 'reward' || phase === 'shop') && !tee.isSelf && tee.cardId}
+												{#if canSellTee(i)}
 													<button
 														class="absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/90 text-[10px] font-bold text-white shadow transition hover:bg-red-400"
 														title="卖出 {cardOf(tee)?.name},得 🥮 {rarityOf(cardOf(tee)).sell}"
@@ -3513,9 +3540,7 @@
 												skin={SELF_SKIN}
 												name="我"
 												desc={cardOf(tee)?.desc}
-												tipExtra={tee.cardId
-													? `卖出得 🥮 ${rarityOf(cardOf(tee)).sell}`
-													: undefined}
+												tipExtra={teeTipExtra(i)}
 												tipList={teeTipList(tee)}
 												badge={(team[i]?.refundPending?.length ?? 0) > 0
 													? `🐚${team[i]?.refundPending?.length}`
@@ -3531,11 +3556,7 @@
 												pose={i === currentTee ? teePose : IDLE_POSE}
 												active={i === currentTee && phase === 'rolling'}
 												animate={i === currentTee ? teeAnimClass : ''}
-												sellBtn={(phase === 'reward' || phase === 'shop') &&
-												!tee.isSelf &&
-												tee.cardId
-													? sellBtn
-													: undefined}
+												sellBtn={canSellTee(i) ? sellBtn : undefined}
 											>
 												{#snippet actions()}
 													<!-- 两种状态都占两行:待掷(1 行)→ 点数+等级(2 行)会让整队高度跳 14px -->
