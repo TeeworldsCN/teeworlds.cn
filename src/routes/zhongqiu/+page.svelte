@@ -55,7 +55,7 @@
 		TEAM_LIMIT,
 		normalizeSelf,
 		activeReady,
-		activeSkills,
+		holderActiveSkills,
 		applyBuffLevelFloor,
 		applyGrowth,
 		calcTeeScore,
@@ -1363,9 +1363,15 @@
 	 */
 	const selfOf = (i: number) => team[i]?.isSelf === true;
 	const buffsOf = (i: number): AppliedBuff[] => (hasBuffRefund(i) ? [] : (team[i]?.buffs ?? []));
-	/** 该 Tee 可用的主动技(「我」= 自己的 + 别人卡上授予「我」的) */
+	/**
+	 * 该 Tee 可用的主动技。
+	 * 「我」= 自己的 + 别人卡上**授予「我」**的(toPlayer);
+	 * 其他人 = 只有自己卡上的 —— 授予「我」的技能不留在卡上,所以持卡者那边要用
+	 * `holderActiveSkills` 剔掉。否则「我」被归家卖掉之后,那张卡会把技能带回来:
+	 * 新队首每回合都能再「卖一次我」拿 8 币,而队里早已没有「我」。
+	 */
 	const skillsFor = (i: number): ActiveSkill[] =>
-		selfOf(i) ? playerActiveSkills(teamCards) : activeSkills(selfEffects(i), buffsOf(i));
+		selfOf(i) ? playerActiveSkills(teamCards) : holderActiveSkills(selfEffects(i), buffsOf(i));
 	/** 花生:这只 Tee 回合初始投掷整把作废 */
 	const hasFirstRollVoid = (i: number): boolean => {
 		for (const { eff } of selfEffects(i)) if (eff.type === 'first_roll_void') return true;
@@ -2622,6 +2628,10 @@
 		const coins = homingSell;
 		if (coins === null) return;
 		homingSell = null;
+		// 「我」已经不在队里(上一关卖过了)→ **没人可卖**:不发币、不记销量、不动队伍。
+		// 正常玩不到这里(技能跟着「我」一起消失),但作弊注入 / 异常存档能造出来;
+		// 那时绝不能退而求其次去卖队首 —— 那是把「我」的身份错安在别人头上。
+		if (!team.some((t) => t.isSelf)) return;
 		mooncakes += coins;
 		// 「我」被卖也算一次(夜市饼摊/饼铺掌柜都要算上)
 		soldTees += 1;

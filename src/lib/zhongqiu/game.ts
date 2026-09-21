@@ -493,8 +493,27 @@ export const activeSkills = (self: EffectiveEffect[], buffs: AppliedBuff[] = [])
 };
 
 /**
+ * 持有者**自己**能用的主动技 —— 也就是 `activeSkills` 里剔掉 `toPlayer` 的那些。
+ *
+ * `toPlayer` 是**授予「我」**的技能(归家:卖掉「我」自己),按定义不留在卡上:
+ * 持卡者不该因此多一个按钮,而「我」被卖掉之后更不该落到新队首头上
+ * (踩过:技能跟着卡走 → 每回合白卖一次「我」拿 8 月饼币)。
+ *
+ * 所以队伍里的技能要分两边取:
+ *   - 「我」→ `playerActiveSkills`(自己的 + 别人授予的)
+ *   - 其他人 → 这个函数
+ */
+export const holderActiveSkills = (
+	self: EffectiveEffect[],
+	buffs: AppliedBuff[] = []
+): ActiveSkill[] => activeSkills(self, buffs).filter((sk) => !sk.toPlayer);
+
+/**
  * 「我」能用的主动技:别人卡上标了 toPlayer 的那些(归家)。
  * 技能归属「我」——所以冷却记在 team[0].charge、按钮/角标也长在主 Tee 上。
+ *
+ * 调用点必须先确认「我」**真的在队里**(归家会把「我」卖掉):这里只看卡,
+ * 看不出队里有没有「我」,拿这里的返回值去发币会凭空造钱。
  */
 export const playerActiveSkills = (cards: (TeeCard | null)[]): ActiveSkill[] => {
 	const out: ActiveSkill[] = [];
