@@ -951,7 +951,7 @@
 					lastDice: t.lastDice,
 					lastVoid: t.lastVoid ?? [],
 					parkRows: t.parkRows ?? [],
-					parkAsked: t.parkAsked ?? false
+					askedSkills: t.askedSkills ?? []
 				}))
 			}),
 
@@ -1090,7 +1090,7 @@
 				skillMult: t.skillMult,
 				refundHalved: t.refundHalved ?? false,
 				parkRows: t.parkRows ?? [],
-				parkAsked: t.parkAsked ?? false
+				askedSkills: t.askedSkills ?? []
 			})),
 			soldTees,
 			sellBoost,
@@ -1173,7 +1173,7 @@
 				skillMult: t.skillMult,
 				refundHalved: t.refundHalved ?? false,
 				parkRows: t.parkRows ?? [],
-				parkAsked: t.parkAsked ?? false
+				askedSkills: t.askedSkills ?? []
 			}))
 		);
 		soldTees = d.soldTees;
@@ -1569,7 +1569,7 @@
 			t.skillMult = undefined;
 			t.refundHalved = false;
 			t.parkRows = [];
-			t.parkAsked = false;
+			t.askedSkills = [];
 		}
 	};
 
@@ -2155,6 +2155,14 @@
 		return steps;
 	};
 
+	/**
+	 * 「改基础分」的主动技:必须在结算动画**之前**问,答完才播动画 ——
+	 * 它们改的是计分入参,动画里就该是最终数字。
+	 * 其余的(归家 / 云海 / 调分左侧 / 换一张)仍问在动画之后:改的是「已结算分」,
+	 * 或要等这一手的结果出来才有意义。
+	 */
+	const SCORE_ACTIVES = new Set<ActiveSkill['skill']>(['parked', 'sum']);
+
 	const finalizeTee = () => {
 		const tee = team[currentTee];
 		const self = selfEffects(currentTee);
@@ -2209,12 +2217,13 @@
 		const buffBack = settleTianluo(currentTee);
 		// 结算参数留着:动画是在主动技答完之后才播的,那时才建这几行
 		lastSettle = { levelId: rawLevel.id, refunds: refundUnusedItems(currentTee), buffBack };
-		// 田螺的主动技在结算动画**之前**问 —— 它的加值计入基础分,答完动画里就是最终数字。
+		// 改基础分的主动技(田螺的停靠、潮汐/望月的点数和)在结算动画**之前**问:
+		// 答完动画里就是最终数字。
 		// (以前问在动画之后,只能「播完了再改数字」:要重写已经弹过的行,而且「这一关问过没有」
 		//   没人管 —— 上一关的加值会漏到下一关。)
 		const act = usableActive(currentTee);
-		if (act?.skill === 'parked') {
-			tee.parkAsked = true;
+		if (act && SCORE_ACTIVES.has(act.skill)) {
+			tee.askedSkills = [...(tee.askedSkills ?? []), `${act.srcId}|${act.skill}`];
 			pendingActive = act;
 			return;
 		}
@@ -2301,9 +2310,10 @@
 			if (sk.skill === 'sell_self' && (team.length <= 1 || homingSell !== null)) continue;
 			// 云海:自己已经是最后一个 Tee(没有「尚未投掷」的角色)就不弹了
 			if (sk.skill === 'end_round' && i >= team.length - 1) continue;
-			// 田螺:没有停靠的卡就没什么可折的(弹了也只能「白白减半」);
-			// 这一关已经问过也不再弹 —— 冷却 0,不复位就会在动画之后又弹一次
-			if (sk.skill === 'parked' && (!tee.parkRows?.length || tee.parkAsked)) continue;
+			// 田螺:没有停靠的卡就没什么可折的(弹了也只能「白白减半」)
+			if (sk.skill === 'parked' && !tee.parkRows?.length) continue;
+			// 这一关已经问过的不再弹 —— 冷却 0 的田螺否则会在动画之后又弹一次
+			if (tee.askedSkills?.includes(`${sk.srcId}|${sk.skill}`)) continue;
 			return sk;
 		}
 		return null;
@@ -2341,7 +2351,7 @@
 		advanceAfterTee();
 	};
 
-	/** 上一次结算的参数(主动技改基础分之后,靠它重算整条链) */
+	/** 本次结算要显示的那几行参数(动画要等主动技答完才播,所以先存在这) */
 	let lastSettle: {
 		levelId: string;
 		refunds: string[];
@@ -2350,8 +2360,9 @@
 
 	/**
 	 * 主动技改了「基础分」之后重算这只 Tee:乘算必须吃到这份加值 ——
-	 * 所以不是 `lastScore += x`,而是把加值当计分入参重跑一遍,再重建结算行
+	 * 所以不是 `lastScore += x`,而是把加值当计分入参重跑一遍
 	 * (加值那行会自然排在乘算行**前面**,和卡面「计入基础分」一致)。
+	 * 结算行不用在这里重建:改基础分的主动技都在动画之前问,playSettle 会重build。
 	 */
 	const rescoreTee = (i: number) => {
 		const lv = lastLevel;
@@ -2362,16 +2373,6 @@
 		);
 		team[i].lastScore = lastBreakdown.total;
 		currentScore += lastBreakdown.total - prev;
-		if (lastSettle) {
-			settleSteps = buildSettleSteps(
-				lastSettle.levelId,
-				lv,
-				team[i],
-				lastSettle.refunds,
-				lastSettle.buffBack
-			);
-			settleIdx = settleSteps.length - 1;
-		}
 	};
 
 	/** 发动主动技能 */
@@ -2512,11 +2513,7 @@
 			to.skillChips = [{ srcId: sk.srcId, chips: gain, from: `点数和 ${sum}` }];
 			to.skillMult = m > 1 ? { srcId: sk.srcId, mult: m, from: `点数和 ${sum}` } : undefined;
 			rescoreTee(i);
-			sfxTotal(true);
-			setTimeout(() => {
-				if (gen !== animGen) return;
-				advanceAfterTee();
-			}, 700 / speed);
+			playSettle(advanceAfterTee); // 和停靠同理:改完基础分再播动画
 			return;
 		}
 
@@ -2543,15 +2540,15 @@
 	const skipActive = () => {
 		sfxClick();
 		const wasDice = pendingActive?.skill === 'to_four';
-		const wasParked = pendingActive?.skill === 'parked';
+		const wasScoreAct = !!pendingActive && SCORE_ACTIVES.has(pendingActive.skill);
 		pendingActive = null;
 		// 改骰子的主动技跳过了,不是收尾 —— 还要接着走改点/判定
 		if (wasDice) {
 			beginSetOps();
 			return;
 		}
-		// 田螺:结算动画还在等这个答案(提示在动画之前弹的) —— 答完这里才播
-		if (wasParked) {
+		// 改基础分的主动技(田螺/点数和):结算动画还在等这个答案 —— 答完这里才播
+		if (wasScoreAct) {
 			playSettle(advanceAfterTee);
 			return;
 		}
@@ -3792,7 +3789,8 @@
 												</button>
 											{/each}
 										{:else if pendingActive}
-											<!-- 充能技能:结算播完,等玩家决定要不要发动 -->
+											<!-- 充能技能,等玩家决定要不要发动。改基础分的(停靠/点数和)问在结算动画
+											     **之前**,其余问在动画之后 -->
 											<span class="text-fuchsia-300">
 												⚡ <b>{cardById(pendingActive.srcId)?.name ?? '技能'}</b>
 												{#if pendingActive.skill === 'chips'}
