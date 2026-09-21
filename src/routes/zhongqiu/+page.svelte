@@ -2949,22 +2949,14 @@
 	const sellLossList = (i: number): { name: string; note: string; color?: string }[] => {
 		const t = team[i];
 		if (!t) return [];
-		// 田螺身上所有加成卡都不生效(挂上的也一样),掷完才按原价返还 ——
-		// 卖掉就等于跟它们一起扔了,不会返还。得说清楚,不然玩家以为拔下卡就能拿回月饼币。
-		const parked = hasBuffRefund(i);
-		const rows: { cardId: string; coins: number; turnsLeft: number }[] = [
-			...(t.buffs ?? []).map((b) => ({
-				cardId: b.cardId,
-				coins: BUFF_BY_ID.get(b.cardId)?.price ?? 0,
-				turnsLeft: b.turnsLeft
-			})),
-			...(t.refundPending ?? []).map((r) => ({ cardId: r.cardId, coins: r.coins, turnsLeft: 0 }))
-		];
-		return rows.map((r) => {
-			const c = BUFF_BY_ID.get(r.cardId);
+		// 田螺不算:它身上那批卡本来就不生效、掷完按原价返还,卖掉时当场折成月饼币退给玩家
+		// (见 sellTee)—— 一件都不会白丢,没什么可警告的。
+		if (hasBuffRefund(i)) return [];
+		return (t.buffs ?? []).map((b) => {
+			const c = BUFF_BY_ID.get(b.cardId);
 			return {
-				name: c?.name ?? r.cardId,
-				note: parked ? `停靠中 · 卖掉不会返还 🥮 ${r.coins}` : `剩 ${r.turnsLeft} 回合`,
+				name: c?.name ?? b.cardId,
+				note: `剩 ${b.turnsLeft} 回合`,
 				color: c ? RARITY_INFO[c.rarity].color : undefined
 			};
 		});
@@ -2976,6 +2968,16 @@
 		// 队里只剩这一只也不能卖:卖掉队伍就空了 —— 那不是「更弱的队伍」,是没队伍。
 		// (踩过:归家卖完「我」之后,最后一只照样挂着出售按钮,卖了 team=[] / currentTee=-1。)
 		if (team.length <= 1) return;
+		// 田螺:还没掷的那批「停靠」卡本来掷完就按原价返还 —— 直接卖就别让饼铺白吞,
+		// 当场退给玩家。(掷完的那批在 settleTianluo 里已经退过,不会重复。卖卡阶段在结算
+		// 之后,所以正常流程本来就走不到这里,只有云海提前收关那种情况才用得上。)
+		const soldTee = team[idx];
+		if (soldTee && hasBuffRefund(idx)) {
+			const pend =
+				(soldTee.buffs ?? []).reduce((n, b) => n + (BUFF_BY_ID.get(b.cardId)?.price ?? 0), 0) +
+				(soldTee.refundPending ?? []).reduce((n, r) => n + r.coins, 0);
+			if (pend > 0) mooncakes += pend;
+		}
 		sfxSell(); // 收银机「ka-ching」
 		const card = cardOf(team[idx]);
 		if (card) {
