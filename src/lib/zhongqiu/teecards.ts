@@ -130,7 +130,7 @@ export type TeeEffect =
 			teamWide?: boolean;
 	  } // 队伍里每有 1 张同流派卡(teamWide: 全队同流派 Tee 都吃;chips: 额外底分)
 	| { type: 'on_player'; cond: Cond; chips?: number; mult?: number; teamWide?: boolean } // 主 Tee(「我」)掷出该等级及以上时(teamWide = 全队都吃)
-	| { type: 'player_die'; face: number; chips?: number; mult?: number } // 「我」最终骰子里每个该点数
+	| { type: 'player_die'; face: number; chips?: number; mult?: number } // 「我」每有 1 颗该点数(只数最终骰面)
 	| { type: 'map_player_die'; from: number; to: number } // 「我」掷出的 from 点视为 to 点(团队规则,只作用于主 Tee)
 	| { type: 'face_count_chips'; face: number; chips: number }
 	| { type: 'face_ladder' } // 点数阶梯:非 4 点的同点 n 颗按 4 点线档位结算(一秀→六博红)
@@ -391,7 +391,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'shiyue',
 		name: '拾遗',
-		desc: '「我」最终骰子里每个 4，该 Tee 基础分 +30',
+		desc: '「我」每有 1 颗 4 点：该 Tee 基础分 +30',
 		rarity: 'common',
 		skin: 'small_star',
 		effect: { type: 'player_die', face: 4, chips: 30 }
