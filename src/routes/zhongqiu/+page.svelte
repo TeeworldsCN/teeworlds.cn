@@ -397,6 +397,9 @@
 			});
 		}
 		for (const sk of skillsFor(i)) {
+			// 田螺的停靠不在这里单独说:它既是技能说明也是返还清单,
+			// 合并到文末那一行(下面 parkedSk 那段),免得两行各说一套
+			if (sk.skill === 'parked') continue;
 			const nm = cardById(sk.srcId)?.name ?? sk.srcId;
 			const what =
 				sk.skill === 'chips'
@@ -411,13 +414,7 @@
 									? `结束本关 · 未投角色 +🥮 ${sk.perTee ?? 0}`
 									: sk.skill === 'sell_self'
 										? `回合结算时出售「我」 +🥮 ${sk.coins ?? 0}`
-										: sk.skill === 'parked'
-											? (() => {
-													const p = parkedInfo(i);
-													const v = Math.round(p.price * parkedPer(sk.srcId));
-													return `停靠 ${p.n} 张（共 🥮 ${p.price}）折成基础分 +${formatScore(v)}，返还减半`;
-												})()
-											: '本关重掷';
+										: '本关重掷';
 			lines.push({
 				// 时机(掷完可发动)卡牌 desc 里已经写全,这里只说还能不能发动
 				text: `⚡ ${nm}:${what}${(tee.charge ?? 0) > 0 ? `(冷却 ${tee.charge} 关)` : '（可发动）'}`,
@@ -440,17 +437,35 @@
 				});
 			}
 		}
-		// 田螺:身上的加成卡不生效,已经换算成「掷完返还多少月饼币」
-		if (hasBuffRefund(i)) {
-			const pend = (team[i]?.refundPending ?? []).map(
-				(r) => `${BUFF_BY_ID.get(r.cardId)?.name ?? r.cardId} +🥮 ${r.coins}`
-			);
-			lines.push({
-				text: pend.length
-					? `🐚 田螺:掷完返还 ${pend.join('、')}`
-					: '🐚 田螺:该 Tee 身上的加成卡不生效',
-				cls: 'text-cyan-300'
-			});
+		// 田螺:停靠的加成卡既是「技能说明」也是「返还清单」—— 合成一行。
+		// 以前是两行各算一套(⚡ 那行只看得见掷完的 parkRows,🐚 那行只看得见掷之前的
+		// refundPending),于是挂着 6 张卡时提示里写着「停靠 0 张」。
+		const parkedSk = skillsFor(i).find((sk) => sk.skill === 'parked');
+		if (parkedSk && hasBuffRefund(i)) {
+			const rows = parkedCards(i);
+			const total = rows.reduce((s, r) => s + r.coins, 0);
+			const gain = Math.round(total * parkedPer(parkedSk.srcId));
+			const nm = cardById(parkedSk.srcId)?.name ?? '田螺';
+			const paid = rows.length > 0 && rows[0].paid;
+			let text: string;
+			if (total === 0) {
+				text = `🐚 ${nm}:身上的加成卡不生效，掷完按原价返还 · 发动可把停靠卡折成基础分 ×12，返还减半（身上没有停靠的卡）`;
+			} else {
+				const list = rows.map((r) => `${r.name} +🥮 ${r.coins}`).join('、');
+				// 状态:还没掷 → 能不能发动;掷完还没答 → 正在等;答完 → 这一手发没发动
+				const asked = (tee.askedSkills ?? []).includes(`${parkedSk.srcId}|parked`);
+				const state = !paid
+					? (tee.charge ?? 0) > 0
+						? `（冷却 ${tee.charge} 关）`
+						: '（可发动）'
+					: tee.refundHalved
+						? `（已发动，返还收回 🥮 ${Math.ceil(total / 2)}）`
+						: asked
+							? '（这一关没发动，原价已入账）'
+							: '（正在等发动）';
+				text = `🐚 ${nm}:${paid ? '已按原价返还' : '掷完原价返还'} ${list}（共 🥮 ${total}）· 发动可折成基础分 +${formatScore(gain)}，返还减半${state}`;
+			}
+			lines.push({ text, cls: 'text-cyan-300' });
 		}
 		return lines;
 	};
@@ -2015,16 +2030,9 @@
 	const settleTianluo = (i: number): { name: string; coins: number }[] => {
 		const tee = team[i];
 		if (!tee || !hasBuffRefund(i)) return [];
-		const out: { name: string; coins: number }[] = [];
-		for (const b of tee.buffs) {
-			const c = BUFF_BY_ID.get(b.cardId);
-			out.push({ name: c?.name ?? b.cardId, coins: c?.price ?? 0 });
-		}
-		for (const r of tee.refundPending ?? []) {
-			const c = BUFF_BY_ID.get(r.cardId);
-			out.push({ name: c?.name ?? r.cardId, coins: r.coins });
-		}
-		if (!out.length) return [];
+		const rows = parkedCards(i);
+		if (!rows.length) return [];
+		const out = rows.map((r) => ({ name: r.name, coins: r.coins }));
 		// 这几行留着:提示里要写「发动值多少分」,结算动画要逐张弹 ——
 		// 而且读档回来还要重画(存盘带着走)
 		team[i].parkRows = out;
@@ -2223,7 +2231,6 @@
 		//   没人管 —— 上一关的加值会漏到下一关。)
 		const act = usableActive(currentTee);
 		if (act && SCORE_ACTIVES.has(act.skill)) {
-			tee.askedSkills = [...(tee.askedSkills ?? []), `${act.srcId}|${act.skill}`];
 			pendingActive = act;
 			return;
 		}
@@ -2324,10 +2331,33 @@
 	 * 掷完那一刻 refundPending 就清空了(原价已付),但 settleTianluo 把行留在了
 	 * `tee.parkRows` 上 —— 存盘也带着,所以读档回来提示与动画都还在。
 	 */
-	const parkedInfo = (i: number): { n: number; price: number } => {
-		const rows = team[i]?.parkRows ?? [];
-		return { n: rows.length, price: rows.reduce((s, r) => s + r.coins, 0) };
+	/**
+	 * 田螺身上那批「停靠」的加成卡 —— **两段状态合成一份清单**:
+	 * 掷之前挂在 `refundPending` / `buffs` 上(还没返还),掷完落到 `parkRows`(原价已付)。
+	 * 提示、发动提示、结算动画都读这一份 —— 以前两边各算一套(一个只看 parkRows、
+	 * 一个只看 refundPending),所以挂着 6 张卡时提示里写的是「停靠 0 张」。
+	 */
+	const parkedCards = (i: number): { name: string; coins: number; paid: boolean }[] => {
+		const tee = team[i];
+		if (!tee) return [];
+		if (tee.parkRows?.length) return tee.parkRows.map((r) => ({ ...r, paid: true }));
+		const nameOf = (cardId: string) => BUFF_BY_ID.get(cardId)?.name ?? cardId;
+		return [
+			...tee.buffs.map((b) => ({
+				name: nameOf(b.cardId),
+				coins: BUFF_BY_ID.get(b.cardId)?.price ?? 0,
+				paid: false
+			})),
+			...(tee.refundPending ?? []).map((r) => ({
+				name: nameOf(r.cardId),
+				coins: r.coins,
+				paid: false
+			}))
+		];
 	};
+
+	/** 田螺:这批停靠卡的原价合计(发动提示里要写清折多少分) */
+	const parkedPrice = (i: number): number => parkedCards(i).reduce((s, r) => s + r.coins, 0);
 
 	/** 田螺主动技的折算率(卡里写的是 12) */
 	const parkedPer = (srcId: string): number => {
@@ -2375,6 +2405,14 @@
 		currentScore += lastBreakdown.total - prev;
 	};
 
+	/** 记下「这一关这只需 Tee 的这个技能已经答过了」(发动 / 留着都算答) */
+	const markAsked = (sk: ActiveSkill | null) => {
+		const tee = team[currentTee];
+		if (!sk || !tee) return;
+		const key = `${sk.srcId}|${sk.skill}`;
+		if (!(tee.askedSkills ?? []).includes(key)) tee.askedSkills = [...(tee.askedSkills ?? []), key];
+	};
+
 	/** 发动主动技能 */
 	const useActive = () => {
 		const sk = pendingActive;
@@ -2383,6 +2421,7 @@
 		if (!sk || !tee) return;
 		sfxClick();
 		const gen = animGen; // 结算/读档会 ++animGen,下面那些收尾回调都要对代次
+		markAsked(sk); // 答过了 —— 提示里那行状态、usableActive 都靠这个
 		pendingActive = null;
 		tee.charge = sk.cooldown; // 进入冷却
 		const name = cardById(sk.srcId)?.name ?? sk.srcId;
@@ -2541,6 +2580,7 @@
 		sfxClick();
 		const wasDice = pendingActive?.skill === 'to_four';
 		const wasScoreAct = !!pendingActive && SCORE_ACTIVES.has(pendingActive.skill);
+		markAsked(pendingActive);
 		pendingActive = null;
 		// 改骰子的主动技跳过了,不是收尾 —— 还要接着走改点/判定
 		if (wasDice) {
@@ -3812,9 +3852,7 @@
 												{:else if pendingActive.skill === 'parked'}
 													<!-- 代价 → 收益:那批原价返还等会儿在结算动画里逐张弹,这里不写「共 🥮 N」 -->
 													是否要：减半的月饼数 → 基础分 +{formatScore(
-														Math.round(
-															parkedInfo(currentTee).price * parkedPer(pendingActive.srcId)
-														)
+														Math.round(parkedPrice(currentTee) * parkedPer(pendingActive.srcId))
 													)}
 												{:else}
 													本关重掷
