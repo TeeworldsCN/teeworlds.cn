@@ -3751,12 +3751,13 @@
 													把一颗骰子改为 4 点，之后可反复改四点
 												{:else if pendingActive.skill === 'parked'}
 													{#if parkedInfo(currentTee).n > 0}
-														停靠 {parkedInfo(currentTee).n} 张，共 🥮 {parkedInfo(currentTee).price} →
-														基础分 +{formatScore(
+														<!-- 不再写「共 🥮 N」:那批返还**结算动画里已经加上去了**,写成收益会
+														     让人以为发动还能多拿;这里只写代价 → 收益 -->
+														是否要：减半的月饼数 → 基础分 +{formatScore(
 															Math.round(
 																parkedInfo(currentTee).price * parkedPer(pendingActive.srcId)
 															)
-														)}，返还的月饼币减半
+														)}
 													{:else}
 														身上没有停靠的卡（发动只会白白减半返还）
 													{/if}
