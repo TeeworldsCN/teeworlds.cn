@@ -1395,11 +1395,11 @@ export const CARDS: TeeCard[] = [
 		}
 	},
 	{
-		// 稀有 = 改点型:掷完后必须自己挑一颗骰子改成 1 点(压等级的操作)
+		// 稀有 = 改点型:掷完后必须自己挑一颗骰子改成 2 点(压等级的操作)
 		// 罚分 ×1.5:净系数 −1.5(per = 1 + 1.5)
 		id: 'queyue',
 		name: '缺月',
-		desc: '基础分替换为（170，每关 +50 − 基础分）；掷完后把 1 颗骰子改为 1 点；自己掷出的 2 视为 4',
+		desc: '基础分替换为（170，每关 +50 − 基础分）；掷完后把 1 颗骰子改为 2 点；自己掷出的 6 视为 4',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'darkforce',
@@ -1407,8 +1407,8 @@ export const CARDS: TeeCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'reverse', base: 170, perRound: 50 },
-				{ type: 'set_point', count: 1, point: 1 },
-				{ type: 'self_mods', mods: { map: { 2: 4 } } }
+				{ type: 'set_point', count: 1, point: 2 },
+				{ type: 'self_mods', mods: { map: { 6: 4 } } }
 			]
 		}
 	},

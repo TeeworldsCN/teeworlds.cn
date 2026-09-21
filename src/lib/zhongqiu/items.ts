@@ -612,7 +612,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'shibei',
 		name: '拾贝',
-		desc: '自己每有 1 颗 5 点：基础分 +90；每有 1 颗 6 点：基础分 −25',
+		desc: '自己每有 1 颗 5 点：基础分 +90；每有 1 颗 6 点：基础分 −90',
 		rarity: 'common',
 		skin: 'Seal',
 		price: 3,
@@ -621,14 +621,14 @@ export const BUFF_CARDS: BuffCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'own_face', face: 5, chips: 90 },
-				{ type: 'own_face', face: 6, chips: -25 }
+				{ type: 'own_face', face: 6, chips: -90 }
 			]
 		}
 	},
 	{
 		id: 'duzhuo',
 		name: '独酌',
-		desc: '自己每有 1 颗 6 点：基础分 +95；每有 1 颗 3 点：基础分 −30',
+		desc: '自己每有 1 颗 6 点：基础分 +95；每有 1 颗 3 点：基础分 −95',
 		rarity: 'common',
 		skin: 'coffee_cup',
 		price: 3,
@@ -637,14 +637,14 @@ export const BUFF_CARDS: BuffCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'own_face', face: 6, chips: 95 },
-				{ type: 'own_face', face: 3, chips: -30 }
+				{ type: 'own_face', face: 3, chips: -95 }
 			]
 		}
 	},
 	{
 		id: 'shouzhuo',
 		name: '守拙',
-		desc: '自己每有 1 颗 4 点：基础分 +85；每有 1 颗 2 点：基础分 −25',
+		desc: '自己每有 1 颗 4 点：基础分 +85；每有 1 颗 2 点：基础分 −85',
 		rarity: 'common',
 		skin: 'Graylynx',
 		price: 3,
@@ -653,14 +653,14 @@ export const BUFF_CARDS: BuffCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'own_face', face: 4, chips: 85 },
-				{ type: 'own_face', face: 2, chips: -25 }
+				{ type: 'own_face', face: 2, chips: -85 }
 			]
 		}
 	},
 	{
 		id: 'guxing',
 		name: '孤星',
-		desc: '自己每有 1 颗 1 点：基础分 +110；每有 1 颗 5 点：基础分 −35',
+		desc: '自己每有 1 颗 1 点：基础分 +110；每有 1 颗 5 点：基础分 −110',
 		rarity: 'common',
 		skin: 'Blue ray',
 		price: 3,
@@ -669,14 +669,14 @@ export const BUFF_CARDS: BuffCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'own_face', face: 1, chips: 110 },
-				{ type: 'own_face', face: 5, chips: -35 }
+				{ type: 'own_face', face: 5, chips: -110 }
 			]
 		}
 	},
 	{
 		id: 'yishan',
 		name: '移山',
-		desc: '自己每有 1 颗 6 点：基础分 +130；每有 1 颗 2 点：基础分 −55',
+		desc: '自己每有 1 颗 6 点：基础分 +130；每有 1 颗 2 点：基础分 −130',
 		rarity: 'rare',
 		skin: 'Beast_Winter',
 		price: 6,
@@ -685,14 +685,14 @@ export const BUFF_CARDS: BuffCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'own_face', face: 6, chips: 130 },
-				{ type: 'own_face', face: 2, chips: -55 }
+				{ type: 'own_face', face: 2, chips: -130 }
 			]
 		}
 	},
 	{
 		id: 'fantianyin',
 		name: '翻天印',
-		desc: '自己每有 1 颗 4 点：基础分 +200；每有 1 颗 2 点：基础分 −80',
+		desc: '自己每有 1 颗 4 点：基础分 +200；每有 1 颗 3 点：基础分 −200',
 		rarity: 'legendary',
 		skin: 'dragon',
 		price: 9,
@@ -701,7 +701,7 @@ export const BUFF_CARDS: BuffCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'own_face', face: 4, chips: 200 },
-				{ type: 'own_face', face: 2, chips: -80 }
+				{ type: 'own_face', face: 3, chips: -200 }
 			]
 		}
 	},

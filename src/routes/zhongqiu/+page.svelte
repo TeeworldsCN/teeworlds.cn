@@ -2938,6 +2938,31 @@
 		shopPick = null;
 	};
 
+	/** 出售确认弹窗里要列的东西:卖掉这只 Tee 会一起没的加成卡 */
+	const sellLossList = (i: number): { name: string; note: string; color?: string }[] => {
+		const t = team[i];
+		if (!t) return [];
+		// 田螺身上所有加成卡都不生效(挂上的也一样),掷完才按原价返还 ——
+		// 卖掉就等于跟它们一起扔了,不会返还。得说清楚,不然玩家以为拔下卡就能拿回月饼币。
+		const parked = hasBuffRefund(i);
+		const rows: { cardId: string; coins: number; turnsLeft: number }[] = [
+			...(t.buffs ?? []).map((b) => ({
+				cardId: b.cardId,
+				coins: BUFF_BY_ID.get(b.cardId)?.price ?? 0,
+				turnsLeft: b.turnsLeft
+			})),
+			...(t.refundPending ?? []).map((r) => ({ cardId: r.cardId, coins: r.coins, turnsLeft: 0 }))
+		];
+		return rows.map((r) => {
+			const c = BUFF_BY_ID.get(r.cardId);
+			return {
+				name: c?.name ?? r.cardId,
+				note: parked ? `停靠中 · 卖掉不会返还 🥮 ${r.coins}` : `剩 ${r.turnsLeft} 回合`,
+				color: c ? RARITY_INFO[c.rarity].color : undefined
+			};
+		});
+	};
+
 	const sellTee = (idx: number) => {
 		// 「我」不能卖 —— 认身份,不认下标。「我」离队后新队首是普通 Tee,可以卖。
 		if (team[idx]?.isSelf) return;
@@ -4353,6 +4378,7 @@
 	<!-- ================= 出售确认 ================= -->
 	{#if sellAsk !== null && team[sellAsk] && cardOf(team[sellAsk])}
 		{@const sold = cardOf(team[sellAsk])}
+		{@const losses = sellLossList(sellAsk)}
 		<div
 			class="fixed inset-0 z-50 flex cursor-default items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
 			role="presentation"
@@ -4373,6 +4399,22 @@
 						<div class="line-clamp-2 text-[11px] leading-snug text-slate-400">{sold?.desc}</div>
 					</div>
 				</div>
+				<!-- 身上还挂着/停靠着的加成卡:卖了一并没 —— 先列清楚再让玩家点确认 -->
+				{#if losses.length > 0}
+					<div class="mt-3 rounded-xl border border-red-400/40 bg-red-500/10 px-3 py-2 text-left">
+						<div class="text-[11px] font-bold text-red-200">
+							⚠️ 身上还有 {losses.length} 张加成卡会一起消失
+						</div>
+						<div class="mt-1 space-y-0.5">
+							{#each losses as row}
+								<div class="text-[11px] leading-snug text-slate-300">
+									<b style="color: {row.color}">{row.name}</b>
+									<span class="text-slate-500">· {row.note}</span>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
 				<div class="mt-3 text-[11px] leading-snug text-slate-400">
 					卖掉后这张卡永久离队，换来的月饼币可以立刻在中秋集市里花。
 				</div>
