@@ -40,11 +40,11 @@
 		style="border-color: {cardBorderColor(color)}"
 	>
 		<span class="h-5 w-5 shrink-0">
-			<!-- 未解锁:头像换成默认皮肤(x_spec 那张占位图),不露是哪张卡 -->
-			<TeeRender name={unlocked ? card.skin : 'x_spec'} className="h-full w-full" />
+			<!-- 未解锁也照旧显示本人皮肤(不再换 x_spec 占位图),藏名字就够了 -->
+			<TeeRender name={card.skin} className="h-full w-full" />
 		</span>
 		<span class="min-w-0 flex-1 truncate text-xs leading-tight font-semibold text-slate-200">
-			{unlocked ? card.name : '？？？'}
+			{#if unlocked}{card.name}{:else}&nbsp;{/if}
 		</span>
 		<span class="shrink-0 text-[11px] font-bold text-amber-300">🥮 {card.price}</span>
 	</div>

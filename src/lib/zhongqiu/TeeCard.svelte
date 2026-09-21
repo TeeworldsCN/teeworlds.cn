@@ -43,7 +43,7 @@
 		active?: boolean;
 		/** 动画 class(队伍:tee-throw / tee-celebrate 等) */
 		animate?: string;
-		/** 未解锁(图鉴):名字显示 ？？？、头像也不露,但描边保留稀有度色 */
+		/** 未解锁(图鉴):名字那一行留空(头像照旧显示本人皮肤),描边保留稀有度色 */
 		locked?: boolean;
 	};
 
@@ -69,9 +69,11 @@
 
 	const rarity = $derived(card?.rarity);
 	const rinfo = $derived(rarity ? RARITY_INFO[rarity] : null);
-	/** 未解锁:头像换成默认皮肤(x_spec 那张占位图),不露是哪只 Tee */
-	const teeSkin = $derived(locked ? 'x_spec' : (card?.skin ?? (skin || 'x_spec')));
-	const teeName = $derived(locked ? '？？？' : (card?.name ?? name));
+	/** 头像:未解锁也用**本人皮肤** —— 不再拿 x_spec 占位(那张灰白的默认 Tee
+	 *  在深色底上看着像渲染坏了);藏住名字就已经足够不剧透 */
+	const teeSkin = $derived(card?.skin ?? (skin || 'x_spec'));
+	/** 名字:未解锁留空(string 为空,模板里用 &nbsp; 占住行高,免得卡片矮一截) */
+	const teeName = $derived(locked ? '' : (card?.name ?? name));
 
 	let wrapEl: HTMLElement | undefined = $state();
 	/** 鼠标 hover / 键盘聚焦 —— 触屏那套「点一下固定显示」在 CardTip 里 */
@@ -116,7 +118,7 @@
 		<div
 			class="mt-1 w-full truncate text-center text-xs font-semibold text-slate-200 max-[365px]:text-[11px]"
 		>
-			{teeName}
+			{#if teeName}{teeName}{:else}&nbsp;{/if}
 		</div>
 	</div>
 

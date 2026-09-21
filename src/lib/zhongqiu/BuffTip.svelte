@@ -8,7 +8,7 @@
 	 */
 	type Props = {
 		card: BuffCard;
-		/** 未解锁(图鉴):名字藏起来,效果也不露 */
+		/** 未解锁(图鉴):连名字一起藏(留白,不再用「？？？」占位) */
 		locked?: boolean;
 		/** 底部那行小字;传 null 去掉(图鉴里没有「点 Tee 挂上」这回事) */
 		foot?: string | null;
@@ -20,12 +20,12 @@
 	const color = $derived(RARITY_INFO[card.rarity].color);
 </script>
 
-<div class="font-semibold" style="color: {color}">
-	{locked ? '？？？' : card.name}
-	{#if !locked}
+{#if !locked}
+	<div class="font-semibold" style="color: {color}">
+		{card.name}
 		<span class="ml-1 font-normal text-sky-300">持续 {card.turns} 关</span>
-	{/if}
-</div>
+	</div>
+{/if}
 <div class="mt-0.5 text-slate-300">{locked ? '尚未解锁' : card.desc}</div>
 {#if foot}
 	<div class="mt-1 text-[10px] text-slate-400">{foot}</div>
