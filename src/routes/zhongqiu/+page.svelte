@@ -135,8 +135,19 @@
 
 	// ---- 极端矮屏:整体等比缩放（不再挤面板/换布局） ----
 
-	const minHeightFor = (w: number, h: number) =>
-		w >= 768 ? 700 : w >= 640 ? 800 : h <= 624 ? 590 : 660;
+	/**
+	 * 矮屏等比缩放的「最小布局高度」:可用高度低于它,就把整个界面等比缩小。
+	 *
+	 * ≥1024(lg)起是两列:队伍/仓库在左、阶段面板在右,最坏情况(6 人满队 +
+	 * 满货架 + Boss 关 + 9 行结算)实测在 1024 宽时需要 620 布局 px ——
+	 * 所以只要可用高度 ≥ 620 就 1:1 显示,不再把字缩小(这正是以前的做法:
+	 * 1024 宽时 minH=700,1266×731 的窗口也被缩到 0.94,字小一号)。
+	 * 低于 620 才退回缩放 —— 极矮窗口里缩小总比把按钮裁掉强。
+	 */
+	const minHeightFor = (w: number, h: number) => {
+		if (w >= 1024) return 620;
+		return w >= 768 ? 700 : w >= 640 ? 800 : h <= 624 ? 590 : 660;
+	};
 	/** 活动区可用高度(px,不含 header/footer) */
 	let availH = $state(0);
 	let minH = $state(660);
@@ -3952,7 +3963,7 @@
 						<!-- ================= 集市: 3 选 1 ================= -->
 						{#if phase === 'reward'}
 							<div
-								class="panel-fill panel-auto mt-2.5 rounded-xl border border-amber-500/30 bg-slate-900/80 px-2.5 py-2.5 backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-6"
+								class="panel-fill panel-auto panel-fill-lg mt-2.5 rounded-xl border border-amber-500/30 bg-slate-900/80 px-2.5 py-2.5 backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-6"
 							>
 								<div class="text-center">
 									<div class="text-base font-bold text-amber-200 sm:text-xl">
@@ -4143,7 +4154,7 @@
 						<!-- ================= 游戏结束 ================= -->
 						{#if phase === 'game_over'}
 							<div
-								class="panel-fill panel-auto mt-2.5 rounded-xl border border-slate-600/60 bg-slate-900/85 px-3 py-3 text-center backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-6"
+								class="panel-fill panel-auto panel-fill-lg mt-2.5 rounded-xl border border-slate-600/60 bg-slate-900/85 px-3 py-3 text-center backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-6"
 							>
 								<div class="text-3xl sm:text-4xl">🌘</div>
 								<div class="mt-1 text-xl font-bold text-slate-200 sm:text-2xl">博饼结束</div>
@@ -4601,6 +4612,21 @@
 	.panel-auto {
 		flex: 0 1 auto;
 		margin-block: auto;
+	}
+
+	/* 宽屏(lg+)下阶段面板一律铺满:panel-auto 的「贴着内容、上下留白」只留给单列 ——
+	   窄屏上留白是刻意的卡片感,宽屏上却是「右边一小块、下面一大片空」,和
+	   掷骰 / 集市 / 回合结算那几屏(panel-fill)对不上。这里只把 auto 那两个
+	   声明撤掉;上半的 mt-* 要留着,好和左列队伍面板的顶沿齐平。 */
+	@media (min-width: 1024px) {
+		.panel-fill-lg {
+			flex: 1 1 0%;
+			/* panel-auto 的 margin-block:auto 会盖掉 mt-* 工具类(它俩同优先级、但
+			   它在后面),这里手动补回和左列队伍面板一样的上间距;下间距清零,
+			   好让面板底沿贴到容器底沿。lg 一定过了 sm,所以就是 sm:mt-4 的 1rem */
+			margin-top: 1rem;
+			margin-bottom: 0;
+		}
 	}
 
 	/* ---- 结果横幅 ---- */
