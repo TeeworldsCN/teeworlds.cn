@@ -3903,7 +3903,9 @@
 												{:else if pendingActive.skill === 'sell_self'}
 													回合结算时出售「我」 +🥮 {pendingActive.coins ?? 0}
 												{:else if pendingActive.skill === 'to_four'}
-													把一颗骰子改为 4 点，之后可反复改四点
+													<!-- 只写发动这一下:改成 4 点。跟着的「改任意四点」由改点界面自己摆出来,
+													     发动提示里不预告后面的步骤 -->
+													把一颗骰子改为 4 点
 												{:else if pendingActive.skill === 'parked'}
 													<!-- 代价 → 收益:那批原价返还等会儿在结算动画里逐张弹,这里不写「共 🥮 N」 -->
 													是否要：减半的月饼数 → 基础分 +{formatScore(
