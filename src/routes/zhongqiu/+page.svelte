@@ -254,7 +254,7 @@
 		sources: []
 	});
 	let diceSum = $state(0); // 本回合判定用的骰子点数和
-	type SettleKind = 'level' | 'chip' | 'mult' | 'total' | 'swap';
+	type SettleKind = 'level' | 'chip' | 'mult' | 'total' | 'swap' | 'upgrade';
 	let settleSteps = $state<{ text: string; cls: string; kind: SettleKind }[]>([]);
 	let settleIdx = $state(-1);
 	let stepsEl: HTMLElement | undefined = $state();
@@ -2162,20 +2162,31 @@
 		level: RollLevel,
 		tee: TeamTee,
 		refunds: string[] = [],
-		buffBack: { name: string; coins: number }[] = []
+		buffBack: { name: string; coins: number }[] = [],
+		levelUp?: { from: RollLevel; name: string } | null
 	) => {
 		const steps: { text: string; cls: string; kind: SettleKind }[] = [];
 		const prefix = boss?.mods ? `${boss.emoji} ${boss.name} · ` : '';
+		// 等级行写的是**抬档前**那一档(和骰子高亮一致),抬档本身紧跟着单独一行
+		const shownLevel = levelUp?.from ?? level;
 		steps.push({
-			text: `${prefix}${level.emoji} ${level.name} ${formatScore(level.score)}`,
+			text: `${prefix}${shownLevel.emoji} ${shownLevel.name} ${formatScore(shownLevel.score)}`,
 			cls:
-				level.score >= 320
+				shownLevel.score >= 320
 					? 'text-amber-300'
-					: level.score > 0
+					: shownLevel.score > 0
 						? 'text-emerald-300'
 						: 'text-slate-400',
 			kind: 'level'
 		});
+		if (levelUp && levelUp.from.id !== level.id) {
+			// 两档底分之差 —— 玩家一眼看出这一行把分数抬了多少
+			steps.push({
+				text: `🐰 ${levelUp.name}：升级为 ${level.name} +${formatScore(level.score - levelUp.from.score)}`,
+				cls: 'text-fuchsia-300',
+				kind: 'upgrade'
+			});
+		}
 		// 3） 卡牌 / 加成卡逐条
 		// 加算行全部先出现,乘算行跟在后面 —— 播放顺序 = 真实计算顺序。
 		const nameOf = (src: (typeof lastBreakdown.sources)[number]) =>
@@ -2260,12 +2271,29 @@
 		const rawLevel = judgeRoll(dice, mods);
 		// 等级提升（玉兔捣药） → 加成卡保底。前提:这一手不是「再接再厉」(掷空不给抬)
 		let up = 0;
-		for (const { eff } of self) if (eff.type === 'level_up') up += eff.count;
+		let upSrcId = '';
+		for (const { eff, srcId } of self)
+			if (eff.type === 'level_up') {
+				up += eff.count;
+				upSrcId = srcId;
+			}
 		const afterUp = up > 0 && rawLevel.id !== 'none' ? upgradeLevel(rawLevel.id, up) : rawLevel.id;
 		// 升级卡可能把等级顶过 Boss 的封顶（血月），这里再套一次
 		const level = getRollLevel(
 			cappedLevelId(applyBuffLevelFloor(afterUp, buffsOf(currentTee)), mods)
 		);
+		/**
+		 * 抬档**之前**的等级(加成卡保底 / Boss 封顶都算它的一部分 —— 那些不是这张卡的功劳)。
+		 * 骰子高亮和结算里的等级行都用它:先让玩家看见「我掷出了什么」,
+		 * 被抬到哪一档由单独一行「🐰 玉兔捣药：升级为 X +N」说清楚。
+		 */
+		const preUpLevel = getRollLevel(
+			cappedLevelId(applyBuffLevelFloor(rawLevel.id, buffsOf(currentTee)), mods)
+		);
+		const levelUp =
+			up > 0 && level.id !== preUpLevel.id
+				? { from: preUpLevel, name: cardById(upSrcId)?.name ?? '等级提升' }
+				: null;
 
 		// 后羿： 再接再厉时自动重掷全部（每回合 1 次）
 		if (level.id === 'none' && hasRerollAllOnNone(self) && !rerollAllUsed) {
@@ -2278,7 +2306,8 @@
 		// 和值按「变换后的点数」算,并剔除作废的骰子 —— 和判定(liveDice)同口径
 		const shown = liveDiceValues(dice, mods);
 		diceSum = shown.reduce((a, b) => a + b, 0);
-		hitDice = hitIndices(dice, level.id, mods);
+		// 高亮按**抬档前**的等级画:骰面兑现的是原等级,抬档单独成行
+		hitDice = hitIndices(dice, preUpLevel.id, mods);
 		lastLevel = level;
 		lastBreakdown = calcTeeScore(scoreInput(currentTee, level.id, shown));
 
@@ -2305,7 +2334,12 @@
 		// 田螺:身上的加成卡不生效 —— 挂载时就不入库,掷完按原价返还(逐张一行)
 		const buffBack = settleTianluo(currentTee);
 		// 结算参数留着:动画是在主动技答完之后才播的,那时才建这几行
-		lastSettle = { levelId: rawLevel.id, refunds: refundUnusedItems(currentTee), buffBack };
+		lastSettle = {
+			levelId: rawLevel.id,
+			refunds: refundUnusedItems(currentTee),
+			buffBack,
+			levelUp
+		};
 		// 改基础分的主动技(田螺的停靠、潮汐/望月的点数和)在结算动画**之前**问:
 		// 答完动画里就是最终数字。
 		// (以前问在动画之后,只能「播完了再改数字」:要重写已经弹过的行,而且「这一关问过没有」
@@ -2334,7 +2368,8 @@
 			lv,
 			tee,
 			refunds,
-			buffBack
+			buffBack,
+			lastSettle?.levelUp
 		);
 		settleIdx = -1;
 		settling = true;
@@ -2467,6 +2502,8 @@
 		levelId: string;
 		refunds: string[];
 		buffBack: { name: string; coins: number }[];
+		/** 玉兔捣药那类抬档:结算里要单独一行说「升级为 X +N」 */
+		levelUp?: { from: RollLevel; name: string } | null;
 	} | null = null;
 
 	/**

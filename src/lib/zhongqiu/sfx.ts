@@ -218,7 +218,7 @@ export const sfxLevel = (score: number) => {
 /** 结算逐行:音高随行号递升 */
 export const sfxStep = (
 	index: number,
-	kind: 'level' | 'chip' | 'mult' | 'total' | 'swap',
+	kind: 'level' | 'chip' | 'mult' | 'total' | 'swap' | 'upgrade',
 	levelScore = 0
 ) => {
 	if (kind === 'level') return sfxLevel(levelScore);
@@ -226,6 +226,12 @@ export const sfxStep = (
 	initSfx();
 	if (!ctx || !enabled) return;
 	const t0 = ctx.currentTime + 0.01;
+	if (kind === 'upgrade') {
+		// 抬档(玉兔捣药):上行三连音 —— 听感就是「往上一档」,和加算/乘算都不是一回事
+		for (let i = 0; i < 3; i++)
+			tone(note(7 + i * 3), t0 + i * 0.055, 0.12 * R(), { type: 'triangle', gain: 0.1 });
+		return;
+	}
 	if (kind === 'swap') {
 		// 逆向改写:先降后升的一对锯齿音 —— 和加算(三角)/乘算(方波)明显不是一个东西,
 		// 听感上就是「把分数翻过来」
