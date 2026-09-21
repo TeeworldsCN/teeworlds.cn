@@ -1838,20 +1838,25 @@
 
 	/**
 	 * 花生:重掷之后重算「按下标作废」的清单。
-	 * 规则(定稿):重掷过的骰子解除作废;然后按**下标顺序**逐个判 ——
-	 * 当前未作废的骰子里只要有一颗和它同点数(不含自己),它就被作废。
-	 * 顺序判定 ⇒ 两颗重掷出同一个点数时,只有靠前的那颗被作废。
+	 * 规则:重掷过的骰子先解除作废;然后在**本轮重算之前**那份清单之外找同伴 ——
+	 * 只要还有另一颗同点数,这一组(两颗、三颗都一样)全部作废。
+	 *
+	 * ⚠️ 判重复必须看「重算前」那份状态:以前是边判边往 `voided` 里塞,
+	 *    于是 6 3 3 2 5 5 只作废了**后一颗** 3 / 后一颗 5 ——
+	 *    因为前一颗作废之后,后一颗就"没有同伴"了(用户报的就是这个)。
 	 */
 	const reflowVoid = (sel: boolean[]) => {
 		if (hsVoidTee < 0 || hsVoidTee !== currentTee) return;
-		const voided = hsVoid.filter((i) => !sel[i]); // 没重掷的仍然作废
+		// 没重掷的仍然作废。这份只读,判定期间不再改动
+		const stillVoid = new Set(hsVoid.filter((i) => !sel[i]));
+		const out = new Set(stillVoid);
 		for (let i = 0; i < 6; i++) {
 			if (!sel[i]) continue; // 只判这一轮重掷的骰子
 			const v = dice[i];
-			// 「当前未作废的骰子」里(不含自己)有没有和它同点数的 —— 有就作废
-			if (dice.some((dv, j) => j !== i && !voided.includes(j) && dv === v)) voided.push(i);
+			// 同伴 = 本轮重掷过的(j)且同点数;本轮新作废的那些也算同伴,整组一起作废
+			if (dice.some((dv, j) => j !== i && dv === v && !stillVoid.has(j))) out.add(i);
 		}
-		hsVoid = [...voided].sort((a, b) => a - b);
+		hsVoid = [...out].sort((a, b) => a - b);
 	};
 
 	const skipReroll = () => {
