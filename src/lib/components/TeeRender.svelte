@@ -14,6 +14,7 @@
 	import { encodeBase64 } from '$lib/base64';
 	import { skinQueue } from '$lib/skin-queue';
 	import { onDestroy, onMount } from 'svelte';
+	import { whenVisible } from '$lib/visible';
 	import { ddnetColorToRgb } from '$lib/ddnet/helpers';
 	import { rgbToSvgFilter } from '$lib/rgbToSvgFilter';
 	import { getSkinUrl } from '$lib/stores/skins';
@@ -31,6 +32,11 @@
 		useDefault = false,
 		/** extra classes */
 		className = '',
+		/**
+		 * 懒加载:元素进入视口(或接近)之前不拉皮肤。
+		 * 图鉴一屏上百张卡 —— 全下会瞬间打出上百个请求,滚到哪加载哪就够。
+		 */
+		lazy = false,
 		emote = 0 as number,
 		pose = null as TeePose | null,
 		...rest
@@ -53,6 +59,8 @@
 	let abortController: AbortController | null = null;
 
 	let root = $state(null) as Element | null;
+	/** 懒加载:已经进过视口(之后的变化照常走 updateSkin) */
+	let shown = $state(false);
 
 	const fallbackSkin = $derived(
 		useDefault ? (body && feet ? DEFAULT_SKIN_GS : DEFAULT_SKIN) : X_SPEC_SKIN
@@ -125,8 +133,13 @@
 		}
 	});
 
-	onMount(async () => {
-		updateSkin();
+	onMount(() => {
+		if (!lazy) {
+			updateSkin();
+			return;
+		}
+		if (!root) return;
+		return whenVisible(root, () => (shown = true));
 	});
 
 	$effect(() => {
@@ -139,6 +152,8 @@
 	$effect(() => {
 		url;
 		name;
+		// 懒加载时先按兵不动,直到 whenVisible 说「快看见了」
+		if (lazy && !shown) return;
 		requestAnimationFrame(updateSkin);
 	});
 </script>

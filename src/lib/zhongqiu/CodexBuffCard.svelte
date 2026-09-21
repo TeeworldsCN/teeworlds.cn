@@ -41,7 +41,7 @@
 	>
 		<span class="h-5 w-5 shrink-0">
 			<!-- 未解锁也照旧显示本人皮肤(不再换 x_spec 占位图),藏名字就够了 -->
-			<TeeRender name={card.skin} className="h-full w-full" />
+			<TeeRender name={card.skin} className="h-full w-full" lazy />
 		</span>
 		<span class="min-w-0 flex-1 truncate text-xs leading-tight font-semibold text-slate-200">
 			{#if unlocked}{card.name}{:else}&nbsp;{/if}

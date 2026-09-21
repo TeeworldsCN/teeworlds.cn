@@ -45,6 +45,8 @@
 		animate?: string;
 		/** 未解锁(图鉴):名字那一行留空(头像照旧显示本人皮肤),描边保留稀有度色 */
 		locked?: boolean;
+		/** 皮肤懒加载(图鉴里上百张卡:滚到哪加载哪) */
+		lazy?: boolean;
 	};
 
 	let {
@@ -64,7 +66,8 @@
 		selected = false,
 		active = false,
 		animate = '',
-		locked = false
+		locked = false,
+		lazy = false
 	}: Props = $props();
 
 	const rarity = $derived(card?.rarity);
@@ -113,7 +116,7 @@
 			</div>
 		{/if}
 		<div class="mx-auto h-12 w-12 max-[365px]:h-10 max-[365px]:w-10">
-			<TeeRender name={teeSkin} {emote} {pose} className="h-full w-full" />
+			<TeeRender name={teeSkin} {emote} {pose} className="h-full w-full" {lazy} />
 		</div>
 		<div
 			class="mt-1 w-full truncate text-center text-xs font-semibold text-slate-200 max-[365px]:text-[11px]"

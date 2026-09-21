@@ -94,7 +94,13 @@
 				{#if tab === 'tee'}
 					<div class="flex flex-wrap justify-center gap-2">
 						{#each teeList as { card, unlocked } (card.id)}
-							<TeeCardView {card} locked={!unlocked} desc={unlocked ? card.desc : '尚未解锁'} />
+							<!-- lazy:这个列表一次渲染上百张卡,皮肤滚到哪加载哪 -->
+							<TeeCardView
+								{card}
+								locked={!unlocked}
+								lazy
+								desc={unlocked ? card.desc : '尚未解锁'}
+							/>
 						{/each}
 					</div>
 				{:else}
