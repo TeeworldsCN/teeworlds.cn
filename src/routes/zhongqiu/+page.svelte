@@ -300,11 +300,23 @@
 	/** 仅查看说明的加成卡(没选中的芯片 hover / 点按):仓库里的卡点一下看说明 */
 	let peekBuff = $state<BuffCard | null>(null);
 	/**
-	 * 加成卡说明浮层的锚点(芯片本身)。浮层走 CardTip:portal 到 body + fixed ——
-	 * 以前挂在芯片旁边的一个 absolute div,而队伍面板在 lg 既是 overflow-y-auto 的
-	 * 滚动区、又带 backdrop-blur(自成一个层叠上下文),提示框一冒头就被裁/被 HUD 盖住。
+	 * 加成卡说明浮层的锚点(那几张芯片本身),**按卡片 id 记**。
+	 * 浮层走 CardTip:portal 到 body + fixed —— 以前挂在芯片旁边的一个 absolute div,
+	 * 而队伍面板在 lg 既是 overflow-y-auto 的滚动区、又带 backdrop-blur(自成一个层叠
+	 * 上下文),提示框一冒头就被裁/被 HUD 盖住。
+	 *
+	 * 为什么不能只留「最后碰到的那个」芯片:准备投掷阶段选中一张卡之后,浮层显示的是
+	 * `peekBuff ?? 选中的那张` —— hover 另一张再移开,内容会回落到「选中」的那张,
+	 * 锚点也必须跟着回落;只留一个的话就是「位置在刚 hover 的卡上、内容却是选中的卡」。
 	 */
-	let buffTipAnchor = $state<HTMLElement | undefined>();
+	let buffTipAnchors = $state<Record<string, HTMLElement | undefined>>({});
+	/** 把这张芯片记成它自己那张卡的锚点 */
+	const anchorBuff = (card: BuffCard, el: EventTarget | null) => {
+		if (el instanceof HTMLElement) buffTipAnchors[card.id] = el;
+	};
+	/** 锚在「此刻正在显示说明的那张」芯片上 */
+	const buffAnchorOf = (card: BuffCard | null | undefined) =>
+		card ? buffTipAnchors[card.id] : undefined;
 	/** 中秋集市货架的悬停说明(和 peekBuff 分开:同一屏里仓库和货架会同时存在) */
 	let shopPeek = $state<BuffCard | null>(null);
 	/** 同一时刻只弹一个说明浮层:悬停优先于选中,否则两个浮层会叠在一起。
@@ -317,6 +329,7 @@
 		phase;
 		peekBuff = null;
 		shopPeek = null;
+		buffTipAnchors = {}; // 芯片会整个重渲染,旧锚点指向已卸载的节点
 	});
 	/** 待确认的出售:被点 ✕ 的 Tee 下标(null = 没弹窗) */
 	let sellAsk = $state<number | null>(null);
@@ -3279,24 +3292,24 @@
 				style="border-color: {cardBorderColor(rarityColor)}"
 				onpointerdown={(e) => {
 					lastPointerWasMouse = e.pointerType === 'mouse';
-					buffTipAnchor = e.currentTarget as HTMLElement;
+					anchorBuff(card, e.currentTarget);
 				}}
 				onpointerenter={(e) => {
 					if (e.pointerType === 'touch') return;
 					peekBuff = card;
-					buffTipAnchor = e.currentTarget as HTMLElement;
+					anchorBuff(card, e.currentTarget);
 				}}
 				onpointerleave={(e) => {
 					if (e.pointerType !== 'touch' && peekBuff?.id === card.id) peekBuff = null;
 				}}
 				onclick={(e) => {
-					buffTipAnchor = e.currentTarget as HTMLElement;
+					anchorBuff(card, e.currentTarget);
 					toggleSelectBuff(card);
 				}}
 				onkeydown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.preventDefault();
-						buffTipAnchor = e.currentTarget as HTMLElement;
+						anchorBuff(card, e.currentTarget);
 						toggleSelectBuff(card);
 					}
 				}}
@@ -3311,25 +3324,25 @@
 				tabindex="0"
 				onpointerdown={(e) => {
 					lastPointerWasMouse = e.pointerType === 'mouse';
-					buffTipAnchor = e.currentTarget as HTMLElement;
+					anchorBuff(card, e.currentTarget);
 				}}
 				onpointerenter={(e) => {
 					if (e.pointerType === 'touch') return;
 					peekBuff = card;
-					buffTipAnchor = e.currentTarget as HTMLElement;
+					anchorBuff(card, e.currentTarget);
 				}}
 				onpointerleave={(e) => {
 					if (e.pointerType !== 'touch' && peekBuff?.id === card.id) peekBuff = null;
 				}}
 				onclick={(e) => {
 					// 触屏没 hover:点一下看说明,再点收起(鼠标已经有 hover 了,不抢点击)
-					buffTipAnchor = e.currentTarget as HTMLElement;
+					anchorBuff(card, e.currentTarget);
 					if (!lastPointerWasMouse) peekBuff = peekBuff?.id === card.id ? null : card;
 				}}
 				onkeydown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.preventDefault();
-						buffTipAnchor = e.currentTarget as HTMLElement;
+						anchorBuff(card, e.currentTarget);
 						peekBuff = peekBuff?.id === card.id ? null : card;
 					}
 				}}
@@ -3660,7 +3673,7 @@
 											</div>
 											{#if shownBuff}
 												<!-- 浮层走 CardTip(portal 到 body + fixed):既不会被滚动区裁,也不会被 HUD 盖 -->
-												<CardTip anchor={buffTipAnchor} hover={true} color="#38bdf8" wide>
+												<CardTip anchor={buffAnchorOf(shownBuff)} hover={true} color="#38bdf8" wide>
 													<BuffTip card={shownBuff} />
 												</CardTip>
 											{/if}
@@ -3766,7 +3779,7 @@
 								</div>
 								{#if peekBuff}
 									<!-- 同上:走 CardTip(portal + fixed),不受道具条滚动区 / HUD 限制 -->
-									<CardTip anchor={buffTipAnchor} hover={true} color="#38bdf8" wide>
+									<CardTip anchor={buffAnchorOf(peekBuff)} hover={true} color="#38bdf8" wide>
 										<BuffTip card={peekBuff} />
 									</CardTip>
 								{/if}
