@@ -526,6 +526,15 @@
 	let setQueue: SetOp[] = [];
 
 	let rollsLeft = $state(0); // 还能重掷几次
+	/**
+	 * 「跳过重掷」那一刻还剩几次重掷 —— 余烬(本关多投 1 次、没用掉就归还)的归还判据。
+	 *
+	 * 为什么不能复用 usedOpCount:那张表记的是**改点操作**(setQueue 里那些),而余烬给的是
+	 * 投掷机会,由重掷界面消费 —— 从来不走 setQueue,于是它永远是 0,余烬每次都被归还。
+	 * 现在的口径:投掷机会先花基础的那几次,剩几次就说明有几张余烬没花掉。
+	 * (掷完自然用光 → 0;读档也只影响当前这一回合,所以跟着 runSnapshot 走。)
+	 */
+	let leftoverRolls = $state(0);
 	let rerollCount = $state(0);
 	let usedOpSrc = $state<string[]>([]);
 	/** 本关每个道具 id **用掉的张数** —— 同一个 id 可能挂好几张(两张素月盘),退款要按张算 */
@@ -1164,6 +1173,7 @@
 			rollsLeft,
 			rerollCount,
 			rerollAllUsed,
+			leftoverRolls,
 			choosing,
 			rerollSel,
 			rollMask,
@@ -1254,6 +1264,7 @@
 		rollsLeft = d.rollsLeft;
 		rerollCount = d.rerollCount;
 		rerollAllUsed = d.rerollAllUsed;
+		leftoverRolls = d.leftoverRolls ?? 0;
 		choosing = d.choosing;
 		rerollSel = d.rerollSel;
 		rollMask = d.rollMask;
@@ -1662,6 +1673,7 @@
 		rerollCount = 0;
 		usedOpSrc = [];
 		usedOpCount = {};
+		leftoverRolls = 0;
 		rollMask = Array(6).fill(true);
 		rerollSel = Array(6).fill(false);
 		choosing = false;
@@ -1719,6 +1731,7 @@
 			rerollSel = Array(6).fill(false);
 			return;
 		}
+		leftoverRolls = 0; // 次数用光,没有被剩下的投掷机会
 		startSetPhase();
 	};
 
@@ -1878,6 +1891,7 @@
 		if (!choosing) return;
 		sfxClick();
 		choosing = false;
+		leftoverRolls = rollsLeft; // 这就是「没用掉的投掷机会」,余烬按它归还
 		rollsLeft = 0;
 		startSetPhase();
 	};
@@ -2097,7 +2111,14 @@
 			if (card?.refund) attached.set(b.cardId, (attached.get(b.cardId) ?? 0) + 1);
 		}
 		const keepQuota = new Map<string, number>();
-		for (const [id, n] of attached) keepQuota.set(id, Math.min(n, usedOpCount[id] ?? 0));
+		for (const [id, n] of attached) {
+			const card = BUFF_BY_ID.get(id);
+			// 余烬这类「多给一次投掷机会」的卡:判据不是改点次数,而是跳过那一刻还剩几次重掷 ——
+			// 剩几次就说明有几张没花掉(两张余烬只用掉一次 → 还一张)。
+			const used =
+				card?.effect.type === 'roll' ? Math.max(0, n - leftoverRolls) : (usedOpCount[id] ?? 0);
+			keepQuota.set(id, Math.min(n, used));
+		}
 		for (const b of tee.buffs) {
 			const card = BUFF_BY_ID.get(b.cardId);
 			const quota = card?.refund ? (keepQuota.get(b.cardId) ?? 0) : 0;
@@ -3941,9 +3962,11 @@
 												留着
 											</button>
 										{:else if choosing}
+											<!-- 桌面:整句提示;手机:整句会把这行挤换行(骰子跟着上下跳),所以只报数 -->
 											<span class="hidden text-cyan-300 sm:inline">
 												点骰子挑出要<b>重掷</b>的(还能重掷 {rollsLeft} 次)
 											</span>
+											<span class="text-cyan-300 sm:hidden">还剩 <b>{rollsLeft}</b> 次重掷</span>
 											<button
 												class="rounded-lg bg-gradient-to-b from-cyan-400 to-cyan-600 px-4 py-0.5 text-xs font-bold text-cyan-950 shadow transition hover:from-cyan-300 hover:to-cyan-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:from-cyan-400 disabled:hover:to-cyan-600 sm:px-5 sm:py-1 sm:text-sm"
 												onclick={confirmReroll}

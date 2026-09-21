@@ -1596,6 +1596,8 @@ export type RunSave = {
 	rollsLeft: number;
 	rerollCount: number;
 	rerollAllUsed: boolean;
+	/** 「跳过重掷」时还剩几次重掷(余烬的归还判据);老存档没有 → 按 0 处理 */
+	leftoverRolls?: number;
 	choosing: boolean;
 	rerollSel: boolean[];
 	rollMask: boolean[];
