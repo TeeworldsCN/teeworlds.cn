@@ -2025,7 +2025,7 @@
 			markHandFrozen();
 		}, rollTotal * 0.8);
 
-		bossBgmSting('throw');
+		bossBgmSting('throw', (rollTotal * 0.8) / 1000);
 		sfxRoll(rollTotal / 1000, 6);
 		setTimeout(() => {
 			if (gen !== animGen) return;
@@ -2176,7 +2176,7 @@
 			markHandFrozen();
 		}, rollTotal * 0.8);
 
-		bossBgmSting('reroll');
+		bossBgmSting('reroll', (rollTotal * 0.8) / 1000);
 		sfxRoll(rollTotal / 1000, sel.filter(Boolean).length);
 		setTimeout(() => {
 			if (gen !== animGen) return;
