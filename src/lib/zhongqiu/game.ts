@@ -898,6 +898,18 @@ export const calcTeeScore = ({
 					const per = 1 + ((be.per ?? 1) - 1) * buffMultScale;
 					buffMult *= Math.round(Math.pow(per, run - from) * 10) / 10;
 				}
+			} else if (be.type === 'streak_mult') {
+				// 孤星赌(朔月符):本命点 from 颗起每多 1 颗 ×per(3 颗 ×1.8、4 颗 ×3.24…),
+				// 不足 from−1 颗反而 ×value —— 下注的两头:梭哈成功连乘,失手倒扣。
+				// 凛月「乘值只算一半」按 straight_mult 同一口径折 per/value。
+				const n = ownDice.filter((v) => v === be.face).length;
+				const from = be.from ?? 3;
+				if (n >= from) {
+					const per = 1 + ((be.per ?? 1) - 1) * buffMultScale;
+					buffMult *= Math.round(Math.pow(per, n - from + 1) * 10) / 10;
+				} else if (n <= from - 2) {
+					buffMult *= 1 + ((be.value ?? 1) - 1) * buffMultScale;
+				}
 			} else if (be.type === 'reverse') {
 				// 逆向加成卡:并入同一个替换步骤
 				reverseBase += be.base ?? 0;

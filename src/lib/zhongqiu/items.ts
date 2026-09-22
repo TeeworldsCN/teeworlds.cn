@@ -27,7 +27,11 @@ export interface BuffEffect {
 		| 'bundle'
 		| 'sum_chips'
 		// 连号长度倍率(合璧符):连号 n 颗 → ×per^(n-from)
-		| 'straight_mult';
+		| 'straight_mult'
+		// 坠星(桂花符):重掷的每颗骰子有 value 的概率坠为 face 点
+		| 'fall_to'
+		// 孤星赌(朔月符):face 点 from 颗起每多 1 颗 ×per;不足 from−1 颗 ×value(下注的代价)
+		| 'streak_mult';
 	value?: number;
 	chips?: number;
 	mult?: number;
@@ -391,7 +395,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yujin',
 		name: '余烬',
-		desc: '本关可多投掷 1 次；没用掉就归还',
+		desc: '可多投掷 1 次；没用掉就归还',
 		rarity: 'rare',
 		skin: 'IceWitch_Xmas',
 		price: 6,
@@ -455,7 +459,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yusuo',
 		name: '玉锁',
-		desc: '改 1 颗骰子为 6 点；本关没用掉就归还',
+		desc: '改 1 颗骰子为 6 点；没用掉就归还',
 		rarity: 'rare',
 		skin: 'EmeraldCat',
 		price: 4,
@@ -477,7 +481,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yueyachi',
 		name: '月牙尺',
-		desc: '每关可把 1 颗骰子点数 +1，持续 2 关',
+		desc: '改 1 颗骰子点数 +1',
 		rarity: 'common',
 		skin: 'cool_glowfox',
 		price: 3,
@@ -489,7 +493,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		// (持 2 3 4 6 缺 5 → 要 6→5)。池子里原来只有「+1」这半边,另一半只能买传说的改任意点数
 		id: 'queyuechi',
 		name: '缺月尺',
-		desc: '每关可把 1 颗骰子点数 −1，持续 2 关',
+		desc: '改 1 颗骰子点数 −1',
 		rarity: 'common',
 		skin: 'darklightevilwolfe',
 		price: 3,
@@ -499,7 +503,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yuefu2',
 		name: '月斧',
-		desc: '改 1 颗骰子为 4 点；本关没用掉就归还',
+		desc: '改 1 颗骰子为 4 点；没用掉就归还',
 		rarity: 'legendary',
 		skin: 'Roaning Knight',
 		price: 8,
@@ -534,7 +538,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'shuangjipan',
 		name: '双极盘',
-		desc: '改 1 颗 4 点骰子为 1 或 6 点；本关没用掉就归还',
+		desc: '改 1 颗 4 点骰子为 1 或 6 点；没用掉就归还',
 		rarity: 'common',
 		skin: 'IceWitch_Winter',
 		price: 4,
@@ -545,7 +549,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'zhongduanpan',
 		name: '中段盘',
-		desc: '改 1 颗 4 点骰子为 2 或 5 点；本关没用掉就归还',
+		desc: '改 1 颗 4 点骰子为 2 或 5 点；没用掉就归还',
 		rarity: 'common',
 		skin: 'IceWitch_WinterCat',
 		price: 4,
@@ -556,7 +560,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'dingwupan',
 		name: '定五盘',
-		desc: '改 1 颗 4 点骰子为 5 点；本关没用掉就归还',
+		desc: '改 1 颗 4 点骰子为 5 点；没用掉就归还',
 		rarity: 'rare',
 		skin: 'IceWitch_WitchDeer',
 		price: 5,
@@ -567,7 +571,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'wanxiangpan',
 		name: '万象盘',
-		desc: '改 1 颗 4 点骰子为任意点数；本关没用掉就归还',
+		desc: '改 1 颗 4 点骰子为任意点数；没用掉就归还',
 		rarity: 'legendary',
 		skin: 'IceWitch_FairyCat',
 		price: 8,
@@ -580,7 +584,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'niyuefu',
 		name: '逆月符',
-		desc: '该 Tee 2 关内基础分替换为（160 − 基础分）',
+		desc: '该 Tee 基础分替换为（160 − 基础分）',
 		rarity: 'rare',
 		skin: 'Dark Default',
 		price: 7,
@@ -594,7 +598,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yueshika',
 		name: '月食卡',
-		desc: '身上 Tee 本关不受点数作废影响',
+		desc: '身上 Tee 不受点数作废影响',
 		rarity: 'rare',
 		skin: 'darklightnami',
 		price: 6,
@@ -713,7 +717,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yuehuabi',
 		name: '月华笔',
-		desc: '改 1 颗骰子为任意点数；本关没用掉就归还',
+		desc: '改 1 颗骰子为任意点数；没用掉就归还',
 		rarity: 'legendary',
 		skin: 'nanami_glow',
 		price: 14,
@@ -724,7 +728,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'suyuepan',
 		name: '素月盘',
-		desc: '改 1 颗骰子为 2 点；本关没用掉就归还',
+		desc: '改 1 颗骰子为 2 点；没用掉就归还',
 		rarity: 'common',
 		skin: 'IceWitch_Beach',
 		price: 4,
@@ -737,7 +741,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		// 而连号阶梯的中间段(3/4/5)全靠它 —— 4 是牌面最贵的,继续留在稀有
 		id: 'xianyuepan',
 		name: '弦月盘',
-		desc: '改 1 颗骰子为 3 点；本关没用掉就归还',
+		desc: '改 1 颗骰子为 3 点；没用掉就归还',
 		rarity: 'common',
 		skin: 'lan_piza',
 		price: 4,
@@ -748,7 +752,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'tuyuepan',
 		name: '凸月盘',
-		desc: '改 1 颗骰子为 5 点；本关没用掉就归还',
+		desc: '改 1 颗骰子为 5 点；没用掉就归还',
 		rarity: 'common',
 		skin: 'spacelight',
 		price: 4,
@@ -761,52 +765,42 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'wangyuefu',
 		name: '望月符',
-		desc: '自己的 6 视为 4 点',
+		desc: '自己的 4 点视为 6 点',
 		rarity: 'rare',
 		skin: 'IceWitch_Deer',
 		price: 5,
 		turns: 2,
-		effect: { type: 'dice_mods', mods: { map: { 6: 4 } } }
+		effect: { type: 'dice_mods', mods: { map: { 4: 6 } } }
 	},
 	{
 		id: 'shuoyuefu',
 		name: '朔月符',
-		desc: '自己的 5 视为 4 点',
+		desc: '5 点 3 颗起，每多 1 颗：得分 ×1.8；不足 2 颗：得分 ×0.7',
 		rarity: 'legendary',
 		skin: 'IceWitch_Reindeer',
 		price: 8,
 		turns: 2,
-		effect: { type: 'dice_mods', mods: { map: { 5: 4 } } }
-	},
-	{
-		id: 'yuexiangfu',
-		name: '月相符',
-		desc: '自己的 3 视为 4 点',
-		rarity: 'rare',
-		skin: 'IceWitch_MushCat',
-		price: 5,
-		turns: 2,
-		effect: { type: 'dice_mods', mods: { map: { 3: 4 } } }
+		effect: { type: 'streak_mult', face: 5, from: 3, per: 1.8, value: 0.7 }
 	},
 	{
 		id: 'guihuafu',
 		name: '桂花符',
-		desc: '自己的 2 视为 4 点',
+		desc: '重掷的骰子有 1/3 概率坠为 2 点',
 		rarity: 'legendary',
 		skin: 'Lahm_yellow',
 		price: 8,
 		turns: 2,
-		effect: { type: 'dice_mods', mods: { map: { 2: 4 } } }
+		effect: { type: 'fall_to', face: 2, value: 1 / 3 }
 	},
 	{
 		id: 'chanjuanfu',
 		name: '婵娟符',
-		desc: '自己的 1 视为 4 点',
+		desc: '自己的 4 点视为 1 点',
 		rarity: 'rare',
 		skin: 'IceWitch_FairyDeer',
 		price: 5,
 		turns: 2,
-		effect: { type: 'dice_mods', mods: { map: { 1: 4 } } }
+		effect: { type: 'dice_mods', mods: { map: { 4: 1 } } }
 	}
 ];
 

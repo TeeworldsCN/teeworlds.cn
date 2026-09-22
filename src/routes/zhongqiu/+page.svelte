@@ -2197,6 +2197,20 @@
 	 * 已经在转的那几颗骰子 class 没变化 → 浏览器不会重播 shake 动画(用户报过)。
 	 * 所以这里先摘掉 rolling、等一帧、再挂上,强制所有选中的骰子重播。
 	 */
+	/** 桂花符(坠星):每颗**重掷**的骰子有概率坠为本命点(首掷不受影响) */
+	const fallToDie = (v: number): number => {
+		for (const b of buffsOf(currentTee)) {
+			const e = BUFF_BY_ID.get(b.cardId)?.effect as
+				{ type?: string; face?: number; value?: number; parts?: unknown[] } | undefined;
+			const parts = e?.type === 'bundle' ? (e.parts ?? []) : [e];
+			for (const raw of parts) {
+				const o = raw as { type?: string; face?: number; value?: number };
+				if (o?.type === 'fall_to' && Math.random() < (o.value ?? 0)) return o.face ?? 2;
+			}
+		}
+		return v;
+	};
+
 	const playRerollAnim = async (
 		sel: boolean[],
 		done: () => void,
@@ -2241,7 +2255,7 @@
 		setTimeout(() => {
 			if (gen !== animGen) return;
 			clearInterval(timer);
-			dice = dice.map((v, i) => (sel[i] ? cheatSingle() : v));
+			dice = dice.map((v, i) => (sel[i] ? fallToDie(cheatSingle()) : v));
 			// 猜谜:重掷出来的点数全和重掷前一样 → 白掷 +1(全都没变才算一次)
 			if (beforeReroll.every((v, i) => v === null || v === dice[i])) stuckRerolls += 1;
 			// 高照:一重掷就丢掉抄来的作废状态,新点数按本关正常规则判作废
