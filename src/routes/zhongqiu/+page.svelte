@@ -3761,6 +3761,15 @@
 				onpointerdown={(e) => {
 					lastPointerWasMouse = e.pointerType === 'mouse';
 					anchorBuff(card, e.currentTarget);
+					// hoverOnly(结算页):触屏**按住**显示(touchdown)—— 不做点按常驻
+					if (hoverOnly && !lastPointerWasMouse) peekBuff = card;
+				}}
+				onpointerup={() => {
+					// hoverOnly + 触屏:抬手就收(touchup);鼠标松开不影响 hover
+					if (hoverOnly && !lastPointerWasMouse) peekBuff = null;
+				}}
+				onpointercancel={() => {
+					if (hoverOnly) peekBuff = null;
 				}}
 				onpointerenter={(e) => {
 					if (e.pointerType === 'touch') return;
@@ -3771,15 +3780,16 @@
 					if (e.pointerType !== 'touch' && peekBuff?.id === card.id) peekBuff = null;
 				}}
 				onclick={(e) => {
-					// hoverOnly(结算页清单):鼠标有 hover,**点击**不切换浮层;
-					// 触屏没有 hover —— 点按仍要能看说明(不然移动端完全看不到)
-					if (hoverOnly && lastPointerWasMouse) return;
+					// hoverOnly(结算页清单):不做「点按常驻」—— PC 靠 hover、触屏靠按住
+					if (hoverOnly) return;
+					// 仓库/道具条(非 hoverOnly):触屏点一下看、再点收起(鼠标靠 hover,不抢点击)
 					anchorBuff(card, e.currentTarget);
 					if (!lastPointerWasMouse) peekBuff = peekBuff?.id === card.id ? null : card;
 				}}
 				onkeydown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.preventDefault();
+						if (hoverOnly) return;
 						anchorBuff(card, e.currentTarget);
 						peekBuff = peekBuff?.id === card.id ? null : card;
 					}
@@ -4877,32 +4887,28 @@
 												style="border-color: {cardBorderColor(
 													RARITY_INFO[card?.rarity ?? 'common'].color
 												)}"
-												role="button"
-												tabindex="0"
+												role="img"
 												aria-label={t.isSelf ? '我' : (card?.name ?? 'Tee')}
 												onpointerdown={(e) => {
 													lastPointerWasMouse = e.pointerType === 'mouse';
 													hoverTeeAnchor = e.currentTarget;
+													// 触屏**按住**显示(touchdown);PC 纯 hover(见 pointerenter)
+													if (!lastPointerWasMouse) hoverTee = i;
+												}}
+												onpointerup={() => {
+													// 触屏抬手就收(touchup);鼠标松开不影响 hover
+													if (!lastPointerWasMouse) hoverTee = null;
+												}}
+												onpointercancel={() => {
+													hoverTee = null;
 												}}
 												onpointerenter={(e) => {
 													if (e.pointerType === 'touch') return;
 													hoverTee = i;
 													hoverTeeAnchor = e.currentTarget;
 												}}
-												onpointerleave={(e) => {
-													// 触屏抬指也会发 pointerleave:那种情况不收(点按弹开的浮层要留着)
-													if (e.pointerType !== 'touch' && hoverTee === i) hoverTee = null;
-												}}
-												onclick={(e) => {
-													// 触屏没有 hover:点一下看说明、再点收起(鼠标已有 hover,不抢点击)
-													hoverTeeAnchor = e.currentTarget;
-													if (!lastPointerWasMouse) hoverTee = hoverTee === i ? null : i;
-												}}
-												onkeydown={(e) => {
-													if (e.key === 'Enter' || e.key === ' ') {
-														e.preventDefault();
-														hoverTee = hoverTee === i ? null : i;
-													}
+												onpointerleave={() => {
+													hoverTee = null;
 												}}
 											>
 												<span class="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
