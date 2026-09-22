@@ -4979,7 +4979,7 @@
 										{#each team as t, i (i)}
 											{@const card = cardOf(t)}
 											<div
-												class="flex items-center justify-between gap-2 rounded-lg border bg-slate-800/60 px-2 py-1"
+												class="flex items-center justify-between gap-1.5 rounded-lg border bg-slate-800/60 px-1.5 py-1"
 												style="border-color: {cardBorderColor(
 													RARITY_INFO[card?.rarity ?? 'common'].color
 												)}"
@@ -5012,7 +5012,7 @@
 														className="h-full w-full"
 													/></span
 												>
-												<span class="truncate text-sm font-semibold text-slate-200 sm:text-[15px]"
+												<span class="truncate text-xs font-semibold text-slate-200 sm:text-[13px]"
 													>{t.isSelf ? '我' : (card?.name ?? '—')}</span
 												>
 											</div>
