@@ -866,7 +866,8 @@
 	};
 	const enableCheat = () => {
 		const warnId = (kind: string, id: string) => {
-			console.warn(`[作弊引擎] 未知${kind} id: ${id}(已忽略)`);
+			// 直接抛:静默忽略会让测试用例建出错的场景还全绿(踩过:guihuagao 幽灵卡被建成「第二个我」)
+			throw new Error(`[作弊引擎] 未知${kind} id: ${id}`);
 		};
 		const api = {
 			/** 设置月饼币 */

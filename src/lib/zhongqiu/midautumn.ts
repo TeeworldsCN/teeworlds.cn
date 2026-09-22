@@ -226,7 +226,7 @@ export const applyDiceMods = (dice: number[], mods?: DiceMods): number[] =>
  * fixed(手动改过点的骰子)要**跨层**生效。
  * modsFor 会把 {fixed} 和卡牌/道具的 {map,shift} 用 mergeMods 拼成 chain,
  * 而 fixed 只在它自己那一层被读到 —— 于是往 chain 里一拼就失效:
- * 玩家用玉玺/银针点出的 5,会被「寛月符:5 视为 4」这类效果又改回 4(踩过)。
+ * 玩家用玉玺/银针点出的 5,会被「朔月符:5 视为 4」这类效果又改回 4(踩过)。
  * 所以先把整条 chain 的 fixed 收齐,再逐层套用。
  */
 const applyMods = (dice: number[], mods: DiceMods | undefined, fixed: Set<number>): number[] => {
