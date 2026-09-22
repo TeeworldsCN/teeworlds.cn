@@ -3778,12 +3778,14 @@
 					// 触屏 = hover 语义:点一下显示(收起交给窗口的 dismissTip —— 点别处收)
 					if (!lastPointerWasMouse) {
 						peekBuff = card;
+						hoverTee = null; // 联动:同一屏只开一个说明 —— 点了加成卡,Tee 的就收
 						e.stopPropagation();
 					}
 				}}
 				onpointerenter={(e) => {
 					if (e.pointerType === 'touch') return;
 					peekBuff = card;
+					hoverTee = null; // 同上:hover 到加成卡也收掉 Tee 的
 					anchorBuff(card, e.currentTarget);
 				}}
 				onpointerleave={(e) => {
@@ -4902,12 +4904,14 @@
 													// 触屏 = hover 语义:点一下显示(收起交给窗口的 dismissTip)
 													if (!lastPointerWasMouse) {
 														hoverTee = i;
+														peekBuff = null; // 联动:点了 Tee 卡,加成卡的说明就收
 														e.stopPropagation();
 													}
 												}}
 												onpointerenter={(e) => {
 													if (e.pointerType === 'touch') return;
 													hoverTee = i;
+													peekBuff = null; // 同上:hover 到 Tee 也收掉加成卡的
 													hoverTeeAnchor = e.currentTarget;
 												}}
 												onpointerleave={(e) => {
