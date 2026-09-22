@@ -195,7 +195,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉露',
 		desc: '得分 ×1.7',
 		rarity: 'rare',
-		skin: 'ender_pearl',
+		skin: 'dropletmir',
 		price: 4,
 		turns: 2,
 		effect: { type: 'mult', value: 1.7 }
@@ -225,7 +225,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '桂魄',
 		desc: '得分 ×2.2',
 		rarity: 'rare',
-		skin: 'babyYoda_flower',
+		skin: 'AmethystCat',
 		price: 6,
 		turns: 2,
 		effect: { type: 'mult', value: 2.2 }
@@ -265,7 +265,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉绳',
 		desc: '得分 ×4',
 		rarity: 'legendary',
-		skin: 'HTF_whitepinky',
+		skin: 'twindrop',
 		price: 10,
 		turns: 3,
 		effect: { type: 'mult', value: 4 }
@@ -317,7 +317,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '月魂',
 		desc: '基础分 +60，得分 ×3',
 		rarity: 'legendary',
-		skin: 'aristocats_marie_glow',
+		skin: 'ghost_whis',
 		price: 7,
 		turns: 1,
 		effect: { type: 'chips_mult', chips: 60, mult: 3 }
@@ -371,7 +371,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '蟾宫庇佑',
 		desc: '投掷出再接再厉时：得分 ×4',
 		rarity: 'legendary',
-		skin: 'clefairy',
+		skin: 'Cat_the_Lucky',
 		price: 9,
 		turns: 3,
 		effect: { type: 'cond', cond: 'none', mult: 4 }
@@ -383,7 +383,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '余兴',
 		desc: '可多投掷 1 次',
 		rarity: 'common',
-		skin: 'rabbit_Judy',
+		skin: 'lan_fawai',
 		price: 5,
 		turns: 1,
 		effect: { type: 'roll', count: 1 }
@@ -404,7 +404,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉兔杵',
 		desc: '可多投掷 1 次',
 		rarity: 'rare',
-		skin: 'luoxiaohei_rabbit',
+		skin: 'pixel_rabbit',
 		price: 8,
 		turns: 2,
 		effect: { type: 'roll', count: 1 }
@@ -424,7 +424,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '蟾宫神枝',
 		desc: '可多投掷 2 次',
 		rarity: 'legendary',
-		skin: 'HTF_greenberg',
+		skin: 'ghost_nanami',
 		price: 12,
 		turns: 1,
 		effect: { type: 'roll', count: 2 }
@@ -512,7 +512,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '玉玺',
 		desc: '改 1 颗骰子为任意点数',
 		rarity: 'legendary',
-		skin: 'tiPrince',
+		skin: 'Lan_shidun',
 		price: 10,
 		turns: 1,
 		effect: { type: 'set_any', count: 1 }
@@ -522,7 +522,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '匠心神笔',
 		desc: '改 1 颗骰子为任意点数',
 		rarity: 'legendary',
-		skin: 'hero_chao',
+		skin: 'FantasieCat',
 		price: 14,
 		turns: 2,
 		effect: { type: 'set_any', count: 1 }
@@ -739,7 +739,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '弦月盘',
 		desc: '改 1 颗骰子为 3 点；本关没用掉就归还',
 		rarity: 'common',
-		skin: 'Sailormoon',
+		skin: 'lan_piza',
 		price: 4,
 		turns: 1,
 		refund: true,

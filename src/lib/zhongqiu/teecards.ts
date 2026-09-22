@@ -369,7 +369,7 @@ export const CARDS: TeeCard[] = [
 		name: '引路',
 		desc: '右侧 Tee 基础分 +45，自身基础分 +18',
 		rarity: 'common',
-		skin: 'glow_clafairy',
+		skin: 'ghost_random',
 		effect: {
 			type: 'bundle',
 			parts: [
@@ -464,7 +464,7 @@ export const CARDS: TeeCard[] = [
 		desc: '「我」掷出"三红"及以上时，该 Tee 得分 ×4.5',
 		rarity: 'rare',
 		tag: '月',
-		skin: 'lunalovegood',
+		skin: 'FoxTea',
 		effect: { type: 'on_player', cond: 'san_hong_plus', mult: 4.5 }
 	},
 	{
@@ -726,7 +726,7 @@ export const CARDS: TeeCard[] = [
 		name: '红绳',
 		desc: '复制右侧 Tee 的卡牌',
 		rarity: 'common',
-		skin: 'dark_chao',
+		skin: 'lan_fir',
 		effect: { type: 'copy_right' }
 	},
 	{
@@ -794,7 +794,7 @@ export const CARDS: TeeCard[] = [
 		desc: '该 Tee 得分 ×1.15；该 Tee 每累计掷出 1 颗 4 点，倍率 +0.05',
 		rarity: 'rare',
 		tag: '桂',
-		skin: 'Leafeon',
+		skin: 'GoldCat',
 		effect: { type: 'own_face_grow', face: 4, per: 0.05, base: 1.15 }
 	},
 
@@ -1268,7 +1268,7 @@ export const CARDS: TeeCard[] = [
 		desc: '每拥有一个独特的「丹」系Tee:所有「丹」系 Tee 得分 ×1.62；每有 1 颗 4 点，该 Tee 基础分 +375',
 		rarity: 'legendary',
 		tag: '丹',
-		skin: 'firefox',
+		skin: 'iron_pot_o_gold',
 		effect: { type: 'per_tag', tag: '丹', per: 1.62, as: 'mult', chipsPerFour: 375, teamWide: true }
 	},
 	// ==== 主 Tee 流:队友给「我」改骰子规则 ====
@@ -1406,7 +1406,7 @@ export const CARDS: TeeCard[] = [
 		desc: '掷完可发动：本关重新掷过（冷却 4 关）',
 		rarity: 'legendary',
 		tag: '丹',
-		skin: 'Hollow Knight',
+		skin: 'lan_coki',
 		effect: { type: 'active', skill: 'retry', cooldown: 4 }
 	},
 
