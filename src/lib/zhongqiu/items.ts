@@ -13,6 +13,7 @@ export interface BuffEffect {
 		// 乘算链在它后面 —— 所以是「基础分翻倍」而不是「得分翻倍」
 		| 'base_mult'
 		| 'chips_mult'
+		// 保底等级:卡池里没有任何一张在用(那批「再接再厉时 ×N」走的是 cond),留着是给 tools 的估值表
 		| 'level_floor'
 		| 'roll'
 		| 'set_point'
@@ -34,7 +35,7 @@ export interface BuffEffect {
 	levelId?: string;
 	/** straight_mult: 超过几颗才开始叠乘;set_point/set_any: 只能挑这个点数的骰子(4 = 只认 4 点) */
 	from?: number;
-	/** sum_chips: 点数和 ×per;reverse: 减分系数(默认 1);straight_mult: 连号每多 1 颗 ×per */
+	/** sum_chips: 点数和 ×per;straight_mult: 连号每多 1 颗 ×per */
 	per?: number;
 	/** reverse: 基础分替换(基础分 = base − 掷骰分) */
 	base?: number;
@@ -276,7 +277,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		rarity: 'legendary',
 		skin: 'angel_toast_kiinmn',
 		price: 9,
-		turns: 1,
+		turns: 2,
 		effect: { type: 'mult', value: 5 }
 	},
 
@@ -317,7 +318,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		desc: '基础分 +60，得分 ×3',
 		rarity: 'legendary',
 		skin: 'aristocats_marie_glow',
-		price: 9,
+		price: 7,
 		turns: 1,
 		effect: { type: 'chips_mult', chips: 60, mult: 3 }
 	},
@@ -334,7 +335,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: { type: 'sum_chips', per: 3 }
 	},
 
-	// ======== 保底等级 4 ========
+	// ======== 再接再厉(掷空)时的得分倍率 4 ========
 	{
 		id: 'manyuezhufu',
 		name: '满月祝福',
@@ -584,8 +585,8 @@ export const BUFF_CARDS: BuffCard[] = [
 		skin: 'Dark Default',
 		price: 7,
 		turns: 2,
-		// per = 1 + 1:引擎在外面已经加过一次等级分,这里要把它抵掉,
-		// 卡面的「− 本次掷骰分」才逐字成立
+		// 引擎的 reverse = base − 本回合净值(等级分 + 全部筹码,乘算之前),没有别的参数 ——
+		// 所以卡面的「− 基础分」是逐字成立的
 		effect: { type: 'reverse', base: 160 }
 	},
 

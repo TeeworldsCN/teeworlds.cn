@@ -15,7 +15,7 @@ import { BUFF_BY_ID, type AppliedBuff } from './items';
 // ---- 关卡 ----
 //
 
-// R1~R8 不动(新手区),R9 起坡度从 ×1.18 提到 ×1.23,到 R16 = 6400;
+// R1~R8 不动(新手区),R9 起坡度从 ×1.18 提到 ×1.23,到 R16 = 7200;
 // 超出 16 后按 ×1.25 递增(原来只有 ×1.15 —— 比数组本身的坡度还缓,后期反而变简单了)。
 export const TARGETS = [
 	60, 120, 240, 450, 750, 1050, 1250, 1500, 1750, 2100, 2500, 3000, 3600, 4500, 5700, 7200
@@ -37,6 +37,10 @@ export const isBossRound = (n: number) => n % 3 === 0;
 export const BASE_ROLLS = 2;
 
 // ---- Boss ----
+//
+// id 一律带 `boss_` 前缀:不带前缀时和 Tee 卡是**两套 namespace** 却有撞名
+// (雾月 wuyue ↔ 五岳桂香、蚀月 shiyue ↔ 拾遗),任何按裸字符串查池子的新代码都会踩。
+// 前缀是后加的,所以 getBossById 仍然认**不带前缀的老 id**(局内存档里存过)。
 
 export interface Boss {
 	id: string;
@@ -57,7 +61,7 @@ export interface Boss {
 export const BOSSES: Boss[] = [
 	// ---- 温和池:第 1~6 关 ----
 	{
-		id: 'heiyue',
+		id: 'boss_heiyue',
 		name: '黑月',
 		emoji: '🌑',
 		desc: '本关不设额外规则',
@@ -65,7 +69,7 @@ export const BOSSES: Boss[] = [
 		mild: true
 	},
 	{
-		id: 'miyue',
+		id: 'boss_miyue',
 		name: '迷月',
 		emoji: '🌫️',
 		desc: '本关掷出的 6 作废；目标 ×0.9',
@@ -74,7 +78,7 @@ export const BOSSES: Boss[] = [
 		mild: true
 	},
 	{
-		id: 'yingyue',
+		id: 'boss_yingyue',
 		name: '影月',
 		emoji: '🌒',
 		desc: '本关掷出的 3 作废；目标 ×0.95',
@@ -84,7 +88,7 @@ export const BOSSES: Boss[] = [
 	},
 	// ---- 第 7 关起 ----
 	{
-		id: 'wuyue',
+		id: 'boss_wuyue',
 		name: '雾月',
 		emoji: '🌁',
 		desc: '本关黑色同点不作数；目标 ×0.95',
@@ -92,7 +96,7 @@ export const BOSSES: Boss[] = [
 		targetMult: 0.95
 	},
 	{
-		id: 'xianyue',
+		id: 'boss_xianyue',
 		name: '弦月',
 		emoji: '🌓',
 		desc: '本关掷出的 1 作废',
@@ -100,7 +104,7 @@ export const BOSSES: Boss[] = [
 		targetMult: 1.0
 	},
 	{
-		id: 'shiyue',
+		id: 'boss_shiyue',
 		name: '蚀月',
 		emoji: '🌘',
 		desc: '本关掷出的 4 作废；目标 ×0.3',
@@ -109,7 +113,7 @@ export const BOSSES: Boss[] = [
 		weight: 0.5
 	},
 	{
-		id: 'xueyue',
+		id: 'boss_xueyue',
 		name: '血月',
 		emoji: '🔴',
 		desc: '等级封顶到状元',
@@ -117,7 +121,7 @@ export const BOSSES: Boss[] = [
 		targetMult: 1
 	},
 	{
-		id: 'haoyue',
+		id: 'boss_haoyue',
 		name: '皓月',
 		emoji: '🌕',
 		// 专克逆向流:把最没用的 1、2 点变成 4 —— 逆向卡按「base − 净值」结算,
@@ -130,7 +134,7 @@ export const BOSSES: Boss[] = [
 		targetMult: 1.5
 	},
 	{
-		id: 'jimoon',
+		id: 'boss_jimoon',
 		name: '疾月',
 		emoji: '🌙',
 		desc: '每个 Tee 多投掷 1 次；目标 ×2',
@@ -139,7 +143,7 @@ export const BOSSES: Boss[] = [
 	},
 	// ---- 第 18 关起(无限模式后期;前 16 关是标定过的曲线,这批刻意不进池) ----
 	{
-		id: 'huiyue',
+		id: 'boss_huiyue',
 		name: '晦月',
 		emoji: '🌚',
 		desc: '本关每个 Tee 少投掷 1 次；目标 ×0.75',
@@ -149,7 +153,7 @@ export const BOSSES: Boss[] = [
 		minRound: 18
 	},
 	{
-		id: 'yinyue',
+		id: 'boss_yinyue',
 		name: '隐月',
 		emoji: '🌗',
 		desc: '本关掷出的 6 视为 5；目标 ×0.95',
@@ -158,7 +162,7 @@ export const BOSSES: Boss[] = [
 		minRound: 18
 	},
 	{
-		id: 'yuanyue',
+		id: 'boss_yuanyue',
 		name: '圆月',
 		emoji: '🌝',
 		desc: '本关非 4 点的一色牌也按红牌计；目标 ×1.25',
@@ -168,7 +172,7 @@ export const BOSSES: Boss[] = [
 		minRound: 18
 	},
 	{
-		id: 'poyue',
+		id: 'boss_poyue',
 		name: '破月',
 		emoji: '🌘',
 		desc: '本关掷出的 4 作废、6 视为 4；目标 ×0.9',
@@ -178,7 +182,7 @@ export const BOSSES: Boss[] = [
 		minRound: 18
 	},
 	{
-		id: 'shuangyue',
+		id: 'boss_shuangyue',
 		name: '霜月',
 		emoji: '🌫',
 		desc: '本关掷出的 1、6 作废；目标 ×0.8',
@@ -187,7 +191,7 @@ export const BOSSES: Boss[] = [
 		minRound: 18
 	},
 	{
-		id: 'yunyue',
+		id: 'boss_yunyue',
 		name: '晕月',
 		emoji: '🌪',
 		desc: '本关等级封顶到对堂；目标 ×0.55',
@@ -196,7 +200,7 @@ export const BOSSES: Boss[] = [
 		minRound: 18
 	},
 	{
-		id: 'hanyue',
+		id: 'boss_hanyue',
 		name: '寒月',
 		emoji: '❄️',
 		desc: '本关加成卡的加值只算一半；目标 ×0.7',
@@ -206,7 +210,7 @@ export const BOSSES: Boss[] = [
 		minRound: 18
 	},
 	{
-		id: 'linyue',
+		id: 'boss_linyue',
 		name: '凛月',
 		emoji: '🥶',
 		desc: '本关加成卡的乘值只算一半；目标 ×0.7',
@@ -223,7 +227,7 @@ export const MILD_BOSS_IDS = BOSSES.filter((b) => b.mild).map((b) => b.id);
 /** 第 n 关能抽到的 Boss 池(抽卡规则只此一份,getBoss 和「卡池一览」页共用) */
 export const bossPool = (n: number): Boss[] =>
 	BOSSES.filter((b) =>
-		n <= 6 ? b.mild : b.minRound ? n >= b.minRound : b.id !== 'shiyue' || n > 16
+		n <= 6 ? b.mild : b.minRound ? n >= b.minRound : b.id !== 'boss_shiyue' || n > 16
 	);
 
 export const getBoss = (n: number): Boss => {
@@ -238,7 +242,11 @@ export const getBoss = (n: number): Boss => {
 	return pool[pool.length - 1];
 };
 
-export const getBossById = (id: string): Boss => BOSSES.find((b) => b.id === id) ?? BOSSES[0];
+export const getBossById = (id: string): Boss =>
+	BOSSES.find((b) => b.id === id) ??
+	// 老存档里的 bossId 是加前缀之前的裸 id —— 认一下,别让读档掉回 BOSSES[0]
+	BOSSES.find((b) => b.id === `boss_${id}`) ??
+	BOSSES[0];
 
 // ---- 队伍 ----
 
@@ -293,7 +301,6 @@ export interface TeamTee {
 	faceGrow?: GrowthMap;
 	/** 饼铺掌柜那类「每累计卖出 1 个 Tee」:这只 Tee **入队之后**卖掉过几个 */
 	sold?: number;
-	/** 发动过的主动技加值/乘算:算进该 Tee 的**基础分**(乘算之前),跟着存盘走 */
 }
 
 export const TEAM_LIMIT = 6;
@@ -398,17 +405,6 @@ export const upgradeLevel = (levelId: string, count: number): string => {
 	const i = LEVEL_LADDER.indexOf(levelId as (typeof LEVEL_LADDER)[number]);
 	if (i < 0) return levelId;
 	return LEVEL_LADDER[Math.min(LEVEL_LADDER.length - 1, i + count)];
-};
-
-export const applyBuffLevelFloor = (levelId: string, buffs: AppliedBuff[] = []): string => {
-	let best = LEVEL_LADDER.indexOf(levelId as (typeof LEVEL_LADDER)[number]);
-	for (const b of buffs) {
-		const e = BUFF_BY_ID.get(b.cardId)?.effect;
-		if (e?.type !== 'level_floor' || !e.levelId) continue;
-		const j = LEVEL_LADDER.indexOf(e.levelId as (typeof LEVEL_LADDER)[number]);
-		if (j > best) best = j;
-	}
-	return LEVEL_LADDER[Math.max(0, best)];
 };
 
 export interface SetOp {
@@ -691,18 +687,19 @@ export interface ScoreInput {
 	playerRawDice?: number[];
 	/** 当前月饼币(coin_mult 用) */
 	coins?: number;
-	/** 本关加成卡的加值只算这个比例(寒月:0.5;缺省 1) */
 	/** 主动技的「计入基础分」加值(和值技 / 田螺):必须和筹码一起进乘算,不能事后加 */
 	skillChips?: { srcId: string; chips: number; from?: string }[];
+	/** 主动技附带的乘算(和值技「超过 N 后每点 ×p」) */
 	skillMult?: { srcId: string; mult: number; from?: string };
+	/** 本关加成卡的加值只算这个比例(寒月:0.5;缺省 1) */
 	buffChipsScale?: number;
 	/** 本关加成卡的乘值只算这个比例的增量(凛月:0.5;缺省 1) */
 	buffMultScale?: number;
-	/** 主动技的「计入基础分」加值(和值技 / 田螺):必须和筹码一起进乘算,不能事后加 */
-	/** 主动技附带的乘算(和值技「超过 N 后每点 ×p」) */
 	/** 当前关卡数(reverse.perRound / growth_mult 用) */
 	round?: number;
+	/** 左侧相邻 Tee 的已结算得分(relay_left 用;队首没有左邻 = 0) */
 	leftScore?: number;
+	/** 这只 Tee 入队之后卖掉过几个 Tee(sold_chips / sell_scale 用) */
 	soldCount?: number;
 }
 
@@ -753,7 +750,6 @@ export const calcTeeScore = ({
 	let mult = 1;
 	/** 加算到倍率的部分(桂树):最后统一乘进去 —— 先长再乘,和队伍/挂卡顺序无关 */
 	let multAdd = 0;
-	let allowNegative = false;
 
 	const sources: ScoreSource[] = [];
 	const note = (
@@ -794,22 +790,30 @@ export const calcTeeScore = ({
 				buffChips += Math.round((be.chips ?? 0) * buffChipsScale);
 				buffMult *= 1 + ((be.mult ?? 1) - 1) * buffMultScale;
 			} else if (be.type === 'cond') {
+				// 寒月/凛月的缩放口径必须盖住**所有**加值/乘值,不然 Boss 文案就是谎话:
+				// cond(再接再厉 ×N)、own_face(罚分卡 ±筹码)、straight_mult(合璧符) 以前漏在外面,
+				// 寒/凛月下它们照常全额生效(实测:凛月 + 满月祝福还是 ×1.8,桂花蜜却折成了 ×1.15)。
+				// 逆向(reverse)不缩放:它是「整块替换基础分」,既不是加值也不是乘值。
 				if (be.cond && condHit(be.cond, levelId, level.score)) {
-					buffChips += be.chips ?? 0;
-					buffMult *= be.mult ?? 1;
+					buffChips += Math.round((be.chips ?? 0) * buffChipsScale);
+					buffMult *= 1 + ((be.mult ?? 1) - 1) * buffMultScale;
 				}
 			} else if (be.type === 'own_face') {
 				// 罚分卡:每有 1 颗该点数就扣分(负分流的清面工具靠它才有意义)
 				const n = ownDice.filter((v) => v === be.face).length;
 				if (n > 0) {
-					if (be.chips) buffChips += be.chips * n;
-					if (be.mult) buffMult *= Math.pow(be.mult, n);
+					if (be.chips) buffChips += Math.round(be.chips * n * buffChipsScale);
+					if (be.mult) buffMult *= Math.pow(1 + ((be.mult ?? 1) - 1) * buffMultScale, n);
 				}
 			} else if (be.type === 'straight_mult') {
-				// 连号长度倍率(合璧符):连号 n 颗 → ×per^(n-from)
+				// 连号长度倍率(合璧符):连号 n 颗 → ×per^(n-from);
+				// 凛月的「乘值只算一半」把 per 折成 1+(per−1)×scale,再按原样取一位小数
 				const run = longestRun(ownDice);
 				const from = be.from ?? 2;
-				if (run > from) buffMult *= Math.round(Math.pow(be.per ?? 1, run - from) * 10) / 10;
+				if (run > from) {
+					const per = 1 + ((be.per ?? 1) - 1) * buffMultScale;
+					buffMult *= Math.round(Math.pow(per, run - from) * 10) / 10;
+				}
 			} else if (be.type === 'reverse') {
 				// 逆向加成卡:并入同一个替换步骤
 				reverseBase += be.base ?? 0;
@@ -1350,7 +1354,7 @@ export const calcTeeScore = ({
 	}
 	const raw = Math.round((baseDoubled + chips + buffChips) * mult * buffMult);
 	const netChips = chips + buffChips;
-	const total = swapped !== null || allowNegative || netChips < 0 ? raw : Math.max(0, raw);
+	const total = swapped !== null || netChips < 0 ? raw : Math.max(0, raw);
 	return {
 		base: baseDoubled,
 		chips: chips + buffChips,
@@ -1376,7 +1380,13 @@ export const decayBuffs = (team: TeamTee[]): void => {
 
 export const calcTeamTotal = (
 	scores: number[],
-	cards: (TeeCard | null)[]
+	cards: (TeeCard | null)[],
+	/**
+	 * 「我」在不在队里 —— **身份**(isSelf),不是「有没有无卡的 Tee」。
+	 * 依赖「我」的团队效果(月上广寒的 team_ratio / 饼铺掌柜的 no_me_team_mult)都看它。
+	 * 不传就退回老口径(有无卡的那一位):工具侧的调用没身份信息。
+	 */
+	hasSelf?: boolean
 ): {
 	total: number;
 	teamMult: number;
@@ -1405,8 +1415,8 @@ export const calcTeamTotal = (
 			relayLines.push({ cardId, from, value: Math.round(v) });
 		}
 	};
-	/** 队伍里还有没有「我」(没卡的那一位) */
-	const hasMe = cards.some((c) => c === null);
+	/** 队伍里还有没有「我」 */
+	const hasMe = typeof hasSelf === 'boolean' ? hasSelf : cards.some((c) => c === null);
 	const walk = (eff: TeeEffect, i: number, cardId: string) => {
 		if (eff.type === 'team_mult') teamMult *= eff.value;
 		// 饼铺掌柜(二):队伍里没有「我」(被归家卖掉)→ 队伍总分 ×mult
@@ -1414,8 +1424,20 @@ export const calcTeamTotal = (
 			if (!hasMe && scores[i] > 0) teamMult *= eff.mult;
 		} else if (eff.type === 'relay_pct') addRelay(eff, i, cardId);
 		else if (eff.type === 'team_ratio') {
+			// 「我」不在队里(被归家卖掉)→ 这条不触发:它按字面就是拿「我」的得分做乘数,
+			// 没有「我」就没有「我的得分」。不拦的话 scores[0] 会落到新队首头上(踩过)。
+			if (!hasMe) return;
+			const ownScore = scores[i] ?? 0;
+			// 卡面「若得分 < 100，不触发」(阈值写在效果的 min 上,卡面/引擎共用)。
+			// 实现比的是这只 Tee **本关的得分** —— calcTeamTotal 只拿得到它。
+			// 不拦的话 own → 0/负分会被下面的 Math.max(1, …) 钳成 1,
+			// 比值变成「邻居分 ÷ 1」,bonus = 我 × 邻居(实测 900 万分,R16 目标才 7200):
+			//   · own = 0  ← 云海提前收关,这只根本没投掷(确定性触发)
+			//   · own < 0  ← 逆月符(逆向) / 翻天印·守拙那族罚分卡
+			if (ownScore <= 0 || ownScore < (eff.min ?? 0)) return;
 			// 只放大「我」这一份再加进总分,不再乘全队总分:
-			const own = Math.max(1, scores[i] ?? 0);
+			// 「我」恒在队首(normalizeSelf 的不变量),所以 scores[0] 就是「我」的得分
+			const own = Math.max(1, ownScore);
 			// 邻居看哪边:right = 只认右邻;left = 只认左邻(0 号位没有左邻 = 不触发);
 			// side = 右邻优先,他在 6 号位(没有右邻)时才用左邻 —— 不然这张卡得先卖个 Tee 才活
 			const nb =
@@ -1424,7 +1446,11 @@ export const calcTeamTotal = (
 					: eff.from === 'left'
 						? (scores[i - 1] ?? 0)
 						: (scores[i + 1] ?? scores[i - 1] ?? 0);
-			if (nb > 0 && nb / own !== 1) {
+			if (nb > 0) {
+				// 原先这里还有一道 `nb / own !== 1`,想跳过「比值 1 = 没放大」的那一行 ——
+				// 但公式是 bonus = 我 × 比值,比值 1 时 bonus = **我整份的分**,根本不是 0:
+				// 差 1 分给 3001、正好同分反而一分不给,把最常见的一种情况白扔了(踩过)。
+				// 已删:同分照给,结算行写 `×1 +我的分`(「我」本关得 0 分时才会是 `×1 +0`)。
 				const mult = nb / own;
 				const bonus = (scores[0] ?? 0) * mult;
 				ratioBonus += bonus;
@@ -1597,6 +1623,8 @@ export type RunSave = {
 	shopBuffs: string[];
 	shopSold: string[];
 	shopLocks: (string | null)[];
+	/** 集市刷新价(每刷一次 +1;老存档没有 → 按 1 处理) */
+	refreshPrice?: number;
 	buffInventory: Record<string, number>;
 	draftChoices: string[];
 	draftPicked: number[];
@@ -1644,7 +1672,7 @@ export type RunSave = {
 	wasRolling: boolean;
 	rollKind: string;
 
-	// ---- v6:几张重做卡的本关状态 ----
+	// ---- 后来补的本关状态(花生/蜜枣/归家/猜谜/夜市/高照);老存档没有 → 读档时兕底 ----
 	/** 花生:本回合按下标作废的骰子(老存档没有 → 读档时兜底成 []) */
 	hsVoid?: number[];
 	/** 上面那份清单属于哪个 Tee */

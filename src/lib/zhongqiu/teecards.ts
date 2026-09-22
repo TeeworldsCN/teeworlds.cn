@@ -69,7 +69,7 @@ export type TeeEffect =
 			flat?: number;
 	  }
 	| { type: 'team_chips'; value: number } // 全队每个 Tee 各 +chips
-	| { type: 'team_ratio'; from: 'right' | 'left' | 'side' }
+	| { type: 'team_ratio'; from: 'right' | 'left' | 'side'; min?: number } // 该 Tee 本关得分低于 min 就不触发(卡面「若得分 < 100，不触发"):挡住 own → 0/负分被 Math.max(1, …) 钳成 1、比值变成「邻居分 ÷ 1」的爆分(逆月符/翻天印/守拙压成负分、云海提前收关时干脆是 0,实测 900 万分)
 	| { type: 'per_team_chips'; value: number } // 队伍每多 1 人,基础分 +value
 	| { type: 'scaling_mult'; per: number } // 每过一关,该 Tee 的 mult 永久 +per
 	| { type: 'economy'; per: number } // 每关 +月饼币
@@ -89,13 +89,15 @@ export type TeeEffect =
 	| { type: 'own_face'; face: number; chips?: number; mult?: number; multByCount?: boolean } // 自己最终骰子里每有 1 颗该点数(multByCount: 倍率 = 该点数颗数)
 	// 该 Tee 自己的骰子里每颗 face 点:倍率 **+per**(桂树 —— 乘值在增长,不是再乘一层)
 	| { type: 'own_face_add'; face: number; per: number; base: number }
-	// 桂树:同上,但颗数**跨关累计** —— 本关颗数由引擎回传 ScoreBreakdown.growthAdd,
-	// 调用方在**回合结束**并进 growth(不能当场记:同一回合后面几只 Tee 会立刻吃到)
+	// 桂树:同上,但颗数**跨关累计** —— 计分读 growth[srcId](页面把该 Tee 的累计数并进去);
+	// 本关掷出的颗数由页面在**回合结束**才记进 tee.faceGrow(不能当场记:同一回合后面几只 Tee 会立刻吃到)
 	| { type: 'own_face_grow'; face: number; per: number; base: number }
 	// chipsMult 是**基础分侧**的每颗倍率(基础分 ×chipsMult^重掷颗数),mult 才是得分侧
 	| { type: 'per_reroll'; chips?: number; mult?: number; chipsMult?: number } // 本回合每重掷 1 颗骰子
 	| { type: 'per_extra_roll'; per: number } // 每多 1 次投掷机会:倍率 ×per^n
-	| { type: 'reverse'; base: number; per?: number; perRound?: number } // 逆向:基础分 = base(+每关 perRound×关数) − 等级分×per(可为负)
+	// 逆向:把「本回合已得的净值(等级分 + 筹码)」整个替换掉 ——
+	// 基础分 = base(+每关 perRound×关数) − 净值,掷得越烂越赚(per 字段没实现,别用)
+	| { type: 'reverse'; base: number; per?: number; perRound?: number }
 	| { type: 'straight_ladder' } // 连号阶梯:123/234/345/456→一秀,1234 系→二举,12345 系→四进
 	| { type: 'straight_chips'; per: number } // 连号里每颗骰子 +per 分
 	// 连号长度倍率:连号 n 颗 → 得分 ×per^(n-from)。连号流的引擎 ——
@@ -249,10 +251,12 @@ export const condHit = (cond: Cond, levelId: string, levelScore: number): boolea
 	return false;
 };
 
-// ---- 卡池(50) ----
+// ---- 卡池(109 张:普通 27 / 稀有 47 / 传说 35) ----
+//
+// 顺序即数组下标(「卡池一览」页按它排),**与稀有度无关** —— 稀有度只看每张的 rarity。
+// 开局 5 选 2 只从普通卡里抽(drawDraftChoices),3 选 1 全池按稀有度加权(drawCards)。
 
 export const CARDS: TeeCard[] = [
-	// ======== 普通 22 ========
 	{
 		id: 'yutou',
 		name: '芋泥饼',
@@ -565,7 +569,7 @@ export const CARDS: TeeCard[] = [
 		skin: 'generic_glow',
 		effect: { type: 'straight_chips', per: 15 }
 	},
-	// ======== 稀有 22 ========
+	// ======== 开场/基础卡(上面那批)之后:流派卡 ========
 	{
 		id: 'baiyutu',
 		name: '白玉兔',
@@ -786,7 +790,7 @@ export const CARDS: TeeCard[] = [
 		effect: { type: 'own_face_grow', face: 4, per: 0.05, base: 1.15 }
 	},
 
-	// ======== 传说 10 ========
+	// (这里原本按稀有度分过区,早已和实际稀有度对不上 —— 删了,看每张的 rarity)
 	{
 		id: 'wugang',
 		name: '吴刚成仙',
@@ -884,7 +888,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guanghan',
 		name: '月上广寒',
-		desc: '该 Tee 基础分 +200，掷出的 1、6 视为 4；回合结算时：总分额外 +（「我」的得分 × 左侧 Tee 得分 ÷ 该 Tee 得分）',
+		desc: '该 Tee 基础分 +200，掷出的 1、6 视为 4；回合结算时：总分额外 +（「我」的得分 × 左侧 Tee 得分 ÷ 该 Tee 得分）；若得分 < 100，不触发',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'IceWitch',
@@ -893,7 +897,7 @@ export const CARDS: TeeCard[] = [
 			parts: [
 				{ type: 'chips', value: 200 },
 				{ type: 'self_mods', mods: { map: { 1: 4, 6: 4 } } },
-				{ type: 'team_ratio', from: 'left' }
+				{ type: 'team_ratio', from: 'left', min: 100 }
 			]
 		}
 	},
@@ -1397,7 +1401,7 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		// 稀有 = 改点型:掷完后必须自己挑一颗骰子改成 2 点(压等级的操作)
-		// 罚分 ×1.5:净系数 −1.5(per = 1 + 1.5)
+		// 逆向的惩罚系数就是 −1(净值整个减掉),三档逆向卡的强弱差在 base / perRound 上
 		id: 'queyue',
 		name: '缺月',
 		desc: '基础分替换为（170，每关 +50 − 基础分）；掷完后把 1 颗骰子改为 2 点；自己掷出的 6 视为 4',

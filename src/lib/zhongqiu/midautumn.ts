@@ -437,6 +437,21 @@ export function rollDice(): number[] {
 	return Array.from({ length: 6 }, () => 1 + Math.floor(Math.random() * 6));
 }
 
+/**
+ * 点数阶梯(faceFloor)抬上来的档位该亮哪几颗:就是把 levelId 抬上去的那一组同点
+ * (非 4 点里最多的那一组,口径与 faceFloorLevel 一致)。`at` 把 d 的下标映回原骰子下标。
+ */
+const faceFloorHit = (d: number[], at: (k: number) => number, levelId: string): number[] => {
+	const counts = [0, 0, 0, 0, 0, 0, 0];
+	for (const v of d) counts[v]++;
+	// 这档不是点数阶梯抬出来的(比如判定本身就到这档)→ 不归这里管
+	if (faceFloorLevel(counts) !== levelId) return [];
+	let val = -1;
+	for (let v = 1; v <= 6; v++) if (v !== 4 && counts[v] > (val === -1 ? 0 : counts[val])) val = v;
+	if (val < 0) return [];
+	return d.map((v, k) => (v === val ? at(k) : -1)).filter((i) => i >= 0);
+};
+
 export function hitIndices(dice: number[], levelId: string, mods?: DiceMods): number[] {
 	const shown = applyDiceMods(dice, mods);
 	// 作废的骰子永不参与高亮
@@ -476,7 +491,13 @@ export function hitIndices(dice: number[], levelId: string, mods?: DiceMods): nu
 		levelId === 'liu_bo_hong' ||
 		levelId === 'zhuang_yuan'
 	) {
-		return d.map((v, k) => (v === 4 ? at(k) : -1)).filter((i) => i >= 0);
+		const fours = d.map((v, k) => (v === 4 ? at(k) : -1)).filter((i) => i >= 0);
+		// 真是四点线凑出来的 → 亮四点
+		if (fours.length > 0) return fours;
+		// 一颗 4 都没有:这档是**点数阶梯**(圆月 Boss「非 4 点的一色牌也按红牌计」/
+		// face_ladder 卡)抬上来的 —— 亮凑出它的那一组同点,否则整手一颗都不亮(踩过)。
+		// 四点线优先:4 4 4 5 5 5 判三红时该亮的是那三个 4,不是 5。
+		return faceFloorHit(d, at, levelId);
 	}
 	// 四进 / 五子登科 / 六博黑: 数量 >= 4 的相同非四点组
 	const counts = [0, 0, 0, 0, 0, 0, 0];
