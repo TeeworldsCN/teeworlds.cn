@@ -477,7 +477,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'yueyachi',
 		name: '月牙尺',
-		desc: '改 1 颗骰子点数 +1',
+		desc: '每关可把 1 颗骰子点数 +1，持续 2 关',
 		rarity: 'common',
 		skin: 'cool_glowfox',
 		price: 3,
@@ -489,7 +489,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		// (持 2 3 4 6 缺 5 → 要 6→5)。池子里原来只有「+1」这半边,另一半只能买传说的改任意点数
 		id: 'queyuechi',
 		name: '缺月尺',
-		desc: '改 1 颗骰子点数 −1',
+		desc: '每关可把 1 颗骰子点数 −1，持续 2 关',
 		rarity: 'common',
 		skin: 'darklightevilwolfe',
 		price: 3,

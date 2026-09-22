@@ -942,26 +942,26 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'dianjiang',
 		name: '点将',
-		desc: '自己每有 1 颗 6 点：基础分 +35',
+		desc: '自己每有 1 颗 6 点：基础分 +45',
 		rarity: 'common',
 		skin: 'glow_brownbear',
-		effect: { type: 'own_face', face: 6, chips: 35 }
+		effect: { type: 'own_face', face: 6, chips: 45 }
 	},
 	{
 		id: 'guyue',
 		name: '孤影',
-		desc: '自己每有 1 颗 1 点：基础分 +28',
+		desc: '自己每有 1 颗 1 点：基础分 +35',
 		rarity: 'common',
 		skin: 'White',
-		effect: { type: 'own_face', face: 1, chips: 28 }
+		effect: { type: 'own_face', face: 1, chips: 35 }
 	},
 	{
 		id: 'duiying',
 		name: '对影',
-		desc: '自己每有 1 颗 2 点：基础分 +35',
+		desc: '自己每有 1 颗 2 点：基础分 +40',
 		rarity: 'common',
 		skin: 'Shadowtee',
-		effect: { type: 'own_face', face: 2, chips: 35 }
+		effect: { type: 'own_face', face: 2, chips: 40 }
 	},
 	{
 		id: 'sansheng',
@@ -984,14 +984,14 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'zhaixing',
 		name: '摘星',
-		desc: '自己每有 1 颗 6 点：基础分 +45；每有 1 颗 1 点：基础分 −15',
+		desc: '自己每有 1 颗 6 点：基础分 +50；每有 1 颗 1 点：基础分 −12',
 		rarity: 'common',
 		skin: 'glow_mermyfox',
 		effect: {
 			type: 'bundle',
 			parts: [
-				{ type: 'own_face', face: 6, chips: 45 },
-				{ type: 'own_face', face: 1, chips: -15 }
+				{ type: 'own_face', face: 6, chips: 50 },
+				{ type: 'own_face', face: 1, chips: -12 }
 			]
 		}
 	},
@@ -1003,10 +1003,10 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'hanxing',
 		name: '寒星',
-		desc: '自己每有 1 颗 1 点：基础分 +142、得分 ×1.5',
+		desc: '自己每有 1 颗 1 点：基础分 +150、得分 ×1.55',
 		rarity: 'rare',
 		skin: 'IceWitch_Dark',
-		effect: { type: 'own_face', face: 1, chips: 142, mult: 1.5 }
+		effect: { type: 'own_face', face: 1, chips: 150, mult: 1.55 }
 	},
 	{
 		id: 'shuangli',
@@ -1029,10 +1029,10 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'mantanghong',
 		name: '满堂红',
-		desc: '自己每有 1 颗 4 点：基础分 +45',
+		desc: '自己每有 1 颗 4 点：基础分 +80',
 		rarity: 'rare',
 		skin: 'Red',
-		effect: { type: 'own_face', face: 4, chips: 45 }
+		effect: { type: 'own_face', face: 4, chips: 80 }
 	},
 	{
 		id: 'wugeng',
@@ -1057,7 +1057,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yiyang',
 		name: '纯阳仙',
-		desc: '四进、五子登科、六博黑：该等级基础分 ×2；掷出 3 个同点数：基础分 +90；自己每有 1 颗 1 点：基础分 +28、得分 ×2',
+		desc: '四进、五子登科、六博黑：该等级基础分 ×2；掷出 3 个同点数：基础分 +90；自己每有 1 颗 1 点：基础分 +35、得分 ×2',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'clan_wheat',
@@ -1066,7 +1066,7 @@ export const CARDS: TeeCard[] = [
 			parts: [
 				{ type: 'level_base_mult', levelIds: ['si_jin', 'wu_zi', 'liu_bo_hei'], value: 2 },
 				{ type: 'same_face_chips', min: 3, chips: 90 },
-				{ type: 'own_face', face: 1, chips: 28, mult: 2 }
+				{ type: 'own_face', face: 1, chips: 35, mult: 2 }
 			]
 		}
 	},
