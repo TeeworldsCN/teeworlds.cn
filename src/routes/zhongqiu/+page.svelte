@@ -683,7 +683,8 @@
 				from?: number;
 				options?: number[];
 		  }
-		| { kind: 'bump'; count: number; step?: number; srcId?: string }; // 月牙尺 +1 / 缺月尺 −1:点一颗骰子
+		| { kind: 'bump'; count: number; step?: number; srcId?: string } // 月牙尺 +1 / 缺月尺 −1:点一颗骰子
+		| { kind: 'voidfix'; count: number; point?: number; srcId?: string }; // 月相符:作废骰子改为 N 点(任意数量)
 	let pendingAction = $state<PendingAction | null>(null);
 	let pointPicker = $state(false); // set_any / clear_void 的点数选择
 	/** 半影卡:第 i 个 Tee 本关挑选的「不作废」点数 */
@@ -2368,6 +2369,11 @@
 			nextSetOp();
 			return;
 		}
+		// 月相符:一颗作废的都没有 → 没得救,跳过
+		if (op.kind === 'voidfix' && !dice.some((_, k) => dieVoid(k))) {
+			nextSetOp();
+			return;
+		}
 		if (op.kind === 'point')
 			pendingAction = {
 				kind: 'set_point',
@@ -2378,6 +2384,8 @@
 			};
 		else if (op.kind === 'bump')
 			pendingAction = { kind: 'bump', count: op.count, step: op.step ?? 1, srcId: op.srcId };
+		else if (op.kind === 'voidfix')
+			pendingAction = { kind: 'voidfix', count: op.count, point: op.point ?? 1, srcId: op.srcId };
 		else if (op.kind === 'voidpick') {
 			pendingAction = { kind: 'voidpick', count: op.count, srcId: op.srcId };
 			pointPicker = true; // 半影卡没有骰子可点,选点面板直接弹出来
@@ -2396,7 +2404,13 @@
 		if (!act) return;
 		if (act.kind === 'voidpick') return; // 半影卡点的是点数按钮,不是骰子
 		// 「只认 4 点」的改点:点到别的点数没反应(判定用的是玩家看到的点数)
-		if (act.kind !== 'bump' && act.from !== undefined && shownDice[i] !== act.from) return;
+		if (
+			act.kind !== 'bump' &&
+			act.kind !== 'voidfix' &&
+			act.from !== undefined &&
+			shownDice[i] !== act.from
+		)
+			return;
 
 		const markOpted = () => {
 			if (!optedDice.includes(i)) optedDice = [...optedDice, i];
@@ -2422,6 +2436,20 @@
 			if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
 			if (act.srcId)
 				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
+		} else if (act.kind === 'voidfix') {
+			// 月相符:作废骰子救援 —— 只点**作废**的骰子;改点即活(面作废改了面自然就不作废,
+			// 按下标作废要把下标从作废清单里摘掉)。「任意数量」:救完自动收工,想停就跳过
+			if (!dieVoid(i)) return;
+			dice[i] = act.point ?? 1;
+			markOpted();
+			if (hsVoidTee === currentTee) hsVoid = hsVoid.filter((k) => k !== i);
+			if (sharedVoidTee === currentTee && sharedVoid)
+				sharedVoid = sharedVoid.filter((k) => k !== i);
+			act.count -= 1;
+			if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
+			if (act.srcId)
+				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
+			if (!dice.some((_, k) => dieVoid(k))) act.count = 0;
 		} else if (act.kind === 'set_any') {
 			// 只记「选中哪颗」,**先不记 opted**:点数还没定,中途再点别的骰子、
 			// 或者直接按「跳过改点」,都会让这颗从没被改过的骰子白白背上 fixed
@@ -4664,6 +4692,10 @@
 													? '−1'
 													: '+1'}{#if pendingAction.count > 1}(还剩
 													{pendingAction.count} 颗){/if}</span
+											>
+										{:else if pendingAction?.kind === 'voidfix'}
+											<span class="text-cyan-300"
+												>{opSrcName(pendingAction.srcId)} ✨ 点作废的骰子改为 {pendingAction.point} 点(救几颗随意)</span
 											>
 										{:else if pendingAction?.kind === 'voidpick'}
 											<span class="text-cyan-300"

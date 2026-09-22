@@ -31,7 +31,9 @@ export interface BuffEffect {
 		// 坠星(桂花符):重掷的每颗骰子有 value 的概率坠为 face 点
 		| 'fall_to'
 		// 孤星赌(朔月符):face 点 from 颗起每多 1 颗 ×per;不足 from−1 颗 ×value(下注的代价)
-		| 'streak_mult';
+		| 'streak_mult'
+		// 月相符:可选任意数量的**作废骰子**改为 point 点(改点即活 = 救援)
+		| 'void_fix';
 	value?: number;
 	chips?: number;
 	mult?: number;
@@ -785,12 +787,22 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guihuafu',
 		name: '桂花符',
-		desc: '重掷的骰子有 1/3 概率坠为 2 点',
+		desc: '重掷的骰子有 1/3 概率掷出 2 点',
 		rarity: 'legendary',
 		skin: 'Lahm_yellow',
 		price: 8,
 		turns: 2,
 		effect: { type: 'fall_to', face: 2, value: 1 / 3 }
+	},
+	{
+		id: 'yuexiangfu',
+		name: '月相符',
+		desc: '可选任意数量的作废骰子改为 1 点',
+		rarity: 'rare',
+		skin: 'IceWitch_MushCat',
+		price: 5,
+		turns: 2,
+		effect: { type: 'void_fix', point: 1 }
 	},
 	{
 		id: 'chanjuanfu',

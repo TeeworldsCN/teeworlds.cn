@@ -491,7 +491,7 @@ export const upgradeLevel = (levelId: string, count: number): string => {
 };
 
 export interface SetOp {
-	kind: 'point' | 'any' | 'bump' | 'voidpick';
+	kind: 'point' | 'any' | 'bump' | 'voidpick' | 'voidfix';
 	count: number;
 	point?: number;
 	/** bump: 位移方向(+1 月牙尺 / −1 缺月尺) */
@@ -528,6 +528,9 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 		else if (e.type === 'clear_void' && e.pick) ops.push({ kind: 'voidpick', count: 1, srcId });
 		else if (e.type === 'bump_point')
 			ops.push({ kind: 'bump', count: e.count ?? 1, step: e.value ?? 1, srcId });
+		else if (e.type === 'void_fix')
+			// 月相符:作废骰子救援 —— 「任意数量」,上限就是全场骰子数,玩家点几颗算几颗
+			ops.push({ kind: 'voidfix', count: 6, point: e.point ?? 1, srcId });
 	};
 	for (const { eff, srcId } of self) walk(eff as unknown as AnyEff, srcId);
 	for (const b of buffs) {
@@ -1793,7 +1796,8 @@ export type RunOp =
 			options?: number[];
 	  }
 	| { kind: 'bump'; count: number; step?: number; srcId?: string }
-	| { kind: 'voidpick'; count: number; srcId?: string };
+	| { kind: 'voidpick'; count: number; srcId?: string }
+	| { kind: 'voidfix'; count: number; point?: number; srcId?: string };
 
 export type RunSave = {
 	v: number;
