@@ -15,10 +15,12 @@
 //   · **留白**:事件稀疏、长静默,底噪只做夜的「底」。
 // Pad 三要素(Northern Valley Audio:shimmer / warmth / movement):
 //   · shimmer:八度上纯音微光层 + 铃音穿长混响(「光落在水面上」,感到而听不到);
-//   · warmth:根音区三角波双振子微失谐(±3 音分的「胖」,不是拍频),慢起音 blooming;
+//   · warmth:体坐在**低中频**(根 + 12)—— 低频只留一条极轻纯音锚点(sub 响了
+//     就是浑);单振子、不带失谐对(微失谐对实听就是拍频的「嗡嗡」,踩过),慢起音 blooming;
 //   · movement:0.03/0.05/0.1Hz 三个不同速率的 LFO 叠着走,耳朵不会听腻。
 // 混响 = 这片月色的「身体」(MusicTech:Eno/Lanois 用混响当音色本体):
-//   合成 IR 的 ConvolverNode(3.6s 指数衰减、低通去金属感、双声道去相关)+ 小预延迟
+//   合成 IR 的 ConvolverNode(3.6s 指数衰减、低通去金属感、双声道去相关)+ 小预延迟,
+//   **回路带 240Hz 低切**(尾音只留中高,不在低频糊成一片)
 //   —— 干音只占三成,声音有了夜空的体积,单薄/诡异感随之消失。
 // 每场随机:调根(5 选)/ 铃音音池 / 密度 / LFO 速度;和声是**加权随机游走**(无循环),
 //   持续音每 9~16s 随机漂 ±3~25 音分,铃音随机声像/成簇/长静默 —— 两轮不会听到同一片。
@@ -97,6 +99,26 @@ let nextWanderAt = 0;
 let jingleEndsAt = 0;
 
 const LOOKAHEAD = 0.8;
+
+// ---- 窗口不可见 = 整张图冻住,可见再解冻 ----
+// ctx.suspend() 连**时钟**一起停:振子、混响尾、调度器的 nextAt 全部原地冻住,
+// resume() 后无缝接续(不会像静音那样把曲子白白放完,也不会时钟错位)。
+// 只在 Boss 乐真在放(mode !== 'off')时才动作 —— 不为一次切页凭空建/停整张音频图。
+let paused = false;
+if (typeof document !== 'undefined') {
+	document.addEventListener('visibilitychange', () => {
+		if (!out || mode === 'off') return;
+		const g = sfxGraph();
+		if (!g) return;
+		if (document.hidden && !paused) {
+			paused = true;
+			void g.ctx.suspend();
+		} else if (!document.hidden && paused) {
+			paused = false;
+			void g.ctx.resume();
+		}
+	});
+}
 
 const generateTrack = (): Track => {
 	const roots = [-3, 0, 3, 5, 8];
@@ -253,25 +275,24 @@ const startLayers = () => {
 	const now = g.ctx.currentTime;
 	const root = track.root;
 	// 持续低音:根 + 五度,三角波双振子 ±3 音分(warmth 的「胖」,不是拍频)+ 呼吸 LFO
-	const drone = (semi: number, base: number, lfoHz: number) => {
+	const drone = (semi: number, base: number, lfoHz: number, type: OscillatorType = 'triangle') => {
 		const v = g.ctx.createGain();
 		v.gain.value = 0.0001;
 		v.gain.linearRampToValueAtTime(base, now + 3);
 		const oscs: OscillatorNode[] = [];
-		for (const cents of [-3, 3]) {
-			const o = g.ctx.createOscillator();
-			o.type = 'triangle';
-			o.frequency.value = hz(semi) * Math.pow(2, cents / 1200);
-			o.connect(v);
-			o.start(now);
-			oscs.push(o);
-			droneOscs.push({ osc: o, base: hz(semi), cents });
-		}
+		// 单振子、零失谐 —— 失谐对在可听音区就是拍频的「嗡嗡」(踩过)
+		const o = g.ctx.createOscillator();
+		o.type = type;
+		o.frequency.value = hz(semi);
+		o.connect(v);
+		o.start(now);
+		oscs.push(o);
+		droneOscs.push({ osc: o, base: hz(semi), cents: 0 });
 		const lfo = g.ctx.createOscillator();
 		const lfoGain = g.ctx.createGain();
 		lfo.type = 'sine';
 		lfo.frequency.value = lfoHz * track!.driftRate;
-		lfoGain.gain.value = base * 0.35;
+		lfoGain.gain.value = base * 0.25;
 		lfo.connect(lfoGain).connect(v.gain);
 		lfo.start(now);
 		breathLfos.push({ osc: lfo, base: lfoHz * track!.driftRate });
@@ -284,8 +305,10 @@ const startLayers = () => {
 			}
 		};
 	};
-	living.push(drone(root, 0.09, 0.05));
-	living.push(drone(root + 7, 0.06, 0.03));
+	// 两层低音分工:极轻纯音锚点(sub 的重量感,感到而听不到)/ 可听的体在 +12
+	// (低中频才是 warmth 的正位)。只留两条 —— 少 = 不吵
+	living.push(drone(root, 0.02, 0.03, 'sine'));
+	living.push(drone(root + 12, 0.04, 0.05));
 	// shimmer 微光层:八度上的纯音,自带更慢的明灭(「光落在水面上」)
 	{
 		const v = g.ctx.createGain();
@@ -293,7 +316,7 @@ const startLayers = () => {
 		v.gain.linearRampToValueAtTime(0.02, now + 5);
 		shimmerGain = v;
 		const oscs: OscillatorNode[] = [];
-		for (const semi of [root + 12, root + 19]) {
+		for (const semi of [root + 24, root + 31]) {
 			const o = g.ctx.createOscillator();
 			o.type = 'sine';
 			o.frequency.value = hz(semi);
@@ -318,21 +341,26 @@ const startLayers = () => {
 			}
 		});
 	}
-	// tremolo 颤音声部(紧张时才听得到的「抖」:协和音高的 AM 颤抖,不是小二度)
+	// tremolo 颤音声部(紧张时才听得到的「抖」)。
+	// AM 必须放在**电平之后**(o → v → am):把 LFO 直接接 v.gain 是 ±1 的全幅调制
+	// —— 那不是颤音是蜂鸣(踩过);am 层 0.55±0.45 的**相对**深度才是。
 	{
 		const v = g.ctx.createGain();
 		v.gain.value = 0.0001;
 		const o = g.ctx.createOscillator();
 		o.type = 'sine';
 		o.frequency.value = hz(root + 21); // 五声里的高音,协和
+		const am = g.ctx.createGain();
+		am.gain.value = 0.55;
 		const trem = g.ctx.createOscillator();
-		const tremGainNode = g.ctx.createGain();
+		const tremDepth = g.ctx.createGain();
 		trem.type = 'sine';
 		trem.frequency.value = 5.5 + Math.random() * 1.5;
-		tremGainNode.gain.value = 1; // 全深度 AM,绝对音量由 v 控制
-		trem.connect(tremGainNode).connect(v.gain);
+		tremDepth.gain.value = 0.45;
+		trem.connect(tremDepth).connect(am.gain);
 		o.connect(v);
-		v.connect(bed!);
+		v.connect(am);
+		am.connect(bed!);
 		o.start(now);
 		trem.start(now);
 		tremGain = v;
@@ -393,7 +421,7 @@ const applyTension = () => {
 	const now = g.ctx.currentTime;
 	const t = t01();
 	shimmerGain?.gain.setTargetAtTime(0.02 + t * 0.03, now, 0.9);
-	tremGain?.gain.setTargetAtTime(t < 0.4 ? 0 : 0.012 + (t - 0.4) * 0.03, now, 0.9);
+	tremGain?.gain.setTargetAtTime(t < 0.5 ? 0 : 0.006 + (t - 0.5) * 0.01, now, 0.9);
 	for (const { osc, base } of breathLfos)
 		osc.frequency.setTargetAtTime(base * (1 + t * 0.8), now, 1);
 	airFilter?.frequency.setTargetAtTime(800 + t * 1000, now, 1.5);
@@ -442,7 +470,7 @@ const scheduleEvent = (at: number) => {
 			bellAt(at + 0.09 + i * (0.07 + Math.random() * 0.12), pickNote(), 0.05, 1.2);
 		if (Math.random() < 0.06) glissAt(at + 0.3, Math.random() < 0.5, 0.04);
 	} else if (r > 0.94 - t * 0.03) {
-		subSwell(at, 6 + Math.random() * 4, (battle ? 0.14 : 0.09) * (0.8 + t * 0.4));
+		subSwell(at, 6 + Math.random() * 4, (battle ? 0.085 : 0.055) * (0.8 + t * 0.4));
 	} else if (t >= 3 && r < 0.05 + t * 0.01) {
 		edgeSwell(at, 3 + Math.random() * 2); // 影子:事件式小二度,不解决
 	} else if (ch) {
@@ -484,7 +512,7 @@ export const bossBgmSting = (kind: 'throw' | 'reroll', landIn = 0.8) => {
 		glissAt(at, Math.random() < 0.5, 0.055 + t * 0.02);
 	} else if (variant === 1) {
 		// ② sub 一沉 + 八度双 glint(sub/中高/高 = 频谱铺满)
-		subSwell(at, 0.7, 0.11 + t * 0.04);
+		subSwell(at, 0.7, 0.07 + t * 0.03);
 		bellAt(at, VOICE[chordKey][0] + 12, 0.07, 1.0);
 		bellAt(at + 0.06, VOICE[chordKey][0] + 24, 0.05, 0.8);
 	} else {
@@ -509,7 +537,7 @@ export const bossBgmSting = (kind: 'throw' | 'reroll', landIn = 0.8) => {
 	// 影子边音:紧张到后段,骰子都带着一丝不祥
 	if (t >= 0.6) bellAt(at + 0.1, EDGE_NOTES[1], 0.035, 0.8);
 	// 落定一击(骰子定格那一刻)
-	landAt(at + Math.max(0.15, landIn), 0.1 + t * 0.05);
+	landAt(at + Math.max(0.15, landIn), 0.065 + t * 0.035);
 };
 
 /** 每只 Tee 开掷时递进(0..5):越掷越紧 */
@@ -524,7 +552,7 @@ export const bossBgmTension = (level: number) => {
 const scheduleJingle = (at: number) => {
 	if (!track || !out) return;
 	const root = track.root;
-	subSwell(at, 2.4, 0.16);
+	subSwell(at, 2.4, 0.11);
 	const g = sfxGraph();
 	if (g && out) {
 		const src = g.ctx.createBufferSource();
@@ -629,10 +657,16 @@ const ensureOut = () => {
 		conv.buffer = makeImpulse(ctx);
 		const revOut = ctx.createGain();
 		revOut.gain.value = 1.1;
+		// 混响回路先 240Hz 低切:尾音只留「月色」的中高,不在低频糊成一片
+		const hp = ctx.createBiquadFilter();
+		hp.type = 'highpass';
+		hp.frequency.value = 240;
+		hp.Q.value = 0.7;
 		// 干/湿三七开 —— 混响是这片月色的「身体」
 		bed.connect(out);
 		bed.connect(revIn);
-		revIn.connect(conv);
+		revIn.connect(hp);
+		hp.connect(conv);
 		conv.connect(revOut);
 		revOut.connect(g.bus);
 		out.connect(g.bus);
