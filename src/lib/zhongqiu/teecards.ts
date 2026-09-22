@@ -58,7 +58,8 @@ export interface DiceMods {
 export type TeeEffect =
 	| { type: 'chips'; value: number } // 基础分 +chips
 	| { type: 'live_die_chips'; per: number } // 每颗未作废的骰子:基础分 +per(空四)
-	| { type: 'mult'; value: number } // 得分 ×mult
+	// unlessNone:判成「再接再厉」时这条不生效(玉兔捣药卡面「未掷出再接再厉时…但得分 ×0.8」)
+	| { type: 'mult'; value: number; unlessNone?: boolean } // 得分 ×mult
 	| { type: 'chips_mult'; chips: number; mult: number } // 加算 + 乘算
 	| { type: 'cond'; cond: Cond; chips?: number; mult?: number } // 条件触发
 	| { type: 'team_mult'; value: number } // 全队总分 ×mult
@@ -675,7 +676,9 @@ export const CARDS: TeeCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'level_up', count: 1 },
-				{ type: 'mult', value: 0.8 },
+				// ×0.8 和抬档是**同一个条件**:掷空时抬档被页面的 level_up 门挡住,
+				// 这条不跟着挡就会白扣 20%(踩过:掷空 + 柚子 +8 → 实算 6,应为 8)
+				{ type: 'mult', value: 0.8, unlessNone: true },
 				// 已经是最高档(状元插金花)时 +1 档无处可去,改成底分翻倍顶上
 				{ type: 'level_base_mult', levelIds: ['zhuang_yuan_chajinhua'], value: 2 }
 			]

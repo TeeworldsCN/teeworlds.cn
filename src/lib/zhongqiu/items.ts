@@ -503,7 +503,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		rarity: 'legendary',
 		skin: 'Roaning Knight',
 		price: 8,
-		turns: 2,
+		turns: 1,
 		refund: true,
 		effect: { type: 'set_point', count: 1, point: 4 }
 	},

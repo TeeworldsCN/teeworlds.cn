@@ -270,6 +270,12 @@ export interface TeamTee {
 	lastDice: number[];
 	/** 这一手哪些骰子被判作废(高照抄牌面时要连作废状态一起抄) */
 	lastVoid?: number[];
+	/**
+	 * 这一手哪些骰子是**玩家亲手改出来的**(改点豁免:不吃「视为」)。
+	 * 必须按 Tee 记 —— 同一只手会被回头读(队友数「我」的骰面 / 回合末桂树记账),
+	 * 拿不到当时那份豁免名单,亲手改出来的点又会被「X 视为 Y」改写一遍(踩过)。
+	 */
+	lastOpted?: number[];
 	buffs: AppliedBuff[];
 	charge?: number;
 	/**
@@ -337,15 +343,17 @@ export const normalizeSelf = (team: TeamTee[]): TeamTee[] => {
 export type GrowthMap = Record<string, number>;
 
 /** 过关后成长卡叠层 */
-export const applyGrowth = (cards: TeeCard[], growth: GrowthMap): GrowthMap => {
+export const applyGrowth = (cards: (TeeCard | null)[], growth: GrowthMap): GrowthMap => {
 	const next = { ...growth };
-	const walk = (eff: TeeEffect, id: string) => {
-		if (eff.type === 'scaling_mult') next[id] = (next[id] ?? 0) + eff.per;
-		// growth_mult 是复利,记的是**关数**,计分时 mult *= (1+per)^growth
-		else if (eff.type === 'growth_mult') next[id] = (next[id] ?? 0) + 1;
-		else if (eff.type === 'bundle') eff.parts.forEach((p) => walk(p, id));
-	};
-	for (const card of cards) walk(card.effect, card.id);
+	// 按位置展开(复制卡也算),键用 **srcId** —— 被抄的那张卡自己记自己的账
+	cards.forEach((_, i) => {
+		if (!cards[i]) return;
+		for (const { eff, srcId } of effectiveEffects(cards, i)) {
+			if (eff.type === 'scaling_mult') next[srcId] = (next[srcId] ?? 0) + eff.per;
+			// growth_mult 是复利,记的是**关数**,计分时 mult *= (1+per)^growth
+			else if (eff.type === 'growth_mult') next[srcId] = (next[srcId] ?? 0) + 1;
+		}
+	});
 	return next;
 };
 
@@ -780,6 +788,11 @@ export const calcTeeScore = ({
 				// 取整:明细行本来就是整数,而 0.5 系数会把 25 变成 12.5 —— 界面按整数显示 13,
 				// 就会和引擎差半个点。记账时就取整,两边完全对得上。
 				buffChips += Math.round((be.value ?? 0) * buffChipsScale);
+			} else if (be.type === 'sum_chips') {
+				// 潮信符:点数和 ×per 计入基础分(和卡牌侧 sum_chips 同一口径;寒月缩放它的加值)。
+				// 踩过:以前加成卡这边**根本没这个分支**(那个 case 在卡牌那条路上,
+				// 而没有任何 Tee 卡用这个类型),买了这张卡等于没有。
+				buffChips += Math.round((be.per ?? 0) * diceSum * buffChipsScale);
 			} else if (be.type === 'base_mult') {
 				// 和 mult 同一套口径:凛月的「加成卡乘值只算一半」也管它
 				buffBaseMult *= 1 + ((be.value ?? 1) - 1) * buffMultScale;
@@ -945,6 +958,9 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'mult': {
+				// 玉兔捣药:×0.8 和抬档是**同一个条件**(卡面「未掷出再接再厉时…但得分 ×0.8」),
+				// 掷空时抬档那边被页面的 level_up 门挡住了,这条不跟着挡就会白扣 20%
+				if (eff.unlessNone && levelId === 'none') break;
 				const before = { chips, mult };
 				mult *= eff.value;
 				note(srcId, 'card', chips - before.chips, before.mult === 0 ? 1 : mult / before.mult);
@@ -1292,6 +1308,13 @@ export const calcTeeScore = ({
 		}
 	}
 
+	/**
+	 * 主动技的「计入基础分」加值(和值技 / 田螺):在**两次基础分缩放之前**并进 chips。
+	 * 射日仙(rerollBaseMult)与桂花糖浆(buffBaseMult)都是「整块基础分一起放大」,
+	 * 后加的话这份分就落在缩放外面(踩过:桂花糖浆 + 潮汐主动技 +120 → 实算 140,卡面应 260);
+	 * 逆向的 net 快照也按卡面「计入基础分」把它算进净值里。
+	 */
+	for (const sc of skillChips) chips += sc.chips;
 	const baseRaw = Math.max(level.score, baseFloor);
 	const baseScaled = baseRaw * baseMult;
 	// 射日仙:每重掷一颗,整块基础分 ×N —— 等级底分、卡牌筹码、加成卡筹码一起放大
@@ -1341,12 +1364,10 @@ export const calcTeeScore = ({
 	if (rerollBaseMult !== 1)
 		// 射日仙:底分和所有筹码一起放大 —— 这是对整个小计的乘,出乘算行才对得上卡面
 		note(rerollBaseSrc, 'card', 0, rerollBaseMult, `重掷 ${rerolled} 颗`);
-	for (const sc of skillChips) {
-		chips += sc.chips;
-		note(sc.srcId, 'card', sc.chips, 1, sc.from);
-	}
-	// 主动技的加值:和值技(点数和 ×N 计入基础分)与田螺都走这里 ——
-	// **必须在乘算之前**进 chips、乘算也要并进 mult,不然这份分吃不到倍率链。
+	// 主动技加值的**明细行**:数值本身早在 baseRaw 上方就并进 chips 了(要吃射日仙/桂花糖浆的缩放),
+	// 这里只负责把行推给界面 —— 位置不变,所以结算动画里仍是「加算行在乘算行前面」。
+	for (const sc of skillChips) note(sc.srcId, 'card', sc.chips, 1, sc.from);
+	// 主动技的乘算:和值技「超过 N 后每点 ×p」也必须在乘算链里
 	if (skillMult) {
 		const bm = mult;
 		mult *= skillMult.mult;
@@ -1458,8 +1479,13 @@ export const calcTeamTotal = (
 			}
 		} else if (eff.type === 'bundle') eff.parts.forEach((p) => walk(p, i, cardId));
 	};
-	cards.forEach((card, i) => {
-		if (card) walk(card.effect, i, card.id);
+	// 复制卡(copy_right)同样要算团队级效果:把每格就地展开成「这一格实际生效的效果」再走一遍。
+	// 不展开的话红绳/姻缘簿抄到牵丝戏(全队×1.15)/桂影(relay)/月上广寒(比值)/饼铺掌柜时会静默少一份 ——
+	// 而走 calcTeeScore 的那批团队效果(team_chips/per_tag teamWide/self_mult)复制却是生效的,两边对不上。
+	// 位置 i 保持不变:接力/比值/邻居全按位置算,展开只换「效果是谁的」(srcId = 被抄那张)。
+	cards.forEach((_, i) => {
+		if (!cards[i]) return;
+		for (const { eff, srcId } of effectiveEffects(cards, i)) walk(eff, i, srcId);
 	});
 	const total = Math.round((scores.reduce((a, b) => a + b, 0) + relay + ratioBonus) * teamMult);
 	return {
@@ -1486,16 +1512,22 @@ export const roundReward = (n: number): number => 5 + Math.floor((n - 1) / 4) * 
 export const overflowReward = (score: number, target: number): number =>
 	Math.min(8, Math.floor((Math.max(0, score - target) / Math.max(1, target)) * 2));
 
-export const economyReward = (cards: TeeCard[], mooncakes = 0): number =>
-	cards.reduce((s, c) => {
-		const walk = (eff: TeeEffect): number => {
-			if (eff.type === 'economy') return eff.per;
-			if (eff.type === 'interest') return Math.floor(mooncakes / eff.perCoins) * eff.per;
-			if (eff.type === 'bundle') return eff.parts.reduce((a, p) => a + walk(p), 0);
-			return 0;
-		};
-		return s + walk(c.effect);
-	}, 0);
+/**
+ * 过关的经商收益。
+ * ⚠️ 必须传**按位置对齐**的卡表(含 null 的那一格)—— 复制卡(copy_right)是就地展开的,
+ * 传过滤掉 null 的数组会让它抄到错的右邻(见 calcTeamTotal 同一条注释)。
+ */
+export const economyReward = (cards: (TeeCard | null)[], mooncakes = 0): number => {
+	let sum = 0;
+	cards.forEach((_, i) => {
+		if (!cards[i]) return;
+		for (const { eff } of effectiveEffects(cards, i)) {
+			if (eff.type === 'economy') sum += eff.per;
+			else if (eff.type === 'interest') sum += Math.floor(mooncakes / eff.perCoins) * eff.per;
+		}
+	});
+	return sum;
+};
 
 // ---- 卡池工具 ----
 
@@ -1588,6 +1620,8 @@ export type RunTeamSlot = {
 	skillMult?: { srcId: string; mult: number; from?: string };
 	/** 这一手哪些骰子作废(高照抄作废状态用) */
 	lastVoid?: number[];
+	/** 这一手哪些骰子是玩家亲手改的(改点豁免,回头读骰面用) */
+	lastOpted?: number[];
 	/** 桂树那类累计(按 Tee 记,不按卡);老存档没有 → 按空处理 */
 	faceGrow?: GrowthMap;
 	/** 饼铺掌柜那类:这只 Tee 入队后卖掉的 Tee 数;老存档没有 → 按 0 处理 */
