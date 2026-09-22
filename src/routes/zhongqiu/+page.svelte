@@ -4959,13 +4959,12 @@
 								{#if mvp}
 									<div class="mt-2 border-t border-slate-700/60 pt-2">
 										<div class="flex items-center gap-2">
-											<span class="text-sm">🏅</span>
 											<span class="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
 												><TeeRender name={mvp.skin} className="h-full w-full" /></span
 											>
 											<div class="min-w-0">
 												<div class="truncate text-sm font-bold text-amber-300">
-													MVP · {mvp.name}
+													🏅 MVP · {mvp.name}
 												</div>
 												<div class="text-[10px] text-slate-500 sm:text-[11px]">
 													第 {mvp.round} 关

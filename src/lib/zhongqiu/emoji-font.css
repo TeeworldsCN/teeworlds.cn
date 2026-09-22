@@ -5,9 +5,9 @@
  * 长相完全不同(Windows 的 Segoe / 苹果的 Apple Color Emoji / 安卓的 Noto),
  * 没装 emoji 字体的环境(比如构建机、部分 Linux)更是直接显示豆腐块。
  *
- * 这份是 **Noto Color Emoji v2.051 的精简子集**:扫活动页源码得到的 46 个码位,
- * woff2 87KB + ttf 94KB(原版 10.2MB,许可证见 static/fonts/OFL.txt)。
- * 那 46 个以外的字符照旧交给系统字体:页面里的 → ← ✓ ✕ 这些本来就不是彩色 emoji,
+ * 这份是 **Noto Color Emoji v2.051 的精简子集**:扫活动页源码得到的 49 个码位,
+ * woff2 90KB + ttf 97KB(原版 10.2MB,许可证见 static/fonts/OFL.txt)。
+ * 那 49 个以外的字符照旧交给系统字体:页面里的 → ← ✓ ✕ 这些本来就不是彩色 emoji,
  * Noto Color Emoji 里也没有,不需要跟着下载。
  *
  * 生成脚本是 tools/zhongqiu/build-emoji-font.py(该目录是本地工具目录,不入库)。
