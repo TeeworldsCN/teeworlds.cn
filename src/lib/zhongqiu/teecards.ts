@@ -464,7 +464,7 @@ export const CARDS: TeeCard[] = [
 		desc: '「我」掷出"三红"及以上时，该 Tee 得分 ×4.5',
 		rarity: 'rare',
 		tag: '月',
-		skin: 'FoxTea',
+		skin: 'sleppbunny',
 		effect: { type: 'on_player', cond: 'san_hong_plus', mult: 4.5 }
 	},
 	{
@@ -726,7 +726,7 @@ export const CARDS: TeeCard[] = [
 		name: '红绳',
 		desc: '复制右侧 Tee 的卡牌',
 		rarity: 'common',
-		skin: 'lan_fir',
+		skin: 'red_panda',
 		effect: { type: 'copy_right' }
 	},
 	{
