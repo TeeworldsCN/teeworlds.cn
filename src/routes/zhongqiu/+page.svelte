@@ -3487,6 +3487,15 @@
 		};
 	});
 
+	/** 触屏 = **hover 语义**:点一下芯片显示说明,点其他任何地方收起(和浏览器 :hover 直觉一致)。
+	 *  芯片自己那格在 pointerdown 里 stopPropagation,免得窗口这条把刚显示的又收掉。
+	 *  PC 鼠标照常走 hover(移入显示、移开收),这条不掺和。 */
+	const dismissTip = (e: PointerEvent) => {
+		if (e.pointerType === 'mouse') return;
+		peekBuff = null;
+		hoverTee = null;
+	};
+
 	// ---- 展示 ----
 
 	const rawProgress = $derived(target > 0 ? displayScore / target : 0);
@@ -3686,7 +3695,12 @@
 </svelte:head>
 
 <!-- 拖拽多选:手指/鼠标可能停在骰子外面松开,收笔必须挂在 window 上 -->
-<svelte:window onpointerup={endPaint} onpointercancel={endPaint} onblur={endPaint} />
+<svelte:window
+	onpointerdown={dismissTip}
+	onpointerup={endPaint}
+	onpointercancel={endPaint}
+	onblur={endPaint}
+/>
 
 <!-- 禁选:这是个游戏,连点带拖时不该把面板文字选中(图鉴里单独放开,见 Codex) -->
 <div
@@ -3761,15 +3775,11 @@
 				onpointerdown={(e) => {
 					lastPointerWasMouse = e.pointerType === 'mouse';
 					anchorBuff(card, e.currentTarget);
-					// hoverOnly(结算页):触屏**按住**显示(touchdown)—— 不做点按常驻
-					if (hoverOnly && !lastPointerWasMouse) peekBuff = card;
-				}}
-				onpointerup={() => {
-					// hoverOnly + 触屏:抬手就收(touchup);鼠标松开不影响 hover
-					if (hoverOnly && !lastPointerWasMouse) peekBuff = null;
-				}}
-				onpointercancel={() => {
-					if (hoverOnly) peekBuff = null;
+					// 触屏 = hover 语义:点一下显示(收起交给窗口的 dismissTip —— 点别处收)
+					if (!lastPointerWasMouse) {
+						peekBuff = card;
+						e.stopPropagation();
+					}
 				}}
 				onpointerenter={(e) => {
 					if (e.pointerType === 'touch') return;
@@ -3777,19 +3787,16 @@
 					anchorBuff(card, e.currentTarget);
 				}}
 				onpointerleave={(e) => {
+					// 触屏抬指后会立刻发 pointerleave:那种情况不收(它是「点着」的 hover 态)
 					if (e.pointerType !== 'touch' && peekBuff?.id === card.id) peekBuff = null;
 				}}
 				onclick={(e) => {
-					// hoverOnly(结算页清单):不做「点按常驻」—— PC 靠 hover、触屏靠按住
-					if (hoverOnly) return;
-					// 仓库/道具条(非 hoverOnly):触屏点一下看、再点收起(鼠标靠 hover,不抢点击)
+					// 显示/收起统一走 hover 语义(点一下显示、点别处收)—— 不做「点同一下开/关」
 					anchorBuff(card, e.currentTarget);
-					if (!lastPointerWasMouse) peekBuff = peekBuff?.id === card.id ? null : card;
 				}}
 				onkeydown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.preventDefault();
-						if (hoverOnly) return;
 						anchorBuff(card, e.currentTarget);
 						peekBuff = peekBuff?.id === card.id ? null : card;
 					}
@@ -4892,23 +4899,20 @@
 												onpointerdown={(e) => {
 													lastPointerWasMouse = e.pointerType === 'mouse';
 													hoverTeeAnchor = e.currentTarget;
-													// 触屏**按住**显示(touchdown);PC 纯 hover(见 pointerenter)
-													if (!lastPointerWasMouse) hoverTee = i;
-												}}
-												onpointerup={() => {
-													// 触屏抬手就收(touchup);鼠标松开不影响 hover
-													if (!lastPointerWasMouse) hoverTee = null;
-												}}
-												onpointercancel={() => {
-													hoverTee = null;
+													// 触屏 = hover 语义:点一下显示(收起交给窗口的 dismissTip)
+													if (!lastPointerWasMouse) {
+														hoverTee = i;
+														e.stopPropagation();
+													}
 												}}
 												onpointerenter={(e) => {
 													if (e.pointerType === 'touch') return;
 													hoverTee = i;
 													hoverTeeAnchor = e.currentTarget;
 												}}
-												onpointerleave={() => {
-													hoverTee = null;
+												onpointerleave={(e) => {
+													// 触屏抬指后会立刻发 pointerleave:那种情况不收(它是「点着」的 hover 态)
+													if (e.pointerType !== 'touch') hoverTee = null;
 												}}
 											>
 												<span class="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
