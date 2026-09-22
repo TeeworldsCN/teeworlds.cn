@@ -1628,6 +1628,9 @@ export interface SaveData {
 	bestScore: number;
 	bestRound: number;
 	plays: number;
+	/** Boss 音效开关 —— 也入元存档(和 localStorage 双写,换设备/清站点数据不丢)。
+	 * 老存档没有这个字段 → undefined = 默认开 */
+	bossSfx?: boolean;
 }
 
 const SAVE_KEY = 'midautumn:save';
@@ -1662,6 +1665,17 @@ export const saveResult = (score: number, round: number) => {
 export const clearSave = () => {
 	try {
 		localStorage.removeItem(SAVE_KEY);
+	} catch {
+		// ignore
+	}
+};
+
+/** Boss 音效开关入元存档(bgM 的 setBossSfxEnabled 双写到这里) */
+export const setSaveBossSfx = (on: boolean) => {
+	const save = readSave();
+	save.bossSfx = on;
+	try {
+		localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 	} catch {
 		// ignore
 	}

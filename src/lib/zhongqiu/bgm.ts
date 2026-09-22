@@ -35,6 +35,7 @@
 //      bossBgmTension / bossBgmSting / bossBgmEnd / bossBgmStop。
 
 import { sfxGraph } from './sfx';
+import { getSave, setSaveBossSfx } from './game';
 
 type Mode = 'off' | 'prep' | 'jingle' | 'battle' | 'ending';
 
@@ -53,6 +54,33 @@ const EDGE = [5, 11, 23];
 
 const hz = (semi: number) => 55 * Math.pow(2, semi / 12);
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+// ---- Boss 音效开关(独立于主音效;localStorage + 元存档**双写双读**)----
+// 关了 = 本模块一个音都不出(开场曲/stinger/收束句);首页有开关,
+// 关掉时页面会顺手 bossBgmStop() 把在途乐句也收了。
+const KEY = 'midautumn:bossSfx';
+let enabled = true;
+export const bossSfxEnabled = () => enabled;
+export const setBossSfxEnabled = (on: boolean) => {
+	enabled = on;
+	try {
+		localStorage.setItem(KEY, on ? '1' : '0');
+	} catch {
+		// ignore
+	}
+	setSaveBossSfx(on); // 也入元存档(支持存档)
+};
+export const loadBossSfxPref = () => {
+	try {
+		const raw = localStorage.getItem(KEY);
+		// 专门的开关键优先(更新鲜),没有就看元存档,都没有 → 默认开
+		if (raw !== null) enabled = raw !== '0';
+		else enabled = getSave().bossSfx !== false;
+	} catch {
+		enabled = true;
+	}
+	return enabled;
+};
 
 // ---- 合成 IR 的轻混响(只做尺寸)----
 
@@ -213,7 +241,7 @@ const scheduleFanfare = (at: number) => {
  * tension(0..5)直接长在音上:颗数/音区/重量/变徵/riser/双落定逐级加上去。
  */
 export const bossBgmSting = (kind: 'throw' | 'reroll', landIn = 0.8) => {
-	if (mode === 'off' || mode === 'ending' || !out) return;
+	if (!enabled || mode === 'off' || mode === 'ending' || !out) return;
 	const g = ensureOut();
 	if (!g) return;
 	const at = g.ctx.currentTime + 0.015;
@@ -279,6 +307,7 @@ if (typeof document !== 'undefined') {
 
 /** 进准备阶段(见 Boss 条件):武装本场 —— 抽调根,**不出声**(没有底噪) */
 export const bossBgmPrep = () => {
+	if (!enabled) return;
 	const g = ensureOut();
 	if (!g) return;
 	if (fanfareTimer !== null) clearTimeout(fanfareTimer);
@@ -289,6 +318,7 @@ export const bossBgmPrep = () => {
 
 /** 点「迎战」:开场曲(约 1.2s)。整局只来一次 */
 export const bossBgmBattle = () => {
+	if (!enabled) return;
 	if (mode === 'battle' || mode === 'jingle' || mode === 'ending') return;
 	const g = ensureOut();
 	if (!g || !out) return;
@@ -305,6 +335,7 @@ export const bossBgmBattle = () => {
 
 /** 回合结束:胜 = 五声下行的收束句;败 = 一记深沉落幕钟 */
 export const bossBgmEnd = (win: boolean) => {
+	if (!enabled) return;
 	if (mode === 'off' || mode === 'ending') return;
 	const g = ensureOut();
 	if (!g) return;

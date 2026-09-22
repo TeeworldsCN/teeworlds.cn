@@ -123,7 +123,9 @@
 		bossBgmPrep,
 		bossBgmSting,
 		bossBgmStop,
-		bossBgmTension
+		bossBgmTension,
+		loadBossSfxPref,
+		setBossSfxEnabled
 	} from '$lib/zhongqiu/bgm';
 	import { onMount, tick } from 'svelte';
 	import { setLayoutTheme } from '$lib/layoutTheme.svelte';
@@ -762,6 +764,14 @@
 		setSfxEnabled(sfxOn);
 		if (sfxOn) sfxClick();
 	};
+	/** Boss 音效开关(开场曲/stinger/收束句,和主音效分开;localStorage + 元存档双写) */
+	let bossSfxOn = $state(true);
+	const toggleBossSfx = () => {
+		bossSfxOn = !bossSfxOn;
+		setBossSfxEnabled(bossSfxOn);
+		if (bossSfxOn) sfxClick();
+		else bossBgmStop(); // 关掉时把在途乐句一并收了
+	};
 	let rollDur = $state(0.75); // 旋转动画单次时长(秒),角速度恒定
 
 	let rollIter = $state(1); // 旋转重复次数(慢速档多转几圈)
@@ -807,6 +817,7 @@
 
 	onMount(() => {
 		sfxOn = loadSfxPref();
+		bossSfxOn = loadBossSfxPref();
 		sfxSetRate(speed);
 		// 作弊引擎:只在开发态或**测试 build** 里启用(见 $lib/zhongqiu/test-build)。
 		// 生产构建里这两个条件都是常量 false → 整段被 DCE 掉,不只是「藏起来」。
@@ -4004,6 +4015,18 @@
 					>
 						🎲 开始博饼
 					</button>
+
+					<!-- Boss 音效:开场曲 / 掷骰 stinger / 收束句(和主音效分开控制) -->
+					<div class="mt-2 flex items-center justify-center gap-1.5 text-xs text-slate-300">
+						<span>Boss 音效</span>
+						<button
+							class="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-300 transition hover:bg-amber-500/20 sm:px-2.5 sm:py-1 sm:text-xs"
+							title={bossSfxOn ? '关闭 Boss 音效' : '开启 Boss 音效'}
+							onclick={toggleBossSfx}
+						>
+							{bossSfxOn ? '🔊' : '🔇'}
+						</button>
+					</div>
 
 					<!-- 规则:始终展开(不折叠) -->
 					<div
