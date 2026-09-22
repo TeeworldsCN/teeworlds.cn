@@ -43,3 +43,6 @@ skin_blocklist.txt
 
 # 中秋活动的开发探针(探针/生成器/QA),只放本地,不入库
 tools/zhongqiu/
+
+# 会话工具的状态目录
+.pi-web/

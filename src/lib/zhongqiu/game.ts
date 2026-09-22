@@ -56,6 +56,15 @@ export interface Boss {
 	weight?: number;
 	/** 从第几关起才有机会抽到(无限模式后期专属,默认全程可抽) */
 	minRound?: number;
+	/**
+	 * 随机规则:每关抽一组参数(rollBossVariant),抽完写进 mods、把 desc 里的 {0}/{1} 换成数字。
+	 * `void` = 抽 1 个点作废(迷月);`map` = 抽 2 个**不同**的点做「X 点视为 Y 点」(影月)。
+	 * 候选点一律不含 4(4 是博饼的硬通货,作废它就成蚀月那种重锤)。抽到的数写在 `rolled` 上、
+	 * 存进存档 bossArgs —— 刷新不重抽;横幅上写明是哪几点,玩家照着留骰子。
+	 */
+	randomRule?: { kind: 'void' | 'map'; pool: number[] };
+	/** 本关抽到的随机参数(randomRule 的产出,读档时回填) */
+	rolled?: number[];
 }
 
 export const BOSSES: Boss[] = [
@@ -72,8 +81,9 @@ export const BOSSES: Boss[] = [
 		id: 'boss_miyue',
 		name: '迷月',
 		emoji: '🌫️',
-		desc: '本关掷出的 6 作废；目标 ×0.9',
-		mods: { void: [6] },
+		// 作废哪个点数每关随机抽(只抽非 4 点)—— 横幅上写明是哪一点,玩家可以照着留骰子
+		desc: '本关掷出的 {0} 点作废；目标 ×0.9',
+		randomRule: { kind: 'void', pool: [1, 2, 3, 5, 6] },
 		targetMult: 0.9,
 		mild: true
 	},
@@ -81,8 +91,10 @@ export const BOSSES: Boss[] = [
 		id: 'boss_yingyue',
 		name: '影月',
 		emoji: '🌒',
-		desc: '本关掷出的 3 作废；目标 ×0.95',
-		mods: { void: [3] },
+		// 「X 点视为 Y 点」的两个数每关随机抽:**互不相同**、都不是 4(rollBossVariant 保证)。
+		// 横幅写明是哪两点 → 玩家照着留骰子:被抽到的那面被吃掉,目标那面会变“重”
+		desc: '本关掷出的 {0} 点视为 {1} 点；目标 ×0.95',
+		randomRule: { kind: 'map', pool: [1, 2, 3, 5, 6] },
 		targetMult: 0.95,
 		mild: true
 	},
@@ -248,6 +260,37 @@ export const getBossById = (id: string): Boss =>
 	BOSSES.find((b) => b.id === `boss_${id}`) ??
 	BOSSES[0];
 
+/**
+ * 「随机规则」Boss 的**本关实例**(迷月:随机作废一个点;影月:X 点视为 Y 点,X≠Y)。
+ * 抽到的数写进 mods、把 desc 里的 {0}/{1} 换成数字,并记在 `rolled` 上(存档照它回填)。
+ * `args` 传上次抽到的(读档时不重抽);不合法(不在池里 / 两个数相同)就重抽。候选点永远不含 4。
+ */
+export const rollBossVariant = (boss: Boss, args?: number[]): Boss => {
+	const rr = boss.randomRule;
+	if (!rr) return boss;
+	const draw = (taken: number[], i: number): number => {
+		const cands = rr.pool.filter((f) => !taken.includes(f));
+		const saved = args?.[i];
+		return saved !== undefined && cands.includes(saved)
+			? saved
+			: cands[Math.floor(Math.random() * cands.length)];
+	};
+	const mods: DiceMods = { ...(boss.mods ?? {}) };
+	let rolled: number[];
+	if (rr.kind === 'void') {
+		rolled = [draw([], 0)];
+		mods.void = [...(mods.void ?? []), rolled[0]];
+	} else {
+		// 「视为」:两个数必须不同 —— X 视为 X 是白写,占着一个 Boss 位
+		const from = draw([], 0);
+		const to = draw([from], 1);
+		rolled = [from, to];
+		mods.map = { ...(mods.map ?? {}), [from]: to };
+	}
+	const desc = boss.desc.replace('{0}', String(rolled[0])).replace('{1}', String(rolled[1] ?? ''));
+	return { ...boss, mods, desc, rolled };
+};
+
 // ---- 队伍 ----
 
 export interface TeamTee {
@@ -364,30 +407,53 @@ export interface EffectiveEffect {
 	srcId: string;
 }
 
-export const effectiveEffects = (
-	cards: (TeeCard | null)[],
-	i: number,
-	depth = 0
-): EffectiveEffect[] => {
-	const card = cards[i];
-	if (!card) return [];
+/**
+ * 该 Tee **实际生效的效果**(复制链按位置展开)。
+ *
+ * 「复制右侧 Tee 的卡牌」允许**一直复制**:抄写者向右走,每经过一张**复制卡**就把它
+ * 自带的额外加成记到自己头上(姻缘簿的 ×1.5 / 镜花仙缘的全队 ×1.35),一直走到第一张
+ * **非复制卡**为止 —— 整张复制它的能力,收工。中途遇到「我」/没卡的空位就停:
+ * 相当于抄了一个没有能力的 Tee,沿途记下的额外加成照旧生效。
+ *
+ * 沿途的额外加成是**三角形叠加**的(N 张连排 = N(N+1)/2 份)—— 逐字语义就这么写的,
+ * 玩家凑得出这条链,高数值是他应得的。
+ *
+ * 这样展开和「把抄来的卡面逐字再念一遍」的递归读法完全等价,但只是单层循环、天然终止。
+ * ⚠️ 沿途的额外加成以**抄写者**为受益人落地(现有三张复制卡的额外都是位置无关的);
+ * 哪天给复制卡配位置敏感的额外(接力/邻居/比值类),口径要另定。
+ */
+export const effectiveEffects = (cards: (TeeCard | null)[], i: number): EffectiveEffect[] => {
 	const out: EffectiveEffect[] = [];
-	const walk = (eff: TeeEffect, srcId: string, d: number) => {
-		if (eff.type === 'copy_right') {
-			if (d > 1) return;
-			const right = cards[i + 1];
-			if (right) out.push(...effectiveEffects(cards, i + 1, d + 1));
-			// 「复制并超车」:复制到的效果之外再乘一层
-			if (eff.mult) out.push({ eff: { type: 'mult', value: eff.mult }, srcId: card.id });
-			return;
-		}
-		if (eff.type === 'bundle') {
-			eff.parts.forEach((p) => walk(p, srcId, d));
-			return;
-		}
-		out.push({ eff, srcId });
+	const own = cards[i];
+	if (!own) return [];
+	/** 这张卡里有没有「复制」(bundle 里也算) */
+	const isCopy = (eff: TeeEffect): boolean =>
+		eff.type === 'copy_right' || (eff.type === 'bundle' && eff.parts.some(isCopy));
+	/**
+	 * 收一张卡的效果:`keepCopy` = 连「复制」那条也收(只有最终目标整张照抄);
+	 * 否则只收额外加成 —— 复制卡自带的那层倍率是**长在 copy_right 上的**(姻缘簿 ×1.5),
+	 * 复制本身丢掉、倍率留下。bundle 一律摊平(明细行/技能栏按单条效果认)。
+	 */
+	const collect = (eff: TeeEffect, srcId: string, keepCopy: boolean) => {
+		if (eff.type === 'bundle') eff.parts.forEach((p) => collect(p, srcId, keepCopy));
+		else if (eff.type === 'copy_right') {
+			if (keepCopy) out.push({ eff, srcId });
+			if (eff.mult) out.push({ eff: { type: 'mult', value: eff.mult }, srcId });
+		} else out.push({ eff, srcId });
 	};
-	walk(card.effect, card.id, depth);
+	// 自己这张卡:额外照收;是复制卡就接着往右找目标
+	const ownIsCopy = isCopy(own.effect);
+	collect(own.effect, own.id, !ownIsCopy);
+	if (!ownIsCopy) return out;
+	for (let p = i + 1; p < cards.length; p++) {
+		const c = cards[p];
+		if (!c) break; // 「我」/空位:停 —— 相当于抄了一个没有能力的 Tee
+		if (!isCopy(c.effect)) {
+			collect(c.effect, c.id, true); // 第一张非复制卡:整张复制,收工
+			break;
+		}
+		collect(c.effect, c.id, false); // 中间复制卡:只记它的额外加成,接着往右
+	}
 	return out;
 };
 
@@ -1007,31 +1073,35 @@ export const calcTeeScore = ({
 			case 'per_tag': {
 				// 全队版:由「全队那一轮」统一发(自己那轮跳过),否则源头自己吃两次
 				if (eff.teamWide && skipTeamWide) break;
-				// 全队版只落到**同流派**的 Tee 身上,别的流派不吃
-				if (eff.teamWide && teamCards[index]?.tag !== eff.tag) break;
+				// 「每拥有一个同系 Tee」那半句:全队版只落到**同流派**的 Tee 身上,别的流派不吃
+				const sameTag = !eff.teamWide || teamCards[index]?.tag === eff.tag;
 				const n = new Set(teamCards.filter((c) => c?.tag === eff.tag).map((c) => c!.id)).size;
-				if (n <= 0) break;
 				const bc = chips;
 				const bm = mult;
-				if (eff.as === 'chips') chips += eff.per * n;
-				// 流派倍率 = 幂(×per^N):文案是「每拥有一个独特的「X」系 Tee:得分 ×N」,
-				// 也就是每张同流派卡再乘一层。全套改成乘算之后,这里跟着回幂。
-				else mult *= Math.pow(eff.per, n);
-				// 底分 = 四点颗数(用最终骰子,「1、6 视为 4」已算进去)。
-				// 只算给「长这张卡的那只 Tee」—— 卡面写的是「每有 1 颗 4 点,该 Tee 基础分 +300」。
-				// 这个 case 在全队那一轮里会为**每只同流派 Tee** 跑一遍,不把门就变成
-				// 「凡是同流派 Tee,自己的四点也换 +300」,和文案的「该 Tee」对不上。
+				let counted = 0;
+				if (sameTag && n > 0) {
+					counted = n;
+					if (eff.as === 'chips') chips += eff.per * n;
+					// 流派倍率 = 幂(×per^N):文案是「每拥有一个独特的「X」系 Tee:得分 ×N」,
+					// 也就是每张同流派卡再乘一层。全套改成乘算之后,这里跟着回幂。
+					else mult *= Math.pow(eff.per, n);
+				}
+				// 「每有 1 颗 4 点,该 Tee 基础分 +N」那半句:受益人是**持卡者**,卡面**没有**
+				// 同系条件 —— 被非同系 Tee 抄走时照样要给(踩过:同系门把两半句一起砍了,
+				// 红绳抄玉兔临凡连自己四点的 +375 都拿不到)。
+				// 只算给「长这张卡的那只 Tee」(onScoredTee):全队那一轮会为每格各跑一遍,
+				// 不把门就变成「人人都拿自己的四点换底分」。
 				const fours = ownDice.filter((d) => d === 4).length;
 				const fromFour = eff.chipsPerFour && onScoredTee ? fours * eff.chipsPerFour : 0;
 				chips += fromFour;
-				// 注解要配得上这个数:四点换来的底分不能只写「月系 3 张」(那说的是倍率那半)
-				note(
-					srcId,
-					'card',
-					chips - bc,
-					bm === 0 ? 1 : mult / bm,
-					`${eff.tag}系 ${n} 张${fromFour ? ` · 自己 ${fours} 个4` : ''}`
-				);
+				// 注解只写真生效的那几段:只有四点底分时不能标着「月系 3 张」(那说的是倍率那半)
+				const why = [
+					counted > 0 ? `${eff.tag}系 ${counted} 张` : '',
+					fromFour ? `自己 ${fours} 个4` : ''
+				]
+					.filter(Boolean)
+					.join(' · ');
+				note(srcId, 'card', chips - bc, bm === 0 ? 1 : mult / bm, why || undefined);
 				break;
 			}
 			case 'on_player': {
@@ -1391,12 +1461,19 @@ export const calcTeeScore = ({
 	};
 };
 
-export const decayBuffs = (team: TeamTee[]): void => {
-	for (const t of team) {
+/**
+ * 加成卡的持续关数 −1(到 0 就没了)。
+ * `playedUpTo`:本关**真投过骰**的最后一格下标(= countedTee)。云海提前收关时排在后面的
+ * Tee 根本没轮到 —— 按口径「这一关对它等于不存在」:不减回合、也不产生「没用掉就归还」
+ * (踩过:归还卡都是 turns=1,被这里一减直接蒸发,既没用上也没退)。
+ */
+export const decayBuffs = (team: TeamTee[], playedUpTo?: number): void => {
+	team.forEach((t, i) => {
+		if (playedUpTo !== undefined && i > playedUpTo) return;
 		t.buffs = t.buffs
 			.map((b) => ({ ...b, turnsLeft: b.turnsLeft - 1 }))
 			.filter((b) => b.turnsLeft > 0);
-	}
+	});
 };
 
 export const calcTeamTotal = (
@@ -1646,6 +1723,8 @@ export type RunSave = {
 	phase: string;
 	round: number;
 	bossId: string | null;
+	/** 迷月/影月这类「随机规则」Boss 本关抽到的参数(读档不重抽);老存档没有 → 重抽 */
+	bossArgs?: number[];
 	target: number;
 	mooncakes: number;
 	runScore: number;
@@ -1705,6 +1784,32 @@ export type RunSave = {
 	speedIdx: number;
 	wasRolling: boolean;
 	rollKind: string;
+	/** 这一手是否已**定格**(骰子已可见)。定格过的手恢复时绝不重掷 —— 免得刷新换一手(刷分) */
+	frozen?: boolean;
+
+	// ---- 结算页的收集统计 + MVP(老存档没有 → 读档兕底)。刷新回结算页要靠它 ——
+	// 否则刷新一下,刚打完那局的统计/MVP 全没了,结算页只剩个空壳
+	runStats?: {
+		cardsBought: number;
+		earnedMooncakes: number;
+		rerolled: number;
+		scoredFaces: number[];
+		startedAt: number;
+		/** 结束时刻(进结算屏那一下记);历时按 endedAt − startedAt 算,刷新也不会长 */
+		endedAt?: number;
+	};
+	/** 结算页「购入最多」的按卡计数 */
+	boughtCounts?: Record<string, number>;
+	/** MVP:单次结算最高分 + 那一次结算的行文本(text + cls,和结算动画同色) */
+	mvp?: {
+		name: string;
+		skin: string;
+		score: number;
+		levelName: string;
+		round: number;
+		teeIdx: number;
+		rows: { text: string; cls: string }[];
+	} | null;
 
 	// ---- 后来补的本关状态(花生/蜜枣/归家/猜谜/夜市/高照);老存档没有 → 读档时兕底 ----
 	/** 花生:本回合按下标作废的骰子(老存档没有 → 读档时兜底成 []) */

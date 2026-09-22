@@ -172,7 +172,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	},
 	{
 		id: 'dangui',
-		name: '丹桂',
+		name: '红桂',
 		desc: '得分 ×1.5',
 		rarity: 'common',
 		skin: 'Redboppenom',

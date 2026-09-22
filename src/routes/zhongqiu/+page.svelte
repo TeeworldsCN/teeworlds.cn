@@ -72,6 +72,7 @@
 		BOSSES,
 		getBoss,
 		getBossById,
+		rollBossVariant,
 		getSave,
 		hasRerollAllOnNone,
 		isBossRound,
@@ -465,7 +466,7 @@
 							: sk.skill === 'mult'
 								? `该 Tee 得分 ×${formatMult(sk.mult ?? 1)}（花 🥮 ${sk.cost ?? 0}）`
 								: sk.skill === 'end_round'
-									? `结束本关 · 未投 Tee +🥮 ${sk.perTee ?? 0}`
+									? `结束本关 · 未投 Tee +🥮 ${sk.perTee ?? 0}（加成卡保留）`
 									: sk.skill === 'sell_self'
 										? `回合结算时出售「我」 +🥮 ${sk.coins ?? 0}`
 										: '本关重掷';
@@ -541,6 +542,91 @@
 			lines.push({ text, cls: 'text-cyan-300' });
 		}
 		return lines;
+	};
+
+	// ---- 一局的收集统计(结算页显示;不入存档,刷新就没) ----
+	const runStats = {
+		/** 一共买下的加成卡张数 */
+		cardsBought: 0,
+		/** 一共赚到的月饼币(过关/溢出/经商/云海/卖 Tee/归家;田螺退的**退款**不算「赚」,那是花过的钱回来) */
+		earnedMooncakes: 0,
+		/** 一共重掷掉的骰子颗数(手动 + 自动都算) */
+		rerolled: 0,
+		/** 结算过的点数骰子:1~6 点各几颗(按**结算**时的骰面记,投掷过程中的不计) */
+		scoredFaces: [0, 0, 0, 0, 0, 0],
+		/** 本局开始时刻(算局内时长用) */
+		startedAt: 0,
+		/** 结束时刻(进结算屏那一下记;历时到此冻结 —— 刷新回结算页不能再长) */
+		endedAt: 0
+	};
+	/** 进结算屏就冻结历时并落盘(失败/放弃/QA 全走这里;读档回结算屏时 endedAt 本来就在存档里,不再动) */
+	$effect(() => {
+		if (phase === 'game_over' && runStats.startedAt && !runStats.endedAt) {
+			runStats.endedAt = Date.now();
+			saveRun(runSnapshot());
+		}
+	});
+	/** 累计买入的加成卡张数(按卡记;结算页「购入最多」Top10 用) */
+	let boughtCounts = $state<Record<string, number>>({});
+	/** 局内时长:derived 惰性求值,首次读到就是结算页渲染那一刻 → 天然冻结不跳秒 */
+	// 历时 = endedAt − startedAt:enddedAt 在进结算屏那一下冻结并入档 ——
+	// 刷新回结算页就停在**结束时**的时长,不能拿 Date.now() 一路长(刷一次涨几秒,挂着不动也自己涨)
+	const runDurationMs = $derived.by(() =>
+		runStats.startedAt ? (runStats.endedAt || Date.now()) - runStats.startedAt : 0
+	);
+	/** MVP:本局单次结算得分最高的一只(不计团队加成)+ 那次结算的行文本 */
+	type MvpInfo = {
+		name: string;
+		skin: string;
+		score: number;
+		levelName: string;
+		round: number;
+		teeIdx: number;
+		/** 结算动画那几行(text + cls)原样留着:结算页用同一套排版/配色展示,只是不播动画 */
+		rows: { text: string; cls: string }[];
+	};
+	let mvp: MvpInfo | null = $state(null);
+	/** 记一次「某只 Tee 结算完」:单次结算分破纪录就当 MVP(连结算行文本一起留) */
+	const recordMvp = (
+		tee: TeamTee,
+		score: number,
+		levelName: string,
+		rows: { text: string; cls: string }[],
+		round: number,
+		teeIdx: number
+	) => {
+		if (score <= (mvp?.score ?? 0)) return;
+		const card = cardOf(tee);
+		mvp = {
+			name: card?.name ?? '无名',
+			skin: card?.skin ?? tee.cardId ?? 'naomi',
+			score,
+			levelName,
+			round,
+			teeIdx,
+			rows
+		};
+	};
+	/** 本局买得最多的加成卡前 10(张数相同按名字序,和仓库一致) */
+	const topBoughtBuffs = $derived(
+		(Object.entries(boughtCounts) as [string, number][])
+			.sort(
+				(a, b) =>
+					b[1] - a[1] ||
+					(BUFF_BY_ID.get(a[0])?.name ?? '').localeCompare(
+						BUFF_BY_ID.get(b[0])?.name ?? '',
+						'zh-Hans-CN'
+					)
+			)
+			.slice(0, 10)
+	);
+	/** 回合开始时的统计快照(「本关重掷」要把这一关里记的数一起回滚,否则重掷后重算就翻倍) */
+	let roundStatSnap: { faces: number[]; rerolled: number; mvp: MvpInfo | null } | null = null;
+	/** 局内时长的展示格式(时:分:秒,两位数补齐) */
+	const formatDuration = (ms: number) => {
+		const s = Math.max(0, Math.round(ms / 1000));
+		const pad = (n: number) => String(n).padStart(2, '0');
+		return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
 	};
 
 	// 交互（改点/重掷）
@@ -932,7 +1018,7 @@
 				if (opts.round !== undefined) round = opts.round;
 				beginRound(); // 重置本关状态并把 phase 落到 intro
 				if (opts.boss !== undefined) {
-					boss = opts.boss === null ? null : getBossById(opts.boss);
+					boss = opts.boss === null ? null : rollBossVariant(getBossById(opts.boss));
 					target = Math.round(roundTarget(round) * (boss?.targetMult ?? 1));
 				}
 				if (p === 'idle') {
@@ -1038,6 +1124,7 @@
 				mooncakes,
 				target,
 				bossId: boss?.id ?? null,
+				bossArgs: boss?.rolled ?? null,
 				currentScore,
 				buffInventory,
 				settling,
@@ -1099,6 +1186,15 @@
 		runScore = 0;
 		mooncakes = 0;
 		buffInventory = {};
+		boughtCounts = {};
+		mvp = null;
+		// 一局的统计从零起:上一局的不能带过来(结算页显示的就是这一局)
+		runStats.cardsBought = 0;
+		runStats.earnedMooncakes = 0;
+		runStats.rerolled = 0;
+		runStats.scoredFaces = [0, 0, 0, 0, 0, 0];
+		runStats.startedAt = 0;
+		runStats.endedAt = 0;
 		selectedBuff = null;
 		peekBuff = null;
 		round = 1;
@@ -1182,8 +1278,21 @@
 	// ---- 局内存档:全量快照 ----
 	//
 	let settledDice = [1, 1, 1, 1, 1, 1];
+	/**
+	 * 「这一手已定」(骰子定格 = 玩家已经看得到结果)。定格那一刻**同步落盘**(markHandFrozen),
+	 * 不吃 200ms 防抖 —— 防抖窗口里刷新会撞上「wasRolling=true + 旧骰面」的存档,
+	 * 恢复时就白重掷一次 = 定格后刷新换一手(刷分/刷蜜枣)。
+	 */
+	let frozenHand = false;
 	let pendingAutoRoll = false;
 	let pendingRollKind: 'roll' | 'reroll' | 'finalize' = 'roll';
+	/** 读档回来的那一手是不是已经定格过(定格过就绝不重掷) */
+	let pendingFrozen = false;
+	const markHandFrozen = () => {
+		frozenHand = true;
+		settledDice = [...dice];
+		saveRun(runSnapshot());
+	};
 	let pendingActiveKey: string | null = null;
 
 	const runSnapshot = (): Omit<RunSave, 'v'> => {
@@ -1192,6 +1301,7 @@
 			phase,
 			round,
 			bossId: boss?.id ?? null,
+			bossArgs: boss?.rolled,
 			target,
 			mooncakes,
 			runScore,
@@ -1217,6 +1327,9 @@
 				askedSkills: t.askedSkills ?? []
 			})),
 			soldTees,
+			runStats: { ...runStats, scoredFaces: [...runStats.scoredFaces] },
+			boughtCounts,
+			mvp,
 			sellBoost,
 			sellBoostPending,
 			shopBuffs: shopBuffs.map((b) => b.id),
@@ -1264,6 +1377,7 @@
 			speedIdx,
 			wasRolling: rolling,
 			rollKind: pendingRollKind,
+			frozen: frozenHand,
 			// ---- 重做卡的本关状态 ----
 			hsVoid,
 			hsVoidTee,
@@ -1278,7 +1392,7 @@
 	const restoreRun = (d: RunSave) => {
 		animGen += 1; // 存档是权威状态,之前在飞的动画一律作废
 		round = d.round;
-		boss = d.bossId ? getBossById(d.bossId) : null;
+		boss = d.bossId ? rollBossVariant(getBossById(d.bossId), d.bossArgs) : null;
 		target = d.target;
 		mooncakes = d.mooncakes;
 		runScore = d.runScore;
@@ -1306,6 +1420,18 @@
 			}))
 		);
 		soldTees = d.soldTees;
+		// 结算页的统计/MVP:老存档没有就不动(保持空),有就整个搬回来 ——
+		// 刷新回结算页还看得见刚打完那局的数(runStats 是普通对象,逐字段写回去)
+		if (d.runStats) {
+			runStats.cardsBought = d.runStats.cardsBought ?? 0;
+			runStats.earnedMooncakes = d.runStats.earnedMooncakes ?? 0;
+			runStats.rerolled = d.runStats.rerolled ?? 0;
+			runStats.scoredFaces = d.runStats.scoredFaces ?? [0, 0, 0, 0, 0, 0];
+			runStats.startedAt = d.runStats.startedAt ?? 0;
+			runStats.endedAt = d.runStats.endedAt ?? 0;
+		}
+		boughtCounts = d.boughtCounts ?? {};
+		mvp = d.mvp ?? null;
 		sellBoost = d.sellBoost ?? false;
 		sellBoostPending = d.sellBoostPending ?? false;
 		shopBuffs = d.shopBuffs.map((id) => BUFF_BY_ID.get(id)).filter((b): b is BuffCard => !!b);
@@ -1380,6 +1506,7 @@
 		// 这两个要等脚本剩下的常量都初始化完再处理(onMount 里做)
 		pendingAutoRoll = d.wasRolling === true;
 		pendingRollKind = (d.rollKind as typeof pendingRollKind) ?? 'roll';
+		pendingFrozen = d.frozen === true;
 		pendingActiveKey = d.pendingActiveKey;
 	};
 
@@ -1417,6 +1544,14 @@
 			const replayGen = animGen;
 			setTimeout(() => {
 				if (replayGen !== animGen) return; // 这 60ms 里退了/重开了
+				// 定格过 = 这一手已经定下来(玩家看到过):**绝不重掷**,直接接定格之后的流程。
+				// 否则「定格(结果可见)→ 落盘」之间刷新就是免费换一手(实测:可见的 444411被换成 225314)。
+				if (pendingFrozen) {
+					pendingFrozen = false;
+					if (kind === 'finalize') finalizeTee();
+					else afterRoll();
+					return;
+				}
 				if (kind === 'reroll') playRerollAnim(rollMask, afterRoll);
 				else if (kind === 'finalize') playRerollAnim(rollMask, finalizeTee, 'finalize');
 				else rollCurrent();
@@ -1540,7 +1675,9 @@
 	};
 
 	const decayBuffsForRound = () => {
-		decayBuffs(team);
+		// 只减**本关真投过骰**的那些:云海提前收关时后面的 Tee 等于没轮到,
+		// 它的加成卡不减回合、也不产生「没用掉就归还」(留到下一回合)
+		decayBuffs(team, countedTee);
 	};
 
 	/** 队伍卡牌(null = 主 Tee),用于解析 copy_right / bundle */
@@ -1591,33 +1728,39 @@
 	 * 现在直接固定成 tuzi,并把那个空转的字段整条拆掉。
 	 */
 	const SELF_SKIN = 'tuzi';
-	/** 高照这条线的四张卡:谁先投掷谁当模板,**也只抄给这四张** */
+	/** 高照这条线的四张卡:谁先投掷谁当模板,**也只抄给这条线上的** */
 	/**
 	 * 高照:队伍里有高照时,「高照/串珠/七星灯/连珠灯」里**首先投掷**的那只 Tee 的最终骰面,
-	 * 决定**这条线里其他 Tee** 回合内首次投掷的点数(不是「我」,是这四张里的第一个)。
+	 * 决定**这条线里其他 Tee** 回合内首次投掷的点数(不是「我」,是这条线里的第一个)。
 	 *
-	 * ⚠️ 抄的**范围只有这条线自己**(denglong/zhideng/qixingdeng/lianzhudeng)——
-	 * 不加这层过滤的话,模板后面所有 Tee 都会被换成模板的骰面,等于「全队陪跑」:
-	 * 一条 4 张的连线会把队伍里不相关的 Tee 也一起改写,「其他 Tee」被误读成「全队其他人」。
+	 * ⚠️ 抄的**范围只有这条线自己** —— 不加这层过滤的话,模板后面所有 Tee 都会被换成模板的
+	 * 骰面,等于「全队陪跑」:「其他 Tee」被误读成「全队其他人」。
 	 *
-	 * 模板自己没得抄;排在她前面投的 Tee 也没得抄(那时模板还没产生);
+	 * **线内成员认 srcId(被抄的那张),不认 cardId**:红绳/姻缘簿/镜花仙缘复制了这四张里的
+	 * 任意一张,它就该算线上的一员(复制 = 这只 Tee 也带着那张卡),否则「复制」在这条线上是半截的。
+	 *
+	 * 模板自己没得抄;排在它前面投的 Tee 也没得抄(那时模板还没产生);
 	 * 不在线上(或没挂卡)的 Tee 一律照常自己掷。
 	 * 投掷顺序就是队伍下标顺序,countedTee = 最后一只结算完的 Tee。
 	 */
 	const SHARE_CARDS = ['denglong', 'zhideng', 'qixingdeng', 'lianzhudeng'];
+	/** 第 i 格在不在这条线上:它实际生效的效果里有没有带着这四张之一(含**复制来的**) */
+	const onShareLine = (i: number): boolean => {
+		if (!teamCards[i]) return false;
+		return effectiveEffects(teamCards, i).some(({ srcId }) => SHARE_CARDS.includes(srcId));
+	};
 	const sharedFirstDice = (i: number): number[] | null => {
+		// 线的开关照旧是「队伍里有高照」(卡面原文);复制高照时源头那张必然在队里,两者等价
 		if (!allCards().some((c) => hasEffect(c.effect, 'shared_first_roll'))) return null;
 		let src = -1;
 		for (let k = 0; k < team.length; k++) {
-			const cid = team[k]?.cardId;
-			if (!cid || !SHARE_CARDS.includes(cid)) continue;
+			if (!onShareLine(k)) continue;
 			if (k <= countedTee) src = k; // 这一只已经投过了 = 这条线里首个投掷者
-			break; // 只看这四张里的第一只,它没投就还没模板
+			break; // 只看线上第一只,它没投就还没模板
 		}
 		if (src < 0 || src === i) return null;
 		// 只有这条线上的 Tee 才吃复制(「其他 Tee」= 这条线里的其他 Tee)
-		const selfCid = team[i]?.cardId;
-		if (!selfCid || !SHARE_CARDS.includes(selfCid)) return null;
+		if (!onShareLine(i)) return null;
 		const first = team[src]?.lastDice;
 		if (!first || first.length !== 6) return null;
 		// 作废状态也一起抄:先记下来,rollCurrent 定格那一步挂到这一手上
@@ -1754,9 +1897,12 @@
 		// 夜市饼摊:上一段间隙(集市/结算)里卖过 Tee → 本回合 ×2
 		sellBoost = sellBoostPending;
 		sellBoostPending = false;
+		if (!runStats.startedAt) runStats.startedAt = Date.now();
+		// 「本关重掷」要回滚的统计快照(结算次数/MVP 都是这一关里长出来的)
+		roundStatSnap = { faces: [...runStats.scoredFaces], rerolled: runStats.rerolled, mvp };
 		resetRoundState();
 		clearRoundSkillState();
-		boss = isBossRound(round) ? getBoss(round) : null;
+		boss = isBossRound(round) ? rollBossVariant(getBoss(round)) : null;
 		target = Math.round(roundTarget(round) * (boss?.targetMult ?? 1));
 		for (const t of team) {
 			t.lastScore = 0;
@@ -1782,6 +1928,7 @@
 		if (rolling) return;
 		const gen = ++animGen;
 		pendingRollKind = 'roll';
+		frozenHand = false; // 新一手开掷 → 定格标记作废
 		rollKey += 1;
 		rolling = true;
 		hitDice = [];
@@ -1814,6 +1961,11 @@
 		rollDur = Math.min(0.75, 0.75 / speed);
 		rollIter = speed < 1 ? 1 / speed : 1;
 		rollTotal = 250 + rollDur * rollIter * 1000; // 250ms = 波浪延迟预算(5×50ms)
+		// 开掷即落盘(此刻 rolling 已是 true):不然刷新会撞上**上一手**的 frozen:true + 旧骰面,
+		// 恢复成「重掷前」= 不满意重掷结果就能刷新撤销(同族的反向刷)。
+		// 这份存档是 wasRolling:true + frozen:false → 读档只是重新随机一次,
+		// 玩家还没看得到结果(定格在后面),无信息优势。
+		saveRun(runSnapshot());
 
 		const timer = setInterval(() => {
 			if (gen !== animGen) {
@@ -1838,8 +1990,9 @@
 				if (hit) dice = [...jp.faces];
 			}
 			// 定格即视为「这一手落定」:存盘的 dice 不能还停在上一手 ——
-			// 这一段 rolling 仍为 true,runSnapshot 的 `if (!rolling) settledDice = …` 更新不到它
-			settledDice = [...dice];
+			// 这一段 rolling 仍为 true,runSnapshot 的 `if (!rolling) settledDice = …` 更新不到它;
+			// markHandFrozen 里会同步落盘,定格之后刷新也不给换一手
+			markHandFrozen();
 		}, rollTotal * 0.8);
 
 		sfxRoll(rollTotal / 1000, 6);
@@ -1944,7 +2097,9 @@
 		const gen = ++animGen;
 		// 猜谜:先记下「挑出去重掷的那几颗」重掷前的点数,定格时对比(动画期间 dice 一直在跳)
 		const beforeReroll = sel.map((s, i) => (s ? dice[i] : null));
+		runStats.rerolled += sel.filter(Boolean).length;
 		pendingRollKind = kind; // 提前记:存档要读它
+		frozenHand = false;
 		rolling = false;
 		await tick();
 		// 等这一帧的工夫里可能读了档 / 退回标题 / 重开一局 —— 那就别再启动动画了
@@ -1963,6 +2118,8 @@
 		rollDur = Math.min(0.75, 0.75 / speed);
 		rollIter = speed < 1 ? 1 / speed : 1;
 		rollTotal = 250 + rollDur * rollIter * 1000;
+		// 同 rollCurrent:开掷即落盘(rolling 已 true),别把上一手的 frozen 留给刷新
+		saveRun(runSnapshot());
 
 		const timer = setInterval(() => {
 			if (gen !== animGen) {
@@ -1984,6 +2141,8 @@
 				sharedVoidTee = -1;
 			}
 			reflowVoid(sel); // 花生:重掷解除作废 + 重掷后同点数作废
+			// 重掷定格同理:这一手也已定,同步落盘
+			markHandFrozen();
 		}, rollTotal * 0.8);
 
 		sfxRoll(rollTotal / 1000, sel.filter(Boolean).length);
@@ -2225,6 +2384,7 @@
 		team[i].parkRows = out;
 		team[i].buffs = [];
 		team[i].refundPending = [];
+		// 退的是玩家付过的钱,**不计入** runStats.earnedMooncakes(结算页「赚到的月饼币」不含这笔)
 		mooncakes += out.reduce((s, x) => s + x.coins, 0);
 		sfxCoin();
 		return out;
@@ -2393,6 +2553,8 @@
 
 	const finalizeTee = () => {
 		const tee = team[currentTee];
+		// 点数骰子的结算次数:按**结算**时的骰面记(投掷过程中被重掷掉的那些不计)
+		for (const v of dice) runStats.scoredFaces[(v >= 1 && v <= 6 ? v : 1) - 1] += 1;
 		const self = selfEffects(currentTee);
 		const mods = modsFor(currentTee);
 
@@ -2501,6 +2663,15 @@
 		// 进度条跟着结算动画走。
 		// 注意:分数在 finalizeTee 里**已经加过**了(currentScore += lastBreakdown.total),
 		const settleTotal = tee.lastScore ?? 0;
+		// MVP:这次结算的最终分(团队加成在团队结算才乘,这里天然不吃)+ 行文本一起记
+		recordMvp(
+			tee,
+			settleTotal,
+			lv.name,
+			settleSteps.map((s) => ({ text: s.text, cls: s.cls })),
+			round,
+			currentTee
+		);
 		settlePreview = -settleTotal;
 		// 逐行回调同样要对代次(下面那个收尾 timer 本来就有):中途读档/重开/退回
 		// 标题 ++animGen 之后,旧行不该再改状态、播音效、抢滚动位置
@@ -2729,6 +2900,7 @@
 			const gain = left * (sk.perTee ?? 0);
 			if (gain > 0) {
 				mooncakes += gain;
+				runStats.earnedMooncakes += gain; // 云海「未投 Tee +币」也是赚的
 				sfxCoin();
 			}
 			settleSteps = [
@@ -2853,6 +3025,12 @@
 	};
 
 	const retryRound = () => {
+		// 统计/MVP 回滚到本关开始:重掷后这一关会整个重新结算,不能把旧的算两遍
+		if (roundStatSnap) {
+			runStats.scoredFaces = [...roundStatSnap.faces];
+			runStats.rerolled = roundStatSnap.rerolled;
+			mvp = roundStatSnap.mvp;
+		}
 		for (const t of team) {
 			t.lastScore = 0;
 			t.lastLevelId = 'none';
@@ -3018,6 +3196,7 @@
 		// 放在后面会让异常存档白拿币 + 记一次卖出 + 给夜市饼摊挂上 ×2,人却没卖成
 		if (team.length <= 1) return;
 		mooncakes += coins;
+		runStats.earnedMooncakes += coins; // 归家卖「我」换的币 = 正经收入(卖「我」也计入卖出数,走 markTeeSold)
 		// 「我」被卖也算一次(夜市饼摊要「卖过」,饼铺掌柜按**每只 Tee 自己**的账算)
 		markTeeSold();
 		sellBoostPending = true;
@@ -3049,6 +3228,7 @@
 			overflowGained = overflow;
 			economyGained = eco;
 			mooncakes += gained;
+			runStats.earnedMooncakes += gained; // 过关 + 溢出 + 经商一笔入账,都是正经收入
 			growth = applyGrowth(team.map(cardOf), growth);
 			// 桂树(own_face_grow):把本关掷出的颗数记进**这只 Tee 自己**的账 —— 从下一关开始吃到。
 			// 数和引擎计分同一口径(最终骰子),只数这一关真掷过的:countedTee 之后的是
@@ -3079,16 +3259,20 @@
 		}
 	};
 
-	/** 放弃结算并结束游戏：本轮分数不计，直接按当前总分收场（按钮在结算按钮右下，小一号防误触） */
+	/** 放弃结算并结束游戏:只跳过团队结算那串动画,**本轮已结算的分照实算**(按钮在结算按钮右下,小一号防误触) */
 	const abandonRun = () => {
 		sfxClick();
 		if (teamSettling) return; // 结算动画播到一半不给点，和「结算回合」一致
-		finalScore = 0;
+		// 以前这里是 `finalScore = 0`(注释写「本轮分数不计」)—— 玩家明明掷出 252/120,
+		// 结束屏却写「本关 0 / 目标 120」。本轮分数是**真结算过的**(每只 Tee 的分都加进
+		// currentScore 了),只差团队结算那一步没播 —— 照实显示,也照实计入总分(上限目标,
+		// 和过关/失败同一口径),不然「本关 252」和「本局总分」会互相矛盾。
+		finalScore = currentScore;
 		finalRound = round;
-		finalRunScore = runScore;
+		finalRunScore = runScore + Math.min(currentScore, target);
 		const prevBest = save.bestScore;
-		save = saveResult(runScore, round);
-		isNewBest = runScore > prevBest && runScore > 0;
+		save = saveResult(finalRunScore, round);
+		isNewBest = finalRunScore > prevBest && finalRunScore > 0;
 		sfxLose();
 		phase = 'game_over';
 	};
@@ -3183,6 +3367,8 @@
 		mooncakes -= card.price;
 		if (sfxOn) sfxCoin();
 		buffInventory = { ...buffInventory, [card.id]: (buffInventory[card.id] ?? 0) + 1 };
+		runStats.cardsBought += 1;
+		boughtCounts = { ...boughtCounts, [card.id]: (boughtCounts[card.id] ?? 0) + 1 };
 		unlockBuffs([card]); // 进过仓库的卡一定算见过(商店之外拿到的也走这里)
 		shopSold = [...shopSold, card.id];
 		// 买走之后这格自动解锁：免得「已买」永远占着货架
@@ -3227,6 +3413,7 @@
 		const card = cardOf(team[idx]);
 		if (card) {
 			mooncakes += rarityOf(card).sell;
+			runStats.earnedMooncakes += rarityOf(card).sell;
 			// 卖卡计数:记在每只 Tee 自己身上(饼铺掌柜的基础分),同时给夜市饼摊挂「下回合 ×2」
 			markTeeSold();
 			sellBoostPending = true;
@@ -3279,6 +3466,26 @@
 		draftPicked = [];
 		save = getSave(); // 元存档(最高分/累计游玩)保留
 	};
+
+	/** 结算页队伍格子的 hover 说明(锚点就是那格;触屏不弹) */
+	let hoverTee = $state<number | null>(null);
+	let hoverTeeAnchor = $state<HTMLElement | undefined>(undefined);
+	/** 队伍格子的说明内容(卡面 + 卖价 + 身上加成/成长明细);没内容就返回 null 不弹 */
+	const teeTipState = $derived.by(() => {
+		if (hoverTee === null) return null;
+		const t = team[hoverTee];
+		if (!t) return null;
+		const card = cardOf(t);
+		const extra = teeTipExtra(hoverTee);
+		const list = teeTipList(t);
+		if (!card?.desc && !extra && !list.length) return null;
+		return {
+			desc: card?.desc,
+			extra,
+			list,
+			color: RARITY_INFO[card?.rarity ?? 'common'].color
+		};
+	});
 
 	// ---- 展示 ----
 
@@ -3495,7 +3702,7 @@
 		</div>
 	{/snippet}
 
-	{#snippet buffChip(card: BuffCard, count: number, interactive = false)}
+	{#snippet buffChip(card: BuffCard, count: number, interactive = false, hoverOnly = false)}
 		<!-- 加成卡芯片:所有宽度统一形态(不再用大卡);掷骰前点选,再点 Tee 挂上 -->
 		<!-- 描边 = 稀有度色(普通灰 / 稀有蓝 / 传说金);选中改用外圈 ring,免得盖掉稀有度 -->
 		{@const state =
@@ -3564,6 +3771,8 @@
 					if (e.pointerType !== 'touch' && peekBuff?.id === card.id) peekBuff = null;
 				}}
 				onclick={(e) => {
+					// hoverOnly(结算页清单):不给点按切换浮层 —— 那里只想 hover 瞟一眼
+					if (hoverOnly) return;
 					// 触屏没 hover:点一下看说明,再点收起(鼠标已经有 hover 了,不抢点击)
 					anchorBuff(card, e.currentTarget);
 					if (!lastPointerWasMouse) peekBuff = peekBuff?.id === card.id ? null : card;
@@ -3571,6 +3780,7 @@
 				onkeydown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.preventDefault();
+						if (hoverOnly) return;
 						anchorBuff(card, e.currentTarget);
 						peekBuff = peekBuff?.id === card.id ? null : card;
 					}
@@ -3850,7 +4060,10 @@
 					</div>
 				</div>
 			{:else}
-				{@render hud()}
+				<!-- 结算屏自带「第 X 关/目标/历时」那套小字 —— HUD(含进度条)整条收掉换纵向空间 -->
+				{#if phase !== 'game_over'}
+					{@render hud()}
+				{/if}
 
 				<!-- 桌面双列:左列 = 仓库 + 队伍,右列 = 阶段面板。
 				     contents 让移动端完全等价于「没有这两个 div」:flex 链不断,
@@ -4141,7 +4354,8 @@
 														? ` · 花 🥮 ${pendingActive.cost}`
 														: ''}
 												{:else if pendingActive.skill === 'end_round'}
-													结束本关 · 未投 Tee +🥮 {pendingActive.perTee ?? 0}
+													结束本关 · 未投 Tee +🥮 {pendingActive.perTee ??
+														0}（加成卡保留至下一回合）
 												{:else if pendingActive.skill === 'sell_self'}
 													回合结算时出售「我」 +🥮 {pendingActive.coins ?? 0}
 												{:else if pendingActive.skill === 'to_four'}
@@ -4549,47 +4763,198 @@
 						<!-- ================= 游戏结束 ================= -->
 						{#if phase === 'game_over'}
 							<div
-								class="panel-fill panel-auto panel-fill-lg mt-2.5 rounded-xl border border-slate-600/60 bg-slate-900/85 px-3 py-3 text-center backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-6"
+								class="panel-fill panel-auto panel-fill-lg mt-2.5 rounded-xl border border-slate-600/60 bg-slate-900/85 px-3 py-2.5 text-left backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-4"
 							>
-								<div class="text-3xl sm:text-4xl">🌘</div>
-								<div class="mt-1 text-xl font-bold text-slate-200 sm:text-2xl">博饼结束</div>
-								<div class="mt-2 text-xs text-slate-400 sm:text-sm">
-									倒在了 <span class="font-bold text-slate-200">第 {finalRound} 关</span> · 本关得分
-									<span class="font-bold text-slate-100">{formatScore(finalScore)}</span> / {formatScore(
-										target
-									)}
-									<div class="mt-1">
-										本局总分 <span class="font-bold text-amber-300"
-											>{formatScore(finalRunScore)}</span
+								<!-- 标题 + 新纪录同排(省一行) -->
+								<div class="flex items-center justify-between gap-2">
+									<div class="flex items-center gap-2">
+										<span class="text-xl sm:text-2xl">🌘</span>
+										<span class="text-lg font-bold text-slate-200 sm:text-xl">博饼结束</span>
+									</div>
+									{#if isNewBest}
+										<span
+											class="result-banner rounded-full border border-amber-400/60 bg-amber-400/15 px-3 py-0.5 text-[11px] font-bold text-amber-300 sm:text-xs"
 										>
+											🏆 新纪录!
+										</span>
+									{/if}
+								</div>
+								<!-- 大字 = 本局结果:左边大数、右边小字铺开 —— 免得两边空着、还多占几行 -->
+								<div class="mt-2 flex items-center gap-3">
+									<div
+										class="shrink-0 rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-1.5 text-center"
+									>
+										<div class="text-2xl font-bold text-amber-300 sm:text-3xl">
+											{formatScore(finalRunScore)}
+										</div>
+										<div class="text-[10px] text-slate-400 sm:text-xs">本局总分</div>
+									</div>
+									<div class="min-w-0 flex-1 space-y-0.5 text-xs text-slate-400 sm:text-sm">
+										<div>
+											倒在了 <span class="font-bold text-slate-200">第 {finalRound} 关</span> · 本关
+											{formatScore(finalScore)} / 目标 {formatScore(target)}
+										</div>
+										<div class="text-[11px] text-slate-500 sm:text-xs">
+											最高总分 <span class="font-bold text-slate-300"
+												>{formatScore(save.bestScore)}</span
+											>
+											· 最高 <span class="font-bold text-slate-300">{save.bestRound}</span> 关
+										</div>
+										<div class="text-[11px] text-slate-500 sm:text-xs">
+											历时 {formatDuration(runDurationMs)}
+										</div>
 									</div>
 								</div>
-								{#if isNewBest}
+
+								<!-- 本局统计(小字;月饼币是**赚到的** —— 田螺把付过的钱退回来不算) -->
+								<div class="mt-2 border-t border-slate-700/60 pt-2">
 									<div
-										class="result-banner mx-auto mt-2.5 inline-block rounded-full border border-amber-400/60 bg-amber-400/15 px-4 py-1 text-xs font-bold text-amber-300 sm:text-sm"
+										class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-slate-400 sm:text-xs"
 									>
-										🏆 新纪录!
+										<div class="flex justify-between gap-2">
+											<span>卖出 Tee</span>
+											<span class="font-bold text-slate-200">{soldTees}</span>
+										</div>
+										<div class="flex justify-between gap-2">
+											<span>买下加成卡</span>
+											<span class="font-bold text-slate-200">{runStats.cardsBought}</span>
+										</div>
+										<div class="flex justify-between gap-2">
+											<span>赚到月饼币</span>
+											<span class="font-bold text-amber-300">🥮 {runStats.earnedMooncakes}</span>
+										</div>
+										<div class="flex justify-between gap-2">
+											<span>重掷骰子</span>
+											<span class="font-bold text-slate-200">{runStats.rerolled} 枚</span>
+										</div>
+									</div>
+									<div class="mt-1.5">
+										<div class="text-[10px] text-slate-500 sm:text-[11px]">
+											🎲 点数骰子的结算次数
+										</div>
+										<div class="mt-1 grid grid-cols-6 gap-1">
+											{#each [1, 2, 3, 4, 5, 6] as f}
+												<div class="rounded-md bg-slate-800/60 py-0.5 text-center">
+													<div class="text-[10px] text-slate-400">{f} 点</div>
+													<div class="text-xs font-bold text-slate-100 sm:text-sm">
+														{runStats.scoredFaces[f - 1]}
+													</div>
+												</div>
+											{/each}
+										</div>
+									</div>
+								</div>
+
+								<!-- 本局购入最多的加成卡:仓库同款芯片。这里只要 hover 看说明,**点按不切换浮层** -->
+								{#if topBoughtBuffs.length > 0}
+									<div class="relative mt-2 border-t border-slate-700/60 pt-2">
+										<div class="text-[10px] text-slate-500 sm:text-[11px]">
+											🛒 本局购入最多的加成卡
+										</div>
+										<div
+											class="mt-1 flex gap-1.5 overflow-x-auto p-0.5 sm:flex-wrap sm:overflow-x-hidden"
+										>
+											{#each topBoughtBuffs as [id, count] (id)}
+												{@const card = BUFF_BY_ID.get(id)!}
+												<div class="shrink-0">{@render buffChip(card, count, false, true)}</div>
+											{/each}
+										</div>
+										{#if peekBuff}
+											<CardTip anchor={buffAnchorOf(peekBuff)} hover={true} color="#38bdf8" wide>
+												<BuffTip card={peekBuff} />
+											</CardTip>
+										{/if}
 									</div>
 								{/if}
-								<div class="mt-2.5 flex justify-center gap-2 text-xs sm:gap-6 sm:text-sm">
-									<div class="rounded-lg bg-slate-800/70 px-3 py-1.5 sm:px-4 sm:py-2">
-										<div class="text-base font-bold text-amber-300 sm:text-lg">
-											{formatScore(save.bestScore)}
-										</div>
-										<div class="text-[10px] text-slate-400 sm:text-xs">最高总分</div>
+
+								<!-- 当前队伍:3×2 固定宽格子 —— 头像在左、名字在右(像加成卡芯片稍大一号);不带得分 -->
+								<div class="mt-2 border-t border-slate-700/60 pt-2">
+									<div class="text-[10px] text-slate-500 sm:text-[11px]">当前队伍</div>
+									<div class="mt-1 grid grid-cols-3 gap-1.5">
+										{#each team as t, i (i)}
+											{@const card = cardOf(t)}
+											<div
+												class="flex items-center justify-between gap-2 rounded-lg border bg-slate-800/60 px-2 py-1"
+												style="border-color: {cardBorderColor(
+													RARITY_INFO[card?.rarity ?? 'common'].color
+												)}"
+												role="img"
+												aria-label={t.isSelf ? '我' : (card?.name ?? 'Tee')}
+												onpointerenter={(e) => {
+													if (e.pointerType === 'touch') return;
+													hoverTee = i;
+													hoverTeeAnchor = e.currentTarget;
+												}}
+												onpointerleave={() => {
+													if (hoverTee === i) hoverTee = null;
+												}}
+											>
+												<span class="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
+													><TeeRender
+														name={t.isSelf ? SELF_SKIN : (card?.skin ?? 'naomi')}
+														className="h-full w-full"
+													/></span
+												>
+												<span class="truncate text-sm font-semibold text-slate-200 sm:text-[15px]"
+													>{t.isSelf ? '我' : (card?.name ?? '—')}</span
+												>
+											</div>
+										{/each}
 									</div>
-									<div class="rounded-lg bg-slate-800/70 px-3 py-1.5 sm:px-4 sm:py-2">
-										<div class="text-base font-bold text-slate-100 sm:text-lg">
-											{save.bestRound}
-										</div>
-										<div class="text-[10px] text-slate-400 sm:text-xs">最高关数</div>
-									</div>
-									<div class="rounded-lg bg-slate-800/70 px-3 py-1.5 sm:px-4 sm:py-2">
-										<div class="text-base font-bold text-slate-100 sm:text-lg">{save.plays}</div>
-										<div class="text-[10px] text-slate-400 sm:text-xs">总游玩局数</div>
-									</div>
+									{#if teeTipState && hoverTee !== null}
+										<CardTip anchor={hoverTeeAnchor} hover={true} color={teeTipState.color}>
+											{teeTipState.desc}
+											{#if teeTipState.extra}
+												<div class="mt-1 text-[10px] font-semibold text-amber-300">
+													{teeTipState.extra}
+												</div>
+											{/if}
+											{#if teeTipState.list.length}
+												<div
+													class="mt-1.5 space-y-0.5 border-t border-slate-600/50 pt-1 text-left text-[10px]"
+												>
+													{#each teeTipState.list as line}
+														<div class={line.cls ?? 'text-slate-400'}>
+															{#if line.name}<b style="color: {line.nameColor}">{line.name}</b
+																>{/if}{line.text}
+														</div>
+													{/each}
+												</div>
+											{/if}
+										</CardTip>
+									{/if}
 								</div>
-								<div class="mt-3 flex justify-center gap-2 sm:gap-3">
+
+								<!-- MVP:本局单次结算最高分(不计团队加成)+ 那一次结算的战绩 -->
+								{#if mvp}
+									<div class="mt-2 border-t border-slate-700/60 pt-2">
+										<div class="flex items-center gap-2">
+											<span class="text-sm">🏅</span>
+											<div class="min-w-0">
+												<div class="truncate text-sm font-bold text-amber-300">
+													MVP · {mvp.name}
+													{formatScore(mvp.score)} 分
+												</div>
+												<div class="text-[10px] text-slate-500 sm:text-[11px]">
+													第 {mvp.round} 关
+												</div>
+											</div>
+											<span class="ml-auto h-8 w-8 shrink-0 sm:h-9 sm:w-9"
+												><TeeRender name={mvp.skin} className="h-full w-full" /></span
+											>
+										</div>
+										<!-- 战绩 = 结算动画那几行原样留着:`settle-step` 同一套排版 + 同款配色(cls),只是不播动画 -->
+										<div
+											class="mt-1.5 max-h-52 overflow-y-auto rounded-lg bg-slate-800/50 px-2 py-1.5"
+										>
+											{#each mvp.rows as row}
+												<div class="settle-step {row.cls}">{row.text}</div>
+											{/each}
+										</div>
+									</div>
+								{/if}
+
+								<div class="mt-2.5 flex justify-center gap-2 sm:gap-3">
 									<button
 										class="rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-6 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 sm:px-10 sm:text-lg"
 										onclick={startGame}

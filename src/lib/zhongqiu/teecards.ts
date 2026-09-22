@@ -84,7 +84,7 @@ export type TeeEffect =
 	// 不是「得分 ×2」——只放大这几个等级自带的基础分,不动后面的倍率链
 	| { type: 'level_base_mult'; levelIds: string[]; value: number }
 	| { type: 'self_mods'; mods: DiceMods } // 自己的骰子点数变换
-	| { type: 'copy_right'; mult?: number } // 复制右侧 Tee 的卡牌(可再 ×mult 超车)
+	| { type: 'copy_right'; mult?: number } // 复制右侧 Tee 的卡牌(可再 ×mult 超车);右侧还是复制卡就一路向右 —— 展开口径见 effectiveEffects
 	| { type: 'reroll_all_on_none' } // 掷出"再接再厉"时自动重掷全部(每回合 1 次)
 	| { type: 'sum_chips'; per: number } // 骰子点数和 ×per 计入基础分(和值流)
 	| { type: 'own_face'; face: number; chips?: number; mult?: number; multByCount?: boolean } // 自己最终骰子里每有 1 颗该点数(multByCount: 倍率 = 该点数颗数)
@@ -182,7 +182,7 @@ export type TeeEffect =
 	| { type: 'shared_first_roll' } // 只有高照带这条;点名的四张既是「模板候选」也是「复制对象」
 	| { type: 'bundle'; parts: TeeEffect[] }; // 复合:多个效果同时生效
 
-export type Tag = '兔' | '桂' | '饼' | '灯' | '月' | '仙';
+export type Tag = '兔' | '桂' | '饼' | '灯' | '月' | '仙' | '丹';
 
 export const TAG_INFO: Record<Tag, { emoji: string; label: string }> = {
 	兔: { emoji: '🐰', label: '玉兔' },
@@ -190,7 +190,9 @@ export const TAG_INFO: Record<Tag, { emoji: string; label: string }> = {
 	饼: { emoji: '🥮', label: '月饼' },
 	灯: { emoji: '🏮', label: '花灯' },
 	月: { emoji: '🌕', label: '月华' },
-	仙: { emoji: '✨', label: '仙灵' }
+	仙: { emoji: '✨', label: '仙灵' },
+	// 仙系拆出来的第二派(控骰流):丹道 —— 改点/投掷/重掷那几张
+	丹: { emoji: '🧪', label: '丹道' }
 };
 
 export interface TeeCard {
@@ -262,7 +264,7 @@ export const CARDS: TeeCard[] = [
 		id: 'yutou',
 		name: '芋泥饼',
 		desc: '再接再厉：基础分 +220',
-		rarity: 'rare',
+		rarity: 'common',
 		tag: '饼',
 		skin: 'cupcake',
 		effect: { type: 'cond', cond: 'none', chips: 220 }
@@ -582,10 +584,10 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'change',
-		name: '嫦娥仙子',
+		name: '丹砂',
 		desc: '改 1 颗骰子为 4 点；自己每有 1 颗 4 点：得分 ×1.25',
-		rarity: 'legendary',
-		tag: '仙',
+		rarity: 'rare',
+		tag: '丹',
 		skin: 'TeeAngel',
 		effect: {
 			type: 'bundle',
@@ -598,11 +600,12 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuebingwang',
 		name: '饼王',
-		desc: '得分 ×2',
-		rarity: 'rare',
+		desc: '得分 ×1.5',
+		rarity: 'common',
 		tag: '饼',
 		skin: 'cookie_bite',
-		effect: { type: 'mult', value: 2 }
+		// 下放普通后从 ×2 砍下来:无条件乘算在普通档是白给的(茶壶那张还要二举及以上才 ×1.75)
+		effect: { type: 'mult', value: 1.5 }
 	},
 	{
 		id: 'guihuajiu',
@@ -632,10 +635,10 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'houyi',
-		name: '射日仙',
+		name: '回炉丹',
 		desc: '再接再厉时自动重掷全部（每回合 1 次）；本回合每重掷 1 颗骰子：得分 ×1.5',
 		rarity: 'rare',
-		tag: '仙',
+		tag: '丹',
 		skin: 'Yellow',
 		effect: {
 			type: 'bundle',
@@ -746,11 +749,13 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'guihuaniang',
 		name: '桂花酿',
-		desc: '基础分 +45，得分 ×1.5',
-		rarity: 'rare',
+		desc: '基础分 +25，得分 ×1.3',
+		rarity: 'common',
 		tag: '桂',
 		skin: 'grapegreen',
-		effect: { type: 'chips_mult', chips: 45, mult: 1.5 }
+		// 下放普通后从 +45/×1.5 砍下来(自身 ×2.32 → 队伍影响 1.22,超出普通档 1.05~1.13);
+		// 砍到 +25/×1.3 = 自身 ×1.69 → 队伍影响 1.12 ✓。桂花酒(稀有 +85/×1.5)仍是它的上位版
+		effect: { type: 'chips_mult', chips: 25, mult: 1.3 }
 	},
 	{
 		id: 'yuhuachi',
@@ -778,7 +783,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yunhai',
 		name: '云海',
-		desc: '掷完可发动：立刻结束本关，每个尚未投掷的Tee +5 月饼币（冷却 2 关）',
+		desc: '掷完可发动：立刻结束本关，每个尚未投掷的Tee +5 月饼币；尚未投掷的Tee身上的加成卡保留至下一回合（冷却 2 关）',
 		rarity: 'rare',
 		skin: 'cloudly',
 		effect: { type: 'active', skill: 'end_round', perTee: 5, cooldown: 2 }
@@ -796,10 +801,10 @@ export const CARDS: TeeCard[] = [
 	// (这里原本按稀有度分过区,早已和实际稀有度对不上 —— 删了,看每张的 rarity)
 	{
 		id: 'wugang',
-		name: '吴刚成仙',
+		name: '丹诀',
 		desc: '把 1 颗骰子改为任意点数；自己每有 1 颗 4 点：得分 ×1.25',
 		rarity: 'legendary',
-		tag: '仙',
+		tag: '丹',
 		skin: 'king-greyfox',
 		effect: {
 			type: 'bundle',
@@ -830,17 +835,17 @@ export const CARDS: TeeCard[] = [
 		id: 'yuegongxianzi',
 		name: '仙子临凡',
 		desc: '三红及以上：得分 ×5',
-		rarity: 'legendary',
+		rarity: 'rare',
 		tag: '仙',
 		skin: 'IceWitch_AccurateAngel',
 		effect: { type: 'cond', cond: 'san_hong_plus', mult: 5 }
 	},
 	{
 		id: 'changepair',
-		name: '嫦娥飞仙',
+		name: '丹火',
 		desc: '改 2 颗骰子为 4 点；自己每有 1 颗 4 点：得分 ×2',
 		rarity: 'legendary',
-		tag: '仙',
+		tag: '丹',
 		skin: 'GlowPinky',
 		effect: {
 			type: 'bundle',
@@ -852,10 +857,10 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'yuetu',
-		name: '仙娥',
+		name: '丹引',
 		desc: '可多投掷 1 次；每多 1 次投掷机会：得分 ×2',
-		rarity: 'legendary',
-		tag: '仙',
+		rarity: 'rare',
+		tag: '丹',
 		skin: 'IceWitch_Fairy',
 		effect: {
 			type: 'bundle',
@@ -867,9 +872,9 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'chijin',
-		name: '赤金仙丹',
+		name: '赤金仙丸',
 		desc: '得分 ×2；三红及以上倍率再增长 ×3',
-		rarity: 'legendary',
+		rarity: 'rare',
 		tag: '仙',
 		skin: 'FireCrystalCat',
 		effect: {
@@ -1186,11 +1191,11 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'xianlv',
 		name: '仙侣',
-		desc: '每拥有一个独特的「仙」系Tee：该 Tee 得分 ×1.41；每有 1 颗 4 点，该 Tee 基础分 +150',
+		desc: '每拥有一个独特的「仙」系Tee：该 Tee 得分 ×1.56；每有 1 颗 4 点，该 Tee 基础分 +150',
 		rarity: 'rare',
 		tag: '仙',
 		skin: 'cammostripeangel',
-		effect: { type: 'per_tag', tag: '仙', per: 1.41, as: 'mult', chipsPerFour: 150 }
+		effect: { type: 'per_tag', tag: '仙', per: 1.56, as: 'mult', chipsPerFour: 150 }
 	},
 	{
 		id: 'yutulinfan',
@@ -1240,11 +1245,31 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'qunxianhui',
 		name: '群仙会',
-		desc: '每拥有一个独特的「仙」系Tee：所有「仙」系 Tee 得分 ×1.41；每有 1 颗 4 点，该 Tee 基础分 +375',
+		desc: '每拥有一个独特的「仙」系Tee：所有「仙」系 Tee 得分 ×1.56；每有 1 颗 4 点，该 Tee 基础分 +375',
 		rarity: 'legendary',
 		tag: '仙',
 		skin: 'Drag Queen',
-		effect: { type: 'per_tag', tag: '仙', per: 1.41, as: 'mult', chipsPerFour: 375, teamWide: true }
+		effect: { type: 'per_tag', tag: '仙', per: 1.56, as: 'mult', chipsPerFour: 375, teamWide: true }
+	},
+
+	// ==== 丹系协同(仙拆出的第二派,控骰流) ====——
+	{
+		id: 'dantian',
+		name: '丹田',
+		desc: '每拥有一个独特的「丹」系Tee:该 Tee 得分 ×1.62；每有 1 颗 4 点，该 Tee 基础分 +150',
+		rarity: 'rare',
+		tag: '丹',
+		skin: 'firecoala',
+		effect: { type: 'per_tag', tag: '丹', per: 1.62, as: 'mult', chipsPerFour: 150 }
+	},
+	{
+		id: 'liandanlu',
+		name: '炼丹炉',
+		desc: '每拥有一个独特的「丹」系Tee:所有「丹」系 Tee 得分 ×1.62；每有 1 颗 4 点，该 Tee 基础分 +375',
+		rarity: 'legendary',
+		tag: '丹',
+		skin: 'firefox',
+		effect: { type: 'per_tag', tag: '丹', per: 1.62, as: 'mult', chipsPerFour: 375, teamWide: true }
 	},
 	// ==== 主 Tee 流:队友给「我」改骰子规则 ====
 	//
@@ -1377,10 +1402,10 @@ export const CARDS: TeeCard[] = [
 	},
 	{
 		id: 'shilun',
-		name: '时之仙轮',
+		name: '九转丹',
 		desc: '掷完可发动：本关重新掷过（冷却 4 关）',
 		rarity: 'legendary',
-		tag: '仙',
+		tag: '丹',
 		skin: 'Hollow Knight',
 		effect: { type: 'active', skill: 'retry', cooldown: 4 }
 	},
