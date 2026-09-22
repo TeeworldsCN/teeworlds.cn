@@ -34,7 +34,7 @@
 // 对外:bossBgmPrep(本场武装:抽调根,不出声)/ bossBgmBattle(开场曲)/
 //      bossBgmTension / bossBgmSting / bossBgmEnd / bossBgmStop。
 
-import { sfxGraph } from './sfx';
+import { sfxGraph, sfxEnabled } from './sfx';
 import { getSave, setSaveBossSfx } from './game';
 
 type Mode = 'off' | 'prep' | 'jingle' | 'battle' | 'ending';
@@ -56,8 +56,9 @@ const hz = (semi: number) => 55 * Math.pow(2, semi / 12);
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 // ---- Boss 音效开关(独立于主音效;localStorage + 元存档**双写双读**)----
-// 关了 = 本模块一个音都不出(开场曲/stinger/收束句);首页有开关,
-// 关掉时页面会顺手 bossBgmStop() 把在途乐句也收了。
+// 层级:**sfxOn 是总控**(关了谁都别想出声 —— 合成原语里门禁,连主静音一起管),
+// 本开关只决定「启用不启用 Boss 音效」(开场曲/stinger/收束句)。
+// 关本开关 = 本模块一个音都不出;页面会顺手 bossBgmStop() 把在途乐句也收了。
 const KEY = 'midautumn:bossSfx';
 let enabled = true;
 export const bossSfxEnabled = () => enabled;
@@ -130,6 +131,7 @@ const ensureOut = () => {
 
 /** 月光铃:基音 + 两个整数泛音,快起、尾巴交给混响 */
 function bellAt(at: number, semi: number, gain = 0.15, dur = 1.6) {
+	if (!sfxEnabled()) return; // 总控静音:不出声(状态机照常走,取消静音自然恢复)
 	const g = sfxGraph();
 	if (!g || !out) return;
 	const f0 = hz(semi + 12);
@@ -157,6 +159,7 @@ function bellAt(at: number, semi: number, gain = 0.15, dur = 1.6) {
 
 /** 定音鼓一击 */
 function timpaniAt(at: number, gain = 0.3) {
+	if (!sfxEnabled()) return;
 	const g = sfxGraph();
 	if (!g || !out) return;
 	const o = g.ctx.createOscillator();
@@ -174,6 +177,7 @@ function timpaniAt(at: number, gain = 0.3) {
 
 /** 低频一沉(sub boom) */
 function subBoom(at: number, dur = 1.2, gain = 0.2) {
+	if (!sfxEnabled()) return;
 	const g = sfxGraph();
 	if (!g || !out) return;
 	const o = g.ctx.createOscillator();
@@ -200,6 +204,7 @@ function glissAt(at: number, up: boolean, gain = 0.14) {
 
 /** mini-riser:短促上扫(骰子还在滚就开始爬) */
 function riserAt(at: number, dur = 0.3, gain = 0.08) {
+	if (!sfxEnabled()) return;
 	const g = sfxGraph();
 	if (!g || !out) return;
 	const src = g.ctx.createBufferSource();

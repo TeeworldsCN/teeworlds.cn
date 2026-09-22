@@ -764,7 +764,8 @@
 		setSfxEnabled(sfxOn);
 		if (sfxOn) sfxClick();
 	};
-	/** Boss 音效开关(开场曲/stinger/收束句,和主音效分开;localStorage + 元存档双写) */
+	/** Boss 音效开关(开场曲/stinger/收束句;**sfxOn 是总控**,本开关只管启用与否;
+	 * localStorage + 元存档双写) */
 	let bossSfxOn = $state(true);
 	const toggleBossSfx = () => {
 		bossSfxOn = !bossSfxOn;
@@ -4016,16 +4017,29 @@
 						🎲 开始博饼
 					</button>
 
-					<!-- Boss 音效:开场曲 / 掷骰 stinger / 收束句(和主音效分开控制) -->
-					<div class="mt-2 flex items-center justify-center gap-1.5 text-xs text-slate-300">
-						<span>Boss 音效</span>
-						<button
-							class="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-300 transition hover:bg-amber-500/20 sm:px-2.5 sm:py-1 sm:text-xs"
-							title={bossSfxOn ? '关闭 Boss 音效' : '开启 Boss 音效'}
-							onclick={toggleBossSfx}
-						>
-							{bossSfxOn ? '🔊' : '🔇'}
-						</button>
+					<!-- 音效总控 + Boss 音效子开关(总控关了子开关置灰;Boss = 开场曲/stinger/收束句) -->
+					<div class="mt-2 flex items-center justify-center gap-3 text-xs text-slate-300">
+						<span class="flex items-center gap-1.5">
+							<span>音效</span>
+							<button
+								class="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-300 transition hover:bg-amber-500/20 sm:px-2.5 sm:py-1 sm:text-xs"
+								title={sfxOn ? '静音' : '开启音效'}
+								onclick={toggleSfx}
+							>
+								{sfxOn ? '🔊' : '🔇'}
+							</button>
+						</span>
+						<span class="flex items-center gap-1.5 {sfxOn ? '' : 'opacity-40'}">
+							<span>Boss 音效</span>
+							<button
+								class="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-300 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:hover:bg-amber-500/10 sm:px-2.5 sm:py-1 sm:text-xs"
+								title={!sfxOn ? '先开启总音效' : bossSfxOn ? '关闭 Boss 音效' : '开启 Boss 音效'}
+								disabled={!sfxOn}
+								onclick={toggleBossSfx}
+							>
+								{bossSfxOn ? '🔊' : '🔇'}
+							</button>
+						</span>
 					</div>
 
 					<!-- 规则:始终展开(不折叠) -->
