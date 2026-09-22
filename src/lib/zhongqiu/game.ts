@@ -1517,9 +1517,8 @@ export const calcTeamTotal = (
 	const addRelay = (eff: TeeEffect & { type: 'relay_pct' }, i: number, cardId: string) => {
 		const idx = eff.from === 'left' ? [i - 1] : eff.from === 'right' ? [i + 1] : [i - 1, i + 1];
 		const from = idx.filter((j) => j >= 0 && j < scores.length && j !== i);
-		// 「接力」得有人可接:目标邻居一个都不在(桂影站最右 = 没有右邻)→ 整条不触发,
-		// 固定加值也不白给。左右卡在边上只剩一侧时按现有侧算(缺侧贡献 0)。
-		if (!from.length) return;
+		// 缺位的邻居按 **0 分** 代入公式,固定加值照给(用户裁定:桂影没有右邻 =
+		// 0×30% + 60,照给 60)。线性队列(非环形)所以边界上会缺侧,缺侧贡献 0。
 		const v = (eff.flat ?? 0) + from.reduce((s, j) => s + scores[j] * eff.pct, 0);
 		if (v > 0) {
 			relay += v;
