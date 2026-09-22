@@ -117,7 +117,14 @@
 		sfxTotal,
 		sfxWin
 	} from '$lib/zhongqiu/sfx';
-	import { bossBgmBattle, bossBgmEnd, bossBgmPrep, bossBgmStop } from '$lib/zhongqiu/bgm';
+	import {
+		bossBgmBattle,
+		bossBgmEnd,
+		bossBgmPrep,
+		bossBgmSting,
+		bossBgmStop,
+		bossBgmTension
+	} from '$lib/zhongqiu/bgm';
 	import { onMount, tick } from 'svelte';
 	import { setLayoutTheme } from '$lib/layoutTheme.svelte';
 	import Fa from 'svelte-fa';
@@ -1948,6 +1955,7 @@
 	/** 掷一次骰子(动画 + 定格) */
 	const rollCurrent = () => {
 		if (rolling) return;
+		bossBgmTension(currentTee); // Boss 底噪按 Tee 递进:越掷越紧
 		const gen = ++animGen;
 		pendingRollKind = 'roll';
 		frozenHand = false; // 新一手开掷 → 定格标记作废
@@ -2017,6 +2025,7 @@
 			markHandFrozen();
 		}, rollTotal * 0.8);
 
+		bossBgmSting('throw');
 		sfxRoll(rollTotal / 1000, 6);
 		setTimeout(() => {
 			if (gen !== animGen) return;
@@ -2167,6 +2176,7 @@
 			markHandFrozen();
 		}, rollTotal * 0.8);
 
+		bossBgmSting('reroll');
 		sfxRoll(rollTotal / 1000, sel.filter(Boolean).length);
 		setTimeout(() => {
 			if (gen !== animGen) return;
