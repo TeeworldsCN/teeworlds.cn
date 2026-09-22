@@ -58,7 +58,7 @@
 				<div>
 					<div class="mb-4 rounded bg-black/30 p-2 text-xs font-bold">
 						<p>捐赠 100% 用于支撑 DDNet 服务器成本</p>
-						<p>超出本年度成本的部分将用于下一年度</p>
+						<p>超出本年度成本的部分将用于补足往年亏损</p>
 					</div>
 					<a
 						href="/link?ref={encodeBase64Url('https://ddnet.org/funding')}"
