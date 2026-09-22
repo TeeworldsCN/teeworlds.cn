@@ -127,7 +127,7 @@
 		loadBossSfxPref,
 		setBossSfxEnabled
 	} from '$lib/zhongqiu/bgm';
-	import { onMount, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { setLayoutTheme } from '$lib/layoutTheme.svelte';
 	import Fa from 'svelte-fa';
 	import {
@@ -264,6 +264,11 @@
 		}
 	});
 	onMount(() => () => bossBgmStop());
+	// 卸载:作废所有在飞的动画定时器(掷骰 interval / 逐行结算 setTimeout)——
+	// 否则切走路由后它们还会跑完并把局内存档改掉
+	onDestroy(() => {
+		animGen += 1;
+	});
 	let target = $state(0);
 	let currentScore = $state(0);
 	let settlePreview = $state(0);
@@ -932,7 +937,7 @@
 			/** 直接跑一次回合结算(QA:会触发归家卖「我」) */
 			settle: () => settleRound(),
 			/** 直接进失败结算屏(QA:测「返回菜单 → 刷新」有没有清局内存档) */
-			gameOver: () => abandonRun(),
+			gameOver: () => endRunEarly(),
 			/** 某个 Tee 现在挂着哪些主动技(QA 排查用) */
 			skills: (i: number) => skillsFor(i),
 			/** 相当于点「返回菜单」:清局内存档 + 回到标题页(QA 要用标题页的入口) */
@@ -1571,7 +1576,19 @@
 
 	{
 		const saved = loadRun();
-		if (saved && saved.phase !== 'idle') restoreRun(saved);
+		// 恢复可能半路炸(合法 JSON 但形状残缺:缺数组字段、dice 长度不对……)——
+		// 这里在**组件初始化体**里,抛出去就是整页白屏。炸了就当没存档:清掉坏档回标题
+		if (saved && saved.phase !== 'idle') {
+			try {
+				restoreRun(saved);
+			} catch {
+				clearRun();
+				resetRun();
+				team = [];
+				draftChoices = [];
+				phase = 'idle';
+			}
+		}
 	}
 
 	// 读档后的收尾:此时脚本里剩下的函数/常量都已就绪
@@ -1859,7 +1876,9 @@
 			playerLevelId: isMe ? levelId : (selfTee?.lastLevelId ?? 'none'),
 			playerDice: isMe ? diceForSum : selfLiveDice,
 			// 原样点数:只剔作废,不做 map/shift(重复牌倍率要数真实骰面)
-			playerRawDice: isMe ? rawLiveDice(dice, modsFor(i)) : selfRawDice,
+			// 用传入的 diceForSum(不是全局 dice):scoreWith 之类复用点会传别的手,
+			// 拿全局会和 ownDice / playerDice 的来源错位
+			playerRawDice: isMe ? rawLiveDice(diceForSum, modsFor(i)) : selfRawDice,
 			// 新机制的上下文：经济流用币、成长/负分用关数、支援流用左邻已结算的分
 			coins: mooncakes,
 			round,
@@ -2608,8 +2627,6 @@
 
 	const finalizeTee = () => {
 		const tee = team[currentTee];
-		// 点数骰子的结算次数:按**结算**时的骰面记(投掷过程中被重掷掉的那些不计)
-		for (const v of dice) runStats.scoredFaces[(v >= 1 && v <= 6 ? v : 1) - 1] += 1;
 		const self = selfEffects(currentTee);
 		const mods = modsFor(currentTee);
 
@@ -2645,6 +2662,10 @@
 			playRerollAnim(Array(6).fill(true), finalizeTee, 'finalize');
 			return;
 		}
+
+		// 点数骰子的结算次数:按**结算**时的骰面记(投掷过程中被重掷掉的那些不计)——
+		// 所以计数放这里(后羿自动重掷**之后**):放函数开头会把被重掷掉的那手也记上 = 一次 12 颗
+		for (const v of dice) runStats.scoredFaces[(v >= 1 && v <= 6 ? v : 1) - 1] += 1;
 
 		// 和值按「变换后的点数」算,并剔除作废的骰子 —— 和判定(liveDice)同口径
 		const shown = liveDiceValues(dice, mods);
@@ -3007,7 +3028,7 @@
 					...(tee.skillChips ?? []),
 					{ srcId: sk.srcId, chips: paid * parkedPer(sk.srcId), from: `停靠 ${rows.length} 张` }
 				];
-				mooncakes -= Math.ceil(paid / 2);
+				mooncakes = Math.max(0, mooncakes - Math.ceil(paid / 2)); // 饽0 兤底:异常顺序下别把月饼币打负
 				sfxCoin();
 				tee.refundHalved = true;
 				rescoreTee(i);
@@ -3258,8 +3279,13 @@
 		sfxSell();
 		// 移除**真正的「我」**(isSelf 那个),而不是「保留下标 0 之外」——
 		// 后者在队伍被重排过时会卖掉别人。卖完剩下的人重新归位。
+		const selfIdx = team.findIndex((t) => t.isSelf);
 		team = normalizeSelf(team.filter((t) => !t.isSelf));
 		currentTee = 0;
+		// 「我」被移出后它后面的下标全体 -1:countedTee(最后一只**真投过骰**的下标)
+		// 必须跟着 -1 —— 否则 decayBuffs / 桂树 的边界会把一只**没投掷**的 Tee 圈进来:
+		// 它的加成卡被多衰减一回合,皓月局里它那手 [1×6] 被映成 6 个 4,桂树还白记 +6 层
+		if (selfIdx >= 0 && countedTee >= selfIdx) countedTee -= 1;
 		countedTee = Math.min(countedTee, Math.max(0, team.length - 1));
 	};
 
@@ -3317,14 +3343,27 @@
 	/** 放弃结算并结束游戏:只跳过团队结算那串动画,**本轮已结算的分照实算**(按钮在结算按钮右下,小一号防误触) */
 	const abandonRun = () => {
 		sfxClick();
-		if (teamSettling) return; // 结算动画播到一半不给点，和「结算回合」一致
-		// 以前这里是 `finalScore = 0`(注释写「本轮分数不计」)—— 玩家明明掷出 252/120,
-		// 结束屏却写「本关 0 / 目标 120」。本轮分数是**真结算过的**(每只 Tee 的分都加进
-		// currentScore 了),只差团队结算那一步没播 —— 照实显示,也照实计入总分(上限目标,
-		// 和过关/失败同一口径),不然「本关 252」和「本局总分」会互相矛盾。
-		finalScore = currentScore;
+		if (teamSettling || phase !== 'round_confirm') return; // 动画播到一半不给点;phase 守卫拦连击/程序化双触发 // 结算动画播到一半不给点，和「结算回合」一致
+		endRunEarly();
+	};
+
+	/**
+	 * 真正写终局的那步。UI 的「放弃结算」过完守卫走这里;作弊引擎的 gameOver **故意**直呼它
+	 * (QA 套件从任意阶段快进到结束屏就靠这个)—— phase 守卫放在 abandonRun,不放这里。
+	 */
+	const endRunEarly = () => {
+		// 本轮总分**当场重算**,和「结算回合」(confirmRound → settleRound)同一个
+		// calcTeamTotal 口径(含回流/全队倍率,上限目标)。不能拿 currentScore:它只是
+		// 逐 Tee 累加的**和**,不含团队加成,和过关/失败的算法对不上;更糟的是结算动画会
+		// 把它插值成中间值,中途刷新恢复出来的是垃圾数,会直接写进元存档最高分(踩过)。
+		const { total } = calcTeamTotal(
+			team.map((t) => t.lastScore),
+			team.map(cardOf),
+			team.some((t) => t.isSelf === true)
+		);
+		finalScore = total;
 		finalRound = round;
-		finalRunScore = runScore + Math.min(currentScore, target);
+		finalRunScore = runScore + Math.min(total, target);
 		const prevBest = save.bestScore;
 		save = saveResult(finalRunScore, round);
 		isNewBest = finalRunScore > prevBest && finalRunScore > 0;
@@ -3353,6 +3392,7 @@
 
 	const nextReward = () => {
 		sfxClick();
+		if (phase !== 'round_end') return; // 只在结算页的这颗按钮合法;防连击/程序化双触发
 		phase = 'reward';
 		drawRewardChoices();
 		refreshPrice = 1; // 新的一次选卡 = 新的一轮集市,刷新价从头算
@@ -3367,6 +3407,8 @@
 	};
 
 	const pickReward = (idx: number) => {
+		// 防连击/程序化双触发:一轮选卡只拿一拿(和按钮的 disabled 同口径)
+		if (phase !== 'reward' || lastRewardIdx >= 0) return;
 		if (team.length >= TEAM_LIMIT) return;
 		const card = rewardChoices[idx];
 		if (!card) return;
@@ -3505,6 +3547,7 @@
 
 	const nextRound = () => {
 		sfxClick();
+		if (phase !== 'shop') return; // 只在集市页的这颗按钮合法;防连击连跳两关
 		round += 1;
 		beginRound();
 	};

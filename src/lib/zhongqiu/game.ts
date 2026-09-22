@@ -1635,14 +1635,37 @@ export interface SaveData {
 
 const SAVE_KEY = 'midautumn:save';
 
+const DEFAULT_SAVE: SaveData = { bestScore: 0, bestRound: 0, plays: 0 };
+
+/**
+ * localStorage 里可能是**合法 JSON 但形状不对**(手改/别的脚本写过/写了一半):
+ * `"null"`/`"123"`/`{}`/`{bestScore:"x"}` 都能 parse 成功。原样返回会让
+ * `saveResult` 的 `plays += 1` 在模块严格模式下抛 TypeError(卡死结束流程),
+ * 或把 NaN 写回存档永久污染 —— 读进来先洗一遍:类型不对的字段回默认值,
+ * 未知字段原样保留(bossSfx 那些后来加的字段就是靠这个不丢)。
+ */
+const normalizeSave = (raw: unknown): SaveData => {
+	const s: SaveData = {
+		...DEFAULT_SAVE,
+		...(raw && typeof raw === 'object' ? (raw as Partial<SaveData>) : {})
+	};
+	const num = (v: unknown) =>
+		typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
+	s.bestScore = num(s.bestScore);
+	s.bestRound = num(s.bestRound);
+	s.plays = num(s.plays);
+	if (typeof s.bossSfx !== 'boolean') delete s.bossSfx;
+	return s;
+};
+
 const readSave = (): SaveData => {
 	try {
 		const raw = localStorage.getItem(SAVE_KEY);
-		if (raw) return JSON.parse(raw) as SaveData;
+		if (raw) return normalizeSave(JSON.parse(raw));
 	} catch {
 		// ignore
 	}
-	return { bestScore: 0, bestRound: 0, plays: 0 };
+	return { ...DEFAULT_SAVE };
 };
 
 export const getSave = readSave;
