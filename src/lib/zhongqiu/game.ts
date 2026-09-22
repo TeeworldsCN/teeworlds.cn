@@ -343,9 +343,9 @@ export interface TeamTee {
 	skillChips?: { srcId: string; chips: number; from?: string }[];
 	skillMult?: { srcId: string; mult: number; from?: string };
 	/**
-	 * 桂树那类「每累计掷出 1 颗 X 点,倍率 +N」的累计 —— **按 Tee 记,不按卡**:
-	 * 同名的两只各算各的;这只 Tee 被卖掉,它的数就跟着一起消失(新入队的那只从 0 开始)。
-	 * 键 = 卡 id(一只 Tee 上同一张卡只有一张,不会撞)。
+	 * 这只 Tee **自己的**成长账(按 Tee 记,不按卡;同名的两只各算各的):桂树 own_face_grow
+	 * 和 scaling/growth_mult 都记这里 —— 抄来的记到抄的人头上;被卖掉,它的数就跟着一起消失
+	 * (新入队的那只从 0 开始)。键 = 卡 id(一只 Tee 上同一张卡只有一张,不会撞)。
 	 */
 	faceGrow?: GrowthMap;
 	/** 饼铺掌柜那类「每累计卖出 1 个 Tee」:这只 Tee **入队之后**卖掉过几个 */
@@ -385,19 +385,23 @@ export const normalizeSelf = (team: TeamTee[]): TeamTee[] => {
 
 export type GrowthMap = Record<string, number>;
 
-/** 过关后成长卡叠层 */
-export const applyGrowth = (cards: (TeeCard | null)[], growth: GrowthMap): GrowthMap => {
-	const next = { ...growth };
-	// 按位置展开(复制卡也算),键用 **srcId** —— 被抄的那张卡自己记自己的账
-	cards.forEach((_, i) => {
+/** 过关后成长卡叠层 —— 记在**这只 Tee 自己**的账上(faceGrow,和桂树同一本,键 = 卡 id):
+ * 「各记各的」(用户裁定):同名的两只互不干涉,抄来的记到**抄的人**头上,被卖掉就跟着走。
+ * (原来是一张全局共享账:两只各 +1 进同一键、又都读同一总数,等于每关双重叠层。) */
+export const applyGrowth = (cards: (TeeCard | null)[], team: TeamTee[]): void => {
+	// 按位置展开(复制卡也算)
+	team.forEach((t, i) => {
 		if (!cards[i]) return;
+		let next = t.faceGrow;
 		for (const { eff, srcId } of effectiveEffects(cards, i)) {
-			if (eff.type === 'scaling_mult') next[srcId] = (next[srcId] ?? 0) + eff.per;
-			// growth_mult 是复利,记的是**关数**,计分时 mult *= (1+per)^growth
-			else if (eff.type === 'growth_mult') next[srcId] = (next[srcId] ?? 0) + 1;
+			if (eff.type === 'scaling_mult')
+				next = { ...(next ?? {}), [srcId]: (next?.[srcId] ?? 0) + eff.per };
+			// growth_mult 是复利,记的是**关数**,计分时 mult *= (1+per)^n
+			else if (eff.type === 'growth_mult')
+				next = { ...(next ?? {}), [srcId]: (next?.[srcId] ?? 0) + 1 };
 		}
+		t.faceGrow = next;
 	});
-	return next;
 };
 
 // ---- 效果解析(copy_right / bundle) ----
@@ -1765,7 +1769,6 @@ export type RunSave = {
 	target: number;
 	mooncakes: number;
 	runScore: number;
-	growth: GrowthMap;
 	team: RunTeamSlot[];
 	soldTees: number;
 	/** 旧的「本回合卖了几张」(每回合上限 2 个那套) —— 已废弃,读档忽略 */

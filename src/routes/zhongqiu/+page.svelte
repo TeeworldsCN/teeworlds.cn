@@ -91,7 +91,6 @@
 		withBossMods,
 		type Boss,
 		type EffectiveEffect,
-		type GrowthMap,
 		type ScoreBreakdown,
 		type ActiveSkill,
 		type ScoreInput,
@@ -274,7 +273,6 @@
 	let settlePreview = $state(0);
 	const displayScore = $derived(currentScore + settlePreview);
 	let team = $state<TeamTee[]>([]);
-	let growth = $state<GrowthMap>({});
 
 	let dice = $state<number[]>([1, 1, 1, 1, 1, 1]);
 	let rolling = $state(false);
@@ -513,7 +511,7 @@
 			});
 		}
 		if (card?.effect.type === 'scaling_mult') {
-			const layers = growth[card.id] ?? 0;
+			const layers = tee.faceGrow?.[card.id] ?? 0;
 			lines.push({ text: `成长: ×${1 + layers}(已叠 ${layers} 层)`, cls: 'text-emerald-300' });
 		}
 		// 累计类效果:把「攒到几」直接摆在技能栏下面 —— 玩家不用去猜现在叠到多少了。
@@ -1031,10 +1029,11 @@
 					}
 				];
 			},
-			/** 成长卡层数 grow('guanghangong', 3) */
-			grow: (cardId: string, layers: number) => {
+			/** 成长卡层数(记在那只 Tee 自己的账上)grow(0, 'guanghangong', 3) */
+			grow: (teeIdx: number, cardId: string, layers: number) => {
+				if (!team[teeIdx]) return;
 				if (!cardById(cardId)) return warnId('Tee 卡', cardId);
-				growth = { ...growth, [cardId]: layers };
+				team[teeIdx].faceGrow = { ...(team[teeIdx].faceGrow ?? {}), [cardId]: layers };
 			},
 			setTeam: (ids: (string | null)[]) => {
 				ids.forEach((id) => {
@@ -1230,7 +1229,6 @@
 
 	/** 重置一局的公共状态 */
 	const resetRunState = () => {
-		growth = {};
 		runScore = 0;
 		mooncakes = 0;
 		buffInventory = {};
@@ -1353,7 +1351,6 @@
 			target,
 			mooncakes,
 			runScore,
-			growth,
 			team: team.map((t) => ({
 				cardId: t.cardId,
 				// 身份必须存:读档时不能靠下标猜「我」是谁
@@ -1446,7 +1443,6 @@
 		target = d.target;
 		mooncakes = d.mooncakes;
 		runScore = d.runScore;
-		growth = d.growth;
 		team = normalizeSelf(
 			d.team.map((t) => ({
 				cardId: t.cardId,
@@ -1859,8 +1855,8 @@
 			isSelf: team[i]?.isSelf === true,
 			hasSelf: team.some((t) => t.isSelf === true),
 			teamCards,
-			// 桂树的累计按 Tee 记(同名的两只各算各的),全局那张表留给 scaling_mult / growth_mult
-			growth: { ...growth, ...(team[i]?.faceGrow ?? {}) },
+			// 成长账全按 Tee 记(桂树 + scaling/growth_mult 同一本,同名的两只各算各的)
+			growth: { ...(team[i]?.faceGrow ?? {}) },
 			buffs: buffsOf(i),
 			// 田螺:身上那批「不生效」的卡不进 buffs(它们不能生效),单独给计分折算用
 			// 发动过的主动技加值(卡面写「计入基础分」那类):和筹码一起进乘算
@@ -3310,7 +3306,7 @@
 			economyGained = eco;
 			mooncakes += gained;
 			runStats.earnedMooncakes += gained; // 过关 + 溢出 + 经商一笔入账,都是正经收入
-			growth = applyGrowth(team.map(cardOf), growth);
+			applyGrowth(team.map(cardOf), team);
 			// 桂树(own_face_grow):把本关掷出的颗数记进**这只 Tee 自己**的账 —— 从下一关开始吃到。
 			// 数和引擎计分同一口径(最终骰子),只数这一关真掷过的:countedTee 之后的是
 			// 被「云海」提前收关、根本没投掷的 Tee(它们的 lastDice 还是上一关的)。
