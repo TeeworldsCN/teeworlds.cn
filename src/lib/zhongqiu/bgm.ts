@@ -295,15 +295,21 @@ const scheduleEnding = (at: number) => {
 let paused = false;
 if (typeof document !== 'undefined') {
 	document.addEventListener('visibilitychange', () => {
-		if (!out || mode === 'off') return;
-		const g = sfxGraph();
-		if (!g) return;
-		if (document.hidden && !paused) {
+		if (document.hidden) {
+			// 没在演 Boss 乐句就不冻(否则只是切个标签,连骰子声一起卡住)
+			if (!out || mode === 'off' || paused) return;
+			const g = sfxGraph();
+			if (!g) return;
 			paused = true;
 			void g.ctx.suspend();
-		} else if (!document.hidden && paused) {
+		} else if (paused) {
+			// 回来**一律解冻**:隐藏期间 mode 可能已经走到 'off'(收束计时器照跑),
+			// 这里若再拦一道(旧写法 `mode === 'off' → return`),ctx 会一直冻到下次交互,
+			// 整页先静音一阵子(踩过)。
 			paused = false;
-			void g.ctx.resume();
+			// ctx 一定已经建好(paused=true 就是拿它冻的);sfxGraph 只是把它取回来
+			const g = sfxGraph();
+			if (g) void g.ctx.resume();
 		}
 	});
 }

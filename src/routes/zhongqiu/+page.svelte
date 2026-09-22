@@ -575,8 +575,10 @@
 		return lines;
 	};
 
-	// ---- 一局的收集统计(结算页显示;不入存档,刷新就没) ----
-	const runStats = {
+	// ---- 一局的收集统计(结算屏显示;**入局内存档**,刷新回结算页还在) ----
+	// 必须是 $state:runDurationMs 直接读它算「历时」—— 普通对象不产生响应式依赖,
+	// derived 首次算完就永久缓存,同一会话里第二局的结算屏会显示**上一局**的时长(踩过)。
+	const runStats = $state({
 		/** 一共买下的加成卡张数 */
 		cardsBought: 0,
 		/** 一共赚到的月饼币(过关/溢出/经商/云海/卖 Tee/归家;田螺退的**退款**不算「赚」,那是花过的钱回来) */
@@ -589,7 +591,7 @@
 		startedAt: 0,
 		/** 结束时刻(进结算屏那一下记;历时到此冻结 —— 刷新回结算页不能再长) */
 		endedAt: 0
-	};
+	});
 	/** 进结算屏就冻结历时并落盘(失败/放弃/QA 全走这里;读档回结算屏时 endedAt 本来就在存档里,不再动) */
 	$effect(() => {
 		if (phase === 'game_over' && runStats.startedAt && !runStats.endedAt) {
@@ -1371,6 +1373,8 @@
 			runStats: { ...runStats, scoredFaces: [...runStats.scoredFaces] },
 			boughtCounts,
 			mvp,
+			// 「本关重掷」的回滚快照也入档:刷新后没了它,重掷就不再回滚统计(翻倍)
+			roundStatSnap: roundStatSnap ? { ...roundStatSnap, faces: [...roundStatSnap.faces] } : null,
 			sellBoost,
 			sellBoostPending,
 			shopBuffs: shopBuffs.map((b) => b.id),
@@ -1473,6 +1477,13 @@
 		}
 		boughtCounts = d.boughtCounts ?? {};
 		mvp = d.mvp ?? null;
+		roundStatSnap = d.roundStatSnap
+			? {
+					faces: [...d.roundStatSnap.faces],
+					rerolled: d.roundStatSnap.rerolled,
+					mvp: d.roundStatSnap.mvp ?? null
+				}
+			: null;
 		sellBoost = d.sellBoost ?? false;
 		sellBoostPending = d.sellBoostPending ?? false;
 		shopBuffs = d.shopBuffs.map((id) => BUFF_BY_ID.get(id)).filter((b): b is BuffCard => !!b);
@@ -3837,8 +3848,15 @@
 					if (e.pointerType !== 'touch' && peekBuff?.id === card.id) peekBuff = null;
 				}}
 				onclick={(e) => {
-					// 显示/收起统一走 hover 语义(点一下显示、点别处收)—— 不做「点同一下开/关」
+					// 显示/收起统一走 hover 语义(点一下显示、点别处收)—— 不做「点同一下开/关」。
+					// 但**什么都没显示时**点一下也要出:合成 click / 读屏激活没有 pointer 事件,
+					// pointerenter / pointerdown 那两条路都走不到 —— 精简道具条的浮层就永远点不开
+					// (QA 抓到过)。已经显示的仍不靠点击收起,收起只交给 hover 移开 / 点别处。
 					anchorBuff(card, e.currentTarget);
+					if (peekBuff?.id !== card.id) {
+						peekBuff = card;
+						hoverTee = null; // 联动:同一屏只开一个说明
+					}
 				}}
 				onkeydown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {

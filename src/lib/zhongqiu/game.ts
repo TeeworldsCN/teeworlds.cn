@@ -1825,6 +1825,14 @@ export type RunSave = {
 		rows: { text: string; cls: string }[];
 	} | null;
 
+	/** 回合开始时的统计快照(「本关重掷」回滚到这一刻)。入档 —— 刷新后没它就漏回滚,
+	 *  重掷完这一关会把结算次数/点数分布算两遍;老存档没有 → 按 null 处理(不回滚) */
+	roundStatSnap?: {
+		faces: number[];
+		rerolled: number;
+		mvp: RunSave['mvp'];
+	} | null;
+
 	// ---- 后来补的本关状态(花生/蜜枣/归家/猜谜/夜市/高照);老存档没有 → 读档时兕底 ----
 	/** 花生:本回合按下标作废的骰子(老存档没有 → 读档时兜底成 []) */
 	hsVoid?: number[];
