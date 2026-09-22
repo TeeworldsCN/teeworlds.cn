@@ -802,7 +802,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'wugang',
 		name: '丹诀',
-		desc: '把 1 颗骰子改为任意点数；自己每有 1 颗 4 点：得分 ×1.25',
+		desc: '把 1 颗骰子改为任意点数；自己每有 1 颗 4 点：得分 ×2',
 		rarity: 'legendary',
 		tag: '丹',
 		skin: 'king-greyfox',
@@ -810,7 +810,7 @@ export const CARDS: TeeCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'set_any', count: 1 },
-				{ type: 'own_face', face: 4, mult: 1.25 }
+				{ type: 'own_face', face: 4, mult: 2 }
 			]
 		}
 	},
