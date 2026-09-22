@@ -13,8 +13,7 @@
 		if (hash) {
 			if (hash.startsWith('#')) hash = `${hash.slice(1)}`;
 			if (hash == 'm') target = `/ddnet/maps`;
-			if (hash == 'q') target = `/ddnet/qia`;
-			else if (hash == 'p') target = `/ddnet/players`;
+			if (hash == 'p') target = `/ddnet/players`;
 			else if (hash == 's') target = `/ddnet/servers`;
 			else if (hash == 'd' || hash == 'donate') target = `/donate`;
 			else if (hash.startsWith('ms')) target = `/ddnet/maps#${hash.slice(2)}`;
