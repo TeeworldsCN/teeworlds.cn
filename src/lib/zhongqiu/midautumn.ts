@@ -174,18 +174,10 @@ export function longestRun(values: number[]): number {
 }
 
 /**
- * 落在**连号里**的骰子颗数:任一条长度 ≥2 的连号(1-2 / 5-6 …)里的点数都算,
- * 同一条里重复的点数按颗数算(「连号里每颗骰子 +per」的字面口径)。
- * 例:1 6 5 5 2 1 有两连(1-2、5-6)→ 6 颗全算;5 5 5 5 5 5 一条连号都没有 → 0。
+ * (原 `straightDiceCount` 已删:「连号里每颗骰子 +N」按用户裁定改成和倍率行同一个
+ * 口径 —— 最长连号的颗数,直接用上面的 `longestRun`。旧版「落在任意连号里的骰子
+ * 按颗数算」会在 5 4 1 3 3 1 上数出 4 颗、倍率行写 3 颗,同一个浮层里自相矛盾。)
  */
-export function straightDiceCount(values: number[]): number {
-	const has = [false, false, false, false, false, false, false, false];
-	for (const v of values) if (v >= 1 && v <= 6) has[v] = true;
-	const inRun = [false, false, false, false, false, false, false, false];
-	for (let v = 1; v <= 6; v++) if (has[v - 1] || has[v + 1]) inRun[v] = true;
-	return values.filter((v) => v >= 1 && v <= 6 && inRun[v]).length;
-}
-
 export function faceFloorLevel(counts: number[]): string | null {
 	let best = 0;
 	for (let v = 1; v <= 6; v++) if (v !== 4 && counts[v] > best) best = counts[v];

@@ -4,7 +4,6 @@ import {
 	getRollLevel,
 	hasClearVoid,
 	judgeRoll,
-	straightDiceCount,
 	stripVoid,
 	type DiceMods
 } from './midautumn';
@@ -1227,10 +1226,11 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'straight_chips': {
-				// 「连号里每颗骰子 +per」按字面算:**落在任何一条连号里的骰子**都算,
-				// 不只看最长那一条(1 6 5 5 2 1 有两连 → 6 颗全算;原来只算最长那条 = 2 颗)。
-				// 注意:倍率那边(straight_mult)仍按**最长连号长度** —— 否则「两条 2 连」会白送 ×16。
-				const n = straightDiceCount(ownDice);
+				// 口径(用户裁定):和倍率行(straight_mult)**同一个连号** —— 取**最长连号**的颗数,
+				// 重复点数只算 1 颗、断开的多条只取最长。以前是「落在任意连号里的骰子按颗数」:
+				// 5 4 1 3 3 1 会数出 4 颗、同一个浮层里倍率行却写 3 颗,自相矛盾(用户报过);
+				// TODO.md §10 那张对照表(1,6,5,5,2,1 → 140/30)记的本来就是这一版。
+				const n = longestRun(ownDice);
 				if (n < 2) break;
 				const bc = chips;
 				chips += eff.per * n;

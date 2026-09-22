@@ -100,7 +100,7 @@ export type TeeEffect =
 	// 基础分 = base(+每关 perRound×关数) − 净值,掷得越烂越赚(per 字段没实现,别用)
 	| { type: 'reverse'; base: number; per?: number; perRound?: number }
 	| { type: 'straight_ladder' } // 连号阶梯:123/234/345/456→一秀,1234 系→二举,12345 系→四进
-	| { type: 'straight_chips'; per: number } // 连号里每颗骰子 +per 分
+	| { type: 'straight_chips'; per: number } // 最长连号的颗数 ×per(重复点数只算 1 颗,多条只取最长)
 	// 连号长度倍率:连号 n 颗 → 得分 ×per^(n-from)。连号流的引擎 ——
 	// 原来三张卡的乘数全锁在「对堂(6 连)」上,而那是 ~1.5% 的事件,等于按不出来。
 	| { type: 'straight_mult'; per: number; from?: number }
@@ -551,7 +551,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'qixingdeng',
 		name: '七星灯',
-		desc: '连号里每颗骰子：基础分 +70；连号每多 1 颗，得分 ×1.85',
+		desc: '最长连号的每颗点数：基础分 +70；连号每多 1 颗，得分 ×1.85',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_contrastfox',
@@ -567,7 +567,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'zhideng',
 		name: '串珠',
-		desc: '连号里每颗骰子：基础分 +15',
+		desc: '最长连号的每颗点数：基础分 +15',
 		rarity: 'common',
 		skin: 'generic_glow',
 		effect: { type: 'straight_chips', per: 15 }

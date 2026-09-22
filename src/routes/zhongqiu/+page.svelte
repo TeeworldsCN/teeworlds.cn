@@ -957,7 +957,11 @@
 				return {
 					levelId: level.id,
 					total: b.total,
-					lines: b.sources.map((s) => `${s.srcId} +${s.chips} x${s.mult}`)
+					// 带上来源注解(「连号 3 颗」那句)—— straight 口径的 QA 要断言它,
+					// 光看 +chips 分不清「最长连号」和「所有连号去重」
+					lines: b.sources.map(
+						(s) => `${s.srcId} +${s.chips} x${s.mult}${s.from ? ` · ${s.from}` : ''}`
+					)
 				};
 			},
 			/**
