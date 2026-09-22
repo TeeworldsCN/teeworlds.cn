@@ -161,6 +161,13 @@ export interface DiceMods {
 	voidOverride?: boolean;
 }
 
+/**
+ * 连号的**唯一实现**(用户裁定:「连号只有这一个设定」——所有连号判定都走这里):
+ * straight_chips 的颗数、straight_mult 的长度、straightFloorLevel/连号阶梯、
+ * 结算行「连号 N 颗」文案,全是同一个 `longestRun`。(原 `straightDiceCount`
+ * 「落在任意连号里的骰子按颗数」那版已删:它会和倍率行给出不同的颗数。)
+ * 返回最长连续点数段的长度,同点只算 1 颗;孤立 1 颗 = 1,连号从 2 起算在调用侧。
+ */
 export function longestRun(values: number[]): number {
 	const has = [false, false, false, false, false, false, false];
 	for (const v of values) if (v >= 1 && v <= 6) has[v] = true;
@@ -173,11 +180,6 @@ export function longestRun(values: number[]): number {
 	return best;
 }
 
-/**
- * (原 `straightDiceCount` 已删:「连号里每颗骰子 +N」按用户裁定改成和倍率行同一个
- * 口径 —— 最长连号的颗数,直接用上面的 `longestRun`。旧版「落在任意连号里的骰子
- * 按颗数算」会在 5 4 1 3 3 1 上数出 4 颗、倍率行写 3 颗,同一个浮层里自相矛盾。)
- */
 export function faceFloorLevel(counts: number[]): string | null {
 	let best = 0;
 	for (let v = 1; v <= 6; v++) if (v !== 4 && counts[v] > best) best = counts[v];
@@ -457,20 +459,21 @@ export function hitIndices(dice: number[], levelId: string, mods?: DiceMods): nu
 	if (levelId === 'none') return [];
 	const at = (k: number) => idx[k];
 	if (levelId === 'dui_tang') return [...idx];
-	// 连号阶梯:亮出最长连号里各一颗
+	// 连号阶梯:亮出最长连号里各一颗(长度只算一遍:连号只有 longestRun 这一个口径)
 	if (hasMod(mods, 'straightFloor')) {
-		const lid = straightFloorLevel(longestRun(d));
+		const run = longestRun(d);
+		const lid = straightFloorLevel(run);
 		if (lid === levelId) {
 			const start = (() => {
 				for (let s0 = 1; s0 <= 6; s0++)
 					if (d.includes(s0) && !d.includes(s0 - 1)) {
 						let len = 0;
 						while (d.includes(s0 + len)) len++;
-						if (len === longestRun(d)) return s0;
+						if (len === run) return s0;
 					}
 				return 1;
 			})();
-			const need = [...new Set(d.filter((v) => v >= start && v < start + longestRun(d)))];
+			const need = [...new Set(d.filter((v) => v >= start && v < start + run))];
 			return need.map((v) => at(d.indexOf(v))).filter((i) => i >= 0);
 		}
 	}
