@@ -277,7 +277,7 @@
 	let dice = $state<number[]>([1, 1, 1, 1, 1, 1]);
 	let rolling = $state(false);
 	let currentTee = $state(0);
-	let rerollAllUsed = $state(false);
+	let usedRerollAll = $state<number[]>([]); // 后羿自动重掷:按 Tee 记(抄来的第二份也各管各)
 	let lastLevel = $state(getRollLevel('none'));
 	let lastBreakdown: ScoreBreakdown = $state({
 		base: 0,
@@ -1270,7 +1270,7 @@
 		countedTee = -1;
 		currentTee = 0;
 		dice = [1, 1, 1, 1, 1, 1];
-		rerollAllUsed = false;
+		usedRerollAll = [];
 		rerollCount = 0;
 		usedOpSrc = [];
 		usedOpCount = {};
@@ -1406,7 +1406,8 @@
 			lastLevelId: lastLevel.id,
 			rollsLeft,
 			rerollCount,
-			rerollAllUsed,
+			rerollAllUsed: usedRerollAll.length > 0, // 兼容老档字段
+			rerollAllUsedIdxs: usedRerollAll,
 			leftoverRolls,
 			choosing,
 			rerollSel,
@@ -1521,7 +1522,7 @@
 		lastLevel = getRollLevel(d.lastLevelId);
 		rollsLeft = d.rollsLeft;
 		rerollCount = d.rerollCount;
-		rerollAllUsed = d.rerollAllUsed;
+		usedRerollAll = d.rerollAllUsedIdxs ?? (d.rerollAllUsed ? team.map((_, k) => k) : []);
 		leftoverRolls = d.leftoverRolls ?? 0;
 		choosing = d.choosing;
 		rerollSel = d.rerollSel;
@@ -2386,10 +2387,14 @@
 			if (act.srcId)
 				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 		} else if (act.kind === 'bump') {
-			// 月牙尺 +1(6 点封顶) / 缺月尺 −1(1 点封底),够不到就再点没意义
+			// 月牙尺 +1(6 点封顶) / 缺月尺 −1(1 点封底),够不到就再点没意义。
+			// **按玩家看到的点数算**(「视为 N」映射后):显示 4 的裸 6 想 +1,期望的是 5;
+			// 写回后 markOpted 豁免映射,显示的就是写进去的值。边界也按显示值判 ——
+			// 否则和望月符/破晓同队时,看着 4 却 +1 不动/直接变 6,和卡面直觉相反。
 			const step = act.step ?? 1;
-			if (step > 0 ? dice[i] >= 6 : dice[i] <= 1) return;
-			dice[i] = dice[i] + step;
+			const shown = shownDice[i] ?? dice[i];
+			if (step > 0 ? shown >= 6 : shown <= 1) return;
+			dice[i] = shown + step;
 			markOpted();
 			act.count -= 1;
 			if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
@@ -2680,9 +2685,10 @@
 				? { from: preUpLevel, name: cardById(upSrcId)?.name ?? '等级提升' }
 				: null;
 
-		// 后羿： 再接再厉时自动重掷全部（每回合 1 次）
-		if (level.id === 'none' && hasRerollAllOnNone(self) && !rerollAllUsed) {
-			rerollAllUsed = true;
+		// 后羿:再接再厉时自动重掷全部(每回合 1 次)—— **按 Tee 记**:红绳抄来的第二份、
+		// 同名双卡都各管各,先掷到的那只不能把别人的份额吃掉(原来全队共享一个布尔,踩过)
+		if (level.id === 'none' && hasRerollAllOnNone(self) && !usedRerollAll.includes(currentTee)) {
+			usedRerollAll = [...usedRerollAll, currentTee];
 			rerollCount += 6;
 			// kind 必须是 'finalize':改点队列已被 shift 空了,读档若按 'reroll' 走
 			// (afterRoll → startSetPhase)会把整张改点队列重新收一遍 = 刷新一次白拿一轮改点
@@ -2700,7 +2706,8 @@
 		// 高亮按**抬档前**的等级画:骰面兑现的是原等级,抬档单独成行
 		hitDice = hitIndices(dice, preUpLevel.id, mods);
 		lastLevel = level;
-		lastBreakdown = calcTeeScore(scoreInput(currentTee, level.id, shown));
+		frozenScoreInput = scoreInput(currentTee, level.id, shown, dice);
+		lastBreakdown = calcTeeScore(frozenScoreInput);
 
 		tee.lastDice = [...dice];
 		// 记下这一手被判作废的骰子(高照抄牌面时要连作废状态一起抄)
@@ -2908,19 +2915,32 @@
 		levelUp?: { from: RollLevel; name: string } | null;
 	} | null = null;
 
+	/** 首算时的计分入参快照(rescoreTee 重算时必须用它,见那里的注释) */
+	let frozenScoreInput: ScoreInput | null = null;
+
 	/**
 	 * 主动技改了「基础分」之后重算这只 Tee:乘算必须吃到这份加值 ——
 	 * 所以不是 `lastScore += x`,而是把加值当计分入参重跑一遍
 	 * (加值那行会自然排在乘算行**前面**,和卡面「计入基础分」一致)。
 	 * 结算行不用在这里重建:改基础分的主动技都在动画之前问,playSettle 会重build。
+	 *
+	 * 重跑必须用**首算时的入参快照**:到主动技这一步,归还卡已被 settleTianluo /
+	 * refundUnusedItems 退回 —— buffs 少了、投掷次数少了,灯官(per_buff)、丹引
+	 * (per_extra_roll) 会被无端削分(实测 15→10)。只有主动技的加值/乘值是新的,单独覆盖。
 	 */
 	const rescoreTee = (i: number) => {
 		const lv = lastLevel;
 		if (!lv || !team[i]) return;
 		const prev = team[i].lastScore ?? 0;
-		lastBreakdown = calcTeeScore(
-			scoreInput(i, lv.id, liveDiceValues(team[i].lastDice ?? [], modsFor(i)))
-		);
+		const base =
+			frozenScoreInput && frozenScoreInput.index === i
+				? frozenScoreInput
+				: scoreInput(i, lv.id, liveDiceValues(team[i].lastDice ?? [], modsFor(i)));
+		lastBreakdown = calcTeeScore({
+			...base,
+			skillChips: team[i].skillChips ?? [],
+			skillMult: team[i].skillMult
+		});
 		team[i].lastScore = lastBreakdown.total;
 		currentScore += lastBreakdown.total - prev;
 	};
@@ -3146,7 +3166,7 @@
 		rerollCount = 0;
 		usedOpSrc = [];
 		usedOpCount = {};
-		rerollAllUsed = false;
+		usedRerollAll = [];
 		countedTee = -1; // 本关重来 → 所有 Tee 回到「待掷」
 		clearRoundSkillState(); // 主动技的加值也是「本关一次」,重来就要收回
 		settleSteps = [];
@@ -3224,7 +3244,7 @@
 		// 压分辅助(月上广寒):「我」这一份按 (邻居/自己) 放大后加进总分
 		for (const rl of ratioLines) {
 			steps.push({
-				text: `❄️ ${cardById(rl.cardId)?.name ?? rl.cardId}：「我」×${formatScore(Math.round(rl.mult * 10) / 10)} +${formatScore(Math.round(rl.bonus))} 分`,
+				text: `❄ ${cardById(rl.cardId)?.name ?? rl.cardId}：「我」×${formatScore(Math.round(rl.mult * 10) / 10)} +${formatScore(Math.round(rl.bonus))} 分`,
 				cls: 'text-cyan-300',
 				kind: 'mult'
 			});
@@ -5247,7 +5267,7 @@
 				{#if losses.length > 0}
 					<div class="mt-3 rounded-xl border border-red-400/40 bg-red-500/10 px-3 py-2 text-left">
 						<div class="text-[11px] font-bold text-red-200">
-							⚠️ 身上还有 {losses.length} 张加成卡会一起消失
+							⚠ 身上还有 {losses.length} 张加成卡会一起消失
 						</div>
 						<div class="mt-1 space-y-0.5">
 							{#each losses as row}
@@ -5457,7 +5477,10 @@
 		.market-team {
 			flex-wrap: nowrap;
 			overflow-x: auto;
-			padding-bottom: 2px;
+			/* 卡角的 ✕ 卖出钮(-top-1.5)和 ✨/🐚/⚡ 角标(-bottom-1.5)各外挑 6px,
+			   横滑容器两头都要留够,不然小屏上被裁边(实测裁 3~5px) */
+			padding-top: 6px;
+			padding-bottom: 6px;
 		}
 	}
 

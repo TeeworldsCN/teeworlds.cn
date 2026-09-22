@@ -322,12 +322,15 @@ export const hasClearVoid = (mods?: DiceMods): boolean => {
 	return mods.clearVoid === true;
 };
 
-/** 摘掉所有作废(月食卡用) */
+/** 摘掉**点数作废**(月食卡:「不受点数作废影响」)。
+ * 按下标作废(花生首掷 voidIdx / 高照抄来的 voidOverride)**救不了** —— 和半影卡
+ * 「按下标作废的救不了」同一口径:那是整颗骰子被作废,不是某个点数被作废。
+ * (原来连 voidIdx/voidOverride 一起摘:花生的玩法整个消失还白拿满额加成,踩过。) */
 export const stripVoid = (mods?: DiceMods): DiceMods | undefined => {
 	if (!mods) return undefined;
 	if (mods.chain?.length) return { ...mods, chain: mods.chain.map(stripVoid) as DiceMods[] };
-	if (!mods.void?.length && !mods.voidIdx?.length && !mods.voidOverride) return mods;
-	const { void: _drop, voidIdx: _dropIdx, voidOverride: _dropOv, ...rest } = mods;
+	if (!mods.void?.length) return mods;
+	const { void: _drop, ...rest } = mods;
 	return rest;
 };
 

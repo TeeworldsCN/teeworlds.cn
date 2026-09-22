@@ -246,7 +246,17 @@ const scheduleFanfare = (at: number) => {
  * tension(0..5)直接长在音上:颗数/音区/重量/变徵/riser/双落定逐级加上去。
  */
 export const bossBgmSting = (kind: 'throw' | 'reroll', landIn = 0.8) => {
-	if (!enabled || mode === 'off' || mode === 'ending' || !out) return;
+	// 'prep'/'jingle' 期间不出声:点「迎战」那一下 = 开场曲触发点 = 第一掷,两发打击
+	// 乐句会整段撞在一起 —— 让开场曲独占,sting 从后面的重掷/第二掷再上
+	if (
+		!enabled ||
+		mode === 'off' ||
+		mode === 'ending' ||
+		mode === 'prep' ||
+		mode === 'jingle' ||
+		!out
+	)
+		return;
 	const g = ensureOut();
 	if (!g) return;
 	const at = g.ctx.currentTime + 0.015;

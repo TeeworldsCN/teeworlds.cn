@@ -580,7 +580,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'niyuefu',
 		name: '逆月符',
-		desc: '该 Tee 本关基础分替换为（160 − 基础分）',
+		desc: '该 Tee 2 关内基础分替换为（160 − 基础分）',
 		rarity: 'rare',
 		skin: 'Dark Default',
 		price: 7,

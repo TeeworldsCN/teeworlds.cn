@@ -81,7 +81,7 @@ export const BOSSES: Boss[] = [
 	{
 		id: 'boss_miyue',
 		name: '迷月',
-		emoji: '🌫️',
+		emoji: '🌫',
 		// 作废哪个点数每关随机抽(只抽非 4 点)—— 横幅上写明是哪一点,玩家可以照着留骰子
 		desc: '本关掷出的 {0} 点作废；目标 ×0.9',
 		randomRule: { kind: 'void', pool: [1, 2, 3, 5, 6] },
@@ -211,7 +211,7 @@ export const BOSSES: Boss[] = [
 	{
 		id: 'boss_hanyue',
 		name: '寒月',
-		emoji: '❄️',
+		emoji: '❄',
 		desc: '本关加成卡的加值只算一半；目标 ×0.7',
 		mods: { buffChipsScale: 0.5 },
 		targetMult: 0.7,
@@ -1517,6 +1517,9 @@ export const calcTeamTotal = (
 	const addRelay = (eff: TeeEffect & { type: 'relay_pct' }, i: number, cardId: string) => {
 		const idx = eff.from === 'left' ? [i - 1] : eff.from === 'right' ? [i + 1] : [i - 1, i + 1];
 		const from = idx.filter((j) => j >= 0 && j < scores.length && j !== i);
+		// 「接力」得有人可接:目标邻居一个都不在(桂影站最右 = 没有右邻)→ 整条不触发,
+		// 固定加值也不白给。左右卡在边上只剩一侧时按现有侧算(缺侧贡献 0)。
+		if (!from.length) return;
 		const v = (eff.flat ?? 0) + from.reduce((s, j) => s + scores[j] * eff.pct, 0);
 		if (v > 0) {
 			relay += v;
@@ -1643,6 +1646,8 @@ export interface SaveData {
 	/** Boss 音效开关 —— 也入元存档(和 localStorage 双写,换设备/清站点数据不丢)。
 	 * 老存档没有这个字段 → undefined = 默认开 */
 	bossSfx?: boolean;
+	/** 总音效开关 —— 同上双写,和 bossSfx 同一口径 */
+	sfxOn?: boolean;
 }
 
 const SAVE_KEY = 'midautumn:save';
@@ -1667,6 +1672,7 @@ const normalizeSave = (raw: unknown): SaveData => {
 	s.bestRound = num(s.bestRound);
 	s.plays = num(s.plays);
 	if (typeof s.bossSfx !== 'boolean') delete s.bossSfx;
+	if (typeof s.sfxOn !== 'boolean') delete s.sfxOn;
 	return s;
 };
 
@@ -1709,6 +1715,17 @@ export const clearSave = () => {
 export const setSaveBossSfx = (on: boolean) => {
 	const save = readSave();
 	save.bossSfx = on;
+	try {
+		localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+	} catch {
+		// ignore
+	}
+};
+
+/** 总音效开关入元存档(sfx 的 setSfxEnabled 双写到这里)—— 和 bossSfx 同一口径 */
+export const setSaveSfx = (on: boolean) => {
+	const save = readSave();
+	save.sfxOn = on;
 	try {
 		localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 	} catch {
@@ -1804,6 +1821,8 @@ export type RunSave = {
 	rollsLeft: number;
 	rerollCount: number;
 	rerollAllUsed: boolean;
+	/** 后羿自动重掷按 Tee 记谁用过(老档只有布尔 → 读档时摊给全队) */
+	rerollAllUsedIdxs?: number[];
 	/** 「跳过重掷」时还剩几次重掷(余烬的归还判据);老存档没有 → 按 0 处理 */
 	leftoverRolls?: number;
 	choosing: boolean;
@@ -1895,25 +1914,98 @@ export const saveRun = (data: Omit<RunSave, 'v'>) => {
 	}
 };
 
+/**
+ * 局内存档形状校验 —— **逐字段过,不符即抛**(loadRun 捕获后清档返回 null)。
+ * 为什么这么严:合法 JSON 的形状错(实测 shopSold: 123)不会抛异常,带病通过
+ * restoreRun 的 try/catch,却在渲染期炸 —— 白屏且刷新不恢复。宁可丢档,不带病。
+ */
+const validateRun = (d: RunSave): void => {
+	const bad = (k: string): never => {
+		throw new Error(`损坏存档: ${k}`);
+	};
+	const isNum = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
+	const check = (k: string, kind: 'num' | 'str' | 'bool' | 'arr' | 'str|null') => {
+		const v = (d as unknown as Record<string, unknown>)[k];
+		const ok =
+			kind === 'num'
+				? isNum(v)
+				: kind === 'str'
+					? typeof v === 'string'
+					: kind === 'bool'
+						? typeof v === 'boolean'
+						: kind === 'arr'
+							? Array.isArray(v)
+							: v === null || typeof v === 'string';
+		if (!ok) bad(k);
+	};
+	for (const k of [
+		'round',
+		'target',
+		'mooncakes',
+		'runScore',
+		'soldTees',
+		'currentTee',
+		'currentScore',
+		'roundTotal',
+		'countedTee',
+		'settlePreview',
+		'diceSum',
+		'rollsLeft',
+		'rerollCount',
+		'speedIdx',
+		'roundRewardGained',
+		'overflowGained',
+		'economyGained',
+		'finalScore',
+		'finalRunScore',
+		'finalRound',
+		'lastRewardIdx'
+	])
+		check(k, 'num');
+	for (const k of ['phase', 'lastLevelId', 'rollKind']) check(k, 'str');
+	for (const k of ['bossId', 'shopPickId', 'selectedBuffId', 'pendingActiveKey'])
+		check(k, 'str|null');
+	for (const k of ['choosing', 'rerollAllUsed', 'pointPicker', 'isNewBest', 'wasRolling'])
+		check(k, 'bool');
+	for (const k of [
+		'team',
+		'shopBuffs',
+		'shopSold',
+		'shopLocks',
+		'draftChoices',
+		'draftPicked',
+		'rewardChoices',
+		'dice',
+		'rerollSel',
+		'rollMask',
+		'usedOpSrc',
+		'optedDice',
+		'clearedVoid',
+		'setQueue'
+	])
+		check(k, 'arr');
+	if (d.dice.some((v) => !isNum(v))) bad('dice');
+};
+
 export const loadRun = (): RunSave | null => {
 	try {
 		const raw = localStorage.getItem(RUN_KEY);
 		if (!raw) return null;
 		const data = JSON.parse(raw) as RunSave;
-		// 只验版本号不够:合法 JSON 的坏档(数值 NaN、缺数组)不会抛,会一路流进计分;
-		// phase 非法则在页面入口按坏档拦(白名单在那边,类型也在那边)。
-		const sane =
-			data.v === RUN_VERSION &&
-			typeof data.phase === 'string' &&
-			Number.isFinite(data.round) &&
-			Number.isFinite(data.mooncakes) &&
-			Array.isArray(data.team);
-		if (!sane) {
+		// 只验版本号不够:合法 JSON 的坏档不抛,却会把状态机推进未知态/渲染期白屏。
+		// 逐字段校验,不符即抛 → 这里的 catch 清档返回 null;phase 另在页面入口过白名单。
+		if (data.v !== RUN_VERSION) {
 			localStorage.removeItem(RUN_KEY);
 			return null;
 		}
+		validateRun(data);
 		return data;
 	} catch {
+		try {
+			localStorage.removeItem(RUN_KEY);
+		} catch {
+			// ignore
+		}
 		return null;
 	}
 };

@@ -10,6 +10,8 @@
 //
 // 只在点击「开始博饼」等动作时调用。
 
+import { getSave, setSaveSfx } from './game';
+
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let bus: DynamicsCompressorNode | null = null;
@@ -36,11 +38,14 @@ export const setSfxEnabled = (on: boolean) => {
 	} catch {
 		// ignore
 	}
+	setSaveSfx(on); // 也入元存档(和 bossSfx 同一口径:双写,换设备不丢)
 };
 
 export const loadSfxPref = () => {
 	try {
-		enabled = localStorage.getItem(KEY) !== '0';
+		const raw = localStorage.getItem(KEY);
+		// 专用 key 缺失(换设备/只导了元存档)→ 回退元存档的 sfxOn;再缺 = 默认开
+		enabled = raw !== null ? raw !== '0' : (getSave().sfxOn ?? true);
 	} catch {
 		// ignore
 	}
