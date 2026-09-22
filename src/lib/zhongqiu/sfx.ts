@@ -70,6 +70,19 @@ export const initSfx = () => {
 	if (ctx.state === 'suspended') void ctx.resume();
 };
 
+/**
+ * 外部音乐模块(Boss 战 BGM)要用的图 —— 和音效同一张总线,
+ * 所以静音开关、总线压缩对音乐天然生效,不需要另开一条链。
+ */
+export const sfxGraph = (): {
+	ctx: AudioContext;
+	bus: DynamicsCompressorNode;
+	noise: AudioBuffer;
+} | null => {
+	initSfx();
+	return ctx && bus && noiseBuf ? { ctx, bus, noise: noiseBuf } : null;
+};
+
 const note = (semi: number) => 440 * Math.pow(2, semi / 12);
 const log = (name: string) => {
 	if (sfxLog.length < 60) sfxLog.push(name);

@@ -58,11 +58,12 @@ export interface Boss {
 	minRound?: number;
 	/**
 	 * 随机规则:每关抽一组参数(rollBossVariant),抽完写进 mods、把 desc 里的 {0}/{1} 换成数字。
-	 * `void` = 抽 1 个点作废(迷月);`map` = 抽 2 个**不同**的点做「X 点视为 Y 点」(影月)。
+	 * `void` = 抽 count(默认 1)个**互不相同**的点作废(迷月 1 个 / 霜月 2 个);
+	 * `map` = 抽 2 个**不同**的点做「X 点视为 Y 点」(影月/破月)。
 	 * 候选点一律不含 4(4 是博饼的硬通货,作废它就成蚀月那种重锤)。抽到的数写在 `rolled` 上、
 	 * 存进存档 bossArgs —— 刷新不重抽;横幅上写明是哪几点,玩家照着留骰子。
 	 */
-	randomRule?: { kind: 'void' | 'map'; pool: number[] };
+	randomRule?: { kind: 'void' | 'map'; pool: number[]; count?: number };
 	/** 本关抽到的随机参数(randomRule 的产出,读档时回填) */
 	rolled?: number[];
 }
@@ -165,15 +166,6 @@ export const BOSSES: Boss[] = [
 		minRound: 18
 	},
 	{
-		id: 'boss_yinyue',
-		name: '隐月',
-		emoji: '🌗',
-		desc: '本关掷出的 6 视为 5；目标 ×0.95',
-		mods: { map: { 6: 5 } },
-		targetMult: 0.95,
-		minRound: 18
-	},
-	{
 		id: 'boss_yuanyue',
 		name: '圆月',
 		emoji: '🌝',
@@ -187,8 +179,11 @@ export const BOSSES: Boss[] = [
 		id: 'boss_poyue',
 		name: '破月',
 		emoji: '🌘',
-		desc: '本关掷出的 4 作废、6 视为 4；目标 ×0.9',
-		mods: { chain: [{ void: [4] }, { map: { 6: 4 } }] },
+		// 4 作废是固定的重锤,「视为」那半每关随机抽(和影月同款:X、Y 互不相同、不含 4),
+		// 横幅上写明是哪两点,玩家照着留骰子
+		desc: '本关掷出的 4 作废、{0} 视为 {1}；目标 ×0.9',
+		mods: { void: [4] },
+		randomRule: { kind: 'map', pool: [1, 2, 3, 5, 6] },
 		targetMult: 0.9,
 		weight: 0.5,
 		minRound: 18
@@ -197,9 +192,11 @@ export const BOSSES: Boss[] = [
 		id: 'boss_shuangyue',
 		name: '霜月',
 		emoji: '🌫',
-		desc: '本关掷出的 1、6 作废；目标 ×0.8',
-		mods: { void: [1, 6] },
-		targetMult: 0.8,
+		// 作废哪两个点每关随机抽(互不相同、不含 4)。随机比固定的「1、6」轻重不一,
+		// 目标在 ×0.8 上再降一档
+		desc: '本关掷出的 {0}、{1} 作废；目标 ×0.75',
+		randomRule: { kind: 'void', pool: [1, 2, 3, 5, 6], count: 2 },
+		targetMult: 0.75,
 		minRound: 18
 	},
 	{
@@ -261,7 +258,8 @@ export const getBossById = (id: string): Boss =>
 	BOSSES[0];
 
 /**
- * 「随机规则」Boss 的**本关实例**(迷月:随机作废一个点;影月:X 点视为 Y 点,X≠Y)。
+ * 「随机规则」Boss 的**本关实例**(迷月:随机作废 1 个点;霜月:随机作废 2 个不同的点;
+ * 影月/破月:X 点视为 Y 点,X≠Y)。
  * 抽到的数写进 mods、把 desc 里的 {0}/{1} 换成数字,并记在 `rolled` 上(存档照它回填)。
  * `args` 传上次抽到的(读档时不重抽);不合法(不在池里 / 两个数相同)就重抽。候选点永远不含 4。
  */
@@ -278,8 +276,10 @@ export const rollBossVariant = (boss: Boss, args?: number[]): Boss => {
 	const mods: DiceMods = { ...(boss.mods ?? {}) };
 	let rolled: number[];
 	if (rr.kind === 'void') {
-		rolled = [draw([], 0)];
-		mods.void = [...(mods.void ?? []), rolled[0]];
+		// 抽 count(默认 1)个**互不相同**的点 —— draw 的 taken 参数就是干这个的
+		rolled = [];
+		for (let i = 0; i < (rr.count ?? 1); i++) rolled.push(draw([...rolled], i));
+		mods.void = [...(mods.void ?? []), ...rolled];
 	} else {
 		// 「视为」:两个数必须不同 —— X 视为 X 是白写,占着一个 Boss 位
 		const from = draw([], 0);

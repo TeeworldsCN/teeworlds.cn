@@ -117,6 +117,7 @@
 		sfxTotal,
 		sfxWin
 	} from '$lib/zhongqiu/sfx';
+	import { bossBgmBattle, bossBgmEnd, bossBgmPrep, bossBgmStop } from '$lib/zhongqiu/bgm';
 	import { onMount, tick } from 'svelte';
 	import { setLayoutTheme } from '$lib/layoutTheme.svelte';
 	import Fa from 'svelte-fa';
@@ -233,6 +234,27 @@
 
 	let round = $state(1);
 	let boss = $state<Boss | null>(null);
+	/** 这一关有没有「真」Boss:黑月按口径当作没有 Boss(不放 BGM/jingle,按钮写普通「开始」) */
+	const bossFight = $derived(!!boss && boss.id !== 'boss_heiyue');
+	// Boss 战音乐:进准备阶段随机生成一首淡入;点「迎战」= 1 小节 jingle → 主循环整回合;
+	// 回合结束(胜)动态编收束再停、(败)淡出;局间/菜单直接收。
+	$effect(() => {
+		const p = phase;
+		if (p === 'intro') {
+			if (bossFight) bossBgmPrep();
+			else bossBgmStop();
+		} else if (p === 'rolling' || p === 'round_confirm') {
+			if (bossFight) bossBgmBattle();
+			else bossBgmStop();
+		} else if (p === 'round_end') {
+			bossBgmEnd(true);
+		} else if (p === 'game_over') {
+			bossBgmEnd(false);
+		} else {
+			bossBgmStop();
+		}
+	});
+	onMount(() => () => bossBgmStop());
 	let target = $state(0);
 	let currentScore = $state(0);
 	let settlePreview = $state(0);
@@ -4253,16 +4275,48 @@
 						{#if phase === 'intro' || phase === 'rolling'}
 							<div
 								bind:this={dicePanelEl}
-								class="panel-fill mt-2.5 rounded-xl border border-amber-500/25 bg-slate-900/70 px-2.5 py-2 backdrop-blur-sm max-[365px]:mt-1.5 max-[365px]:py-1.5 sm:mt-4 sm:rounded-2xl sm:p-4"
+								class="panel-fill relative mt-2.5 rounded-xl border border-amber-500/25 bg-slate-900/70 px-2.5 py-2 backdrop-blur-sm max-[365px]:mt-1.5 max-[365px]:py-1.5 sm:mt-4 sm:rounded-2xl sm:p-4"
 							>
 								{#if phase === 'intro'}
+									{#if bossFight}
+										<!-- 迎战氛围:红色夜空 backdrop(细纹理 + 淡红月牙)。
+										     inset-0 + 自己 overflow-hidden —— 按口径不许超出这块面板 -->
+										<div
+											class="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] select-none"
+											aria-hidden="true"
+										>
+											<div
+												class="absolute inset-0"
+												style="background: radial-gradient(130% 95% at 72% -15%, rgba(239,68,68,0.14), rgba(239,68,68,0.04) 45%, transparent 72%)"
+											></div>
+											<div
+												class="absolute inset-0 opacity-[0.05]"
+												style="background: repeating-linear-gradient(135deg, #ef4444 0 1px, transparent 1px 7px)"
+											></div>
+											<!-- 不是很明显的红色月牙 -->
+											<svg
+												class="absolute top-1.5 right-2 h-11 w-11 opacity-[0.16]"
+												viewBox="0 0 100 100"
+											>
+												<defs>
+													<mask id="boss-crescent">
+														<rect width="100" height="100" fill="#fff" />
+														<circle cx="60" cy="36" r="34" fill="#000" />
+													</mask>
+												</defs>
+												<circle cx="48" cy="46" r="34" fill="#ef4444" mask="url(#boss-crescent)" />
+											</svg>
+										</div>
+									{/if}
 									<!-- Boss 说明已在 HUD 上,这里不重复(小屏高度宝贵) -->
-									<div class="w-full text-center">
+									<div class="relative w-full text-center">
 										<button
-											class="w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 max-[365px]:py-2 sm:w-auto sm:px-10 sm:text-lg"
+											class="w-full rounded-xl px-8 py-2.5 text-base font-bold shadow-lg transition active:scale-95 max-[365px]:py-2 sm:w-auto sm:px-10 sm:text-lg {bossFight
+												? 'bg-gradient-to-b from-rose-500 via-red-600 to-red-800 text-red-50 shadow-[0_2px_18px_rgba(239,68,68,0.35)] ring-1 ring-red-200/30 ring-inset hover:from-rose-400 hover:via-red-500 hover:to-red-700'
+												: 'bg-gradient-to-b from-amber-400 to-amber-600 text-amber-950 hover:from-amber-300 hover:to-amber-500'}"
 											onclick={startRolling}
 										>
-											🎲 {boss ? '迎战掷骰' : '开始掷骰'}
+											🎲 {bossFight ? '迎战掷骰' : '开始掷骰'}
 										</button>
 									</div>
 								{:else}
