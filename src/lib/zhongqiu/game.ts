@@ -388,10 +388,16 @@ export type GrowthMap = Record<string, number>;
 /** 过关后成长卡叠层 —— 记在**这只 Tee 自己**的账上(faceGrow,和桂树同一本,键 = 卡 id):
  * 「各记各的」(用户裁定):同名的两只互不干涉,抄来的记到**抄的人**头上,被卖掉就跟着走。
  * (原来是一张全局共享账:两只各 +1 进同一键、又都读同一总数,等于每关双重叠层。) */
-export const applyGrowth = (cards: (TeeCard | null)[], team: TeamTee[]): void => {
+export const applyGrowth = (
+	cards: (TeeCard | null)[],
+	team: TeamTee[],
+	playedUpTo?: number
+): void => {
 	// 按位置展开(复制卡也算)
 	team.forEach((t, i) => {
 		if (!cards[i]) return;
+		// 云海口径同 decayBuffs:没轮到的 Tee 这关等于不存在,成长不叠层
+		if (playedUpTo !== undefined && i > playedUpTo) return;
 		let next = t.faceGrow;
 		for (const { eff, srcId } of effectiveEffects(cards, i)) {
 			if (eff.type === 'scaling_mult')
@@ -623,8 +629,12 @@ export const playerActiveSkills = (cards: (TeeCard | null)[]): ActiveSkill[] => 
 export const activeReady = (tee: TeamTee | undefined, skill: ActiveSkill): boolean =>
 	(tee?.charge ?? 0) <= 0;
 
-export const tickCharge = (team: TeamTee[]): void => {
-	for (const t of team) t.charge = Math.max(0, (t.charge ?? 0) - 1);
+export const tickCharge = (team: TeamTee[], playedUpTo?: number): void => {
+	// 云海口径和 decayBuffs 一致:提前收关时排在后面的 Tee 等于没轮到,冷却不走
+	team.forEach((t, i) => {
+		if (playedUpTo !== undefined && i > playedUpTo) return;
+		t.charge = Math.max(0, (t.charge ?? 0) - 1);
+	});
 };
 
 export const selfDiceMods = (
@@ -676,25 +686,17 @@ export const playerDiceMods = (cards: (TeeCard | null)[]): DiceMods | undefined 
 	return out;
 };
 
-const isEmptyMods = (m?: DiceMods): boolean =>
-	!m ||
-	(!m.map &&
-		m.shift === undefined &&
-		!m.void?.length &&
-		!m.voidIdx?.length &&
-		!m.noSameFace &&
-		!m.levelCap &&
-		!m.clearVoid &&
-		!m.chain?.length);
-
 export const withBossMods = (self?: DiceMods, boss?: DiceMods): DiceMods | undefined => {
 	const clearedBoss = hasClearVoid(self) ? stripVoid(boss) : boss;
 	// clearVoid 只是开关,不参与点数计算,合成时摘掉
 	const cleanSelf =
 		self && hasClearVoid(self) ? stripVoid({ ...self, clearVoid: undefined }) : self;
-	if (isEmptyMods(cleanSelf)) return clearedBoss;
-	if (isEmptyMods(clearedBoss)) return cleanSelf;
-	return { chain: [cleanSelf!, clearedBoss!] };
+	// 不做「看起来是空的就短路」:isEmptyMods 漏字段会把只带 {fixed}/{faceFloor}/… 的一整层
+	// 吞掉(踩过:玩家 fixed 豁免被 Boss map 吃掉、圆月 faceFloor 整条失效、抄来的 voidOverride 被丢)。
+	// 空层在 applyMods 里天然无害,所以只在整侧**缺席**时才返回另一侧。
+	if (!cleanSelf) return clearedBoss;
+	if (!clearedBoss) return cleanSelf;
+	return { chain: [cleanSelf, clearedBoss] };
 };
 
 export const hasRerollAllOnNone = (self: EffectiveEffect[]): boolean =>
@@ -1143,7 +1145,9 @@ export const calcTeeScore = ({
 
 			case 'self_mult': {
 				// 「我」的得分 ×per(无条件)。归「我」——持卡者是谁不重要。
-				// 只在「全队那一轮」被调(见下方 allSelf 循环),所以持卡者≠「我」时也生效。
+				// **只在「全队那一轮」发**(skipTeamWide 门,和 team_chips 同款):自己那轮再发
+				// 就双记 —— 「我」有卡时(QA card(0,…) 给「我」挂星河)×2 会变 ×4。
+				if (skipTeamWide) break;
 				if (!isSelf) break;
 				const before = { chips, mult };
 				mult *= eff.per;
@@ -1388,7 +1392,12 @@ export const calcTeeScore = ({
 	 * 后加的话这份分就落在缩放外面(踩过:桂花糖浆 + 潮汐主动技 +120 → 实算 140,卡面应 260);
 	 * 逆向的 net 快照也按卡面「计入基础分」把它算进净值里。
 	 */
-	for (const sc of skillChips) chips += sc.chips;
+	// 主动技加值:并进 chips 的**同一位置**推明细行 —— 必须在下面两次基础分缩放的乘算行
+	// 之前,结算动画按行序读才对得上实算 (…+加值)×缩放(口径:明细必须与引擎一致)。
+	for (const sc of skillChips) {
+		chips += sc.chips;
+		note(sc.srcId, 'card', sc.chips, 1, sc.from);
+	}
 	const baseRaw = Math.max(level.score, baseFloor);
 	const baseScaled = baseRaw * baseMult;
 	// 射日仙:每重掷一颗,整块基础分 ×N —— 等级底分、卡牌筹码、加成卡筹码一起放大
@@ -1438,9 +1447,6 @@ export const calcTeeScore = ({
 	if (rerollBaseMult !== 1)
 		// 射日仙:底分和所有筹码一起放大 —— 这是对整个小计的乘,出乘算行才对得上卡面
 		note(rerollBaseSrc, 'card', 0, rerollBaseMult, `重掷 ${rerolled} 颗`);
-	// 主动技加值的**明细行**:数值本身早在 baseRaw 上方就并进 chips 了(要吃射日仙/桂花糖浆的缩放),
-	// 这里只负责把行推给界面 —— 位置不变,所以结算动画里仍是「加算行在乘算行前面」。
-	for (const sc of skillChips) note(sc.srcId, 'card', sc.chips, 1, sc.from);
 	// 主动技的乘算:和值技「超过 N 后每点 ×p」也必须在乘算链里
 	if (skillMult) {
 		const bm = mult;
@@ -1523,7 +1529,9 @@ export const calcTeamTotal = (
 		if (eff.type === 'team_mult') teamMult *= eff.value;
 		// 饼铺掌柜(二):队伍里没有「我」(被归家卖掉)→ 队伍总分 ×mult
 		else if (eff.type === 'no_me_team_mult') {
-			if (!hasMe && scores[i] > 0) teamMult *= eff.mult;
+			// 卡面条件只有「队伍里没有『我』」—— 不能加「持卡者本关得分 > 0」这种卡面上
+			// 没有的门槛(再接再厉 0 分 / 云海跳过的 Tee 都会让全队丢乘数)。
+			if (!hasMe) teamMult *= eff.mult;
 		} else if (eff.type === 'relay_pct') addRelay(eff, i, cardId);
 		else if (eff.type === 'team_ratio') {
 			// 「我」不在队里(被归家卖掉)→ 这条不触发:它按字面就是拿「我」的得分做乘数,
@@ -1892,7 +1900,15 @@ export const loadRun = (): RunSave | null => {
 		const raw = localStorage.getItem(RUN_KEY);
 		if (!raw) return null;
 		const data = JSON.parse(raw) as RunSave;
-		if (data.v !== RUN_VERSION) {
+		// 只验版本号不够:合法 JSON 的坏档(数值 NaN、缺数组)不会抛,会一路流进计分;
+		// phase 非法则在页面入口按坏档拦(白名单在那边,类型也在那边)。
+		const sane =
+			data.v === RUN_VERSION &&
+			typeof data.phase === 'string' &&
+			Number.isFinite(data.round) &&
+			Number.isFinite(data.mooncakes) &&
+			Array.isArray(data.team);
+		if (!sane) {
 			localStorage.removeItem(RUN_KEY);
 			return null;
 		}

@@ -949,7 +949,7 @@
 				const mods = modsFor(i);
 				const level = judgeRoll(dice, mods);
 				const shown = liveDiceValues(dice, mods);
-				const b = calcTeeScore(scoreInput(i, level.id, shown));
+				const b = calcTeeScore(scoreInput(i, level.id, shown, dice));
 				return {
 					levelId: level.id,
 					total: b.total,
@@ -974,7 +974,7 @@
 					const m = modsFor(k);
 					const l2 = judgeRoll(dice, m);
 					const sh = liveDiceValues(dice, m);
-					const b = calcTeeScore(scoreInput(k, l2.id, sh));
+					const b = calcTeeScore(scoreInput(k, l2.id, sh, dice));
 					return {
 						i: k,
 						cardId: team[k].cardId,
@@ -1097,7 +1097,7 @@
 					t.lastDice = [...sample];
 					t.lastLevelId = lv.id;
 					t.lastScore = calcTeeScore(
-						scoreInput(i, lv.id, liveDiceValues(sample, modsFor(i)))
+						scoreInput(i, lv.id, liveDiceValues(sample, modsFor(i)), sample)
 					).total;
 					sum += t.lastScore;
 				});
@@ -1108,7 +1108,14 @@
 				pendingAction = null;
 				hitDice = hitIndices(dice, team[0].lastLevelId, boss?.mods);
 				lastLevel = getRollLevel(team[0].lastLevelId);
-				lastBreakdown = calcTeeScore(scoreInput(0, team[0].lastLevelId, team[0].lastDice));
+				lastBreakdown = calcTeeScore(
+					scoreInput(
+						0,
+						team[0].lastLevelId,
+						liveDiceValues(team[0].lastDice, modsFor(0)),
+						team[0].lastDice
+					)
+				);
 				settleSteps = buildSettleSteps(team[0].lastLevelId, lastLevel, team[0]);
 				settleIdx = opts.settleLines === undefined ? settleSteps.length - 1 : opts.settleLines - 1;
 
@@ -1574,16 +1581,33 @@
 	{
 		const saved = loadRun();
 		// 恢复可能半路炸(合法 JSON 但形状残缺:缺数组字段、dice 长度不对……)——
-		// 这里在**组件初始化体**里,抛出去就是整页白屏。炸了就当没存档:清掉坏档回标题
+		// 这里在**组件初始化体**里,抛出去就是整页白屏。炸了就当没存档:清掉坏档回标题。
+		// phase 还要过白名单:合法 JSON 的坏 phase 不抛异常,却会把状态机推进未知态
+		// (所有按钮守卫都失配,卡死且刷新不恢复)—— 一样按坏档清掉。
+		const phases: Phase[] = [
+			'idle',
+			'draft',
+			'intro',
+			'rolling',
+			'round_confirm',
+			'round_end',
+			'reward',
+			'shop',
+			'game_over'
+		];
 		if (saved && saved.phase !== 'idle') {
-			try {
-				restoreRun(saved);
-			} catch {
+			if (!phases.includes(saved.phase as Phase)) {
 				clearRun();
-				resetRun();
-				team = [];
-				draftChoices = [];
-				phase = 'idle';
+			} else {
+				try {
+					restoreRun(saved);
+				} catch {
+					clearRun();
+					resetRun();
+					team = [];
+					draftChoices = [];
+					phase = 'idle';
+				}
 			}
 		}
 	}
@@ -1660,7 +1684,7 @@
 				up > 0 && rawLevel.id !== 'none' && level.score > preUpLevel.score
 					? { from: preUpLevel, name: cardById(upSrcId)?.name ?? '等级提升' }
 					: null;
-			const recomputed = calcTeeScore(scoreInput(currentTee, level.id, shown));
+			const recomputed = calcTeeScore(scoreInput(currentTee, level.id, shown, dice));
 			// 总分以**存档里的 lastScore** 为准(事后乘算的主动技只改了它、不改 breakdown);
 			// 明细行按现在的状态重推 —— 行和总分可能差一次事后乘算,但比分错到 0 好得多
 			lastBreakdown = { ...recomputed, total: tee.lastScore ?? recomputed.total };
@@ -1839,7 +1863,13 @@
 		for (const { eff } of selfEffects(i)) if (eff.type === 'jackpot') return eff;
 		return null;
 	};
-	const scoreInput = (i: number, levelId: string, diceForSum: number[]): ScoreInput => {
+	const scoreInput = (
+		i: number,
+		levelId: string,
+		diceForSum: number[],
+		/** 原始手(未映射)—— isMe 的 playerRawDice 要从它剥,别拿映射后的 diceForSum 二次过滤 */
+		rawHand?: number[]
+	): ScoreInput => {
 		const isMe = team[i]?.isSelf === true;
 		const selfIdx = team.findIndex((t) => t.isSelf === true);
 		const selfTee = selfIdx >= 0 ? team[selfIdx] : undefined;
@@ -1875,7 +1905,7 @@
 			// 原样点数:只剔作废,不做 map/shift(重复牌倍率要数真实骰面)
 			// 用传入的 diceForSum(不是全局 dice):scoreWith 之类复用点会传别的手,
 			// 拿全局会和 ownDice / playerDice 的来源错位
-			playerRawDice: isMe ? rawLiveDice(diceForSum, modsFor(i)) : selfRawDice,
+			playerRawDice: isMe ? rawLiveDice(rawHand ?? diceForSum, modsFor(i)) : selfRawDice,
 			// 新机制的上下文：经济流用币、成长/负分用关数、支援流用左邻已结算的分
 			coins: mooncakes,
 			round,
@@ -3293,7 +3323,7 @@
 		//  开始就被扣掉 1,实际只生效 1 关;现在按卡面「每过一关 -1」算,正好 2 关。)
 		homingSettle(); // 归家:先把「我」卖掉(它自己身上没有任何卡,不影响下面的卡池计算)
 		decayBuffsForRound();
-		tickCharge(team); // 主动技能冷却 -1
+		tickCharge(team, countedTee); // 主动技能冷却 -1(云海没轮到的不减,和 decayBuffs 同口径)
 		const total = roundTotal;
 		runScore += Math.min(total, target);
 		if (total >= target) {
@@ -3307,7 +3337,7 @@
 			economyGained = eco;
 			mooncakes += gained;
 			runStats.earnedMooncakes += gained; // 过关 + 溢出 + 经商一笔入账,都是正经收入
-			applyGrowth(team.map(cardOf), team);
+			applyGrowth(team.map(cardOf), team, countedTee);
 			// 桂树(own_face_grow):把本关掷出的颗数记进**这只 Tee 自己**的账 —— 从下一关开始吃到。
 			// 数和引擎计分同一口径(最终骰子),只数这一关真掷过的:countedTee 之后的是
 			// 被「云海」提前收关、根本没投掷的 Tee(它们的 lastDice 还是上一关的)。
