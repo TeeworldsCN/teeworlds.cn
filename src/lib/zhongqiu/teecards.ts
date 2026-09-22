@@ -494,11 +494,11 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuebingshijia',
 		name: '饼香世家',
-		desc: '每拥有一个独特的「饼」系Tee，该 Tee 得分 ×1.26',
+		desc: '每拥有一个独特的「饼」系Tee，该 Tee 得分 ×1.26；每有 1 颗 4 点，该 Tee 基础分 +375',
 		rarity: 'legendary',
 		skin: 'cupcakecherry',
 		tag: '饼',
-		effect: { type: 'per_tag', tag: '饼', per: 1.26, as: 'mult' }
+		effect: { type: 'per_tag', tag: '饼', per: 1.26, as: 'mult', chipsPerFour: 375 }
 	},
 	{
 		id: 'mingyuegongzhao',
@@ -888,10 +888,16 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yueying',
 		name: '霜影',
-		desc: '自己的 1 点视为 4 点',
+		desc: '自己的 1 点视为 4 点；自己每有 1 颗 4 点：得分 ×1.5',
 		rarity: 'legendary',
 		skin: 'White Jawbreaker',
-		effect: { type: 'self_mods', mods: { map: { 1: 4 } } }
+		effect: {
+			type: 'bundle',
+			parts: [
+				{ type: 'self_mods', mods: { map: { 1: 4 } } },
+				{ type: 'own_face', face: 4, mult: 1.5 }
+			]
+		}
 	},
 	{
 		id: 'guanghan',
