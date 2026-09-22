@@ -24,15 +24,7 @@ export default defineConfig(({ mode }) => {
 		define: { __ZQ_TEST_BUILD__: JSON.stringify(zqTest) },
 		plugins: [tailwindcss(), sveltekit()],
 		server: {
-			allowedHosts,
-			watch: {
-				// `svelte-kit sync`(npm run check / run build 都会跑)会重写 .svelte-kit/** ——
-				// dev server 一看文件变了就**整页 reload**,正在玩的页面直接被顶掉(实测一局被打断,
-				// 一次 check/build 就是十几条 reload)。把生成目录/无关目录摘出监听:
-				// 源码(src/**)的改动照常 HMR,只是「重新生成的脚手架」不再触发刷新。
-				// 注意:自定义 ignored 不与默认列表合并,node_modules/.git 要自己写上。
-				ignored: ['**/.svelte-kit/**', '**/node_modules/**', '**/.git/**', '**/.pi-web/**']
-			}
+			allowedHosts
 		},
 		build: {
 			rollupOptions: {

@@ -3771,16 +3771,15 @@
 					if (e.pointerType !== 'touch' && peekBuff?.id === card.id) peekBuff = null;
 				}}
 				onclick={(e) => {
-					// hoverOnly(结算页清单):不给点按切换浮层 —— 那里只想 hover 瞟一眼
-					if (hoverOnly) return;
-					// 触屏没 hover:点一下看说明,再点收起(鼠标已经有 hover 了,不抢点击)
+					// hoverOnly(结算页清单):鼠标有 hover,**点击**不切换浮层;
+					// 触屏没有 hover —— 点按仍要能看说明(不然移动端完全看不到)
+					if (hoverOnly && lastPointerWasMouse) return;
 					anchorBuff(card, e.currentTarget);
 					if (!lastPointerWasMouse) peekBuff = peekBuff?.id === card.id ? null : card;
 				}}
 				onkeydown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.preventDefault();
-						if (hoverOnly) return;
 						anchorBuff(card, e.currentTarget);
 						peekBuff = peekBuff?.id === card.id ? null : card;
 					}
@@ -4878,15 +4877,32 @@
 												style="border-color: {cardBorderColor(
 													RARITY_INFO[card?.rarity ?? 'common'].color
 												)}"
-												role="img"
+												role="button"
+												tabindex="0"
 												aria-label={t.isSelf ? '我' : (card?.name ?? 'Tee')}
+												onpointerdown={(e) => {
+													lastPointerWasMouse = e.pointerType === 'mouse';
+													hoverTeeAnchor = e.currentTarget;
+												}}
 												onpointerenter={(e) => {
 													if (e.pointerType === 'touch') return;
 													hoverTee = i;
 													hoverTeeAnchor = e.currentTarget;
 												}}
-												onpointerleave={() => {
-													if (hoverTee === i) hoverTee = null;
+												onpointerleave={(e) => {
+													// 触屏抬指也会发 pointerleave:那种情况不收(点按弹开的浮层要留着)
+													if (e.pointerType !== 'touch' && hoverTee === i) hoverTee = null;
+												}}
+												onclick={(e) => {
+													// 触屏没有 hover:点一下看说明、再点收起(鼠标已有 hover,不抢点击)
+													hoverTeeAnchor = e.currentTarget;
+													if (!lastPointerWasMouse) hoverTee = hoverTee === i ? null : i;
+												}}
+												onkeydown={(e) => {
+													if (e.key === 'Enter' || e.key === ' ') {
+														e.preventDefault();
+														hoverTee = hoverTee === i ? null : i;
+													}
 												}}
 											>
 												<span class="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
@@ -4945,7 +4961,7 @@
 										</div>
 										<!-- 战绩 = 结算动画那几行原样留着:`settle-step` 同一套排版 + 同款配色(cls),只是不播动画 -->
 										<div
-											class="mt-1.5 max-h-52 overflow-y-auto rounded-lg bg-slate-800/50 px-2 py-1.5"
+											class="mvp-rows mt-1.5 max-h-52 overflow-y-auto rounded-lg bg-slate-800/50 px-2 py-1.5 text-xs leading-[1.1] max-[365px]:text-[10px] max-[365px]:leading-[1.1] sm:text-sm sm:leading-normal"
 										>
 											{#each mvp.rows as row}
 												<div class="settle-step {row.cls}">{row.text}</div>
@@ -5452,6 +5468,11 @@
 	.settle-step {
 		animation: settle-pop 0.3s ease both;
 		text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+	}
+
+	/* MVP 的战绩是「留档」不是回放:同排版、同配色,但把弹出动画关掉 */
+	.mvp-rows .settle-step {
+		animation: none;
 	}
 
 	@keyframes settle-pop {
