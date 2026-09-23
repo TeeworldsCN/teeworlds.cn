@@ -787,12 +787,12 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'guihuafu',
 		name: '桂花符',
-		desc: '重掷的骰子有 1/3 概率掷出 2 点',
+		desc: '重掷的骰子有 50% 概率掷出 2 点',
 		rarity: 'legendary',
 		skin: 'Lahm_yellow',
 		price: 8,
 		turns: 2,
-		effect: { type: 'fall_to', face: 2, value: 1 / 3 }
+		effect: { type: 'fall_to', face: 2, value: 0.5 }
 	},
 	{
 		id: 'yuexiangfu',
