@@ -120,8 +120,8 @@
 		{#if level}
 			<div
 				transition:fade
-				class="absolute top-1 rounded-full px-2 text-center font-semibold {levelColor}"
-				style="background: color-mix(in srgb, currentColor 14%, transparent)"
+				class="absolute top-1 rounded-full px-1.5 text-center font-semibold {levelColor}"
+				style="background: color-mix(in srgb, currentColor 22%, #1d2639); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45)"
 			>
 				{level}
 			</div>
