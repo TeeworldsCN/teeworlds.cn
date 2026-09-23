@@ -647,8 +647,10 @@
 		if (score <= (mvp?.score ?? 0)) return;
 		const card = cardOf(tee);
 		mvp = {
-			name: card?.name ?? '无名',
-			skin: card?.skin ?? tee.cardId ?? 'naomi',
+			// 「我」没有卡面(cardId 为 null):名字/皮肤走身份兜底 —— 不然「我」顶到 MVP 位
+			// 会显示「无名」+ 错皮肤(读档后被用户踩到过:normalizeSelf 把我归位队首)
+			name: tee.isSelf ? '我' : (card?.name ?? '无名'),
+			skin: card?.skin ?? (tee.isSelf ? SELF_SKIN : (tee.cardId ?? 'naomi')),
 			score,
 			levelName,
 			round,
