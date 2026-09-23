@@ -46,6 +46,8 @@
 		animate?: string;
 		/** 投掷等级标签 */
 		level?: string;
+		/** 投掷等级颜色(Tailwind 文字色类):和结算动画等级行同一套 —— 金色高档/绿色正分/灰色 0 分 */
+		levelColor?: string;
 	};
 
 	let {
@@ -65,7 +67,8 @@
 		selected = false,
 		active = false,
 		animate = '',
-		level = ''
+		level = '',
+		levelColor = ''
 	}: Props = $props();
 
 	const rarity = $derived(card?.rarity);
@@ -117,7 +120,8 @@
 		{#if level}
 			<div
 				transition:fade
-				class="absolute top-1 rounded-full bg-orange-700 px-2 text-center text-amber-200"
+				class="absolute top-1 rounded-full px-2 text-center font-semibold {levelColor}"
+				style="background: color-mix(in srgb, currentColor 14%, transparent)"
 			>
 				{level}
 			</div>

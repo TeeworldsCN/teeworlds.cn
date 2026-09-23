@@ -2597,6 +2597,10 @@
 		return back.map((b) => BUFF_BY_ID.get(b.cardId)?.name ?? b.cardId);
 	};
 
+	/** 投掷等级配色(结算动画等级行与 Tee 卡角标共用):按底分档 */
+	const levelColorCls = (lv: { score: number }): string =>
+		lv.score >= 320 ? 'text-amber-300' : lv.score > 0 ? 'text-emerald-300' : 'text-slate-400';
+
 	const buildSettleSteps = (
 		rawLevelId: string,
 		level: RollLevel,
@@ -2611,12 +2615,7 @@
 		const shownLevel = levelUp?.from ?? level;
 		steps.push({
 			text: `${prefix}${shownLevel.emoji} ${shownLevel.name} ${formatScore(shownLevel.score)}`,
-			cls:
-				shownLevel.score >= 320
-					? 'text-amber-300'
-					: shownLevel.score > 0
-						? 'text-emerald-300'
-						: 'text-slate-400',
+			cls: levelColorCls(shownLevel),
 			kind: 'level'
 		});
 		if (levelUp && levelUp.from.id !== level.id) {
@@ -4377,6 +4376,9 @@
 												animate={i === currentTee ? teeAnimClass : ''}
 												sellBtn={canSellTee(i) ? sellBtn : undefined}
 												level={i <= countedTee ? getRollLevel(tee.lastLevelId).name : ''}
+												levelColor={i <= countedTee
+													? levelColorCls(getRollLevel(tee.lastLevelId))
+													: ''}
 											>
 												{#snippet actions()}
 													<!-- 两种状态都占两行:待掷(1 行)→ 点数+等级(2 行)会让整队高度跳 14px -->
