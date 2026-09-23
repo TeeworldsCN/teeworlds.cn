@@ -5265,7 +5265,7 @@
 			<div
 				class="mt-auto pt-2.5 text-center text-[10px] leading-tight text-slate-500 max-[365px]:hidden sm:pt-5 sm:text-xs"
 			>
-				祝大家中秋快乐,阖家团圆!🌕
+				祝大家中秋快乐，阖家团圆！🌕
 			</div>
 		</div>
 	</div>
