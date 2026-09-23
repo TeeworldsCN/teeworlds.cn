@@ -4049,7 +4049,7 @@
 		<div
 			class="relative z-10 mx-auto flex w-full max-w-5xl {deskSplit
 				? 'lg:max-w-7xl'
-				: ''} flex-1 flex-col px-2 pt-2 pb-2 max-[365px]:pt-1 max-[365px]:pb-1 sm:px-6 sm:pt-4 sm:pb-6"
+				: ''} flex-1 flex-col px-2 pt-2 pb-2 max-[365px]:pt-1 max-[365px]:pb-1 sm:px-6 sm:pt-4 lg:pb-6"
 		>
 			{#snippet recordsBar()}
 				<!-- 标题屏同款的战绩条:选卡阶段用它代替关卡 HUD(那时还没有关卡) -->
