@@ -111,7 +111,10 @@
 	</main>
 
 	<footer
-		class="flex h-8 flex-row flex-nowrap items-center bg-slate-900 px-4 py-1 text-nowrap text-slate-300"
+		class="game-footer flex h-8 flex-row flex-nowrap items-center bg-slate-900 px-4 py-1 text-nowrap text-slate-300 {layoutTheme.footer ===
+		true
+			? 'layout-footer-hidden'
+			: ''}"
 	>
 		<div class="flex max-h-8 flex-col overflow-hidden text-xs">
 			<Link href="https://beian.miit.gov.cn/" rel="noreferrer" target="_blank" type="subtle"
@@ -137,3 +140,11 @@
 		</div>
 	</footer>
 </div>
+
+<style>
+	/* 全屏游戏页(layoutTheme.footer=true)把备案 footer 整条隐去。
+	 * 双类选择器压过 Tailwind 的 .flex(display:flex)——单类和它同特异度,拼不过注入顺序。 */
+	.game-footer.layout-footer-hidden {
+		display: none;
+	}
+</style>

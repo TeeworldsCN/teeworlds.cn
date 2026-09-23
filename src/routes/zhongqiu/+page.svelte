@@ -141,7 +141,8 @@
 	onMount(() => {
 		setLayoutTheme({
 			bg: 'linear-gradient(180deg, #070b1f 0%, #101a3f 45%, #1d2a5c 75%, #2c2a55 100%)',
-			pad: false
+			pad: false,
+			footer: true
 		});
 		return () => setLayoutTheme({});
 	});

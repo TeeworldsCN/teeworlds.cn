@@ -11,6 +11,8 @@ export type LayoutTheme = {
 	bg?: string;
 	/** false 时去掉 main 的默认 p-2 内边距,让页面内容贴边 */
 	pad?: boolean;
+	/** true 时隐藏 layout 底部的备案 footer(全屏游戏页省 32px 纵向空间,下部布局随之撑满) */
+	footer?: boolean;
 };
 
 /** 导出单一 proxy,属性级更新,保证响应式传播 */
@@ -19,4 +21,5 @@ export const layoutTheme = $state<LayoutTheme>({});
 export function setLayoutTheme(t: LayoutTheme): void {
 	layoutTheme.bg = t.bg;
 	layoutTheme.pad = t.pad;
+	layoutTheme.footer = t.footer;
 }
