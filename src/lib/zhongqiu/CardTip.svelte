@@ -141,7 +141,7 @@
 	use:portal
 	class="zq-emoji tip pointer-events-none fixed w-max {wide
 		? 'max-w-[min(17rem,calc(100vw-2.5rem))]'
-		: 'max-w-[min(13rem,calc(100vw-2.5rem))]'} rounded-lg border bg-slate-950/95 px-2.5 py-1.5 text-center text-[11px] leading-snug text-slate-200 shadow-xl {z} {open
+		: 'max-w-[min(13rem,calc(100vw-2.5rem))]'} rounded-lg border bg-slate-950/95 px-2.5 py-1.5 text-center text-xs leading-snug text-slate-200 shadow-xl lg:text-sm {z} {open
 		? 'tip-open'
 		: ''}"
 	style="--rarity: {color ??

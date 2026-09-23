@@ -3,6 +3,7 @@
 	import { RARITY_INFO, type TeeCard } from './teecards';
 	import TeeRender, { type TeePose } from '$lib/components/TeeRender.svelte';
 	import CardTip from './CardTip.svelte';
+	import { fade } from 'svelte/transition';
 
 	/**
 	 * 统一 Tee 小卡。三处复用(队伍 / 3 选 1 / 中秋集市):
@@ -43,6 +44,8 @@
 		active?: boolean;
 		/** 动画 class(队伍:tee-throw / tee-celebrate 等) */
 		animate?: string;
+		/** 投掷等级标签 */
+		level?: string;
 	};
 
 	let {
@@ -61,7 +64,8 @@
 		sellBtn,
 		selected = false,
 		active = false,
-		animate = ''
+		animate = '',
+		level = ''
 	}: Props = $props();
 
 	const rarity = $derived(card?.rarity);
@@ -76,7 +80,7 @@
 </script>
 
 <div
-	class="group relative w-[86px] shrink-0 max-[365px]:w-[74px]"
+	class="group relative w-[86px] shrink-0 text-xs max-[365px]:w-[74px]"
 	role="group"
 	bind:this={wrapEl}
 	onpointerenter={() => (hover = true)}
@@ -95,14 +99,14 @@
 		{/if}
 		{#if badge}
 			<div
-				class="absolute -right-1.5 -bottom-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold shadow {badgeClass}"
+				class="absolute -right-1.5 -bottom-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full px-1 font-bold shadow {badgeClass}"
 			>
 				{badge}
 			</div>
 		{/if}
 		{#if skillBadge}
 			<div
-				class="absolute -bottom-1.5 -left-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-fuchsia-500/90 px-1 text-[10px] font-bold text-fuchsia-950 shadow"
+				class="absolute -bottom-1.5 -left-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-fuchsia-500/90 px-1 font-bold text-fuchsia-950 shadow"
 			>
 				{skillBadge}
 			</div>
@@ -110,9 +114,15 @@
 		<div class="mx-auto h-12 w-12 max-[365px]:h-10 max-[365px]:w-10">
 			<TeeRender name={teeSkin} {emote} {pose} className="h-full w-full" />
 		</div>
-		<div
-			class="mt-1 w-full truncate text-center text-xs font-semibold text-slate-200 max-[365px]:text-[11px]"
-		>
+		{#if level}
+			<div
+				transition:fade
+				class="absolute top-1 rounded-full bg-orange-700 px-2 text-center text-amber-200"
+			>
+				{level}
+			</div>
+		{/if}
+		<div class="mt-1 w-full truncate text-center font-semibold text-slate-200">
 			{teeName}
 		</div>
 	</div>
@@ -121,10 +131,10 @@
 		<CardTip anchor={wrapEl} {hover} color={rinfo?.color}>
 			{desc}
 			{#if tipExtra}
-				<div class="mt-1 text-[10px] font-semibold text-amber-300">{tipExtra}</div>
+				<div class="mt-1 font-semibold text-amber-300">{tipExtra}</div>
 			{/if}
 			{#if tipList?.length}
-				<div class="mt-1.5 space-y-0.5 border-t border-slate-600/50 pt-1 text-left text-[10px]">
+				<div class="mt-1.5 space-y-0.5 border-t border-slate-600/50 pt-1 text-left">
 					{#each tipList as line}
 						<div class={line.cls ?? 'text-slate-400'}>
 							<!-- 名字单独上色(加成卡按稀有度:普通灰 / 稀有蓝 / 传说金) -->
@@ -137,7 +147,7 @@
 	{/if}
 
 	{#if actions}
-		<div class="mt-1.5 flex flex-col items-center">
+		<div class="mt-1 flex flex-col items-center">
 			{@render actions()}
 		</div>
 	{/if}
@@ -151,7 +161,6 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		width: 86px;
 		padding: 8px;
 		border-radius: 12px;
 		border: 1px solid color-mix(in srgb, var(--rarity, #94a3b8) 45%, transparent);
@@ -159,15 +168,6 @@
 		transition:
 			transform 0.15s ease,
 			box-shadow 0.15s ease;
-	}
-
-	/* 320px(初代 SE):卡片整体缩一档,否则 Boss 关 + 6 人满队会溢出约 15px */
-	@media (max-width: 365px) {
-		.tee-card {
-			width: 74px;
-			padding: 6px;
-			border-radius: 10px;
-		}
 	}
 
 	.tee-card:hover {
