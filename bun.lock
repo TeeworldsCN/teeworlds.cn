@@ -55,9 +55,6 @@
       },
     },
   },
-  "patchedDependencies": {
-    "@sveltejs/kit@2.70.2": "patches/@sveltejs%2Fkit@2.70.2.patch",
-  },
   "packages": {
     "@emnapi/core": ["@emnapi/core@1.7.1", "", { "dependencies": { "@emnapi/wasi-threads": "1.1.0", "tslib": "^2.4.0" } }, "sha512-o1uhUASyo921r2XtHYOHy7gdkGLge8ghBEQHMWmyJFoXlpU58kIrhhN3w26lpQb6dspetweapMn2CSNwQ8I4wg=="],
 

@@ -62,8 +62,5 @@
 	"type": "module",
 	"dependencies": {
 		"sharp": "^0.34.5"
-	},
-	"patchedDependencies": {
-		"@sveltejs/kit@2.70.2": "patches/@sveltejs%2Fkit@2.70.2.patch"
 	}
 }
