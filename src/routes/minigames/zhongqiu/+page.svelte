@@ -3671,12 +3671,33 @@
 		save = getSave(); // 元存档(最高分/累计游玩)保留
 	};
 
+	/** 结算页队伍格子的 hover 说明(锚点就是那格;触屏不弹) */
+	let hoverTee = $state<number | null>(null);
+	let hoverTeeAnchor = $state<HTMLElement | undefined>(undefined);
+	/** 队伍格子的说明内容(卡面 + 卖价 + 身上加成/成长明细);没内容就返回 null 不弹 */
+	const teeTipState = $derived.by(() => {
+		if (hoverTee === null) return null;
+		const t = team[hoverTee];
+		if (!t) return null;
+		const card = cardOf(t);
+		const extra = teeTipExtra(hoverTee);
+		const list = teeTipList(t);
+		if (!card?.desc && !extra && !list.length) return null;
+		return {
+			desc: card?.desc,
+			extra,
+			list,
+			color: RARITY_INFO[card?.rarity ?? 'common'].color
+		};
+	});
+
 	/** 触屏 = **hover 语义**:点一下芯片显示说明,点其他任何地方收起(和浏览器 :hover 直觉一致)。
 	 *  芯片自己那格在 pointerdown 里 stopPropagation,免得窗口这条把刚显示的又收掉。
 	 *  PC 鼠标照常走 hover(移入显示、移开收),这条不掺和。 */
 	const dismissTip = (e: PointerEvent) => {
 		if (e.pointerType === 'mouse') return;
 		peekBuff = null;
+		hoverTee = null;
 	};
 
 	// ---- 展示 ----
@@ -3723,7 +3744,7 @@
 	// 手机屏幕只有 ~590px 可用高度，一律铺开必然要滚动。
 	// 按阶段只保留该阶段真正要用的面板，其余收成一行道具条。
 
-	// marketTeam 已废:队伍行不再随阶段变形(全流程同一布局 team-row)。
+	const marketTeam = $derived(phase === 'reward' || phase === 'shop');
 	// 中秋集市阶段也显示（只看不用：挂卡只在掷骰前），否则卖掉/买卡的决策少了信息
 	// 3 选 1(reward)同样要摆:那里能卖 Tee、要决定留哪些卡 —— 且要和别的界面一样
 	// 放在**队伍上方**带「✨ 加成卡」标题,而不是缩到面板下方的无标题道具条。
@@ -3849,16 +3870,16 @@
 		)
 	);
 
-	// showTeamPanel 已废:队伍面板全流程常驻
+	const showTeamPanel = $derived(phase !== 'game_over');
 
 	/**
 	 * 桌面(lg+)双列:左「仓库 + 队伍」,右「掷骰 / 3 选 1 / 集市 / 结算」。
 	 * 单列时容器宽 1024px 而内容只有 ~600px,右边大片留白;分栏后左列固定
 	 * 22rem、右列吃掉剩余宽度,同时解掉「队伍 + 面板」抢竖直空间的问题
 	 * (reward 面板本身高,以前和队伍叠着放,1280×800 会溢出)。
-	 * 两列常开(仓库/队伍全流程常驻),随阶段换的只有右列行动面板。
+	 * 结束屏(game_over)例外:仓库+队伍整块收起(它有自己的总结屏)、退回单列。
 	 */
-	// deskSplit 已废:两列常开
+	const deskSplit = $derived(showTeamPanel);
 </script>
 
 <svelte:head>
@@ -3961,12 +3982,14 @@
 					// 触屏 = hover 语义:点一下显示(收起交给窗口的 dismissTip —— 点别处收)
 					if (!lastPointerWasMouse) {
 						peekBuff = card;
+						hoverTee = null; // 联动:同一屏只开一个说明 —— 点了加成卡,Tee 的就收
 						e.stopPropagation();
 					}
 				}}
 				onpointerenter={(e) => {
 					if (e.pointerType === 'touch') return;
 					peekBuff = card;
+					hoverTee = null; // 同上:hover 到加成卡也收掉 Tee 的
 					anchorBuff(card, e.currentTarget);
 				}}
 				onpointerleave={(e) => {
@@ -3981,6 +4004,7 @@
 					anchorBuff(card, e.currentTarget);
 					if (peekBuff?.id !== card.id) {
 						peekBuff = card;
+						hoverTee = null; // 联动:同一屏只开一个说明
 					}
 				}}
 				onkeydown={(e) => {
@@ -4023,7 +4047,9 @@
 			: ''}
 	>
 		<div
-			class="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col px-2 pt-2 pb-2 max-[365px]:pt-1 max-[365px]:pb-1 sm:px-6 sm:pt-4 lg:max-w-7xl lg:pb-6"
+			class="relative z-10 mx-auto flex w-full max-w-5xl {deskSplit
+				? 'lg:max-w-7xl'
+				: ''} flex-1 flex-col px-2 pt-2 pb-2 max-[365px]:pt-1 max-[365px]:pb-1 sm:px-6 sm:pt-4 lg:pb-6"
 		>
 			{#snippet recordsBar()}
 				<!-- 标题屏同款的战绩条:选卡阶段用它代替关卡 HUD(那时还没有关卡) -->
@@ -4297,137 +4323,142 @@
 				     contents 让移动端完全等价于「没有这两个 div」:flex 链不断,
 				     panel-fill 照样吃得到高度。 -->
 				<div
-					class="contents lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-stretch lg:gap-4"
+					class="contents {deskSplit
+						? 'lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-stretch lg:gap-4'
+						: ''}"
 				>
-					<div class="contents lg:flex lg:min-h-0 lg:flex-col lg:overflow-y-auto">
-						<!-- ================= 队伍 & 道具(全流程常驻) ================= -->
-						<div
-							class="mt-2.5 rounded-xl border border-slate-700/60 bg-slate-900/60 px-2.5 py-2 backdrop-blur-sm max-[365px]:mt-1.5 max-[365px]:py-1 sm:mt-4 sm:rounded-2xl sm:p-3"
-						>
+					<div
+						class="contents {deskSplit ? 'lg:flex lg:min-h-0 lg:flex-col lg:overflow-y-auto' : ''}"
+					>
+						<!-- ================= 队伍 & 道具 ================= -->
+						{#if showTeamPanel}
 							<div
-								class="flex items-center justify-between gap-2 text-[11px] text-slate-400 sm:text-xs"
+								class="mt-2.5 rounded-xl border border-slate-700/60 bg-slate-900/60 px-2.5 py-2 backdrop-blur-sm max-[365px]:mt-1.5 max-[365px]:py-1 sm:mt-4 sm:rounded-2xl sm:p-3"
 							>
-								<span class="shrink-0">👥 博饼队伍({team.length}/{TEAM_LIMIT})</span>
-							</div>
+								<div
+									class="flex items-center justify-between gap-2 text-[11px] text-slate-400 sm:text-xs"
+								>
+									<span class="shrink-0">👥 博饼队伍({team.length}/{TEAM_LIMIT})</span>
+								</div>
 
-							<!-- 加成卡:掷骰前点选再点到 Tee 身上,故排在最前 -->
-							{#if showBuffShelf}
-								<div class="mt-1 border-t border-sky-500/20 pt-1">
-									<div class="flex items-center justify-between gap-2 text-[11px] text-slate-400">
-										<span>✨ 加成卡</span>
-										<span class="shrink-0 text-slate-500">持续 1~3 关</span>
-									</div>
-									<!-- 芯片行:单列(手机/平板)单行横滑;两列 PC(lg+)才换行 + 限高内滚 ——
+								<!-- 加成卡:掷骰前点选再点到 Tee 身上,故排在最前 -->
+								{#if showBuffShelf}
+									<div class="mt-1 border-t border-sky-500/20 pt-1">
+										<div class="flex items-center justify-between gap-2 text-[11px] text-slate-400">
+											<span>✨ 加成卡</span>
+										</div>
+										<!-- 芯片行:单列(手机/平板)单行横滑;两列 PC(lg+)才换行 + 限高内滚 ——
 										     和 deskSplit 用同一个断点(sm: 会让「单列但 ≥640px」错用竖排版式)。
 										     选中态那圈 ring 画在盒子**外面**,贴着滚动区边缘会被裁掉 ——
 										     所以留内边距给 outline:窄屏 p-0.5(只多 2px 高),lg 下 p-1
 										     (限高同步 +0.5rem,不然少了 8px 内容高会少显示小半行) -->
-									<div class="relative">
-										<div
-											class="mt-1.5 flex gap-1.5 overflow-x-auto p-0.5 lg:max-h-[5.25rem] lg:flex-wrap lg:gap-2 lg:overflow-y-auto lg:p-1"
-										>
-											{#each buffEntries as [id, count]}
-												{@const card = BUFF_BY_ID.get(id)!}
-												<div class="shrink-0">
-													{@render buffChip(card, count, canEquipBuff)}
-												</div>
-											{/each}
-										</div>
-										{#if shownBuff}
-											<!-- 浮层走 CardTip(portal 到 body + fixed):既不会被滚动区裁,也不会被 HUD 盖 -->
-											<CardTip anchor={buffAnchorOf(shownBuff)} hover={true} color="#38bdf8" wide>
-												<BuffTip card={shownBuff} />
-											</CardTip>
-										{/if}
-									</div>
-								</div>
-							{/if}
-
-							<!-- 队伍:中秋集市阶段也用普通卡(去掉结果行省高度) -->
-							<div class="team-row mt-2 flex flex-wrap gap-1.5 sm:gap-2">
-								{#each team as tee, i (i)}
-									<div
-										role="button"
-										tabindex={canEquipBuff && selectedBuff ? 0 : -1}
-										class="rounded-xl p-0.5 transition {canEquipBuff && selectedBuff
-											? 'bg-amber-400/5 ring-1 ring-amber-400/70'
-											: ''}"
-										onclick={() => selectedBuff && applyBuffToTee(selectedBuff, i)}
-										onkeydown={(e) => {
-											if ((e.key === 'Enter' || e.key === ' ') && selectedBuff) {
-												e.preventDefault();
-												applyBuffToTee(selectedBuff, i);
-											}
-										}}
-									>
-										{#snippet sellBtn()}
-											{#if canSellTee(i)}
-												<button
-													class="absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/90 text-[10px] font-bold text-white shadow transition hover:bg-red-400"
-													title="卖出 {cardOf(tee)?.name},得 🥮 {rarityOf(cardOf(tee)).sell}"
-													onclick={() => {
-														sfxClick();
-														sellAsk = i; // 先问一句,确认了再真卖
-													}}
-												>
-													×
-												</button>
+										<div class="relative">
+											<div
+												class="mt-1.5 flex gap-1.5 overflow-x-auto p-0.5 lg:max-h-[5.25rem] lg:flex-wrap lg:gap-2 lg:overflow-y-auto lg:p-1"
+											>
+												{#each buffEntries as [id, count]}
+													{@const card = BUFF_BY_ID.get(id)!}
+													<div class="shrink-0">
+														{@render buffChip(card, count, canEquipBuff)}
+													</div>
+												{/each}
+											</div>
+											{#if shownBuff}
+												<!-- 浮层走 CardTip(portal 到 body + fixed):既不会被滚动区裁,也不会被 HUD 盖 -->
+												<CardTip anchor={buffAnchorOf(shownBuff)} hover={true} color="#38bdf8" wide>
+													<BuffTip card={shownBuff} />
+												</CardTip>
 											{/if}
-										{/snippet}
-										<TeeCardView
-											card={cardOf(tee)}
-											skin={SELF_SKIN}
-											name="我"
-											desc={cardOf(tee)?.desc ?? (tee.isSelf ? 'Tee 队的队长' : undefined)}
-											tipExtra={teeTipExtra(i)}
-											tipList={teeTipList(tee)}
-											badge={(team[i]?.refundPending?.length ?? 0) > 0
-												? `🐚${team[i]?.refundPending?.length}`
-												: tee.buffs.length > 0
-													? `✨${tee.buffs.length}`
-													: undefined}
-											skillBadge={skillsFor(i).length > 0
-												? (tee.charge ?? 0) > 0
-													? `⚡${tee.charge}`
-													: '⚡'
-												: undefined}
-											emote={i === currentTee ? teeEmote : EMOTE.normal}
-											pose={i === currentTee ? teePose : IDLE_POSE}
-											active={i === currentTee && phase === 'rolling'}
-											animate={i === currentTee ? teeAnimClass : ''}
-											sellBtn={canSellTee(i) ? sellBtn : undefined}
+										</div>
+									</div>
+								{/if}
+
+								<!-- 队伍:中秋集市阶段也用普通卡(去掉结果行省高度) -->
+								<div class="mt-2 flex flex-wrap gap-1.5 sm:gap-2 {marketTeam ? 'market-team' : ''}">
+									{#each team as tee, i (i)}
+										<div
+											role="button"
+											tabindex={canEquipBuff && selectedBuff ? 0 : -1}
+											class="rounded-xl p-0.5 transition {canEquipBuff && selectedBuff
+												? 'bg-amber-400/5 ring-1 ring-amber-400/70'
+												: ''}"
+											onclick={() => selectedBuff && applyBuffToTee(selectedBuff, i)}
+											onkeydown={(e) => {
+												if ((e.key === 'Enter' || e.key === ' ') && selectedBuff) {
+													e.preventDefault();
+													applyBuffToTee(selectedBuff, i);
+												}
+											}}
 										>
-											{#snippet actions()}
-												<!-- 两种状态都占两行:待掷(1 行)→ 点数+等级(2 行)会让整队高度跳 14px -->
-												{#if phase === 'shop' || phase === 'reward'}
-													<!-- 中秋集市/组建 Tee 队(3 选 1)阶段:回合已结算,结果看结算面板;省一行高度给 6 人满队 -->
-												{:else if i <= countedTee}
-													<!-- 投过了就显示分数:0 分/负分也算结果,别退回「待掷」(countedTee = 最后一只结算完的) -->
-													<div
-														class="text-[10px] font-bold {tee.lastScore > 0
-															? 'text-amber-300'
-															: 'text-slate-400'}"
+											{#snippet sellBtn()}
+												{#if canSellTee(i)}
+													<button
+														class="absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/90 text-[10px] font-bold text-white shadow transition hover:bg-red-400"
+														title="卖出 {cardOf(tee)?.name},得 🥮 {rarityOf(cardOf(tee)).sell}"
+														onclick={() => {
+															sfxClick();
+															sellAsk = i; // 先问一句,确认了再真卖
+														}}
 													>
-														{formatScore(tee.lastScore)}
-													</div>
-													<div class="text-[9px] text-slate-500">
-														{getRollLevel(tee.lastLevelId).name}
-													</div>
-												{:else}
-													<!-- 不写投掷次数:角标已经有加成卡(右)和技能(左)两处计数,玩家自己数 -->
-													<div class="text-[10px] font-bold text-slate-600">待掷</div>
-													<div class="text-[9px] text-slate-500">&nbsp;</div>
+														×
+													</button>
 												{/if}
 											{/snippet}
-										</TeeCardView>
-									</div>
-								{/each}
+											<TeeCardView
+												card={cardOf(tee)}
+												skin={SELF_SKIN}
+												name="我"
+												desc={cardOf(tee)?.desc ?? (tee.isSelf ? 'Tee 队的队长' : undefined)}
+												tipExtra={teeTipExtra(i)}
+												tipList={teeTipList(tee)}
+												badge={(team[i]?.refundPending?.length ?? 0) > 0
+													? `🐚${team[i]?.refundPending?.length}`
+													: tee.buffs.length > 0
+														? `✨${tee.buffs.length}`
+														: undefined}
+												skillBadge={skillsFor(i).length > 0
+													? (tee.charge ?? 0) > 0
+														? `⚡${tee.charge}`
+														: '⚡'
+													: undefined}
+												emote={i === currentTee ? teeEmote : EMOTE.normal}
+												pose={i === currentTee ? teePose : IDLE_POSE}
+												active={i === currentTee && phase === 'rolling'}
+												animate={i === currentTee ? teeAnimClass : ''}
+												sellBtn={canSellTee(i) ? sellBtn : undefined}
+											>
+												{#snippet actions()}
+													<!-- 两种状态都占两行:待掷(1 行)→ 点数+等级(2 行)会让整队高度跳 14px -->
+													{#if phase === 'shop' || phase === 'reward'}
+														<!-- 中秋集市/组建 Tee 队(3 选 1)阶段:回合已结算,结果看结算面板;省一行高度给 6 人满队 -->
+													{:else if i <= countedTee}
+														<!-- 投过了就显示分数:0 分/负分也算结果,别退回「待掷」(countedTee = 最后一只结算完的) -->
+														<div
+															class="text-[10px] font-bold {tee.lastScore > 0
+																? 'text-amber-300'
+																: 'text-slate-400'}"
+														>
+															{formatScore(tee.lastScore)}
+														</div>
+														<div class="text-[9px] text-slate-500">
+															{getRollLevel(tee.lastLevelId).name}
+														</div>
+													{:else}
+														<!-- 不写投掷次数:角标已经有加成卡(右)和技能(左)两处计数,玩家自己数 -->
+														<div class="text-[10px] font-bold text-slate-600">待掷</div>
+														<div class="text-[9px] text-slate-500">&nbsp;</div>
+													{/if}
+												{/snippet}
+											</TeeCardView>
+										</div>
+									{/each}
+								</div>
 							</div>
-						</div>
+						{/if}
 					</div>
 
 					<!-- 右列:掷骰 / 3 选 1 / 集市 / 结算 -->
-					<div class="contents lg:flex lg:min-h-0 lg:flex-col">
+					<div class="contents {deskSplit ? 'lg:flex lg:min-h-0 lg:flex-col' : ''}">
 						<!-- ================= 骰子区 ================= -->
 						{#if phase === 'intro' || phase === 'rolling'}
 							<div
@@ -5100,6 +5131,76 @@
 									</div>
 								{/if}
 
+								<!-- 当前队伍:3×2 固定宽格子 —— 头像在左、名字在右(像加成卡芯片稍大一号);不带得分 -->
+								<div class="mt-2 border-t border-slate-700/60 pt-2">
+									<div class="text-[10px] text-slate-500 sm:text-[11px]">当前队伍</div>
+									<div class="mt-1 grid grid-cols-3 gap-1.5">
+										{#each team as t, i (i)}
+											{@const card = cardOf(t)}
+											<div
+												class="flex items-center justify-between gap-1.5 rounded-lg border bg-slate-800/60 px-1.5 py-1"
+												style="border-color: {cardBorderColor(
+													RARITY_INFO[card?.rarity ?? 'common'].color
+												)}"
+												role="img"
+												aria-label={t.isSelf ? '我' : (card?.name ?? 'Tee')}
+												onpointerdown={(e) => {
+													lastPointerWasMouse = e.pointerType === 'mouse';
+													hoverTeeAnchor = e.currentTarget;
+													// 触屏 = hover 语义:点一下显示(收起交给窗口的 dismissTip)
+													if (!lastPointerWasMouse) {
+														hoverTee = i;
+														peekBuff = null; // 联动:点了 Tee 卡,加成卡的说明就收
+														e.stopPropagation();
+													}
+												}}
+												onpointerenter={(e) => {
+													if (e.pointerType === 'touch') return;
+													hoverTee = i;
+													peekBuff = null; // 同上:hover 到 Tee 也收掉加成卡的
+													hoverTeeAnchor = e.currentTarget;
+												}}
+												onpointerleave={(e) => {
+													// 触屏抬指后会立刻发 pointerleave:那种情况不收(它是「点着」的 hover 态)
+													if (e.pointerType !== 'touch') hoverTee = null;
+												}}
+											>
+												<span class="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
+													><TeeRender
+														name={t.isSelf ? SELF_SKIN : (card?.skin ?? 'naomi')}
+														className="h-full w-full"
+													/></span
+												>
+												<span class="truncate text-xs font-semibold text-slate-200 sm:text-[13px]"
+													>{t.isSelf ? '我' : (card?.name ?? '—')}</span
+												>
+											</div>
+										{/each}
+									</div>
+									{#if teeTipState && hoverTee !== null}
+										<CardTip anchor={hoverTeeAnchor} hover={true} color={teeTipState.color}>
+											{teeTipState.desc}
+											{#if teeTipState.extra}
+												<div class="mt-1 text-[10px] font-semibold text-amber-300">
+													{teeTipState.extra}
+												</div>
+											{/if}
+											{#if teeTipState.list.length}
+												<div
+													class="mt-1.5 space-y-0.5 border-t border-slate-600/50 pt-1 text-left text-[10px]"
+												>
+													{#each teeTipState.list as line}
+														<div class={line.cls ?? 'text-slate-400'}>
+															{#if line.name}<b style="color: {line.nameColor}">{line.name}</b
+																>{/if}{line.text}
+														</div>
+													{/each}
+												</div>
+											{/if}
+										</CardTip>
+									{/if}
+								</div>
+
 								<!-- MVP:本局单次结算最高分(不计团队加成)+ 那一次结算的战绩 -->
 								{#if mvp}
 									<div class="mt-2 border-t border-slate-700/60 pt-2">
@@ -5409,10 +5510,8 @@
 		animation: dice-shake 0.75s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 	}
 
-	/* 手机/窄平板(<768px):队伍行单行横滑 —— 6 人满队两行会吃掉行动面板的竖向预算。
-	   只看设备尺寸、不看阶段:全流程同一布局,保证界面稳定。 */
-	@media (max-width: 767px) {
-		.team-row {
+	@media (max-width: 639px) and (max-height: 700px) {
+		.market-team {
 			flex-wrap: nowrap;
 			overflow-x: auto;
 			/* 卡角的 ✕ 卖出钮(-top-1.5)和 ✨/🐚/⚡ 角标(-bottom-1.5)各外挑 6px,
