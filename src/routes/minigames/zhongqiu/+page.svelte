@@ -160,7 +160,7 @@
 	 */
 	const minHeightFor = (w: number, h: number) => {
 		if (w >= 1024) return 620;
-		return w >= 768 ? 700 : w >= 640 ? 800 : h <= 624 ? 590 : 660;
+		return w >= 768 ? 700 : w >= 640 ? 800 : h <= 624 ? 630 : 660;
 	};
 	/** 活动区可用高度(px,不含 header/footer) */
 	let availH = $state(0);
@@ -4788,20 +4788,14 @@
 								class="panel-fill mt-2.5 min-h-0 overflow-y-auto rounded-xl border border-emerald-400/40 bg-slate-900/80 px-3 py-3 text-center backdrop-blur-sm max-[365px]:py-2 sm:mt-4 sm:rounded-2xl sm:p-6"
 							>
 								<div class="result-banner">
-									<div class="text-3xl sm:text-4xl">🌕</div>
-									<div class="mt-1 text-xl font-bold text-emerald-300 sm:text-2xl">
-										过关！月饼到手！
-									</div>
-									<div class="mt-1.5 text-xs text-slate-300 sm:text-sm">
-										本关得分 <span class="font-bold text-amber-300">{formatScore(roundTotal)}</span>
-										/ 目标
-										{formatScore(target)}
-									</div>
-									<div class="mt-1 text-xs text-slate-400 sm:text-sm">
-										本局总分 <span class="font-bold text-amber-200">{formatScore(runScore)}</span>
+									<div class="flex items-center justify-center gap-2">
+										<div class="text-3xl sm:text-4xl">🌕</div>
+										<div class="text-xl font-bold text-emerald-300 sm:text-2xl">
+											过关！月饼到手！
+										</div>
 									</div>
 									<div
-										class="mx-auto mt-2.5 flex max-w-md flex-col gap-1 text-xs text-slate-400 sm:text-sm"
+										class="scrollbar-hide mx-auto mt-2.5 flex max-h-24 max-w-md flex-col gap-1 overflow-y-auto text-xs text-slate-400 sm:text-sm"
 									>
 										<div class="flex justify-between rounded bg-slate-800/60 px-3 py-1">
 											<span>过关奖励</span><span class="font-bold text-amber-300"
