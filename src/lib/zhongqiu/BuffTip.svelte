@@ -1,0 +1,27 @@
+<script lang="ts">
+	import { RARITY_INFO } from './teecards';
+	import type { BuffCard } from './items';
+
+	/**
+	 * 加成卡说明的内容部分(不含外框定位)—— 三处共用:
+	 * 队伍货架、中秋集市货架、图鉴。外框由各自的容器/浮层提供。
+	 */
+	type Props = {
+		card: BuffCard;
+		/** 未解锁(图鉴):连名字一起藏(留白,不再用「？？？」占位) */
+		locked?: boolean;
+	};
+
+	let { card, locked = false }: Props = $props();
+
+	/** 未解锁也要给稀有度色 —— 图鉴的描边不该剧透名字,但稀有度本来就露着 */
+	const color = $derived(RARITY_INFO[card.rarity].color);
+</script>
+
+{#if !locked}
+	<div class="font-semibold" style="color: {color}">
+		{card.name}
+		<span class="ml-1 font-normal text-sky-300">持续 {card.turns} 关</span>
+	</div>
+{/if}
+<div class="mt-0.5 text-slate-300">{locked ? '尚未发现' : card.desc}</div>

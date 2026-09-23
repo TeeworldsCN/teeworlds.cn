@@ -2,3 +2,6 @@
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+
+# 会话工具的状态目录(不是项目代码)
+.pi-web/

@@ -10,6 +10,7 @@
 	import { faGithub } from '@fortawesome/free-brands-svg-icons';
 	import { faArrowLeft, faCoins } from '@fortawesome/free-solid-svg-icons';
 	import { uaNeedBackButton } from '$lib/helpers';
+	import { layoutTheme } from '$lib/layoutTheme.svelte';
 
 	let { children, data } = $props();
 
@@ -93,14 +94,27 @@
 		</div>
 	</header>
 
-	<main class="flex grow bg-slate-800 p-2 text-slate-300">
+	<main
+		class="relative flex grow text-slate-300 {layoutTheme.pad === false
+			? ''
+			: 'p-2'} {layoutTheme.bg ? '' : 'bg-slate-800'}"
+	>
+		{#if layoutTheme.bg}
+			<div
+				class="pointer-events-none absolute inset-0"
+				style={`background:${layoutTheme.bg}`}
+			></div>
+		{/if}
 		<div class="relative container mx-auto grow">
 			{@render children()}
 		</div>
 	</main>
 
 	<footer
-		class="flex h-8 flex-row flex-nowrap items-center bg-slate-900 px-4 py-1 text-nowrap text-slate-300"
+		class="game-footer flex h-8 flex-row flex-nowrap items-center bg-slate-900 px-4 py-1 text-nowrap text-slate-300 {layoutTheme.footer ===
+		true
+			? 'layout-footer-hidden'
+			: ''}"
 	>
 		<div class="flex max-h-8 flex-col overflow-hidden text-xs">
 			<Link href="https://beian.miit.gov.cn/" rel="noreferrer" target="_blank" type="subtle"
@@ -126,3 +140,11 @@
 		</div>
 	</footer>
 </div>
+
+<style>
+	/* 全屏游戏页(layoutTheme.footer=true)把备案 footer 整条隐去。
+	 * 双类选择器压过 Tailwind 的 .flex(display:flex)——单类和它同特异度,拼不过注入顺序。 */
+	.game-footer.layout-footer-hidden {
+		display: none;
+	}
+</style>

@@ -55,10 +55,8 @@
 {/if}
 
 <div class="mt-6">
-	<ToolboxButton href="/ddnet/nouis"
-		><Fa icon={faGamepad} class="inline"></Fa> 合成超大Tee</ToolboxButton
-	>
-	<div class="text-semibold">游玩搞怪小游戏</div>
+	<ToolboxButton href="/minigames"><Fa icon={faGamepad} class="inline"></Fa> 小游戏</ToolboxButton>
+	<div class="text-semibold">游玩 Tee 主题相关的小游戏</div>
 </div>
 
 <div class="mt-6 flex items-start">

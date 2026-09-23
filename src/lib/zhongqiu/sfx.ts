@@ -1,0 +1,467 @@
+// 中秋博饼 · 音效引擎(Web Audio 实时合成,不带任何音频素材)
+//
+// 全部声音都是现场合成的,所以:
+//   - 零素材、零加载、零体积
+//   - 音调/复杂度可以跟着分数动态变化(这是「越刺激」的关键)
+//
+// 设计:
+//   sfxStep      结算逐行 —— 音高随行号递升
+//   sfxWin/Lose  过关 / 结束
+//
+// 只在点击「开始博饼」等动作时调用。
+
+import { getSave, setSaveSfx } from './game';
+
+let ctx: AudioContext | null = null;
+let master: GainNode | null = null;
+let bus: DynamicsCompressorNode | null = null;
+let noiseBuf: AudioBuffer | null = null;
+let enabled = true;
+let rate = 1;
+
+export const sfxSetRate = (r: number) => {
+	rate = Math.max(0.25, Math.min(4, r));
+};
+const R = () => 1 / rate;
+
+const KEY = 'midautumn:sfx';
+
+export const sfxLog: string[] = [];
+
+export const sfxEnabled = () => enabled;
+
+/**
+ * 音频缓冲故意开大(0.06s ≈ 60ms):
+ * Android Chrome 在活动页这种重画面上,默认 interactive(~10ms)的小缓冲很容易欠载爆音;
+ * 代价是音效比画面晚 ~60ms —— 回合制骰子听感上无所谓,换稳定的声音值得。
+ */
+const LATENCY_HINT = 0.06;
+
+export const setSfxEnabled = (on: boolean) => {
+	enabled = on;
+	if (master && ctx) master.gain.setTargetAtTime(on ? 0.5 : 0, ctx.currentTime, 0.02);
+	try {
+		localStorage.setItem(KEY, on ? '1' : '0');
+	} catch {
+		// ignore
+	}
+	setSaveSfx(on); // 也入元存档(和 bossSfx 同一口径:双写,换设备不丢)
+};
+
+export const loadSfxPref = () => {
+	try {
+		const raw = localStorage.getItem(KEY);
+		// 专用 key 缺失(换设备/只导了元存档)→ 回退元存档的 sfxOn;再缺 = 默认开
+		enabled = raw !== null ? raw !== '0' : (getSave().sfxOn ?? true);
+	} catch {
+		// ignore
+	}
+	return enabled;
+};
+
+export const initSfx = () => {
+	if (typeof window === 'undefined') return;
+	if (!ctx) {
+		type WinAudio = Window & { webkitAudioContext?: typeof AudioContext };
+		const AC = window.AudioContext ?? (window as WinAudio).webkitAudioContext;
+		if (!AC) return;
+		ctx = new AC({ latencyHint: LATENCY_HINT });
+		bus = ctx.createDynamicsCompressor();
+		bus.threshold.value = -18;
+		bus.ratio.value = 8;
+		master = ctx.createGain();
+		master.gain.value = enabled ? 0.5 : 0;
+		bus.connect(master);
+		master.connect(ctx.destination);
+
+		const len = Math.floor(ctx.sampleRate * 0.6);
+		noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+		const d = noiseBuf.getChannelData(0);
+		for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+	}
+	// 标签页隐藏时不要偷偷解冻 —— bgm 的调度器(260ms)和在途音会反复调 sfxGraph → 这里,
+	// 把 bgm 的 visibility 冻结( suspend)又拉回来;解冻交给 bgm 的 visibility 处理器
+	if (ctx.state === 'suspended' && !document.hidden) void ctx.resume();
+};
+
+/**
+ * 外部音乐模块(Boss 战 BGM)要用的图 —— 和音效同一张总线,
+ * 所以静音开关、总线压缩对音乐天然生效,不需要另开一条链。
+ */
+export const sfxGraph = (): {
+	ctx: AudioContext;
+	bus: DynamicsCompressorNode;
+	noise: AudioBuffer;
+} | null => {
+	initSfx();
+	return ctx && bus && noiseBuf ? { ctx, bus, noise: noiseBuf } : null;
+};
+
+const note = (semi: number) => 440 * Math.pow(2, semi / 12);
+const log = (name: string) => {
+	if (sfxLog.length < 60) sfxLog.push(name);
+};
+
+/** 单音:可带滑音 / 自定义起音 */
+function tone(
+	freq: number,
+	at: number,
+	dur: number,
+	opts: { type?: OscillatorType; gain?: number; glideTo?: number; attack?: number } = {}
+) {
+	if (!ctx || !bus) return;
+	const { type = 'triangle', gain = 0.25, glideTo, attack } = opts;
+	const o = ctx.createOscillator();
+	const g = ctx.createGain();
+	o.type = type;
+	o.frequency.setValueAtTime(freq, at);
+	if (glideTo) o.frequency.exponentialRampToValueAtTime(Math.max(1, glideTo), at + dur);
+	g.gain.setValueAtTime(0, at);
+	g.gain.linearRampToValueAtTime(gain, at + (attack ?? Math.min(0.012, dur * 0.2)));
+	g.gain.exponentialRampToValueAtTime(0.0008, at + dur);
+	o.connect(g).connect(bus);
+	o.start(at);
+	o.stop(at + dur + 0.02);
+	return o;
+}
+
+/** 噪声脉冲:骰子撞击 / 打击乐 */
+function click(at: number, opts: { freq?: number; q?: number; dur?: number; gain?: number } = {}) {
+	if (!ctx || !bus || !noiseBuf) return;
+	const { freq = 1800, q = 1.2, dur = 0.05, gain = 0.3 } = opts;
+	const s = ctx.createBufferSource();
+	s.buffer = noiseBuf;
+	s.playbackRate.value = 1;
+	const f = ctx.createBiquadFilter();
+	f.type = 'bandpass';
+	f.frequency.value = freq;
+	f.Q.value = q;
+	const g = ctx.createGain();
+	g.gain.setValueAtTime(gain, at);
+	g.gain.exponentialRampToValueAtTime(0.0008, at + dur);
+	s.connect(f).connect(g).connect(bus);
+	s.start(at, Math.random() * 0.3, dur + 0.02);
+	return s;
+}
+
+// ---- 各音效 ----
+
+export const sfxRoll = (dur = 0.75, diceCount = 6) => {
+	log('roll');
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.01;
+	const hits = Math.max(8, Math.round(dur * 26) + diceCount);
+	for (let i = 0; i < hits; i++) {
+		const p = i / hits;
+		// 越接近落定越密、越响、越尖(像骰子慢慢停下来)
+		const t = t0 + p * dur * 0.95 + Math.random() * 0.012;
+		click(t, {
+			freq: 900 + Math.random() * 1500 + p * 900,
+			q: 1 + Math.random(),
+			dur: 0.035 + Math.random() * 0.03,
+			gain: (0.06 + p * 0.16) * (0.7 + Math.random() * 0.5)
+		});
+	}
+	// 低频隆隆(桌面震动感)
+	if (bus) {
+		const o = ctx.createOscillator();
+		const g = ctx.createGain();
+		o.type = 'sine';
+		o.frequency.setValueAtTime(90, t0);
+		o.frequency.exponentialRampToValueAtTime(55, t0 + dur);
+		g.gain.setValueAtTime(0.0001, t0);
+		g.gain.linearRampToValueAtTime(0.16, t0 + 0.05);
+		g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+		o.connect(g).connect(bus);
+		o.start(t0);
+		o.stop(t0 + dur + 0.02);
+	}
+};
+
+export const sfxLevel = (score: number) => {
+	log('level:' + score);
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.01;
+	// 分数 → 音区 / 音符数(0 分是下行闷响)
+	const tier =
+		score >= 2560
+			? 8
+			: score >= 1280
+				? 7
+				: score >= 960
+					? 6
+					: score >= 640
+						? 5
+						: score >= 480
+							? 4
+							: score >= 320
+								? 3
+								: score >= 160
+									? 3
+									: score >= 80
+										? 2
+										: score >= 40
+											? 2
+											: score >= 20
+												? 1
+												: score >= 10
+													? 1
+													: 0;
+	if (tier === 0) {
+		// 没中:下行小二度 + 闷响
+		tone(note(-5), t0, 0.22 * R(), { type: 'sine', gain: 0.18, glideTo: note(-8) });
+		click(t0, { freq: 300, q: 0.7, dur: 0.12 * R(), gain: 0.12 });
+		return;
+	}
+	const root = note(-2 + tier * 1.6); // 档位越高整体越亮
+	const scale = [0, 4, 7, 12, 16, 19, 24, 28, 31];
+	const n = Math.min(scale.length, 1 + tier);
+	for (let i = 0; i < n; i++) {
+		const at = t0 + i * Math.max(0.028, (0.085 - tier * 0.005) * R());
+		tone(root * Math.pow(2, scale[i] / 12), at, (0.16 + tier * 0.02) * R(), {
+			type: tier >= 5 ? 'sawtooth' : 'triangle',
+			gain: (tier >= 6 ? 0.2 : 0.16) * (1 - i * 0.06)
+		});
+	}
+	// 高档位加闪光颗粒 + 低频冲击
+	if (tier >= 5) {
+		for (let i = 0; i < 6; i++)
+			tone(root * 4 * Math.pow(2, (i * 3 + tier) / 12), t0 + (0.12 + i * 0.03) * R(), 0.1 * R(), {
+				type: 'sine',
+				gain: 0.07
+			});
+		tone(note(-24), t0, 0.3 * R(), { type: 'sine', gain: 0.22, glideTo: note(-30) });
+	}
+	if (tier >= 7) {
+		// 顶级:再来一遍高八度
+		for (let i = 0; i < 4; i++)
+			tone(root * 2 * Math.pow(2, scale[i] / 12), t0 + (0.4 + i * 0.07) * R(), 0.3 * R(), {
+				type: 'triangle',
+				gain: 0.12
+			});
+	}
+};
+
+/** 结算逐行:音高随行号递升 */
+export const sfxStep = (
+	index: number,
+	kind: 'level' | 'chip' | 'mult' | 'total' | 'swap' | 'upgrade',
+	levelScore = 0
+) => {
+	if (kind === 'level') return sfxLevel(levelScore);
+	log('step:' + kind);
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.01;
+	if (kind === 'upgrade') {
+		// 抬档(玉兔捣药):上行三连音 —— 听感就是「往上一档」,和加算/乘算都不是一回事
+		for (let i = 0; i < 3; i++)
+			tone(note(7 + i * 3), t0 + i * 0.055, 0.12 * R(), { type: 'triangle', gain: 0.1 });
+		return;
+	}
+	if (kind === 'swap') {
+		// 逆向改写:先降后升的一对锯齿音 —— 和加算(三角)/乘算(方波)明显不是一个东西,
+		// 听感上就是「把分数翻过来」
+		tone(note(6), t0, 0.1 * R(), { type: 'sawtooth', gain: 0.07 });
+		tone(note(6 + 13), t0 + 0.06, 0.18 * R(), { type: 'sawtooth', gain: 0.09 });
+		return;
+	}
+	const base = kind === 'mult' ? 9 : 5;
+	tone(note(base + index * 2.2), t0, 0.13 * R(), {
+		type: kind === 'mult' ? 'square' : 'triangle',
+		gain: kind === 'mult' ? 0.09 : 0.13
+	});
+};
+
+export const sfxTotal = (reached: boolean) => {
+	log('total:' + (reached ? 'ok' : 'no'));
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.01;
+	const chord = reached ? [0, 4, 7, 12] : [0, 3, 7];
+	for (let i = 0; i < chord.length; i++)
+		tone(note(-2 + chord[i]), t0 + i * 0.045 * R(), (reached ? 0.5 : 0.3) * R(), {
+			type: reached ? 'triangle' : 'sine',
+			gain: 0.16
+		});
+};
+
+/** 过关:上行五声 + 收尾和弦 */
+export const sfxWin = () => {
+	log('win');
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.01;
+	[0, 4, 7, 12, 16].forEach((s, i) => tone(note(s + 3), t0 + i * 0.08, 0.22, { gain: 0.15 }));
+	[0, 4, 7, 12].forEach((s) => tone(note(s + 3), t0 + 0.44, 0.7, { gain: 0.13 }));
+};
+
+/** 结束:下行长滑音(三角波 + 慢起音,里层 sine 垫底 —— 不刺) */
+export const sfxLose = () => {
+	log('lose');
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.01;
+	// 原来是锯齿波:泛音多、12ms 起音,听着发哧;换成三角波并把起音拉到 50ms
+	tone(note(3), t0, 1.0, { type: 'triangle', gain: 0.12, attack: 0.05, glideTo: note(-17) });
+	tone(note(-9), t0 + 0.15, 0.85, { type: 'sine', gain: 0.11, glideTo: note(-24) });
+};
+
+/** 界面点击 */
+export const sfxClick = () => {
+	log('click');
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.005;
+	click(t0, { freq: 2600, q: 2, dur: 0.03, gain: 0.1 });
+	tone(note(12), t0, 0.05, { type: 'sine', gain: 0.06 });
+};
+
+/** 警告/拒绝:两记下行短音 + 一记闷响 —— 比点击沉、比失败轻,一听就知道「这步不行」 */
+export const sfxWarn = () => {
+	log('warn');
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.005;
+	click(t0, { freq: 900, q: 0.9, dur: 0.05, gain: 0.12 });
+	tone(note(-3), t0, 0.09, { type: 'triangle', gain: 0.09 });
+	tone(note(-9), t0 + 0.09, 0.16, { type: 'triangle', gain: 0.1, glideTo: note(-11) });
+};
+
+/** 重掷选骰:每改一颗骰子的选中状态响一下。
+ *  上行为「选中」(音高随已选颗数递升 → 一排扫过去是上行的),下行为「取消」。
+/** 重掷选骰:每改一颗骰子的选中状态响一下。
+ *  用的是**掷骰那套石子材质**(click 的带通噪声),只是压到低音区、单颗一发,
+ *  再带一点掷骰里那个低频隆隆的短促版,听起来像骰子在桌面上蹭了一下。
+ *  上行为「选中」、下行为「取消」;音高随已选颗数在低音区小幅递升,
+ *  一排扫过去是一串上行,但整体是闷的,不刺耳。
+ *  一帧里连改好几颗(拖拽跳格补齐)会排队错开,听起来是一串快速摩擦声。 */
+let pickQueue = 0;
+let pickQueueAt = 0;
+export const sfxPick = (n = 1, on = true) => {
+	log(on ? 'pick:' + n : 'unpick:' + n);
+	initSfx();
+	if (!ctx || !enabled) return;
+	const now = ctx.currentTime;
+	// 同一批(60ms 内)的改选往后排,每颗错开 30ms
+	if (now - pickQueueAt > 0.06) pickQueue = 0;
+	pickQueueAt = now;
+	const step = pickQueue++ * 0.03;
+	const t0 = now + 0.004 + step;
+	// 和 sfxRoll 同一个音区(那里是 900 + rand×1500),但**不按颗数递升** ——
+	// 递升在快速划过时会连成一个音阶,听着像在「唱」,很怪。
+	// 每次随机取一个音高:一排扫过去就是一串高低不一的骰子碰撞声。
+	// 取消更闷一点(取音区下半段),好和选中区分开。
+	const freq = on ? 900 + Math.random() * 1500 : 780 + Math.random() * 900;
+	click(t0, {
+		freq,
+		q: 1 + Math.random(),
+		dur: 0.045 * R(),
+		gain: on ? 0.15 : 0.11
+	});
+};
+
+// ---- 长按「第 N 关」退出:蓄力条 ----
+// 不是平滑上滑的「充能音」(持续滑音+共振听着像幽灵),而是**棘轮一样的咔哒**:
+// 一记短噪声 click + 一个很短的音头,间隔随进度越紧(140ms → 40ms)、音高与亮度
+// 也随进度往上走 —— 条子越满,哒哒声越急。噪声材质和掷骰/选骰同一套,一家子的声音。
+//
+// ⚠️ 排程必须走**音频时钟**(lookahead 窗口),不能「到点才响」:
+// rAF 只有 ~16ms 的网格,一帧一帧地量,间隔会被抬到整帧并忽长忽短 ——
+// 听起来就是哒哒声不稳。这里每次把窗口内的咔哒按精确的 at 写进时间轴。
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+/** 咔哒间隔:进度越高越急(140ms → 40ms) */
+const quitGap = (q: number) => 140 - q * 100;
+/** 排程窗口:大于一帧(~16ms)即可;窗口内已排的咔哒,收声时要能立刻掉 */
+const QUIT_LOOKAHEAD = 0.06;
+/** 一记棘轮咔哒:click 为主,短音头带一点音高(能听出往上涨,又不是滑音) */
+const quitTick = (q: number, at: number) => {
+	if (!ctx || !bus) return;
+	const src = click(at, {
+		freq: 700 + q * 1800,
+		q: 1.1,
+		dur: 0.03,
+		gain: 0.1 + q * 0.09
+	});
+	if (src) quitVoices.push({ node: src, until: at + 0.08 });
+	// 音头故意短(22ms):高进度时咔哒只隔 40ms,长了会连成一条音 —— 又变幽灵
+	const o = tone(note(-12 + q * 12), at, 0.022, { type: 'triangle', gain: 0.055 + q * 0.03 });
+	if (o) quitVoices.push({ node: o, until: at + 0.06 });
+};
+let quitVoices: { node: AudioScheduledSourceNode; until: number }[] = [];
+let quitNextAt = 0; // 下一记咔哒的音频时钟时间(秒)
+let quitActive = false;
+
+/** 把窗口内的咔哒全排进时间轴(每帧喂一次进度即可) */
+const quitSchedule = (q: number) => {
+	if (!ctx) return;
+	const now = ctx.currentTime;
+	// 掉帧/停后台错过的咔哒直接跳过,别在恢复时突突一串
+	if (quitNextAt < now) quitNextAt = now + 0.004;
+	const horizon = now + QUIT_LOOKAHEAD;
+	while (quitNextAt < horizon) {
+		quitTick(q, quitNextAt);
+		quitNextAt += quitGap(q) / 1000;
+	}
+	// 顺手清掉已经播完的节点引用
+	if (quitVoices.length > 24) quitVoices = quitVoices.filter((v) => v.until > now);
+};
+
+/** 蓄力声起(按下时调,传当前进度 —— 中途松了再按要接着当前值的节奏咔) */
+export const sfxQuitStart = (progress = 0) => {
+	log('quit:start');
+	initSfx();
+	if (!ctx || !bus || !enabled || quitActive) return;
+	quitActive = true;
+	quitNextAt = ctx.currentTime + 0.004; // 按下先响一记,即时反馈
+	quitSchedule(clamp01(progress));
+};
+
+/** 每帧喂进度(0..1):间隔/音高/响度都跟着条子 */
+export const sfxQuitSet = (progress: number) => {
+	if (!ctx || !enabled || !quitActive) return;
+	quitSchedule(clamp01(progress));
+};
+
+/** 收声(归零 / 触发结束 / 切阶段):连窗口里已排的咔哒一起掉 */
+export const sfxQuitStop = () => {
+	if (!quitActive) return;
+	quitActive = false;
+	quitNextAt = 0;
+	const t = ctx ? ctx.currentTime : 0;
+	for (const v of quitVoices) {
+		try {
+			v.node.stop(t);
+		} catch {
+			// ignore
+		}
+	}
+	quitVoices = [];
+};
+
+export const sfxCoin = () => {
+	log('coin');
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.005;
+	click(t0, { freq: 5400, q: 3, dur: 0.02, gain: 0.05 });
+	tone(note(19), t0, 0.06, { type: 'square', gain: 0.085 });
+	tone(note(26), t0 + 0.055, 0.16, { type: 'square', gain: 0.095 });
+};
+
+/** 出售:收银机「ka-ching」—— 先一声柜厣弹开的「咔」,再一记亮铃「叮」 */
+export const sfxSell = () => {
+	log('sell');
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.005;
+	// 咔:中低频噪声 + 闷响(抽屉/机櫃的机械感)
+	click(t0, { freq: 1300, q: 0.9, dur: 0.055, gain: 0.16 });
+	tone(note(7), t0, 0.07, { type: 'triangle', gain: 0.08 });
+	// 叮:亮铃(基音 + 两个泛音,衰减比 click 长得多)
+	tone(note(24), t0 + 0.075, 0.5, { type: 'sine', gain: 0.13 });
+	tone(note(31), t0 + 0.075, 0.4, { type: 'sine', gain: 0.05 });
+	tone(note(28), t0 + 0.09, 0.45, { type: 'sine', gain: 0.07 });
+};
