@@ -28,7 +28,7 @@
 	</div>
 </div>
 
-<div class="mt-6 text-sm text-slate-400">游玩 Tee 主题相关的小游戏，不需要登录</div>
+<div class="mt-6 text-sm text-slate-400">游玩 Tee 主题相关的小游戏</div>
 
 <div class="mt-6">
 	<ToolboxButton href="/"><Fa icon={faArrowLeft} class="inline"></Fa> 返回首页</ToolboxButton>
