@@ -4459,7 +4459,7 @@
 
 						<!-- ================= 精简道具条(不需要操作道具的阶段) ================= -->
 						{#if showItemBar}
-							<div class="relative mt-2.5">
+							<div class="relative mt-2.5 hidden lg:block">
 								<div
 									class="flex items-center gap-1.5 overflow-x-auto rounded-xl border border-sky-500/20 bg-slate-900/60 px-2.5 py-1.5 backdrop-blur-sm sm:max-h-24 sm:flex-wrap sm:overflow-x-hidden sm:overflow-y-auto sm:rounded-2xl"
 								>
