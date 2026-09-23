@@ -178,9 +178,17 @@
 		measure();
 		window.addEventListener('resize', measure);
 		window.visualViewport?.addEventListener('resize', measure);
+		// 本页 footer 被 layout 隐藏(display:none → offsetHeight 0),chrome 自动只算 header,
+		// 空间比带 footer 的页面多 32px。但 layout 的隐藏 effect 可能晚于本 effect 跑完 ——
+		// 只靠 resize 纠偏的话,首屏会一直按「footer 还在」少算 32px,白白多缩一档。
+		// ResizeObserver 盯住 footer 本体:隐藏/显示都触发重测,空间变化自动跟上。
+		const foot = document.querySelector('footer');
+		const ro = foot ? new ResizeObserver(measure) : null;
+		if (foot && ro) ro.observe(foot);
 		return () => {
 			window.removeEventListener('resize', measure);
 			window.visualViewport?.removeEventListener('resize', measure);
+			ro?.disconnect();
 		};
 	});
 
