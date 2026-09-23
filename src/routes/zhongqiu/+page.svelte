@@ -4403,7 +4403,7 @@
 												card={cardOf(tee)}
 												skin={SELF_SKIN}
 												name="我"
-												desc={cardOf(tee)?.desc}
+												desc={cardOf(tee)?.desc ?? (tee.isSelf ? 'Tee 队的队长' : undefined)}
 												tipExtra={teeTipExtra(i)}
 												tipList={teeTipList(tee)}
 												badge={(team[i]?.refundPending?.length ?? 0) > 0
