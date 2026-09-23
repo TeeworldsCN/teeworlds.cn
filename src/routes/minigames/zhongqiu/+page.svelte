@@ -3337,8 +3337,8 @@
 					});
 				} else if (eff.type === 'no_me_team_mult') {
 					// 不写「队伍里没有我」——条件玩家自己清楚,结算行动画越短越好。
-					// 判据和引擎逐条对齐:没「我」+ 这一格本关得分 > 0 才真乘上去
-					if (hasMe || (team[i]?.lastScore ?? 0) <= 0) continue;
+					// 判据和引擎逐条对齐:只要队伍里没有「我」就乘(卡面没有得分门槛)
+					if (hasMe) continue;
 					steps.push({
 						text: `Σ 🏪 ${c.name}：总分 ×${eff.mult}`,
 						cls: 'font-bold text-cyan-200',

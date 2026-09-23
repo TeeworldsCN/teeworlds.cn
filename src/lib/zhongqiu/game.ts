@@ -891,12 +891,13 @@ export const calcTeeScore = ({
 				}
 			} else if (be.type === 'straight_mult') {
 				// 连号长度倍率(合璧符):连号 n 颗 → ×per^(n-from);
-				// 凛月的「乘值只算一半」把 per 折成 1+(per−1)×scale,再按原样取一位小数
+				// 凛月的「乘值只算一半」把 per 折成 1+(per−1)×scale。乘精确值 ——
+				// 取整曾让卡面 ×1.35/×1.85 变成实乘 ×1.4/×1.9(结算行也已能列两位小数)
 				const run = longestRun(ownDice);
 				const from = be.from ?? 2;
 				if (run > from) {
 					const per = 1 + ((be.per ?? 1) - 1) * buffMultScale;
-					buffMult *= Math.round(Math.pow(per, run - from) * 10) / 10;
+					buffMult *= Math.pow(per, run - from);
 				}
 			} else if (be.type === 'streak_mult') {
 				// 孤星赌(朔月符):本命点 from 颗起每多 1 颗 ×per(3 颗 ×1.8、4 颗 ×3.24…),
@@ -906,7 +907,7 @@ export const calcTeeScore = ({
 				const from = be.from ?? 3;
 				if (n >= from) {
 					const per = 1 + ((be.per ?? 1) - 1) * buffMultScale;
-					buffMult *= Math.round(Math.pow(per, n - from + 1) * 10) / 10;
+					buffMult *= Math.pow(per, n - from + 1);
 				} else if (n <= from - 2) {
 					buffMult *= 1 + ((be.value ?? 1) - 1) * buffMultScale;
 				}
@@ -1256,8 +1257,8 @@ export const calcTeeScore = ({
 				const from = eff.from ?? 2;
 				if (run <= from) break;
 				const bm = mult;
-				// 倍率按一位小数取整:结算行写的是 ×2.3,实际乘的也得是 2.3
-				mult *= Math.round(Math.pow(eff.per, run - from) * 10) / 10;
+				// 乘精确值:取整曾让卡面 ×1.35/×1.85 变成实乘 ×1.4/×1.9;结算行按两位小数列印
+				mult *= Math.pow(eff.per, run - from);
 				note(srcId, 'card', 0, bm === 0 ? 1 : mult / bm, `连号 ${run} 颗`);
 				break;
 			}

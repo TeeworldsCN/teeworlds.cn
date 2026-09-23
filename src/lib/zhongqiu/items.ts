@@ -560,15 +560,17 @@ export const BUFF_CARDS: BuffCard[] = [
 		effect: { type: 'set_any', count: 1, from: 4, options: [2, 5] }
 	},
 	{
+		// 拆 4 家族的「批量」版:单颗定向盘被普池的通用定值盘(凸月盘)全面盖住,
+		// 改成一次拆两颗 —— 两张各有取舍,不再是谁的下位替代
 		id: 'dingwupan',
 		name: '定五盘',
-		desc: '改 1 颗 4 点骰子为 5 点；没用掉就归还',
+		desc: '改 2 颗 4 点骰子为 5 点；没用掉就归还',
 		rarity: 'rare',
 		skin: 'IceWitch_WitchDeer',
 		price: 5,
 		turns: 1,
 		refund: true,
-		effect: { type: 'set_point', count: 1, point: 5, from: 4 }
+		effect: { type: 'set_point', count: 2, point: 5, from: 4 }
 	},
 	{
 		id: 'wanxiangpan',

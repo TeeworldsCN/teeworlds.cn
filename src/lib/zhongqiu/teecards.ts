@@ -163,7 +163,6 @@ export type TeeEffect =
 	// 蜜枣:该回合**首次投掷**按几率直接变成 faces(不看骰子)
 	| { type: 'jackpot'; chance: number; faces: number[] }
 	// 田螺:该 Tee 身上的加成卡不生效、掷完原价返还;掷完可发动主动技(见 active/parked)
-	// 田螺:该 Tee 身上的加成卡不生效、掷完原价返还;掷完可发动主动技(见 active/parked)
 	//  分/价 中位在 16 上下,压到 12 → 存卡永远不如用掉一张合适的底分卡,
 	//  但能把用不上的卡(以及糍粑 8.3 这种低于行情的)救回来 —— 这正是田螺的定位)
 	| { type: 'buff_refund' }
@@ -435,10 +434,10 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'qiansixi',
 		name: '牵丝戏',
-		desc: '全队总分 ×1.15',
+		desc: '全队总分 ×1.3',
 		rarity: 'rare',
 		skin: 'IceWitch_Clown',
-		effect: { type: 'team_mult', value: 1.15 }
+		effect: { type: 'team_mult', value: 1.3 }
 	},
 	{
 		id: 'dengguan',
@@ -690,7 +689,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yinhe',
 		name: '星河',
-		desc: '「我」得分 ×2;「我」掷出的 4 点作废;「我」每有 1 颗作废骰子:该 Tee 基础分 +30、得分 ×1.5',
+		desc: '「我」得分 ×2；「我」掷出的 4 点作废；「我」每有 1 颗作废骰子：该 Tee 基础分 +30、得分 ×1.5',
 		rarity: 'rare',
 		skin: 'astronaut',
 		effect: {
@@ -1262,7 +1261,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'dantian',
 		name: '丹田',
-		desc: '每拥有一个独特的「丹」系Tee:该 Tee 得分 ×1.62；每有 1 颗 4 点，该 Tee 基础分 +150',
+		desc: '每拥有一个独特的「丹」系Tee：该 Tee 得分 ×1.62；每有 1 颗 4 点，该 Tee 基础分 +150',
 		rarity: 'rare',
 		tag: '丹',
 		skin: 'firecoala',
@@ -1271,7 +1270,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'liandanlu',
 		name: '炼丹炉',
-		desc: '每拥有一个独特的「丹」系Tee:所有「丹」系 Tee 得分 ×1.62；每有 1 颗 4 点，该 Tee 基础分 +375',
+		desc: '每拥有一个独特的「丹」系Tee：所有「丹」系 Tee 得分 ×1.62；每有 1 颗 4 点，该 Tee 基础分 +375',
 		rarity: 'legendary',
 		tag: '丹',
 		skin: 'iron_pot_o_gold',
