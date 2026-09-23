@@ -4786,19 +4786,24 @@
 													if (pendingAction) onDieClick(i);
 												}}
 											>
-												<!-- 骰面用内联 SVG:不依赖 ::after/container-query/:has(),老浏览器也能渲染 -->
-												<svg class="die-face" viewBox="0 0 24 24" aria-hidden="true">
-													{#each PIP_POS as [cx, cy], idx}
-														{#if showPip(dice[i], idx + 1)}
-															<circle
-																{cx}
-																{cy}
-																r="2.6"
-																class:red={!dieRolling(i) && dice[i] === 4}
-															/>
-														{/if}
-													{/each}
-												</svg>
+												<!-- 骰面用内联 SVG:不依赖 ::after/container-query/:has(),老浏览器也能渲染。
+												     外面套一层 .die-box(高度只靠百分比 padding 撑)、SVG 绝对铺满:
+												     iOS Safari 下「aspect-ratio 撑高的盒子 + height:100% 的子元素」会把高度
+												     按整个骰子(含 padding)解析,点阵整体偏下(详见 .die-box 处注释)。 -->
+												<span class="die-box">
+													<svg class="die-face" viewBox="0 0 24 24" aria-hidden="true">
+														{#each PIP_POS as [cx, cy], idx}
+															{#if showPip(dice[i], idx + 1)}
+																<circle
+																	{cx}
+																	{cy}
+																	r="2.6"
+																	class:red={!dieRolling(i) && dice[i] === 4}
+																/>
+															{/if}
+														{/each}
+													</svg>
+												</span>
 												{#if diceModded(i)}
 													<!-- 点数被改造:原始点阵淡化,叠一个半透明的「实际点数」 -->
 													{#if dieVoid(i)}
@@ -5704,7 +5709,6 @@
 		position: relative;
 		display: block;
 		width: 100%;
-		aspect-ratio: 1;
 		min-height: 2.75rem;
 		padding: 12%;
 		border-radius: 10px;
@@ -5868,7 +5872,22 @@
 		}
 	}
 
+	/* 骰面正方形:高度只由「百分比 padding」撑出来(.die-box 的 padding-bottom:100% = 自己的宽度),
+	   **不走 aspect-ratio** —— iOS Safari 会把「正方形靠 aspect-ratio 撑出来的盒子」里 height:100%
+	   的子元素按**整个盒子(含 padding)**解析高度,点阵整体偏下 12%(用户截图那版就是这个);
+	   去掉 aspect-ratio 后骰子照样是正方形(边长 = 12%×2 的 padding + 76% 的内容)。
+	   SVG 绝对铺满 .die-box:百分比只对着确定的 padding box 解析,WebKit/Chromium 都是严格居中。 */
+	.die-box {
+		display: block;
+		position: relative;
+		height: 0;
+		padding-bottom: 100%;
+	}
+
 	.die-face {
+		position: absolute;
+		top: 0;
+		left: 0;
 		display: block;
 		width: 100%;
 		height: 100%;
