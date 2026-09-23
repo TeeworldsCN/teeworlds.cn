@@ -86,7 +86,7 @@
 >
 	<div
 		class="tee-card {selected ? 'ring-2 ring-emerald-400' : ''} {active
-			? '-translate-y-1 border-amber-400/70 bg-amber-400/10 shadow-lg shadow-amber-900/30'
+			? '-translate-y-1 border-amber-300/90 bg-amber-400/10 shadow-[0_0_16px_rgba(251,191,36,0.55),0_4px_12px_rgba(0,0,0,0.35)]'
 			: ''} {animate}"
 		style={`--rarity: ${rinfo?.color ?? '#94a3b8'}`}
 	>
