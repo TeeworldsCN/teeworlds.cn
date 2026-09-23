@@ -89,9 +89,9 @@
 	onfocusout={() => (hover = false)}
 >
 	<div
-		class="tee-card {selected ? 'ring-2 ring-emerald-400' : ''} {active
-			? '-translate-y-1 border-amber-300/90 bg-amber-400/10 shadow-[0_0_16px_rgba(251,191,36,0.55),0_4px_12px_rgba(0,0,0,0.35)]'
-			: ''} {animate}"
+		class="tee-card transition-colors {selected ? 'ring-2 ring-emerald-400' : ''} {active
+			? '-translate-y-1 border-amber-300/90 bg-[#2c2c2c] shadow-[0_0_16px_rgba(251,191,36,0.55),0_4px_12px_rgba(0,0,0,0.35)]'
+			: 'bg-[#1d2639]'} {animate}"
 		style={`--rarity: ${rinfo?.color ?? '#94a3b8'}`}
 	>
 		{#if sellBtn}
@@ -164,7 +164,6 @@
 		padding: 8px;
 		border-radius: 12px;
 		border: 1px solid color-mix(in srgb, var(--rarity, #94a3b8) 45%, transparent);
-		background: rgba(30, 41, 59, 0.6);
 		transition:
 			transform 0.15s ease,
 			box-shadow 0.15s ease;
