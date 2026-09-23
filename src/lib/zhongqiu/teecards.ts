@@ -575,11 +575,19 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'baiyutu',
 		name: '白玉兔',
-		desc: '可投掷 3 次',
+		desc: '可投掷 3 次；自己每有 1 颗 4 点：基础分 +45',
 		rarity: 'rare',
 		tag: '兔',
 		skin: 'Cute_bunny',
-		effect: { type: 'extra_roll', count: 1 }
+		effect: {
+			type: 'bundle',
+			parts: [
+				{ type: 'extra_roll', count: 1 },
+				// 丹引(多 1 投掷 + 每多 1 次投掷机会 ×2)是同稀有度的上位版;这张补一条 4 点
+				// 底分当区分度:一个赌次数,一个吃四点
+				{ type: 'own_face', face: 4, chips: 45 }
+			]
+		}
 	},
 	{
 		id: 'change',
@@ -833,11 +841,13 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'yuegongxianzi',
 		name: '仙子临凡',
-		desc: '三红及以上：得分 ×5',
+		desc: '三红及以上：得分 ×8',
 		rarity: 'rare',
 		tag: '仙',
 		skin: 'IceWitch_AccurateAngel',
-		effect: { type: 'cond', cond: 'san_hong_plus', mult: 5 }
+		// 同稀有度的赤金仙丸在同触发档是 ×2×3 = ×6、平时也有 ×2 —— ×5 会被它全面盖住;
+		// 抬到 ×8:三红+ 时这张更高、平时赤金更高,两张各有所长(纯赌狗卡的高天花板)
+		effect: { type: 'cond', cond: 'san_hong_plus', mult: 8 }
 	},
 	{
 		id: 'changepair',
@@ -963,13 +973,14 @@ export const CARDS: TeeCard[] = [
 		effect: { type: 'own_face', face: 2, chips: 40 }
 	},
 	{
+		// 旧值只有 +60:点数线重做时漏掉的卡,对齐同线的 rare 标准(+14x / ×1.5)
 		id: 'sansheng',
 		name: '桂下三生',
-		desc: '自己每有 1 颗 3 点：基础分 +60',
+		desc: '自己每有 1 颗 3 点：基础分 +145、得分 ×1.5',
 		rarity: 'rare',
 		tag: '桂',
 		skin: 'amor_green',
-		effect: { type: 'own_face', face: 3, chips: 60 }
+		effect: { type: 'own_face', face: 3, chips: 145, mult: 1.5 }
 	},
 	{
 		id: 'sixi',
