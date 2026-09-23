@@ -122,6 +122,7 @@ function tone(
 	o.connect(g).connect(bus);
 	o.start(at);
 	o.stop(at + dur + 0.02);
+	return o;
 }
 
 /** 噪声脉冲:骰子撞击 / 打击乐 */
@@ -140,6 +141,7 @@ function click(at: number, opts: { freq?: number; q?: number; dur?: number; gain
 	g.gain.exponentialRampToValueAtTime(0.0008, at + dur);
 	s.connect(f).connect(g).connect(bus);
 	s.start(at, Math.random() * 0.3, dur + 0.02);
+	return s;
 }
 
 // ---- 各音效 ----
@@ -317,6 +319,17 @@ export const sfxClick = () => {
 	tone(note(12), t0, 0.05, { type: 'sine', gain: 0.06 });
 };
 
+/** 警告/拒绝:两记下行短音 + 一记闷响 —— 比点击沉、比失败轻,一听就知道「这步不行」 */
+export const sfxWarn = () => {
+	log('warn');
+	initSfx();
+	if (!ctx || !enabled) return;
+	const t0 = ctx.currentTime + 0.005;
+	click(t0, { freq: 900, q: 0.9, dur: 0.05, gain: 0.12 });
+	tone(note(-3), t0, 0.09, { type: 'triangle', gain: 0.09 });
+	tone(note(-9), t0 + 0.09, 0.16, { type: 'triangle', gain: 0.1, glideTo: note(-11) });
+};
+
 /** 重掷选骰:每改一颗骰子的选中状态响一下。
  *  上行为「选中」(音高随已选颗数递升 → 一排扫过去是上行的),下行为「取消」。
 /** 重掷选骰:每改一颗骰子的选中状态响一下。
@@ -348,6 +361,84 @@ export const sfxPick = (n = 1, on = true) => {
 		dur: 0.045 * R(),
 		gain: on ? 0.15 : 0.11
 	});
+};
+
+// ---- 长按「第 N 关」退出:蓄力条 ----
+// 不是平滑上滑的「充能音」(持续滑音+共振听着像幽灵),而是**棘轮一样的咔哒**:
+// 一记短噪声 click + 一个很短的音头,间隔随进度越紧(140ms → 40ms)、音高与亮度
+// 也随进度往上走 —— 条子越满,哒哒声越急。噪声材质和掷骰/选骰同一套,一家子的声音。
+//
+// ⚠️ 排程必须走**音频时钟**(lookahead 窗口),不能「到点才响」:
+// rAF 只有 ~16ms 的网格,一帧一帧地量,间隔会被抬到整帧并忽长忽短 ——
+// 听起来就是哒哒声不稳。这里每次把窗口内的咔哒按精确的 at 写进时间轴。
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+/** 咔哒间隔:进度越高越急(140ms → 40ms) */
+const quitGap = (q: number) => 140 - q * 100;
+/** 排程窗口:大于一帧(~16ms)即可;窗口内已排的咔哒,收声时要能立刻掉 */
+const QUIT_LOOKAHEAD = 0.06;
+/** 一记棘轮咔哒:click 为主,短音头带一点音高(能听出往上涨,又不是滑音) */
+const quitTick = (q: number, at: number) => {
+	if (!ctx || !bus) return;
+	const src = click(at, {
+		freq: 700 + q * 1800,
+		q: 1.1,
+		dur: 0.03,
+		gain: 0.1 + q * 0.09
+	});
+	if (src) quitVoices.push({ node: src, until: at + 0.08 });
+	// 音头故意短(22ms):高进度时咔哒只隔 40ms,长了会连成一条音 —— 又变幽灵
+	const o = tone(note(-12 + q * 12), at, 0.022, { type: 'triangle', gain: 0.055 + q * 0.03 });
+	if (o) quitVoices.push({ node: o, until: at + 0.06 });
+};
+let quitVoices: { node: AudioScheduledSourceNode; until: number }[] = [];
+let quitNextAt = 0; // 下一记咔哒的音频时钟时间(秒)
+let quitActive = false;
+
+/** 把窗口内的咔哒全排进时间轴(每帧喂一次进度即可) */
+const quitSchedule = (q: number) => {
+	if (!ctx) return;
+	const now = ctx.currentTime;
+	// 掉帧/停后台错过的咔哒直接跳过,别在恢复时突突一串
+	if (quitNextAt < now) quitNextAt = now + 0.004;
+	const horizon = now + QUIT_LOOKAHEAD;
+	while (quitNextAt < horizon) {
+		quitTick(q, quitNextAt);
+		quitNextAt += quitGap(q) / 1000;
+	}
+	// 顺手清掉已经播完的节点引用
+	if (quitVoices.length > 24) quitVoices = quitVoices.filter((v) => v.until > now);
+};
+
+/** 蓄力声起(按下时调,传当前进度 —— 中途松了再按要接着当前值的节奏咔) */
+export const sfxQuitStart = (progress = 0) => {
+	log('quit:start');
+	initSfx();
+	if (!ctx || !bus || !enabled || quitActive) return;
+	quitActive = true;
+	quitNextAt = ctx.currentTime + 0.004; // 按下先响一记,即时反馈
+	quitSchedule(clamp01(progress));
+};
+
+/** 每帧喂进度(0..1):间隔/音高/响度都跟着条子 */
+export const sfxQuitSet = (progress: number) => {
+	if (!ctx || !enabled || !quitActive) return;
+	quitSchedule(clamp01(progress));
+};
+
+/** 收声(归零 / 触发结束 / 切阶段):连窗口里已排的咔哒一起掉 */
+export const sfxQuitStop = () => {
+	if (!quitActive) return;
+	quitActive = false;
+	quitNextAt = 0;
+	const t = ctx ? ctx.currentTime : 0;
+	for (const v of quitVoices) {
+		try {
+			v.node.stop(t);
+		} catch {
+			// ignore
+		}
+	}
+	quitVoices = [];
 };
 
 export const sfxCoin = () => {

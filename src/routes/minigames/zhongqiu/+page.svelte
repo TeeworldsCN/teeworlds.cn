@@ -111,11 +111,15 @@
 		sfxLevel,
 		sfxLose,
 		sfxPick,
+		sfxQuitSet,
+		sfxQuitStart,
+		sfxQuitStop,
 		sfxRoll,
 		sfxSell,
 		sfxSetRate,
 		sfxStep,
 		sfxTotal,
+		sfxWarn,
 		sfxWin
 	} from '$lib/zhongqiu/sfx';
 	import {
@@ -272,6 +276,7 @@
 	// 否则切走路由后它们还会跑完并把局内存档改掉
 	onDestroy(() => {
 		animGen += 1;
+		sfxQuitStop(); // 把待发的下一记棘轮咔哒作废
 	});
 	let target = $state(0);
 	let currentScore = $state(0);
@@ -427,10 +432,14 @@
 
 	/** 一次性提示(挂载被拒之类):2.6 秒后自己消失,下一次提示重新计时 */
 	let toast = $state<string | null>(null);
+	/** 每次弹出都 +1:同一条消息连续弹也重播入场动画(靠 {#key} 重挂) */
+	let toastSeq = $state(0);
 	let toastTimer: ReturnType<typeof setTimeout> | undefined;
 	const showToast = (msg: string) => {
 		clearTimeout(toastTimer);
 		toast = msg;
+		toastSeq += 1;
+		sfxWarn(); // 提示一律是「这步不行」的警告音
 		toastTimer = setTimeout(() => (toast = null), 2600);
 	};
 
@@ -3548,6 +3557,7 @@
 		if (endHoldRaf) cancelAnimationFrame(endHoldRaf);
 		endHoldRaf = 0;
 		endHoldLastTs = 0;
+		sfxQuitStop();
 	};
 
 	const endHoldLoop = (ts: number) => {
@@ -3574,6 +3584,8 @@
 				return;
 			}
 		}
+		// 声音是棘轮咔哒:间隔跟着条子走 —— 涨得越满越急,松手回落时越来越稀
+		sfxQuitSet(endHold);
 		endHoldRaf = requestAnimationFrame(endHoldLoop);
 	};
 
@@ -3582,6 +3594,7 @@
 		clearTimeout(endHoldLingerTimer);
 		endHoldShown = true;
 		endHoldPressed = true;
+		sfxQuitStart(endHold);
 		if (!endHoldRaf) {
 			endHoldLastTs = 0;
 			endHoldRaf = requestAnimationFrame(endHoldLoop);
@@ -3642,7 +3655,11 @@
 	const pickReward = (idx: number) => {
 		// 防连击/程序化双触发:一轮选卡只拿一拿(和按钮的 disabled 同口径)
 		if (phase !== 'reward' || lastRewardIdx >= 0) return;
-		if (team.length >= TEAM_LIMIT) return;
+		if (team.length >= TEAM_LIMIT) {
+			// 队伍满:按钮不 disabled(disable 了就点不出提示),点了给提示 —— 否则玩家不知道卡在哪
+			showToast('队伍已满，需要先卖掉一个 Tee 才能选新的');
+			return;
+		}
 		const card = rewardChoices[idx];
 		if (!card) return;
 		team = [
@@ -4435,44 +4452,48 @@
 				<div
 					class="panel-fill mx-auto mt-2.5 w-full max-w-175 rounded-xl border border-amber-500/30 bg-slate-900/80 px-2.5 py-2.5 backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-6"
 				>
-					<div class="text-center">
-						<div class="text-base font-bold text-amber-200 lg:text-xl">🎲 选择初始 Tee</div>
-						<div class="mt-0.5 text-slate-400">
-							点卡查看效果 · 已选 <b class="text-amber-300">{draftPicked.length}</b>/2
+					<div class="phase-panel">
+						<div class="text-center">
+							<div class="text-base font-bold text-amber-200 lg:text-xl">🎲 选择初始 Tee</div>
+							<div class="mt-0.5 text-slate-400">
+								点卡查看效果 · 已选 <b class="text-amber-300">{draftPicked.length}</b>/2
+							</div>
 						</div>
-					</div>
-					<div class="mt-2.5 flex flex-wrap justify-center gap-2 sm:mt-4 sm:gap-3">
-						{#each draftChoices as card, idx}
-							<TeeCardView
-								{card}
-								desc={card.desc}
-								selected={draftPicked.includes(idx)}
-								badge={draftPicked.includes(idx) ? String(draftPicked.indexOf(idx) + 1) : undefined}
-								badgeClass="bg-emerald-500/90 text-emerald-950"
+						<div class="mt-2.5 flex flex-wrap justify-center gap-2 sm:mt-4 sm:gap-3">
+							{#each draftChoices as card, idx}
+								<TeeCardView
+									{card}
+									desc={card.desc}
+									selected={draftPicked.includes(idx)}
+									badge={draftPicked.includes(idx)
+										? String(draftPicked.indexOf(idx) + 1)
+										: undefined}
+									badgeClass="bg-emerald-500/90 text-emerald-950"
+								>
+									{#snippet actions()}
+										<button
+											class="w-full rounded-lg border py-1 font-bold transition {draftPicked.includes(
+												idx
+											)
+												? 'border-emerald-400/60 bg-emerald-500/80 text-emerald-950'
+												: 'border-amber-500/40 bg-amber-500/80 text-amber-950 hover:bg-amber-400'}"
+											onclick={() => toggleDraftPick(idx)}
+										>
+											{draftPicked.includes(idx) ? '已选 ✓' : '选择'}
+										</button>
+									{/snippet}
+								</TeeCardView>
+							{/each}
+						</div>
+						<div class="mt-3 flex justify-center">
+							<button
+								class="w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:from-amber-400 disabled:hover:to-amber-600 sm:w-auto sm:px-10 lg:text-lg"
+								onclick={confirmDraft}
+								disabled={draftPicked.length !== 2}
 							>
-								{#snippet actions()}
-									<button
-										class="w-full rounded-lg border py-1 font-bold transition {draftPicked.includes(
-											idx
-										)
-											? 'border-emerald-400/60 bg-emerald-500/80 text-emerald-950'
-											: 'border-amber-500/40 bg-amber-500/80 text-amber-950 hover:bg-amber-400'}"
-										onclick={() => toggleDraftPick(idx)}
-									>
-										{draftPicked.includes(idx) ? '已选 ✓' : '选择'}
-									</button>
-								{/snippet}
-							</TeeCardView>
-						{/each}
-					</div>
-					<div class="mt-3 flex justify-center">
-						<button
-							class="w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:from-amber-400 disabled:hover:to-amber-600 sm:w-auto sm:px-10 lg:text-lg"
-							onclick={confirmDraft}
-							disabled={draftPicked.length !== 2}
-						>
-							{draftPicked.length === 2 ? '开始博饼 →' : '请选择两个 Tee'}
-						</button>
+								{draftPicked.length === 2 ? '开始博饼 →' : '请选择两个 Tee'}
+							</button>
+						</div>
 					</div>
 				</div>
 
@@ -4482,9 +4503,9 @@
 						class="mx-auto mt-2.5 w-full max-w-175 rounded-xl border border-slate-700/60 bg-slate-900/70 px-2.5 py-2.5 backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-4"
 					>
 						<div
-							class="rounded-xl border border-[#946ce6]/40 bg-[#946ce6]/10 px-3 py-2.5 text-center"
+							class="phase-panel rounded-xl border border-[#946ce6]/40 bg-[#946ce6]/10 px-3 py-2.5 text-center"
 						>
-							<div class="text-purple-200/85">如果很喜欢，请考虑打赏</div>
+							<div class="text-purple-200/85">如果很喜欢这个小作品，请考虑打赏</div>
 							<a
 								class="mt-2 inline-block rounded-xl bg-[#946ce6] px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:bg-[#7f4be7] active:scale-95 sm:px-6 sm:py-2.5 sm:text-base"
 								href={DONATE_URL}
@@ -5036,9 +5057,11 @@
 											<TeeCardView {card} desc={card.desc} selected={lastRewardIdx === idx}>
 												{#snippet actions()}
 													<button
-														class="w-full rounded-lg border border-amber-500/40 bg-amber-500/80 py-1 font-bold text-amber-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40 max-[365px]:py-0.5"
-														onclick={() => canPickReward && pickReward(idx)}
-														disabled={lastRewardIdx >= 0 || !canPickReward}
+														class="w-full rounded-lg border border-amber-500/40 bg-amber-500/80 py-1 font-bold text-amber-950 transition disabled:cursor-not-allowed disabled:opacity-40 max-[365px]:py-0.5 {canPickReward
+															? 'hover:bg-amber-400'
+															: 'cursor-not-allowed opacity-60'}"
+														onclick={() => pickReward(idx)}
+														disabled={lastRewardIdx >= 0}
 													>
 														{lastRewardIdx === idx ? '已选 ✓' : '选择'}
 													</button>
@@ -5228,7 +5251,7 @@
 								class="panel-fill panel-fill-lg mt-2.5 min-h-0 overflow-y-auto rounded-xl border border-slate-600/60 bg-slate-900/85 px-3 py-2.5 text-left backdrop-blur-sm sm:mt-4 sm:rounded-2xl sm:p-4"
 							>
 								<!-- 标题 + 新纪录同排(省一行) -->
-								<div class="flex items-center justify-between gap-2">
+								<div class="go-row flex items-center justify-between gap-2">
 									<div class="flex items-center gap-2">
 										<span class="text-xl sm:text-2xl">🌘</span>
 										<span class="text-lg font-bold text-slate-200 lg:text-xl">博饼结束</span>
@@ -5242,7 +5265,7 @@
 									{/if}
 								</div>
 								<!-- 大字 = 本局结果:左边大数、右边小字铺开 —— 免得两边空着、还多占几行 -->
-								<div class="mt-2 flex items-center gap-3">
+								<div class="go-row mt-2 flex items-center gap-3">
 									<div
 										class="shrink-0 rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-1.5 text-center"
 									>
@@ -5269,7 +5292,7 @@
 								</div>
 
 								<!-- 本局统计(小字;月饼币是**赚到的** —— 田螺把付过的钱退回来不算) -->
-								<div class="mt-2 border-t border-slate-700/60 pt-2">
+								<div class="go-row mt-2 border-t border-slate-700/60 pt-2">
 									<div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-slate-400">
 										<div class="flex justify-between gap-2">
 											<span>卖出 Tee</span>
@@ -5305,7 +5328,7 @@
 
 								<!-- 本局购入最多的加成卡:仓库同款芯片。这里只要 hover 看说明,**点按不切换浮层** -->
 								{#if topBoughtBuffs.length > 0}
-									<div class="relative mt-2 border-t border-slate-700/60 pt-2">
+									<div class="go-row relative mt-2 border-t border-slate-700/60 pt-2">
 										<div class="text-slate-500">🛒 本局购入最多的加成卡</div>
 										<div
 											class="scrollbar-hide mt-1 flex gap-1.5 overflow-x-auto p-0.5 sm:flex-wrap sm:overflow-x-hidden"
@@ -5324,7 +5347,7 @@
 								{/if}
 
 								<!-- 当前队伍:3×2 固定宽格子 —— 头像在左、名字在右(像加成卡芯片稍大一号);不带得分 -->
-								<div class="mt-2 border-t border-slate-700/60 pt-2">
+								<div class="go-row mt-2 border-t border-slate-700/60 pt-2">
 									<div class="text-slate-500">当前队伍</div>
 									<div class="mt-1 grid grid-cols-3 gap-1.5">
 										{#each team as t, i (i)}
@@ -5393,7 +5416,7 @@
 
 								<!-- MVP:本局单次结算最高分(不计团队加成)+ 那一次结算的战绩 -->
 								{#if mvp}
-									<div class="mt-2 border-t border-slate-700/60 pt-2">
+									<div class="go-row mt-2 border-t border-slate-700/60 pt-2">
 										<div class="flex items-center gap-2">
 											<span class="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
 												><TeeRender name={mvp.skin} className="h-full w-full" /></span
@@ -5418,7 +5441,7 @@
 									</div>
 								{/if}
 
-								<div class="mt-2.5 flex justify-center gap-2 sm:gap-3">
+								<div class="go-row mt-2.5 flex justify-center gap-2 sm:gap-3">
 									<button
 										class="rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-6 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 sm:px-10 lg:text-lg"
 										onclick={startGame}
@@ -5447,16 +5470,19 @@
 	<!-- 不参与布局(fixed):掛卡被拒之类的一句话提示,2.6 秒后自己消失。
 	     pointer-events 关掉,免得挡住下面要点的按钮 -->
 	{#if toast}
+		<!-- 顶部居中(压在站点栏的空白中段上):离操作区最远,弹出时不会挡住骰子/按钮 -->
 		<div
-			class="pointer-events-none fixed inset-x-0 bottom-14 z-[90] flex justify-center px-4 sm:bottom-16"
+			class="pointer-events-none fixed inset-x-0 top-1 z-[90] flex justify-center px-4 sm:top-1.5"
 			role="status"
 			aria-live="polite"
 		>
-			<div
-				class="toast-pop max-w-[20rem] rounded-xl border border-amber-400/40 bg-slate-900/95 px-3.5 py-2 text-center font-semibold text-amber-100 shadow-xl backdrop-blur-sm"
-			>
-				{toast}
-			</div>
+			{#key toastSeq}
+				<div
+					class="toast-pop max-w-[20rem] rounded-xl border border-amber-400/40 bg-slate-900/95 px-3.5 py-2 text-center font-semibold text-amber-100 shadow-xl backdrop-blur-sm"
+				>
+					{toast}
+				</div>
+			{/key}
 		</div>
 	{/if}
 
@@ -5866,6 +5892,43 @@
 		justify-content: safe center;
 	}
 
+	/* ---- 结束屏:各段逐行浮上来,整屏 ~1s 内铺完 ---- */
+	.go-row {
+		animation: go-row-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+	}
+	.go-row:nth-child(2) {
+		animation-delay: 90ms;
+	}
+	.go-row:nth-child(3) {
+		animation-delay: 180ms;
+	}
+	.go-row:nth-child(4) {
+		animation-delay: 270ms;
+	}
+	.go-row:nth-child(5) {
+		animation-delay: 360ms;
+	}
+	.go-row:nth-child(6) {
+		animation-delay: 450ms;
+	}
+	.go-row:nth-child(7) {
+		animation-delay: 540ms;
+	}
+	.go-row:nth-child(8) {
+		animation-delay: 630ms;
+	}
+
+	@keyframes go-row-in {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
 	/* ---- 结果横幅 ---- */
 	/* 结算框:不要滚动条(用户也不该滚它,滚动由动画驱动) */
 	.no-scrollbar {
@@ -5898,7 +5961,9 @@
 
 	/* ---- 一次性提示(toast) ---- */
 	.toast-pop {
-		animation: toast-pop 0.22s ease both;
+		animation:
+			toast-pop 0.22s ease both,
+			toast-flash 0.2s ease-out both;
 	}
 
 	@keyframes toast-pop {
@@ -5909,6 +5974,16 @@
 		to {
 			opacity: 1;
 			transform: none;
+		}
+	}
+
+	/* 弹出瞬间过曝一下(brightness 5 → 1,0.2s 落回)—— 比单纯位移更「闪」 */
+	@keyframes toast-flash {
+		from {
+			filter: brightness(5);
+		}
+		to {
+			filter: brightness(1);
 		}
 	}
 
