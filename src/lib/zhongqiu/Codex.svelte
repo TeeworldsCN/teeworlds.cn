@@ -11,7 +11,7 @@
 	} from './codex.svelte';
 
 	/**
-	 * 队友图鉴:两页 —— Tee 卡 / 加成卡,都按稀有度排(普通 → 稀有 → 传说)。
+	 * Tee 图鉴:两页 —— Tee 卡 / 加成卡,都按稀有度排(普通 → 稀有 → 传说)。
 	 *
 	 * 卡片是**图鉴专用**的(不再复用游戏里的 TeeCard):描述直接印在卡上,没有浮层。
 	 * 两类卡故意做成不同尺寸 —— Tee 卡是等高的方块(头像 + 名字 + 三行描述),
@@ -62,13 +62,13 @@
 			class="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-amber-500/30 bg-slate-900 select-text"
 			role="dialog"
 			aria-modal="true"
-			aria-label="队友图鉴"
+			aria-label="Tee 图鉴"
 		>
 			<!-- 标题 -->
 			<div
 				class="flex items-center justify-between gap-2 border-b border-slate-700/60 px-3 py-2.5 sm:px-4"
 			>
-				<div class="text-base font-bold text-amber-200 sm:text-xl">📖 队友图鉴</div>
+				<div class="text-base font-bold text-amber-200 sm:text-xl">📖 Tee 图鉴</div>
 				<button
 					class="rounded-lg bg-slate-700/60 px-2.5 py-1 text-sm font-bold text-slate-300 transition hover:bg-slate-600"
 					onclick={() => (show = false)}

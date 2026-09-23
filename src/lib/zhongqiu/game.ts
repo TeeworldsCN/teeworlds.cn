@@ -27,9 +27,6 @@ export const roundTarget = (n: number): number => {
 	return Math.round((last * Math.pow(1.25, n - TARGETS.length)) / 10) * 10;
 };
 
-/** 每 3 关为一个 Ante */
-export const anteOf = (n: number) => Math.ceil(n / 3);
-
 /** 是否 Boss 关(每 Ante 的第 3 关) */
 export const isBossRound = (n: number) => n % 3 === 0;
 
@@ -73,7 +70,7 @@ export const BOSSES: Boss[] = [
 		id: 'boss_heiyue',
 		name: '黑月',
 		emoji: '🌑',
-		desc: '本关不设额外规则',
+		desc: '风平浪静，无事发生',
 		targetMult: 1,
 		mild: true
 	},

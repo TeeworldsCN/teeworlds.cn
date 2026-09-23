@@ -1,36 +1,40 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { fade } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	// 说明框 portal 到 body 下,继承不到页面根节点的字体栈 —— 自己带上自带的 emoji 字体
 	import '$lib/zhongqiu/emoji-font.css';
 
 	/**
-	 * 卡片悬浮说明:portal 到 body + `position: fixed` 定位到锚点上方。
+	 * 卡片悬浮说明:portal 到 body + `position: fixed` 定位到锚点旁边
+	 * (默认优先上方;`below` 在 lg 起优先下方)。
 	 *
 	 * 为什么要 portal:说明框挂在卡片内部时,任何 overflow 祖先都会把它裁掉 ——
 	 * 横滑芯片行、modal 的滚动区、页面根节点的 overflow-hidden……
 	 * **DOM 里有、屏幕上看不见**。挂到 body 下就只剩视口这一个约束。
 	 *
-	 * 触屏没有 hover:点一下卡片固定显示,点别处再收掉(和 CSS :hover 的直觉一致)。
+	 * 挂载/卸载由父组件决定(`{#if}`),淡入淡出交给根元素的 `transition:fade` ——
+	 * Svelte 会等淡出播完再删节点,父组件不用自己留「最后一张」占位;
+	 * 触屏「点一下固定显示」的状态也归父组件(TeeCard 里),这里只管定位和淡出。
 	 */
 	type Props = {
-		/** 锚点:说明框定位在它上方(上面放不下就翻到下方) */
+		/** 锚点:说明框定位在它旁边(默认优先上方,放不下翻到下方;`below` 反之) */
 		anchor: HTMLElement | undefined;
-		/** 鼠标 hover / 键盘聚焦 —— 由父组件维护 */
-		hover?: boolean;
 		/** 描边色(一般给稀有度色) */
 		color?: string;
 		/** 层级:modal 里的卡片要压过 z-50 的遮罩 */
 		z?: string;
 		/** 宽一档(17rem):加成卡说明比 Tee 卡说明长 */
 		wide?: boolean;
+		/**
+		 * lg(≥1024px)起优先放到锚点**下方** —— 加成卡货架在队伍下方,
+		 * 说明往上弹会盖住正要点选的 Tee。窄屏 / 下方放不下时仍按空间检测翻回上方。
+		 */
+		below?: boolean;
 		children: Snippet;
 	};
 
-	let { anchor, hover = false, color, z = 'z-[60]', wide = false, children }: Props = $props();
-
-	/** 触屏上的固定显示:点别处才收(触摸指针抬指后立刻 pointerleave) */
-	let hold = $state(false);
-	const open = $derived(hover || hold);
+	let { anchor, color, z = 'z-[60]', wide = false, below = false, children }: Props = $props();
 
 	let el: HTMLElement | undefined = $state();
 	/** 视口坐标(position: fixed)。null = 还没量过,先挪到屏幕外 */
@@ -58,11 +62,15 @@
 			vLeft + pad,
 			Math.min(ar.left + ar.width / 2 - tw / 2, vRight - pad - tw)
 		);
-		// 垂直:优先放卡片上方;上方不够翻到下方;下方也放不下就贴住可视区顶部
-		let top = ar.top - pad - th;
-		if (top < vTop + pad) {
-			const below = ar.bottom + pad;
-			top = below + th > vBottom - pad ? vTop + pad : below;
+		// 垂直:默认优先放卡片上方;below 的站在 lg 起优先下方(加成卡货架在队伍下面,
+		// 往上弹会盖住要点选的 Tee)。首选方向不够翻到另一侧,两边都不够就贴住可视区。
+		const preferBelow = below && window.innerWidth >= 1024;
+		let top = preferBelow ? ar.bottom + pad : ar.top - pad - th;
+		const overflows = preferBelow ? top + th > vBottom - pad : top < vTop + pad;
+		if (overflows) {
+			const alt = preferBelow ? ar.top - pad - th : ar.bottom + pad;
+			const altOverflows = preferBelow ? alt < vTop + pad : alt + th > vBottom - pad;
+			top = altOverflows ? (preferBelow ? vBottom - pad - th : vTop + pad) : alt;
 		}
 		// 最后再夹一次:锚点在视口下方(比如芯片被滚到滚动区外面)时,上面那套
 		// 只会让它留在屏幕外 —— 兜底夹进可视区,至少看得见。
@@ -108,24 +116,9 @@
 		// 手机「桌面版网站」+ 双指缩放:变的是 visualViewport,window 的 resize 不一定触发
 		window.visualViewport?.addEventListener('resize', schedule);
 		window.visualViewport?.addEventListener('scroll', schedule);
-		// 触屏:点卡片固定显示,点别处收掉
-		const onAnchorDown = (e: PointerEvent) => {
-			if (e.pointerType !== 'touch') return;
-			hold = true;
-			schedule();
-		};
-		const onDocDown = (e: PointerEvent) => {
-			if (!hold) return;
-			if (e.target instanceof Node && anchor.contains(e.target)) return;
-			hold = false;
-		};
-		anchor.addEventListener('pointerdown', onAnchorDown);
-		document.addEventListener('pointerdown', onDocDown);
 		return () => {
 			ro.disconnect();
 			roAnchor.disconnect();
-			anchor.removeEventListener('pointerdown', onAnchorDown);
-			document.removeEventListener('pointerdown', onDocDown);
 			window.removeEventListener('resize', schedule);
 			window.removeEventListener('scroll', schedule, { capture: true });
 			window.visualViewport?.removeEventListener('resize', schedule);
@@ -135,15 +128,15 @@
 	});
 </script>
 
-<!-- hover 说明淡入淡出。节点挂在 body 下,祖先选择器(.group:hover)够不着,所以开关由 JS 控制 -->
+<!-- 淡入淡出走 Svelte 过渡:节点卸载会等淡出播完再删(常数 150ms,和以前的 .tip 一致)。
+     节点挂在 body 下,祖先选择器(.group:hover)够不着,所以开合与否由父组件的 {#if} 决定 -->
 <div
 	bind:this={el}
 	use:portal
+	transition:fade={{ duration: 150, easing: cubicOut }}
 	class="zq-emoji tip pointer-events-none fixed w-max {wide
 		? 'max-w-[min(17rem,calc(100vw-2.5rem))]'
-		: 'max-w-[min(13rem,calc(100vw-2.5rem))]'} rounded-lg border bg-slate-950/95 px-2.5 py-1.5 text-center text-xs leading-snug text-slate-200 shadow-xl lg:text-sm {z} {open
-		? 'tip-open'
-		: ''}"
+		: 'max-w-[min(13rem,calc(100vw-2.5rem))]'} rounded-lg border bg-slate-950/95 px-2.5 py-1.5 text-center text-xs leading-snug text-slate-200 shadow-xl lg:text-sm {z}"
 	style="--rarity: {color ??
 		'#94a3b8'}; border-color: color-mix(in srgb, var(--rarity, #94a3b8) 50%, transparent); {pos
 		? `left: ${pos.left}px; top: ${pos.top}px;`
@@ -151,14 +144,3 @@
 >
 	{@render children()}
 </div>
-
-<style>
-	.tip {
-		opacity: 0;
-		transition: opacity 0.15s ease;
-	}
-
-	.tip.tip-open {
-		opacity: 1;
-	}
-</style>

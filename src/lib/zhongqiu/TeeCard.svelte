@@ -78,16 +78,34 @@
 	const teeName = $derived(card?.name ?? name);
 
 	let wrapEl: HTMLElement | undefined = $state();
-	/** 鼠标 hover / 键盘聚焦 —— 触屏那套「点一下固定显示」在 CardTip 里 */
+	/** 鼠标 hover / 键盘聚焦 */
 	let hover = $state(false);
+	/** 触屏:点一下固定显示(触摸抬指后立刻 pointerleave,只靠 hover 收不住) */
+	let hold = $state(false);
+	const showTip = $derived(hover || hold);
+	// 点卡片外面收掉;点卡片本身不算(点一下固定、再点还是固定 —— 和以前 CardTip 里的行为一致)。
+	// 用**捕获**阶段:加成卡芯片会在自己那按里 stopPropagation()(免得窗口那条 dismissTip
+	// 把刚点开的说明又收掉),冒泡阶段的监听根本收不到那一按 —— 捕获先于它执行。
+	$effect(() => {
+		if (!hold) return;
+		const onDocDown = (e: PointerEvent) => {
+			if (e.target instanceof Node && wrapEl?.contains(e.target)) return;
+			hold = false;
+		};
+		document.addEventListener('pointerdown', onDocDown, true);
+		return () => document.removeEventListener('pointerdown', onDocDown, true);
+	});
 </script>
 
 <div
-	class="group relative w-[86px] shrink-0 text-xs max-[365px]:w-[74px]"
+	class="group relative w-[76px] shrink-0 text-xs max-[365px]:w-[74px]"
 	role="group"
 	bind:this={wrapEl}
 	onpointerenter={() => (hover = true)}
 	onpointerleave={() => (hover = false)}
+	onpointerdown={(e) => {
+		if (e.pointerType === 'touch') hold = true;
+	}}
 	onfocusin={() => (hover = true)}
 	onfocusout={() => (hover = false)}
 >
@@ -120,19 +138,19 @@
 		{#if level}
 			<div
 				transition:fade
-				class="absolute top-1 rounded-full px-1.5 text-center font-semibold {levelColor}"
+				class="absolute -top-1 -left-1.5 rounded-full px-1.5 text-center font-semibold {levelColor} -rotate-6 text-[0.9em]"
 				style="background: color-mix(in srgb, currentColor 22%, #1d2639); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45)"
 			>
 				{level}
 			</div>
 		{/if}
-		<div class="mt-1 w-full truncate text-center font-semibold text-slate-200">
-			{teeName}
+		<div class="mt-1 h-2 w-full text-center font-semibold text-nowrap text-slate-200">
+			<div class="-mt-1">{teeName}</div>
 		</div>
 	</div>
 
-	{#if desc || tipExtra || tipList?.length}
-		<CardTip anchor={wrapEl} {hover} color={rinfo?.color}>
+	{#if (desc || tipExtra || tipList?.length) && showTip}
+		<CardTip anchor={wrapEl} color={rinfo?.color}>
 			{desc}
 			{#if tipExtra}
 				<div class="mt-1 font-semibold text-amber-300">{tipExtra}</div>
@@ -151,7 +169,7 @@
 	{/if}
 
 	{#if actions}
-		<div class="mt-1 flex flex-col items-center">
+		<div class="mt-2 mb-1 flex flex-col items-center">
 			{@render actions()}
 		</div>
 	{/if}

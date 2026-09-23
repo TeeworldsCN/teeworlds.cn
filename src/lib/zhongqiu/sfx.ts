@@ -30,6 +30,13 @@ export const sfxLog: string[] = [];
 
 export const sfxEnabled = () => enabled;
 
+/**
+ * 音频缓冲故意开大(0.06s ≈ 60ms):
+ * Android Chrome 在活动页这种重画面上,默认 interactive(~10ms)的小缓冲很容易欠载爆音;
+ * 代价是音效比画面晚 ~60ms —— 回合制骰子听感上无所谓,换稳定的声音值得。
+ */
+const LATENCY_HINT = 0.06;
+
 export const setSfxEnabled = (on: boolean) => {
 	enabled = on;
 	if (master && ctx) master.gain.setTargetAtTime(on ? 0.5 : 0, ctx.currentTime, 0.02);
@@ -58,7 +65,7 @@ export const initSfx = () => {
 		type WinAudio = Window & { webkitAudioContext?: typeof AudioContext };
 		const AC = window.AudioContext ?? (window as WinAudio).webkitAudioContext;
 		if (!AC) return;
-		ctx = new AC();
+		ctx = new AC({ latencyHint: LATENCY_HINT });
 		bus = ctx.createDynamicsCompressor();
 		bus.threshold.value = -18;
 		bus.ratio.value = 8;
@@ -72,7 +79,9 @@ export const initSfx = () => {
 		const d = noiseBuf.getChannelData(0);
 		for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
 	}
-	if (ctx.state === 'suspended') void ctx.resume();
+	// 标签页隐藏时不要偷偷解冻 —— bgm 的调度器(260ms)和在途音会反复调 sfxGraph → 这里,
+	// 把 bgm 的 visibility 冻结( suspend)又拉回来;解冻交给 bgm 的 visibility 处理器
+	if (ctx.state === 'suspended' && !document.hidden) void ctx.resume();
 };
 
 /**
@@ -93,22 +102,22 @@ const log = (name: string) => {
 	if (sfxLog.length < 60) sfxLog.push(name);
 };
 
-/** 单音:可带滑音 */
+/** 单音:可带滑音 / 自定义起音 */
 function tone(
 	freq: number,
 	at: number,
 	dur: number,
-	opts: { type?: OscillatorType; gain?: number; glideTo?: number } = {}
+	opts: { type?: OscillatorType; gain?: number; glideTo?: number; attack?: number } = {}
 ) {
 	if (!ctx || !bus) return;
-	const { type = 'triangle', gain = 0.25, glideTo } = opts;
+	const { type = 'triangle', gain = 0.25, glideTo, attack } = opts;
 	const o = ctx.createOscillator();
 	const g = ctx.createGain();
 	o.type = type;
 	o.frequency.setValueAtTime(freq, at);
 	if (glideTo) o.frequency.exponentialRampToValueAtTime(Math.max(1, glideTo), at + dur);
 	g.gain.setValueAtTime(0, at);
-	g.gain.linearRampToValueAtTime(gain, at + Math.min(0.012, dur * 0.2));
+	g.gain.linearRampToValueAtTime(gain, at + (attack ?? Math.min(0.012, dur * 0.2)));
 	g.gain.exponentialRampToValueAtTime(0.0008, at + dur);
 	o.connect(g).connect(bus);
 	o.start(at);
@@ -287,14 +296,15 @@ export const sfxWin = () => {
 	[0, 4, 7, 12].forEach((s) => tone(note(s + 3), t0 + 0.44, 0.7, { gain: 0.13 }));
 };
 
-/** 结束:下行长滑音 */
+/** 结束:下行长滑音(三角波 + 慢起音,里层 sine 垫底 —— 不刺) */
 export const sfxLose = () => {
 	log('lose');
 	initSfx();
 	if (!ctx || !enabled) return;
 	const t0 = ctx.currentTime + 0.01;
-	tone(note(3), t0, 0.9, { type: 'sawtooth', gain: 0.14, glideTo: note(-17) });
-	tone(note(-9), t0 + 0.15, 0.8, { type: 'sine', gain: 0.12, glideTo: note(-24) });
+	// 原来是锯齿波:泛音多、12ms 起音,听着发哧;换成三角波并把起音拉到 50ms
+	tone(note(3), t0, 1.0, { type: 'triangle', gain: 0.12, attack: 0.05, glideTo: note(-17) });
+	tone(note(-9), t0 + 0.15, 0.85, { type: 'sine', gain: 0.11, glideTo: note(-24) });
 };
 
 /** 界面点击 */
