@@ -533,7 +533,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'lianzhudeng',
 		name: '连珠灯',
-		desc: '投掷后可发动：把 1 颗骰子改为 4 点，冷却 2 关；投掷后可将任意数量的 4 点骰子改为任意点数；掷出对堂：基础分 +150，得分 ×1.85',
+		desc: '投掷后可发动：把 1 颗骰子改为 4 点，冷却 2 关；投掷后可将任意数量的 4 点骰子改为任意点数；掷出对堂：基础分 +150，得分 ×12',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_coala_cammo',
@@ -544,14 +544,14 @@ export const CARDS: TeeCard[] = [
 				{ type: 'active', skill: 'to_four', cooldown: 2 },
 				// 恒定:把任意数量的 4 点改成任意点数 —— 和主动技无关,每回合都在改点队列里
 				{ type: 'set_any', count: 6, from: 4 },
-				{ type: 'cond', cond: 'dui_tang', chips: 150, mult: 1.85 }
+				{ type: 'cond', cond: 'dui_tang', chips: 150, mult: 12 }
 			]
 		}
 	},
 	{
 		id: 'qixingdeng',
 		name: '七星灯',
-		desc: '最长连号的每颗点数：基础分 +70；连号每多 1 颗，得分 ×1.85',
+		desc: '最长连号的每颗点数：基础分 +70；连号每多 1 颗，得分 ×1.35',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_contrastfox',
@@ -560,7 +560,7 @@ export const CARDS: TeeCard[] = [
 			parts: [
 				{ type: 'straight_chips', per: 70 },
 				// 七星灯是连号流的头牌:纯靠「连得越长越猛」,不再赌 6 连那种偶然
-				{ type: 'straight_mult', per: 1.85, from: 2 }
+				{ type: 'straight_mult', per: 1.35, from: 2 }
 			]
 		}
 	},
