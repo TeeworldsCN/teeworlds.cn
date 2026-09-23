@@ -4330,9 +4330,6 @@
 									class="flex items-center justify-between gap-2 text-[11px] text-slate-400 sm:text-xs"
 								>
 									<span class="shrink-0">👥 博饼队伍({team.length}/{TEAM_LIMIT})</span>
-
-									<span class="hidden text-slate-500 sm:inline">轮流上前掷骰，队伍总分为总奖品</span
-									>
 								</div>
 
 								<!-- 加成卡:掷骰前点选再点到 Tee 身上,故排在最前 -->
