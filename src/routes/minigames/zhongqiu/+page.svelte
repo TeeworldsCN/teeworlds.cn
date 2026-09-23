@@ -3886,7 +3886,7 @@
 	<title>中秋博饼大会 - TeeworldsCN</title>
 	<meta property="og:title" content="中秋博饼大会 - TeeworldsCN" />
 	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://teeworlds.cn/zhongqiu" />
+	<meta property="og:url" content="https://teeworlds.cn/minigames/zhongqiu" />
 	<meta
 		property="og:description"
 		content="中秋博饼大会：带上你的 Tee 排队博饼，兑换 Tee 卡构筑队伍，冲击无限高分！"

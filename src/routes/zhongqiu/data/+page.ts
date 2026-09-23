@@ -1,13 +1,5 @@
-import { error } from '@sveltejs/kit';
-import { ZQ_TEST_BUILD } from '$lib/zhongqiu/test-build';
+import { redirect } from '@sveltejs/kit';
+import type { PageLoad } from './$types';
 
-/**
- * 卡池一览表是**开发/查表用**的页面,上线版本不该能打开。
- * 只有开发态或测试 build(见 src/lib/zhongqiu/test-build.ts)才放行,否则 404。
- */
-export const prerender = false;
-
-export const load = () => {
-	if (!import.meta.env.DEV && !ZQ_TEST_BUILD) error(404, 'Not Found');
-	return {};
-};
+/** 旧地址永久迁往 /minigames/zhongqiu/data —— 308 保住已分享出去的链接 */
+export const load: PageLoad = ({ url }) => redirect(308, `/minigames/zhongqiu/data${url.search}`);

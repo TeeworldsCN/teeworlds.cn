@@ -1,5 +1,6 @@
 <script lang="ts">
 	import TeeRender from '$lib/components/TeeRender.svelte';
+	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import { bossPool, BOSSES } from '$lib/zhongqiu/game';
 	import { BUFF_CARDS } from '$lib/zhongqiu/items';
 	import { CARDS, RARITY_INFO, type Rarity } from '$lib/zhongqiu/teecards';
@@ -110,7 +111,6 @@
 </script>
 
 <svelte:head>
-	<title>中秋博饼 · 卡池一览 - TeeworldsCN</title>
 	<meta name="description" content="中秋博饼大会全部 Tee 卡、加成卡与 Boss 数据表" />
 </svelte:head>
 
@@ -170,9 +170,17 @@
 {/snippet}
 
 <div class="zq-emoji mx-auto max-w-6xl p-3 pb-16 text-slate-200">
+	<Breadcrumbs
+		breadcrumbs={[
+			{ href: '/', text: '首页', title: 'TeeworldsCN' },
+			{ href: '/minigames', text: '小游戏', title: '小游戏' },
+			{ href: '/minigames/zhongqiu', text: '中秋博饼大会', title: '中秋博饼大会' },
+			{ text: '卡池一览', title: '卡池一览' }
+		]}
+	/>
 	<div class="mt-2 mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
 		<h1 class="text-xl font-bold text-amber-200">卡池一览</h1>
-		<a class="text-xs text-sky-400 hover:underline" href="/zhongqiu">← 回中秋博饼</a>
+		<a class="text-xs text-sky-400 hover:underline" href="/minigames/zhongqiu">← 回中秋博饼</a>
 		<span class="text-xs text-slate-500">点表头排序 · 点「名称」按代码内顺序</span>
 	</div>
 
