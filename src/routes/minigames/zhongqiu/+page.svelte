@@ -4167,7 +4167,7 @@
 					</button>
 
 					<!-- 音效总控 + Boss 音效子开关(总控关了子开关置灰;Boss = 开场曲/stinger/收束句) -->
-					<div class="mt-2 flex items-center justify-center gap-3 text-slate-300">
+					<div class="mt-5 flex items-center justify-center gap-3 text-slate-300">
 						<span class="flex items-center gap-1.5">
 							<span>音效</span>
 							<button
