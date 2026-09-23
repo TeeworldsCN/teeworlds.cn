@@ -268,11 +268,16 @@ export const voidIdxOf = (mods?: DiceMods): number[] => {
 };
 
 /**
- * 第 i 颗骰子是否作废 —— 按点数(Boss/自己的卡)和按下标(花生)两种口径合一。
- * 半影卡的「取消作废」只认点数:它挑的是牌面,救不了按颗作废的骰子。
+ * 第 i 颗骰子是否作废 —— 按点数(Boss/自己的卡)和按下标(花生 / 高照抄来的)两种口径合一。
+ *
+ * 半影卡挑中的点数**两种作废都救**:同一颗骰子只要它的面在「取消作废」名单里就不再算作废,
+ * 不管它是按面作废还是按颗作废的 —— 花生整把作废时,挑一个点数至少能把这一面救回来。
+ * (与月相符的「按颗救」不同:半影卡是按面救。名单为空的平时行为与以前完全一致。)
  */
 export const isVoidDie = (dice: number[], i: number, mods?: DiceMods): boolean =>
-	voidIdxOf(mods).includes(i) || isVoidFace(dice[i], mods);
+	clearedFacesOf(mods).includes(dice[i])
+		? false
+		: voidIdxOf(mods).includes(i) || isVoidFace(dice[i], mods);
 
 /**
  * 参与结算的点数:套上 map/shift 之后,把**作废**的骰子整个剔掉。
@@ -317,8 +322,8 @@ export const hasClearVoid = (mods?: DiceMods): boolean => {
 };
 
 /** 摘掉**点数作废**(月食卡:「不受点数作废影响」)。
- * 按下标作废(花生首掷 voidIdx / 高照抄来的 voidOverride)**救不了** —— 和半影卡
- * 「按下标作废的救不了」同一口径:那是整颗骰子被作废,不是某个点数被作废。
+ * 按下标作废(花生首掷 voidIdx / 高照抄来的 voidOverride)**救不了** —— 那是整颗骰子被作废,
+ * 不是某个点数被作废;要按颗救只能走月相符(voidfix),要按面救走半影卡(clearVoidFaces)。
  * (原来连 voidIdx/voidOverride 一起摘:花生的玩法整个消失还白拿满额加成,踩过。) */
 export const stripVoid = (mods?: DiceMods): DiceMods | undefined => {
 	if (!mods) return undefined;

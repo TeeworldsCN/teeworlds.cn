@@ -488,7 +488,7 @@ export const upgradeLevel = (levelId: string, count: number): string => {
 };
 
 export interface SetOp {
-	kind: 'point' | 'any' | 'bump' | 'voidpick' | 'voidfix';
+	kind: 'point' | 'any' | 'bump' | 'voidclear' | 'voidfix';
 	count: number;
 	point?: number;
 	/** bump: 位移方向(+1 月牙尺 / −1 缺月尺) */
@@ -521,8 +521,9 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 			ops.push({ kind: 'point', count: e.count ?? 1, point: e.point ?? 4, from: e.from, srcId });
 		else if (e.type === 'set_any')
 			ops.push({ kind: 'any', count: e.count ?? 1, from: e.from, options: e.options, srcId });
-		// 半影卡:由玩家挑一个点数取消作废(整关解除的月食卡没有 pick,不进队列)
-		else if (e.type === 'clear_void' && e.pick) ops.push({ kind: 'voidpick', count: 1, srcId });
+		// 半影卡:点一颗**作废的**骰子,读它的点数,本关该点数不作废(不弹选点器;
+		// 整关解除的月食卡没有 pick,不进队列)
+		else if (e.type === 'clear_void' && e.pick) ops.push({ kind: 'voidclear', count: 1, srcId });
 		else if (e.type === 'bump_point')
 			ops.push({ kind: 'bump', count: e.count ?? 1, step: e.value ?? 1, srcId });
 		else if (e.type === 'void_fix')
@@ -1794,7 +1795,7 @@ export type RunOp =
 			options?: number[];
 	  }
 	| { kind: 'bump'; count: number; step?: number; srcId?: string }
-	| { kind: 'voidpick'; count: number; srcId?: string }
+	| { kind: 'voidclear'; count: number; srcId?: string }
 	| { kind: 'voidfix'; count: number; point?: number; srcId?: string };
 
 export type RunSave = {

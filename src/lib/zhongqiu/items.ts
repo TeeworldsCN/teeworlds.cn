@@ -56,7 +56,8 @@ export interface BuffEffect {
 	point?: number;
 	/** set_any: 改成的点数只能从这里选(不填 = 1~6 任选,由玩家挑) */
 	options?: number[];
-	/** clear_void: 由玩家挑一个点数取消作废(半影卡);不填 = 整关作废全解除(月食卡) */
+	/** clear_void: 由玩家点一颗作废的骰子取消该点数作废(半影卡,读点的那颗骰子);
+	 *  不填 = 整关作废全解除(月食卡) */
 	pick?: boolean;
 	mods?: DiceMods;
 }
@@ -612,7 +613,7 @@ export const BUFF_CARDS: BuffCard[] = [
 	{
 		id: 'banyingka',
 		name: '半影卡',
-		desc: '选择一个点数取消作废',
+		desc: '选择一个骰子，取消所有该骰子点数的作废',
 		rarity: 'common',
 		skin: 'IceWitch_Witch',
 		price: 4,

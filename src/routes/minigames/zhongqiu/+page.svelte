@@ -28,7 +28,6 @@
 		getRollLevel,
 		hitIndices,
 		isVoidDie,
-		isVoidFace,
 		judgeRoll,
 		liveDiceValues,
 		rawLiveDice,
@@ -455,7 +454,7 @@
 		) {
 			sfxClick();
 			// 只听见「嗒」一声、卡没上去,玩家不知道发生了什么 —— 说清楚
-			showToast(`这只 Tee 上已经有「${card.name}」了，同名加成卡只能挂 1 张`);
+			showToast(`这只 Tee 已经装备「${card.name}」了。同名卡不可重复装备。`);
 			return;
 		}
 		const next: Record<string, number> = {};
@@ -686,14 +685,22 @@
 	};
 
 	// 交互（改点/重掷）
-	// 半影卡:挑一个点数,本关该点数不作废(不点骰子,点点数按钮)
-	type VoidPick = { kind: 'voidpick'; count: number; srcId?: string };
+	// 半影卡:点一颗**作废的**骰子,读它的点数,本关该点数不作废(不弹选点器)
 	type PendingAction =
-		| VoidPick
-		| { kind: 'set_point'; count: number; point: number; srcId?: string; from?: number }
+		| { kind: 'voidclear'; count: number; srcId?: string }
+		| {
+				kind: 'set_point';
+				count: number;
+				/** 这个操作一共能改几颗(提示用:count 会越改越少,回不到 1 就不能再靠 count 判多颗) */
+				total?: number;
+				point: number;
+				srcId?: string;
+				from?: number;
+		  }
 		| {
 				kind: 'set_any';
 				count: number;
+				total?: number;
 				pick?: number;
 				srcId?: string;
 				from?: number;
@@ -702,8 +709,8 @@
 		| { kind: 'bump'; count: number; step?: number; srcId?: string } // 月牙尺 +1 / 缺月尺 −1:点一颗骰子
 		| { kind: 'voidfix'; count: number; point?: number; srcId?: string }; // 月相符:作废骰子改为 N 点(任意数量)
 	let pendingAction = $state<PendingAction | null>(null);
-	let pointPicker = $state(false); // set_any / clear_void 的点数选择
-	/** 半影卡:第 i 个 Tee 本关挑选的「不作废」点数 */
+	let pointPicker = $state(false); // set_any 的点数选择(半影卡改成点骰子,不再用它)
+	/** 半影卡:第 i 个 Tee 本关挑选的「不作废」点数(从点的那颗作废骰子上读出来) */
 	let clearedVoid = $state<number[]>([]);
 	let setQueue: SetOp[] = [];
 
@@ -1979,22 +1986,40 @@
 			),
 			boss?.mods
 		);
-		// 半影卡:本关挑中的点数不再作废(作废来自 Boss 还是自己的卡都算)
+		// 半影卡:本关挑中的点数不再作废 —— 作废来自 Boss、自己的卡、还是按颗作废的花生,都算
 		const cleared = clearedVoid[i];
 		return cleared ? mergeMods(base, { clearVoidFaces: [cleared] }) : base;
-	};
-
-	/** 半影卡的候选:这一掷里实际被作废的点数 */
-	const voidedFaces = () => {
-		const out = new Set<number>();
-		for (const d of dice) if (isVoidFace(d, modsFor(currentTee))) out.add(d);
-		return [...out].sort((a, b) => a - b);
 	};
 
 	const shownDice = $derived(applyDiceMods(dice, modsFor(currentTee)));
 	const dieVoid = (i: number) => !dieRolling(i) && isVoidDie(dice, i, modsFor(currentTee));
 	const diceModded = (i: number) =>
 		optedDice.includes(i) || (!dieRolling(i) && (dieVoid(i) || shownDice[i] !== dice[i]));
+
+	/**
+	 * 这个改点操作现在还能点几颗骰子 —— 「只认 4 点」的卡不能超过场上真有的颗数,
+	 * 推到 0 就自动收工(别让玩家为了结束去点「跳过改点」)。
+	 * 用 applyDiceMods(dice) 现算,不走 shownDice 派生值:调用点就在 dice[i] 赋值的下一行。
+	 */
+	const setOpTargets = (act: PendingAction): number => {
+		if (act.kind === 'voidfix' || act.kind === 'voidclear')
+			return dice.filter((_, k) => dieVoid(k)).length;
+		const shown = applyDiceMods(dice, modsFor(currentTee));
+		if (act.kind === 'bump') {
+			const step = act.step ?? 1;
+			return shown.filter((v) => (step > 0 ? v < 6 : v > 1)).length;
+		}
+		if (act.kind === 'set_point' || act.kind === 'set_any') {
+			if (act.from === undefined) return dice.length;
+			return shown.filter((v) => v === act.from).length;
+		}
+		return 0;
+	};
+	/** 提示里「还剩 N 颗」的 N:多颗操作按还能点几颗显示(连珠灯的 6 次上限 vs 场上只有 2 个 4) */
+	const setOpLeft = (act: PendingAction): number =>
+		(act.kind === 'set_point' || act.kind === 'set_any') && act.from !== undefined
+			? Math.min(act.count, setOpTargets(act))
+			: act.count;
 
 	const advanceAfterTee = () => {
 		teeAnim = '';
@@ -2436,8 +2461,8 @@
 			nextSetOp();
 			return;
 		}
-		// 半影卡:本关没有任何点数被作废 → 没得挑,跳过
-		if (op.kind === 'voidpick' && voidedFaces().length === 0) {
+		// 半影卡:一颗作废的骰子都没有 → 没得点,跳过
+		if (op.kind === 'voidclear' && !dice.some((_, k) => dieVoid(k))) {
 			nextSetOp();
 			return;
 		}
@@ -2450,6 +2475,7 @@
 			pendingAction = {
 				kind: 'set_point',
 				count: op.count,
+				total: op.count,
 				point: op.point ?? 4,
 				from: op.from,
 				srcId: op.srcId
@@ -2458,13 +2484,13 @@
 			pendingAction = { kind: 'bump', count: op.count, step: op.step ?? 1, srcId: op.srcId };
 		else if (op.kind === 'voidfix')
 			pendingAction = { kind: 'voidfix', count: op.count, point: op.point ?? 1, srcId: op.srcId };
-		else if (op.kind === 'voidpick') {
-			pendingAction = { kind: 'voidpick', count: op.count, srcId: op.srcId };
-			pointPicker = true; // 半影卡没有骰子可点,选点面板直接弹出来
-		} else
+		else if (op.kind === 'voidclear')
+			pendingAction = { kind: 'voidclear', count: op.count, srcId: op.srcId };
+		else
 			pendingAction = {
 				kind: 'set_any',
 				count: op.count,
+				total: op.count,
 				from: op.from,
 				options: op.options,
 				srcId: op.srcId
@@ -2474,11 +2500,9 @@
 	const onDieClick = (i: number) => {
 		const act = pendingAction;
 		if (!act) return;
-		if (act.kind === 'voidpick') return; // 半影卡点的是点数按钮,不是骰子
 		// 「只认 4 点」的改点:点到别的点数没反应(判定用的是玩家看到的点数)
 		if (
-			act.kind !== 'bump' &&
-			act.kind !== 'voidfix' &&
+			(act.kind === 'set_point' || act.kind === 'set_any') &&
 			act.from !== undefined &&
 			shownDice[i] !== act.from
 		)
@@ -2522,6 +2546,25 @@
 			if (act.srcId)
 				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 			if (!dice.some((_, k) => dieVoid(k))) act.count = 0;
+		} else if (act.kind === 'voidclear') {
+			// 半影卡:只点**作废的**骰子(其余画暗、点了没反应)—— 读它的点数,
+			// 本关该点数不作废;同一面的全解除,不管它是按面作废还是按颗作废的
+			if (!dieVoid(i)) return;
+			const face = dice[i];
+			const next = [...clearedVoid];
+			while (next.length <= currentTee) next.push(0);
+			next[currentTee] = face;
+			clearedVoid = next;
+			// 按下标作废的那些(花生 / 高照抄来的)也一起放行:同一面的都不再算作废。
+			// 从清单里摘掉之后,这些骰子重掷时就按普通重掷规则走(重掷解除作废),
+			// 而不是被花生那条「首掷作废」的旧清单再拉回来
+			if (hsVoidTee === currentTee) hsVoid = hsVoid.filter((k) => dice[k] !== face);
+			if (sharedVoidTee === currentTee && sharedVoid)
+				sharedVoid = sharedVoid.filter((k) => dice[k] !== face);
+			act.count -= 1;
+			if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
+			if (act.srcId)
+				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 		} else if (act.kind === 'set_any') {
 			// 只记「选中哪颗」,**先不记 opted**:点数还没定,中途再点别的骰子、
 			// 或者直接按「跳过改点」,都会让这颗从没被改过的骰子白白背上 fixed
@@ -2531,7 +2574,7 @@
 			return;
 		}
 
-		if (act.count <= 0) {
+		if (act.count <= 0 || setOpTargets(act) <= 0) {
 			pendingAction = null;
 			nextSetOp();
 		}
@@ -2539,20 +2582,6 @@
 
 	const pickPoint = (v: number) => {
 		const act = pendingAction;
-		if (act?.kind === 'voidpick') {
-			// 用 0 当「没挑」的哨兵:空数组上 map 是空转,必须按长度补齐(踩过)
-			const next = [...clearedVoid];
-			while (next.length <= currentTee) next.push(0);
-			next[currentTee] = v;
-			clearedVoid = next;
-			if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
-			if (act.srcId)
-				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
-			pointPicker = false;
-			pendingAction = null;
-			nextSetOp();
-			return;
-		}
 		if (!act || act.kind !== 'set_any' || act.pick === undefined) return;
 		dice[act.pick] = v;
 		// 真的改到了才记 opted:这颗从此豁免点数映射(玉玺/万象盘那套)
@@ -2561,13 +2590,14 @@
 		if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
 		if (act.srcId) usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 		pointPicker = false;
-		if (act.count <= 0) {
+		if (act.count <= 0 || setOpTargets(act) <= 0) {
 			pendingAction = null;
 			nextSetOp();
 		} else {
 			pendingAction = {
 				kind: 'set_any',
 				count: act.count,
+				total: act.total,
 				from: act.from,
 				options: act.options,
 				srcId: act.srcId
@@ -2576,25 +2606,19 @@
 	};
 
 	/** set_any 的点数候选:拆 4 系列只给指定点数(1/6 或 2/5) */
-	const pointChoices = () => {
-		if (pendingAction?.kind === 'voidpick') return voidedFaces();
-		if (pendingAction?.kind === 'set_any') return pendingAction.options ?? [1, 2, 3, 4, 5, 6];
-		return [1, 2, 3, 4, 5, 6];
-	};
+	const pointChoices = () =>
+		pendingAction?.kind === 'set_any'
+			? (pendingAction.options ?? [1, 2, 3, 4, 5, 6])
+			: [1, 2, 3, 4, 5, 6];
 
-	/** 拆 4 系列:只认 4 点的改点,非 4 点的骰子点不动 → 画暗一点 */
+	/** 点错目标的骰子画暗一点:拆 4 系列只认 4 点;半影卡只认作废的骰子 */
 	const dieOffTarget = (i: number) =>
 		!!pendingAction &&
-		(pendingAction.kind === 'set_point' || pendingAction.kind === 'set_any') &&
-		pendingAction.from !== undefined &&
-		shownDice[i] !== pendingAction.from;
-
-	const cancelAction = () => {
-		pendingAction = null;
-		pointPicker = false;
-		setQueue = [];
-		finalizeTee();
-	};
+		(pendingAction.kind === 'voidclear'
+			? !dieVoid(i)
+			: (pendingAction.kind === 'set_point' || pendingAction.kind === 'set_any') &&
+				pendingAction.from !== undefined &&
+				shownDice[i] !== pendingAction.from);
 
 	/**
 	 * 田螺:身上的加成卡不生效 —— 它们**从来没被挂上**(见 applyBuffToTee 里的分支),
@@ -4738,13 +4762,11 @@
 													? 'rolling'
 													: ''} {hitDice.includes(i) ? 'hit' : ''} {choosing && rerollSel[i]
 													? 'marked'
-													: ''} {diceModded(i) ? 'moded' : ''} {choosing ||
-												(pendingAction && pendingAction.kind !== 'voidpick')
+													: ''} {diceModded(i) ? 'moded' : ''} {choosing || pendingAction
 													? 'cursor-pointer hover:scale-110'
 													: 'cursor-default'}"
 												style={`animation-duration: ${rollDur}s; animation-delay: ${dieDelay(i)}s; animation-iteration-count: ${rollIter}`}
-												disabled={!choosing &&
-													(!pendingAction || pendingAction.kind === 'voidpick')}
+												disabled={!choosing && !pendingAction}
 												class:voided={dieVoid(i)}
 												data-die={i}
 												class:selecting={choosing}
@@ -4881,8 +4903,8 @@
 										{:else if pendingAction?.kind === 'set_point'}
 											<span class="text-cyan-300"
 												>{opSrcName(pendingAction.srcId)} ✨ 选一颗{#if pendingAction.from}&nbsp;{pendingAction.from}
-													点{/if}骰子改为 {pendingAction.point} 点{#if pendingAction.count > 1}(还剩
-													{pendingAction.count} 颗){/if}</span
+													点{/if}骰子改为 {pendingAction.point} 点{#if (pendingAction.total ?? 1) > 1}(还剩
+													{setOpLeft(pendingAction)} 颗){/if}</span
 											>
 										{:else if pendingAction?.kind === 'bump'}
 											<span class="text-cyan-300"
@@ -4896,17 +4918,17 @@
 											<span class="text-cyan-300"
 												>{opSrcName(pendingAction.srcId)} ✨ 点作废的骰子改为 {pendingAction.point} 点(救几颗随意)</span
 											>
-										{:else if pendingAction?.kind === 'voidpick'}
+										{:else if pendingAction?.kind === 'voidclear'}
 											<span class="text-cyan-300"
-												>{opSrcName(pendingAction.srcId)} ✨ 选一个点数,本关该点数不作废</span
+												>{opSrcName(pendingAction.srcId)} ✨ 点一颗作废的骰子取消作废</span
 											>
 										{:else if pendingAction?.kind === 'set_any'}
 											<span class="text-cyan-300"
 												>{opSrcName(pendingAction.srcId)} ✨ 选一颗{#if pendingAction.from}&nbsp;{pendingAction.from}
 													点{/if}骰子{#if pendingAction.options}改为 {pendingAction.options.join(
 														' / '
-													)} 点{:else}改为任意点数{/if}{#if pendingAction.count > 1}(还剩
-													{pendingAction.count} 颗){/if}</span
+													)} 点{:else}改为任意点数{/if}{#if (pendingAction.total ?? 1) > 1}(还剩
+													{setOpLeft(pendingAction)} 颗){/if}</span
 											>
 										{:else if rolling}
 											<span class="text-slate-400">{currentTeeCard?.name ?? '我'} 正在博饼...</span>
@@ -5175,7 +5197,7 @@
 													</div>
 													<!-- 锁定:锁住的格子不会刷新/(手机放右下,sm 起回到右上) -->
 													<button
-														class="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center sm:top-0 sm:bottom-auto sm:h-8 sm:w-5 {locked
+														class="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center sm:top-0 sm:right-1 sm:bottom-auto sm:h-8 sm:w-5 lg:right-2 {locked
 															? 'text-violet-300'
 															: 'text-slate-500 hover:text-slate-300'}"
 														aria-label={locked ? '解锁' : '锁定'}
@@ -5472,13 +5494,14 @@
 	{#if toast}
 		<!-- 顶部居中(压在站点栏的空白中段上):离操作区最远,弹出时不会挡住骰子/按钮 -->
 		<div
-			class="pointer-events-none fixed inset-x-0 top-1 z-[90] flex justify-center px-4 sm:top-1.5"
+			out:fade
+			class="pointer-events-none fixed inset-x-0 top-18 z-[90] flex justify-center px-4 lg:top-22"
 			role="status"
 			aria-live="polite"
 		>
 			{#key toastSeq}
 				<div
-					class="toast-pop max-w-[20rem] rounded-xl border border-amber-400/40 bg-slate-900/95 px-3.5 py-2 text-center font-semibold text-amber-100 shadow-xl backdrop-blur-sm"
+					class="toast-pop max-w-[30em] rounded-xl border-2 border-red-600/40 bg-red-950 px-3.5 py-2 text-center font-semibold text-red-200 shadow-xl"
 				>
 					{toast}
 				</div>
@@ -5980,7 +6003,7 @@
 	/* 弹出瞬间过曝一下(brightness 5 → 1,0.2s 落回)—— 比单纯位移更「闪」 */
 	@keyframes toast-flash {
 		from {
-			filter: brightness(5);
+			filter: brightness(8);
 		}
 		to {
 			filter: brightness(1);
