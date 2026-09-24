@@ -3281,7 +3281,12 @@
 	let zeroCollect = $state<{
 		srcId: string;
 		parts: { cardId: string; score: number; weight: number }[];
+		/** 三张逆向加权求和 */
 		total: number;
+		/** 零月自己**替换前**的基础分(也并进收集里) */
+		ownBase: number;
+		/** 换成这一手的净值 = total + ownBase */
+		value: number;
 		gain: number;
 	} | null>(null);
 
@@ -3601,22 +3606,31 @@
 			);
 			if (!parts.length) continue;
 			const t = team[i];
-			const base = scoreInput(
+			const input = scoreInput(
 				i,
 				t.lastLevelId,
 				liveDiceValues(t.lastDice ?? [], modsFor(i), t.lastRolled),
 				undefined,
 				rolledLive(t.lastRolled, t.lastDice, modsFor(i))
 			);
+			// ① 先按原样算一次,只为拿这只 Tee **替换前的基础分** —— 它也要并进收集里
+			//    (卡面:「… + 残月 + 零月基础分」)
+			const own = calcTeeScore(input);
+			const value = total + own.base;
 			const before = t.lastScore ?? 0;
-			const next = calcTeeScore({
-				...base,
-				// 走「主动技加值」那个口子:它和筹码在**同一位置**进算式 —— 乘算之前
-				skillChips: [...(base.skillChips ?? []), { srcId: hit.srcId, chips: total, from: '继承' }]
-			});
+			// ② 再按「零月基础分替换为 0、这一手的净值整个换成收集值」重算:
+			//    得分 = 收集值 × 该 Tee 得分倍率(和 reverse 同一个位置,自带 swap 行)
+			const next = calcTeeScore({ ...input, collectBase: { srcId: hit.srcId, value } });
 			t.lastScore = next.total;
 			currentScore += next.total - before;
-			zeroCollect = { srcId: hit.srcId, parts, total, gain: next.total - before };
+			zeroCollect = {
+				srcId: hit.srcId,
+				parts,
+				total,
+				ownBase: own.base,
+				value,
+				gain: next.total - before
+			};
 			break; // 一张就够(同名多带也只算一次)
 		}
 	};
@@ -3669,14 +3683,20 @@
 				}
 			}
 		});
-		// 「零月」继承的那一笔:写清哪几张卡、各自多少分、加权多少
+		// 「零月」:一条替换条(基础分 → 0,和残月那条 reverse 同一个样子)+ 一条出处
 		if (zeroCollect) {
 			const zc = zeroCollect;
+			const zname = cardById(zc.srcId)?.name ?? '零月';
 			const detail = zc.parts
 				.map((p) => `${cardById(p.cardId)?.name ?? p.cardId} ${formatScore(p.score)}×${p.weight}`)
 				.join(' + ');
 			steps.push({
-				text: `Σ ${cardById(zc.srcId)?.name ?? '零月'}：继承 ${detail} = ${formatScore(zc.total)}`,
+				text: `${zname} ${formatScore(zc.ownBase)} → 0`,
+				cls: 'font-bold text-amber-200',
+				kind: 'swap'
+			});
+			steps.push({
+				text: `Σ ${zname}：继承 ${detail} + ${zname}基础分 ${formatScore(zc.ownBase)} = ${formatScore(zc.value)}`,
 				cls: 'font-bold text-cyan-200',
 				kind: 'mult'
 			});
@@ -4335,15 +4355,19 @@
 				if (!teamCards[i]) return n;
 				return (
 					n +
-					effectiveEffects(teamCards, i).filter(({ eff }) =>
-						[
-							'team_mult',
-							'relay_pct',
-							'no_me_team_mult',
-							'team_level_mult',
-							'collect_scores'
-						].includes(eff.type)
-					).length
+					effectiveEffects(teamCards, i).reduce(
+						(m, { eff }) =>
+							m +
+							// 零月占两条:替换条(基础分 → 0)+ 出处条
+							(eff.type === 'collect_scores'
+								? 2
+								: ['team_mult', 'relay_pct', 'no_me_team_mult', 'team_level_mult'].includes(
+											eff.type
+									  )
+									? 1
+									: 0),
+						0
+					)
 				);
 			}, 0) +
 				1 +

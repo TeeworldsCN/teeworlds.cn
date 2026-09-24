@@ -929,6 +929,13 @@ export interface ScoreInput {
 	/** 这只 Tee 入队之后卖掉过几个 Tee(sold_chips / sell_scale 用) */
 	soldCount?: number;
 	/**
+	 * 「零月」的回合末换算:基础分替换为 0,「本关已得的净值」整个换成 `value`
+	 * (value = 亏月×3 + 缺月×2 + 残月 + 零月自己的基础分,由页面在团队那一轮之前算好)。
+	 * 和 reverse 是同一个位置、同一套 swap 行渲染,区别只是**没有** `base − net` 这一步 ——
+	 * 收集到的数直接就是替换值。
+	 */
+	collectBase?: { srcId: string; value: number };
+	/**
 	 * 本关全队各判定等级出现了几次(键 = 等级 id)。
 	 * 逐 Tee 结算时**只是记账**(给团队那一轮用),`calcTeeScore` 自己不吃它 ——
 	 * 数得全的地方在 `calcTeamTotal`(同参数)。
@@ -937,6 +944,7 @@ export interface ScoreInput {
 }
 
 export const calcTeeScore = ({
+	collectBase,
 	levelId,
 	self,
 	allSelf,
@@ -1607,16 +1615,18 @@ export const calcTeeScore = ({
 	// 逆向:chips 全部结算完、mult 之前,把「本回合已得的净值」整个替换掉 ——
 	// chips = reverseBase − 净值。掷得越漂亮(净值越高)逆向分越低,反之吃惩罚。
 	const net = base + chips + buffChips;
-	const swapped = reverseBase > 0 ? reverseBase - net : null;
+	// 「零月」:收集值直接当这一手的净值(基础分归零,连筹码一起换掉)。优先于 reverse。
+	const swapped =
+		collectBase !== undefined ? collectBase.value : reverseBase > 0 ? reverseBase - net : null;
 	if (swapped !== null) {
 		chips = swapped - base - buffChips; // 代进下面的算式后正好等于 swapped
 		// 不写进 chips 加算行:它语义上是「改写」,单独带 swap 给界面渲染
 		sources.push({
-			srcId: reverseSrc,
+			srcId: collectBase !== undefined ? collectBase.srcId : reverseSrc,
 			kind: 'card',
 			chips: swapped,
 			mult: 1,
-			swap: { from: net }
+			swap: { from: collectBase !== undefined ? base : net }
 		});
 	}
 	// 加成卡的「基础分翻倍」:整块放大(等级底分 + 卡牌筹码 + 加成卡筹码)。
