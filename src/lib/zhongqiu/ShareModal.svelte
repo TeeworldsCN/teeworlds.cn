@@ -2,8 +2,12 @@
 	/**
 	 * 结算屏的「分享战绩」弹窗:复制文本 / 下载海报。
 	 *
-	 * 海报是打开弹窗时**现场画**的(canvas),顺便拿它当预览图 —— 预览和下载共用同一张
-	 * blob,不用画两遍;关掉弹窗就 revoke,别让 1080×1080 的 object URL 常驻。
+	 * 海报是打开弹窗时**现场画**的(canvas),画两遍:一遍 **JPEG dataURL**(预览图),
+	 * 一遍 **PNG blob**(下载用)。
+	 * 为什么预览不用 blob URL:微信 / QQ 的内置浏览器对 `blob:` 图片**长按「保存/转发」会失败**
+	 * (安卓侧实测:提示保存失败、转发不弹好友列表),`data:` 才认;而且这两个内核把 JS 下载
+	 * 一并禁掉了,所以那里连「下载」按钮都不给,改成教用户长按 —— 判定用项目自带的
+	 * `uaIsStrict`(helpers.ts:QQ/ 或 micromessenger)。
 	 */
 	import { onDestroy } from 'svelte';
 	import Fa from 'svelte-fa';
@@ -14,6 +18,7 @@
 		faSpinner,
 		faXmark
 	} from '@fortawesome/free-solid-svg-icons';
+	import { uaIsStrict } from '$lib/helpers';
 	import { copyToClipboard, downloadBlob } from './share';
 	import { posterFilename, renderPoster, type PosterData } from './poster';
 
@@ -26,9 +31,10 @@
 		preview
 	}: { show: boolean; data: PosterData; text: string; preview: string } = $props();
 
-	/** 海报文件(预览 / 下载共用) */
+	/** 下载用的海报文件(全质量 PNG) */
 	let poster = $state<Blob | null>(null);
-	let previewUrl = $state('');
+	/** 预览图:JPEG 的 dataURL(不是 blob URL —— 微信/QQ 里只有 dataURL 能长按保存,见文件头注释) */
+	let previewSrc = $state('');
 	let rendering = $state(false);
 	let failed = $state(false);
 	/** 复制成功:按钮上闪一下「已复制」 */
@@ -42,22 +48,18 @@
 		copiedTimer = undefined;
 	};
 
-	const revoke = () => {
-		if (previewUrl) URL.revokeObjectURL(previewUrl);
-		previewUrl = '';
-	};
-
 	const generate = async (d: PosterData) => {
 		const myGen = ++gen;
 		rendering = true;
 		failed = false;
 		try {
 			const canvas = await renderPoster(d);
+			// 预览:JPEG 的 dataURL(1.4MB 的 PNG 转 base64 会到 1.8MB,移动端太重)
+			const previewData = canvas.toDataURL('image/jpeg', 0.92);
 			const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
 			if (myGen !== gen) return;
 			poster = blob;
-			revoke();
-			previewUrl = blob ? URL.createObjectURL(blob) : canvas.toDataURL('image/png');
+			previewSrc = previewData;
 		} catch {
 			if (myGen !== gen) return;
 			failed = true;
@@ -99,7 +101,6 @@
 	onDestroy(() => {
 		gen += 1;
 		stopCopiedTimer();
-		revoke();
 	});
 </script>
 
@@ -112,6 +113,9 @@
 />
 
 {#if show}
+	<!-- 每次打开重算:微信/QQ 内置浏览器里 JS 下载是禁的,只能长按保存。
+	     判定直接用项目自带的 uaIsStrict(QQ/ 或 micromessenger),别在页面里另写一套 UA 正则 -->
+	{@const inApp = uaIsStrict(navigator.userAgent)}
 	<div
 		class="fixed inset-0 z-[85] flex cursor-default items-center justify-center bg-black/70 p-3 backdrop-blur-sm sm:p-4"
 		role="presentation"
@@ -120,7 +124,7 @@
 		}}
 	>
 		<div
-			class="flex max-h-[94svh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-amber-500/30 bg-slate-900 shadow-2xl sm:max-w-lg"
+			class="flex h-[min(94svh,46rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-amber-500/30 bg-slate-900 shadow-2xl sm:max-w-lg"
 			role="dialog"
 			aria-modal="true"
 			aria-label="分享战绩"
@@ -140,35 +144,48 @@
 				</button>
 			</div>
 
-			<!-- 海报预览:海报是 2:3 的长图,所以按**高度**适配(宽度跟着比例走,别拿 aspect-square 硬裁) -->
-			<div class="mt-2.5 min-h-0 flex-1 overflow-y-auto px-4">
-				<div
-					class="relative mx-auto h-[44svh] max-h-[32rem] min-h-[12rem] w-full overflow-hidden rounded-xl border border-slate-600/50 bg-slate-950/60 sm:h-[52svh]"
-				>
-					{#if previewUrl}
+			<!-- 海报预览 + 文案预览:上下两段。
+			     面板自己是**确定高度**(h-[min(94svh,46rem)])—— 不给确定高度,图片的 `max-h-full`
+			     就没有参照,会按原始比例把整个弹窗顶出屏幕(矮屏实测:上沿被切掉)。
+			     外面这层是 flex 列 + min-h-0:**高度是确定的**,里面图片的 `max-h-full` 才有意义。
+			     海报是 2:3 长图,所以宽度由高度决定;矮屏/窄屏碰到上限就整体缩小 ——
+			     永远是整张,而且「框就是图」,不再有左右黑边。 -->
+			<div class="mt-2.5 flex min-h-0 flex-1 flex-col gap-2.5 px-4">
+				<!-- 预览:吃掉剩余高度(矮屏先压它;min-h 兜一下,别被文案挤没) -->
+				<div class="flex min-h-[7rem] flex-1 items-center justify-center">
+					{#if previewSrc}
 						<img
-							src={previewUrl}
+							src={previewSrc}
 							alt="战绩海报预览"
-							class="absolute inset-0 m-auto max-h-full max-w-full object-contain"
+							class="h-auto max-h-full w-auto max-w-full rounded-xl border border-slate-600/50 object-contain"
 						/>
-					{:else if failed}
-						<div class="flex h-full items-center justify-center px-6 text-center text-slate-400">
-							海报没画出来（这个浏览器不支持 canvas 导出？）—— 上面的文本照样可以复制分享。
-						</div>
 					{:else}
-						<div class="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
-							<Fa icon={faSpinner} class="animate-spin text-xl" />
-							<span>正在生成海报…</span>
+						<div
+							class="flex aspect-[2/3] h-full flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-slate-600/50 bg-slate-950/60 px-4 text-center text-slate-400"
+						>
+							{#if failed}
+								海报没画出来（这个浏览器不支持 canvas 导出？）—— 上面的文本照样可以复制分享。
+							{:else}
+								<Fa icon={faSpinner} class="animate-spin text-xl" />
+								<span>正在生成海报…</span>
+							{/if}
 						</div>
 					{/if}
 				</div>
 
-				<!-- 复制文本预览:让人先看清要发出去的是什么。
-				     链接**不在这里铺开**(太长会占掉两行),也不额外加提示语 ——
-				     底部那行小字本来就写着网址,再加一句「会带上链接」反而啰嗦。
-				     真要发出去的是 text(正文 + 链接),不是这段预览 -->
+				<!-- 长按提示就贴在图片下面(文本预览之前):内置浏览器里不摆「下载」按钮,
+				     直接把「怎么拿走这张图」写在图旁边 -->
+				{#if inApp}
+					<div
+						class="mt-1 shrink-0 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-center leading-snug font-bold text-amber-200"
+					>
+						长按图片即可保存 / 转发
+					</div>
+				{/if}
+
+				<!-- 复制文本预览:自然高度,不被压。链接不在这里铺开(太长会占两行) -->
 				<div
-					class="mt-2.5 rounded-xl border border-slate-700/60 bg-slate-800/50 px-3 py-2 text-left leading-snug break-all text-slate-300"
+					class="shrink-0 rounded-xl border border-slate-700/60 bg-slate-800/50 px-3 py-2 text-left leading-snug break-all text-slate-300"
 					aria-label="分享文案预览"
 				>
 					{preview}
@@ -178,22 +195,26 @@
 			<!-- 两个动作 -->
 			<div class="flex items-center justify-center gap-2 px-4 pt-3 pb-4">
 				<button
-					class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 font-semibold transition active:scale-95 {copied
-						? 'border-emerald-400/70 bg-emerald-500/15 text-emerald-300'
-						: 'border-slate-500 bg-slate-700 text-slate-100 hover:bg-slate-600'}"
+					class="flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 font-semibold transition active:scale-95 {copied
+						? 'border border-emerald-400/70 bg-emerald-500/15 text-emerald-300'
+						: inApp
+							? 'bg-gradient-to-b from-amber-400 to-amber-600 font-bold text-amber-950 shadow hover:from-amber-300 hover:to-amber-500'
+							: 'border border-slate-500 bg-slate-700 text-slate-100 hover:bg-slate-600'}"
 					onclick={doCopy}
 				>
 					<Fa icon={copied ? faCheck : faClipboard} />
 					<span>{copied ? '已复制' : '复制文本'}</span>
 				</button>
-				<button
-					class="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-3 py-2.5 font-bold whitespace-nowrap text-amber-950 shadow transition hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-					disabled={!poster}
-					onclick={doDownload}
-				>
-					<Fa icon={faDownload} />
-					<span>下载战绩</span>
-				</button>
+				{#if !inApp}
+					<button
+						class="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-3 py-2.5 font-bold whitespace-nowrap text-amber-950 shadow transition hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+						disabled={!poster}
+						onclick={doDownload}
+					>
+						<Fa icon={faDownload} />
+						<span>下载战绩</span>
+					</button>
+				{/if}
 			</div>
 		</div>
 	</div>
