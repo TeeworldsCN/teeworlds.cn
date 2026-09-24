@@ -17,8 +17,8 @@ import { BUFF_BY_ID, type AppliedBuff } from './items';
 // R1~R8 不动(新手区),R9 起坡度从 ×1.18 提到 ×1.23,到 R16 = 7200;
 // 超出 16 后按 ×1.25 递增(原来只有 ×1.15 —— 比数组本身的坡度还缓,后期反而变简单了);
 // **R31 起抬到 ×1.5**(原来 ×1.25 到 30 关后就跟不上队伍成长:R40 才 152 万),
-// **R41 起再抬到每 5 关 ×10** —— 即「R35 百万 → R40 千万」那条梯子的速率,后期继续指数上去
-// (R45 ≈ 9440 万、R50 ≈ 9.4 亿、R55 ≈ 94 亿)。
+// **R41 起每关 ×1.55**(≈ 每 5 关 ×9)—— 后期继续指数上去,但比 ×1.585 收一点
+// (R45 ≈ 8445 万、R50 ≈ 7.6 亿、R55 ≈ 68 亿)。
 export const TARGETS = [
 	60, 120, 240, 450, 750, 1050, 1250, 1500, 1750, 2100, 2500, 3000, 3600, 4500, 5700, 7200
 ];
@@ -30,14 +30,15 @@ const TARGET_STEP_UP_AT = 30;
 /** R31 起的每关倍数 */
 const TARGET_STEP_LATE = 1.5;
 /**
- * R41 起再换一挡:**每 5 关 ×10**(= 每关 ×1.585)。
+ * R41 起再换一挡:**每关 ×1.55**(≈ 每 5 关 ×9)。
  *
- * 这就是「R35 百万 → R40 千万」那条梯子的速率 —— 前面那两挡(×1.25 / ×1.5)都在放缓,
- * 到后期反而越打越松;这里把它调回梯子本身的速率,让目标一路指数跟上队伍成长。
+ * 前面那两挡(×1.25 / ×1.5)到后期跟不上了,这一挡把后期拉回指数;
+ * 但比「每 5 关 ×10」(×1.585)收一点 —— 那条在 R50 就到 9.4 亿,R55/R60 直接上百亿,
+ * 留给玩家构筑的空间太窄。×1.55 下:R45 ≈ 8445 万 · R50 ≈ 7.6 亿 · R55 ≈ 68 亿 · R60 ≈ 605 亿。
  * (R30 / R40 两个换挡点之前的关卡一律不变。)
  */
-const TARGET_X10_AT = 40;
-const TARGET_X10_PER = 5;
+const TARGET_LATE_AT = 40;
+const TARGET_STEP_LATE2 = 1.55;
 
 const roundTo10 = (x: number) => Math.round(x / 10) * 10;
 
@@ -51,8 +52,8 @@ export const roundTarget = (n: number): number => {
 	// 换挡都从**未取整**的值接着乘(每关各自取整会让坡面有一格一格的小台阶)
 	const scaled = (k: number) =>
 		targetAt(TARGET_STEP_UP_AT) * Math.pow(TARGET_STEP_LATE, k - TARGET_STEP_UP_AT);
-	if (n <= TARGET_X10_AT) return roundTo10(scaled(n));
-	return roundTo10(scaled(TARGET_X10_AT) * Math.pow(10, (n - TARGET_X10_AT) / TARGET_X10_PER));
+	if (n <= TARGET_LATE_AT) return roundTo10(scaled(n));
+	return roundTo10(scaled(TARGET_LATE_AT) * Math.pow(TARGET_STEP_LATE2, n - TARGET_LATE_AT));
 };
 
 /** 是否 Boss 关(每 Ante 的第 3 关) */
