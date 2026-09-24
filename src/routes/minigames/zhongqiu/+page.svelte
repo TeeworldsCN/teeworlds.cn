@@ -1229,7 +1229,8 @@
 				roundTotal = calcTeamTotal(
 					team.map((t) => t.lastScore),
 					team.map(cardOf), // 按位置对齐:回流要认左右邻居
-					team.some((t) => t.isSelf === true)
+					team.some((t) => t.isSelf === true),
+					teamLevelCounts()
 				).total;
 				roundRewardGained = roundReward(round);
 				overflowGained = overflowReward(roundTotal, target);
@@ -1940,20 +1941,48 @@
 	 * 不在线上(或没挂卡)的 Tee 一律照常自己掷。
 	 * 投掷顺序就是队伍下标顺序,countedTee = 最后一只结算完的 Tee。
 	 */
-	const SHARE_CARDS = ['denglong', 'zhideng', 'qixingdeng', 'lianzhudeng'];
+	const SHARE_CARDS = ['denglong', 'zhideng', 'qixingdeng', 'lianzhudeng', 'lianzhudengzhao'];
 	/** 第 i 格在不在这条线上:它实际生效的效果里有没有带着这四张之一(含**复制来的**) */
 	const onShareLine = (i: number): boolean => {
 		if (!teamCards[i]) return false;
 		return effectiveEffects(teamCards, i).some(({ srcId }) => SHARE_CARDS.includes(srcId));
 	};
+	/**
+	 * 本关**已经掷出**的各等级次数(键 = 等级 id)。
+	 * 「连珠灯照」(team_level_mult)在团队那一轮读它:本关队伍里掷出几个对堂,
+	 * 全队总分就再乘 3 的几次方。
+	 * 只数这一关**真投过**的 Tee(k ≤ countedTee):云海提前收关时后面几位的
+	 * lastLevelId 还是上一关的,数进来会白送几层 —— 和桂树记账同一个门。
+	 */
+	const teamLevelCounts = (): Record<string, number> => {
+		const out: Record<string, number> = {};
+		for (let k = 0; k <= countedTee && k < team.length; k++) {
+			const id = team[k]?.lastLevelId;
+			if (id) out[id] = (out[id] ?? 0) + 1;
+		}
+		return out;
+	};
+
 	const sharedFirstDice = (i: number): number[] | null => {
-		// 线的开关照旧是「队伍里有高照」(卡面原文);复制高照时源头那张必然在队里,两者等价
-		if (!allCards().some((c) => hasEffect(c.effect, 'shared_first_roll'))) return null;
+		// 线的开关:队伍里有「高照」(首个投掷者当模板)或「连珠灯照」(接力 —— 上一只当模板)。
+		// 复制这张线(红绳抄高照/连珠灯照)时源头那张必然在队里,两者等价。
+		const chain = allCards().some((c) => hasEffect(c.effect, 'shared_prev_roll'));
+		if (!chain && !allCards().some((c) => hasEffect(c.effect, 'shared_first_roll'))) return null;
 		let src = -1;
-		for (let k = 0; k < team.length; k++) {
-			if (!onShareLine(k)) continue;
-			if (k <= countedTee) src = k; // 这一只已经投过了 = 这条线里首个投掷者
-			break; // 只看线上第一只,它没投就还没模板
+		if (chain) {
+			// 接力:挑**这一只之前最后一个投过的线上 Tee** —— 它的最终骰面就是这一手的起点。
+			// 中间夹着的非线上 Tee(芋泥饼那种)不打断接力:线上的顺序才是接力顺序。
+			for (let k = 0; k < team.length; k++) {
+				if (k >= i) break;
+				if (!onShareLine(k)) continue;
+				if (k <= countedTee) src = k;
+			}
+		} else {
+			for (let k = 0; k < team.length; k++) {
+				if (!onShareLine(k)) continue;
+				if (k <= countedTee) src = k; // 这一只已经投过了 = 这条线里首个投掷者
+				break; // 只看线上第一只,它没投就还没模板
+			}
 		}
 		if (src < 0 || src === i) return null;
 		// 只有这条线上的 Tee 才吃复制(「其他 Tee」= 这条线里的其他 Tee)
@@ -3544,6 +3573,7 @@
 		const hasMe = team.some((t) => t.isSelf === true);
 		// 全队倍率逐张弹(bundle **和复制来的**都算):引擎乘了多少,这里就得有几行出处 ——
 		// 和 calcTeamTotal 一样按位置展开 copy_right,否则红绳抄到牵丝戏时行数和乘数对不上
+		const lvlCounts = teamLevelCounts();
 		teamCards.forEach((_, i) => {
 			if (!teamCards[i]) return;
 			for (const { eff, srcId } of effectiveEffects(teamCards, i)) {
@@ -3553,6 +3583,20 @@
 					steps.push({
 						// 总分乘数(作用在团队总分上)—— 粗体亮青,和每个 Tee 里的紫「叠加倍率」分开
 						text: `Σ ${c.name}：总分 ×${eff.value}`,
+						cls: 'font-bold text-cyan-200',
+						kind: 'mult'
+					});
+				} else if (eff.type === 'team_level_mult') {
+					// 「连珠灯照」:本关**多**出几个对堂就乘几层(前 free 个不算)。0 层不上行。
+					// 扣掉了就把「本关几个 / 实际计几个」都写出来,免得看着像算错
+					const raw = lvlCounts[eff.levelId] ?? 0;
+					const n = Math.max(0, raw - (eff.free ?? 0));
+					if (n <= 0) continue;
+					const lvName = getRollLevel(eff.levelId).name;
+					const capped =
+						raw > n ? `（本关 ${raw} 个${lvName}，计 ${n} 个）` : `（本关 ${n} 个${lvName}）`;
+					steps.push({
+						text: `Σ ${c.name}：总分 ×${Math.pow(eff.per, n).toFixed(0)}${capped}`,
 						cls: 'font-bold text-cyan-200',
 						kind: 'mult'
 					});
@@ -3572,7 +3616,8 @@
 		const { total, teamMult, relay, ratioBonus, relayLines, ratioLines } = calcTeamTotal(
 			team.map((t) => t.lastScore),
 			team.map(cardOf), // 同上:位置对齐
-			hasMe
+			hasMe,
+			lvlCounts
 		);
 		roundTotal = total;
 		// 接力回流:一张卡一行,数字由引擎算好(relayLines)
@@ -3748,7 +3793,8 @@
 		const { total } = calcTeamTotal(
 			team.map((t) => t.lastScore),
 			team.map(cardOf),
-			team.some((t) => t.isSelf === true)
+			team.some((t) => t.isSelf === true),
+			teamLevelCounts()
 		);
 		finalScore = total;
 		finalRound = round;
@@ -4221,7 +4267,7 @@
 				return (
 					n +
 					effectiveEffects(teamCards, i).filter(({ eff }) =>
-						['team_mult', 'relay_pct', 'no_me_team_mult'].includes(eff.type)
+						['team_mult', 'relay_pct', 'no_me_team_mult', 'team_level_mult'].includes(eff.type)
 					).length
 				);
 			}, 0) +
