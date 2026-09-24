@@ -342,7 +342,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'lianzhudengzhao',
 		name: '连珠灯照',
-		desc: '「连珠灯照」在队伍中时：「高照」「串珠」「七星灯」「连珠灯」「连珠灯照」这条线上，每只 Tee 首次投掷的骰子都抄上一只线上 Tee 掷完后的最终骰子状态（线上第一只自己掷）；本关每多掷出 1 个对堂，全队总分 ×3（第 1 个不算）',
+		desc: '「连珠灯照」在队伍中时：「高照」「串珠」「七星灯」「连珠灯」「连珠灯照」这条线上，每只 Tee 首次投掷的骰子都抄上一只线上 Tee 掷完后的最终骰子状态（线上第一只自己掷）；本关每多掷出 1 个对堂，全队总分 ×2（第 1 个不算）',
 		rarity: 'legendary',
 		tag: '灯',
 		skin: 'glow chinese',
@@ -350,7 +350,7 @@ export const CARDS: TeeCard[] = [
 			type: 'bundle',
 			parts: [
 				{ type: 'shared_prev_roll' },
-				{ type: 'team_level_mult', levelId: 'dui_tang', per: 3, free: 1 }
+				{ type: 'team_level_mult', levelId: 'dui_tang', per: 2, free: 1 }
 			]
 		}
 	},
