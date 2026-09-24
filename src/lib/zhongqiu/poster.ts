@@ -456,6 +456,30 @@ const paintGradientText = (
 	ctx.restore();
 };
 
+/**
+ * 这块矩形里有没有「墨」(比底色明显深的像素)。
+ *
+ * 用途:验证一行字真画上去了。实测有浏览器(安卓内置内核 / 火狐)会在二维码那行上
+ * 「画了跟没画一样」—— 画完读一次像素就知道,然后换最朴素的写法重画一遍。
+ * 跨域图会让 getImageData 抛 SecurityError:那种情况当「有墨」处理(别乱重画)。
+ */
+const hasInk = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
+	try {
+		const d = ctx.getImageData(
+			Math.max(0, Math.floor(x)),
+			Math.max(0, Math.floor(y)),
+			Math.max(1, Math.ceil(w)),
+			Math.max(1, Math.ceil(h))
+		).data;
+		for (let i = 0; i < d.length; i += 4) {
+			if (d[i + 3] > 8 && d[i] < 200) return true;
+		}
+		return false;
+	} catch {
+		return true;
+	}
+};
+
 /** 首页那套「百分比宽度 + 固定字体子集」的骰面:白面 + 深色点(4 点红) */
 const drawDie = (
 	ctx: CanvasRenderingContext2D,
@@ -785,20 +809,34 @@ const drawHero = (
 			baseline: 'middle'
 		});
 	}
-	paintText(
-		ctx,
-		'来挑战我的记录',
-		x + QR_W / 2,
-		y + QR_PAD + QR_SIZE + 22 + lineBase(SIZE.qrCaption),
-		{
+	// 这行钉死系统字体(见 FONT_SANS),而且**画完要验墨**:实测安卓内置内核 / 火狐上
+	// 会出现「画了但一个像素都没留下」—— 只靠字体栈赌不出来,所以画一次、读一次像素,
+	// 没墨就换更朴素的写法重画(顺带 warn 一声,方便回收到现场)
+	const caption = '来挑战我的记录';
+	const captionX = x + QR_W / 2;
+	const captionY = y + QR_PAD + QR_SIZE + 22 + lineBase(SIZE.qrCaption);
+	/** 墨迹检查的窗口:整行那一条(上下各留一点,免得贴边裁掉) */
+	const captionBand = () => ({
+		x: x + 6,
+		y: captionY - Math.round(SIZE.qrCaption * 0.9),
+		w: QR_W - 12,
+		h: Math.round(SIZE.qrCaption * 1.3)
+	});
+	const paintCaption = (family: string | undefined, weight: number) => {
+		const band = captionBand();
+		paintText(ctx, caption, captionX, captionY, {
 			size: SIZE.qrCaption,
-			weight: 700,
-			// 钉死系统字体:这行只是普通黑体,不该赌自带字体在各设备上的表现(见 FONT_SANS)
-			family: FONT_SANS,
+			weight,
+			family,
 			color: COLOR.plateText,
 			align: 'center'
-		}
-	);
+		});
+		return hasInk(ctx, band.x, band.y, band.w, band.h);
+	};
+	if (!paintCaption(FONT_SANS, 700)) {
+		console.warn('[海报] 二维码下面那行没画出来,改用系统默认字体重画(浏览器字体栈差异)');
+		if (!paintCaption('sans-serif', 700)) paintCaption('sans-serif', 400);
+	}
 };
 
 const drawChips = (ctx: CanvasRenderingContext2D, L: PosterLayout, data: PosterData) => {
