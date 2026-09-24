@@ -295,6 +295,19 @@ export const rawLiveDice = (dice: number[], mods?: DiceMods): number[] =>
 	dice.filter((_, i) => !isVoidDie(dice, i, mods));
 
 /**
+ * 「掷出」的骰面:**改点之前**的值(骰子底面画的也是它)。
+ *
+ * 作废按**最终**骰面判(改点把作废面改走 = 改点即救援,与 liveDiceValues 同口径),
+ * 所以两个数组都要传:rolled = 掷出来那一刻的手,dice = 改点之后的当前手。
+ *
+ * ⚠️ 只服务 `own_face.asRolled`(丹火:改点来的点数进不了乘算,
+ *    「保底两颗 4 点 × 2/颗」会变成 80 分的保底)。
+ *    文案写「每有」「最终骰子里」的那族一律用最终骰面(ownDice),别拿这个换。
+ */
+export const rolledLiveDice = (rolled: number[], dice: number[], mods?: DiceMods): number[] =>
+	rolled.filter((_, i) => !isVoidDie(dice, i, mods));
+
+/**
  * 「每**掷出** 1 颗 X 点」的计数:**原投掷的算,改成 X 点的也算,同一颗只算一次**。
  *
  * ⚠️ 只服务文案写「每掷出」的那一族(三星照 / 柳眉 / 朔日 / 上弦)。

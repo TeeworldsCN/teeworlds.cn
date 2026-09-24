@@ -87,7 +87,14 @@ export type TeeEffect =
 	| { type: 'copy_right'; mult?: number } // 复制右侧 Tee 的卡牌(可再 ×mult 超车);右侧还是复制卡就一路向右 —— 展开口径见 effectiveEffects
 	| { type: 'reroll_all_on_none' } // 掷出"再接再厉"时自动重掷全部(每回合 1 次)
 	| { type: 'sum_chips'; per: number } // 骰子点数和 ×per 计入基础分(和值流)
-	| { type: 'own_face'; face: number; chips?: number; mult?: number; multByCount?: boolean } // 自己最终骰子里每有 1 颗该点数(multByCount: 倍率 = 该点数颗数)
+	| {
+			type: 'own_face';
+			face: number;
+			chips?: number;
+			mult?: number;
+			multByCount?: boolean;
+			asRolled?: boolean;
+	  } // 自己最终骰子里每有 1 颗该点数(multByCount: 倍率 = 该点数颗数;asRolled: 只数**掷出**的,**改点来的不算**)
 	// 该 Tee 自己的骰子里每颗 face 点:倍率 **+per**(桂树 —— 乘值在增长,不是再乘一层)
 	| { type: 'own_face_add'; face: number; per: number; base: number }
 	// 桂树:同上,但颗数**跨关累计** —— 计分读 growth[srcId](页面把该 Tee 的累计数并进去);
@@ -852,15 +859,18 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'changepair',
 		name: '丹火',
-		desc: '改 2 颗骰子为 4 点；自己每有 1 颗 4 点：得分 ×2',
+		desc: '改 2 颗骰子为 4 点；自己每掷出 1 颗 4 点：得分 ×2',
 		rarity: 'legendary',
 		tag: '丹',
 		skin: 'GlowPinky',
 		effect: {
 			type: 'bundle',
 			parts: [
+				// asRolled:「每有」会把保底那两颗 4 点也乘进去 —— 改 2 颗为 4 = 二举 20 分,
+				// 再 ×2² = **80 分保底**(正好是无卡时的平均分),p10 直接顶到 80。
+				// 改点只顶等级(那是它的设计意图),不进乘算。
 				{ type: 'set_point', count: 2, point: 4 },
-				{ type: 'own_face', face: 4, mult: 2 }
+				{ type: 'own_face', face: 4, mult: 2, asRolled: true }
 			]
 		}
 	},

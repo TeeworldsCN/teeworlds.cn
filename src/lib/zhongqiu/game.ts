@@ -315,6 +315,12 @@ export interface TeamTee {
 	 * 拿不到当时那份豁免名单,亲手改出来的点又会被「X 视为 Y」改写一遍(踩过)。
 	 */
 	lastOpted?: number[];
+	/**
+	 * 这一手**掷出**的骰面(改点之前的那六颗)。
+	 * 骰子底面渲染用它,丹火的「每掷出」乘算也读它 —— 必须按 Tee 记:
+	 * 队友回头数这只 Tee 的骰面、结算頁重算那一手,都要拿得到「当时掷出的是什么」。
+	 */
+	lastRolled?: number[];
 	buffs: AppliedBuff[];
 	charge?: number;
 	/**
@@ -754,7 +760,13 @@ export interface ScoreInput {
 	teamSize: number;
 	/** 判定用的骰子点数和 */
 	diceSum: number;
+	/** 该 Tee 的最终骰面(映射后、剔作废)—— 「每有」那族数的是它 */
 	ownDice?: number[];
+	/**
+	 * 该 Tee **掷出**的骰面(改点之前,剔作废)—— 只给 `own_face.asRolled` 用(丹火)。
+	 * 不传就退回 ownDice(与「每有」同口径):工具/QA 直接调引擎时不用刻意造一只手。
+	 */
+	ownRolledDice?: number[];
 	rerolled?: number;
 	/** 本回合多出来的投掷机会(per_extra_roll 用) */
 	extraRolls?: number;
@@ -796,6 +808,7 @@ export const calcTeeScore = ({
 	teamSize,
 	diceSum,
 	ownDice = [],
+	ownRolledDice,
 	rerolled = 0,
 	extraRolls = 0,
 	stuckRerolls = 0,
@@ -1195,7 +1208,10 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'own_face': {
-				const n = ownDice.filter((v) => v === eff.face).length;
+				// asRolled(丹火):只数**掷出**的面 —— 改点来的点数只顶等级,不进乘算。
+				// 「每有」那族照旧数最终骰面(ownDice),两套口径别混。
+				const hand = eff.asRolled && ownRolledDice?.length ? ownRolledDice : ownDice;
+				const n = hand.filter((v) => v === eff.face).length;
 				if (n <= 0) break;
 				const bc = chips;
 				const bm = mult;
@@ -1778,6 +1794,8 @@ export type RunTeamSlot = {
 	lastVoid?: number[];
 	/** 这一手哪些骰子是玩家亲手改的(改点豁免,回头读骰面用) */
 	lastOpted?: number[];
+	/** 这一手**掷出**的骰面(改点前);老存档没有 → 退回 lastDice(口径同「每有」) */
+	lastRolled?: number[];
 	/** 桂树那类累计(按 Tee 记,不按卡);老存档没有 → 按空处理 */
 	faceGrow?: GrowthMap;
 	/** 饼铺掌柜那类:这只 Tee 入队后卖掉的 Tee 数;老存档没有 → 按 0 处理 */
@@ -1824,6 +1842,11 @@ export type RunSave = {
 
 	// ---- v2:回合内的细节状态 ----
 	dice: number[];
+	/**
+	 * 正在进行的这一手**掷出**的骰面(改点之前)。
+	 * 骰子底面画的是它,丹火的「每掷出」乘算也读它;老存档没有 → 退回 dice。
+	 */
+	rolledDice?: number[];
 	/** 正在掷的是第几个 Tee */
 	currentTee: number;
 	currentScore: number;
