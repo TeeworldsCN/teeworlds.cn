@@ -18,6 +18,7 @@
 		faSpinner,
 		faXmark
 	} from '@fortawesome/free-solid-svg-icons';
+	import { page } from '$app/state';
 	import { uaIsStrict } from '$lib/helpers';
 	import { copyToClipboard, downloadBlob } from './share';
 	import { posterFilename, renderPoster, type PosterData } from './poster';
@@ -114,8 +115,13 @@
 
 {#if show}
 	<!-- 每次打开重算:微信/QQ 内置浏览器里 JS 下载是禁的,只能长按保存。
-	     判定直接用项目自带的 uaIsStrict(QQ/ 或 micromessenger),别在页面里另写一套 UA 正则 -->
-	{@const inApp = uaIsStrict(navigator.userAgent)}
+	     判定用项目自带的 uaIsStrict(QQ/ 或 micromessenger),**两个来源取并集**:
+	       · 服务端的 `page.data.ua` —— /link 页与 CameraCapture 走的就是这条(`+layout.server.ts` 给的),最可靠;
+	       · 客户端 `navigator.userAgent` —— 兜住「布局数据是上一次请求留下的」那种情况,也方便 QA 改 UA 复验。
+	     任一命中就算内置,别在页面里另写一套 UA 正则。 -->
+	{@const inApp =
+		uaIsStrict(page.data.ua ?? '') ||
+		uaIsStrict(typeof navigator === 'undefined' ? '' : navigator.userAgent)}
 	<div
 		class="fixed inset-0 z-[85] flex cursor-default items-center justify-center bg-black/70 p-3 backdrop-blur-sm sm:p-4"
 		role="presentation"
