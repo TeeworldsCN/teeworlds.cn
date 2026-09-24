@@ -1944,6 +1944,8 @@ export type RunSave = {
 	usedOpCount?: Record<string, number>;
 	optedDice: number[];
 	clearedVoid: number[];
+	/** 月相符本关按颗解除作废的下标(按 Tee 记);老存档没有这个字段 → 读档兜底成 [] */
+	voidFixed?: number[][];
 	pendingAction: RunOp | null;
 	pointPicker: boolean;
 	setQueue: SetOp[];
@@ -2095,6 +2097,14 @@ const validateRun = (d: RunSave): void => {
 		'setQueue'
 	])
 		check(k, 'arr');
+	// 可选字段:在就必须是「数组的数组,元素是数字」(坏档宁可丢掉,别带病渲染)
+	if (d.voidFixed !== undefined) {
+		if (
+			!Array.isArray(d.voidFixed) ||
+			d.voidFixed.some((a) => !Array.isArray(a) || a.some((v) => !isNum(v)))
+		)
+			bad('voidFixed');
+	}
 	if (d.dice.some((v) => !isNum(v))) bad('dice');
 };
 

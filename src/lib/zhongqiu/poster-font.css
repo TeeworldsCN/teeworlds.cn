@@ -1,0 +1,34 @@
+/**
+ * 海报用的两套字形,来自**同一个文件**(生成脚本:tools/zhongqiu/build-poster-font.py):
+ *
+ *   · `Zhongqiu Brush`        —— 马善政毛笔楷书子集(标题、段落标签)
+ *   · `Zhongqiu Poster Emoji` —— Noto Emoji 的**黑白**子集,只管 emoji 码位
+ *
+ * 两条 @font-face 指向同一个 url、各带一条 unicode-range:浏览器按 url 去重 → 只下一次,
+ * 而 canvas 里选字体照样分得开 —— 数据/标签那些 sans 文本不会因为前面挂了毛笔字体
+ * 就变成毛笔字。合并的另一个好处是海报不再需要全彩 Noto Color Emoji 那份 90KB:
+ * 黑白 emoji 跟着 `fillStyle` 走,压在深蓝底上比一堆彩色 emoji 顺眼得多。
+ * (页面 DOM 那边照旧用 emoji-font.css 的彩色版,跟海报无关。)
+ *
+ * 产物刻意给 **TTF(不压缩)**:一次性渲染用,兼容性(微信内置内核、老 Safari)优先于传输体积。
+ */
+@font-face {
+	font-family: 'Zhongqiu Brush';
+	src: url('/fonts/zhongqiu-poster.ttf') format('truetype');
+	font-style: normal;
+	/* 子集只有一档字重:不声明 100 900,免得浏览器给毛笔字合成粗体(糊成一坨) */
+	font-weight: 400;
+	font-display: block;
+	/* 只吃汉字与中文标点 */
+	unicode-range: U+2E80-9FFF, U+3000-303F, U+FF00-FFEF;
+}
+
+@font-face {
+	font-family: 'Zhongqiu Poster Emoji';
+	src: url('/fonts/zhongqiu-poster.ttf') format('truetype');
+	font-style: normal;
+	font-weight: 400;
+	font-display: block;
+	/* 只吃 emoji 码位:它排在 sans 栈最前面,只负责把 emoji 画成单色图标 */
+	unicode-range: U+2190-21FF, U+2600-27BF, U+2B00-2BFF, U+FE0F, U+200D, U+1F000-1FAFF;
+}
