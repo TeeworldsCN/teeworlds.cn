@@ -190,6 +190,15 @@ export type TeeEffect =
 	// 算在团队那一轮(calcTeamTotal):先要全队都投完才数得清,逐 Tee 结算时数不全(会是半路的数)。
 	// 高照把首个投掷者的骰子抄给线上其他 Tee —— 一个对堂就此变成整队一层,这是那份配合的兑现处。
 	| { type: 'team_level_mult'; levelId: string; per: number; free?: number }
+	// 「零月」之一:点名的几张卡(`cards` = 卡 id)掷出点名的等级时,该等级的**等级分取负**
+	// (四进 −40 / 五子登科 −480 / 六博黑 −960)。**判定口径不变** —— `condHit` 仍看原分值,
+	// 否则「三红及以上」那族条件会在这些档位集体失效。
+	// 逆向卡「基础分替换为 base − 净值」,净值被压负 = 分更高,所以这是给逆向系加的燃料。
+	| { type: 'level_score_flip'; cards: string[]; levels: string[] }
+	// 「零月」之二:自己(持卡 Tee)的基础分 = 点名的几张卡**已经结算的得分**加权求和。
+	// 收集发生在**团队那一轮之前**(全队都投完才数得全),由页面算出再当基础分重算这只 Tee ——
+	// 见 `collectByCard`。所以它和自己的位置无关,排第几都收得到。
+	| { type: 'collect_scores'; cards: string[]; weights: number[] }
 	// 高照:「高照/串珠/七星灯/连珠灯」里**首个投掷者**的最终骰子状态(点数 + 作废)
 	//      → **这条线里其他 Tee** 回合内首次投掷的骰子(线上的 Tee 才吃复制,线外不抄)
 	| { type: 'shared_first_roll' } // 只有高照带这条;点名的四张既是「模板候选」也是「复制对象」
@@ -531,6 +540,25 @@ export const CARDS: TeeCard[] = [
 		skin: 'cupcakecherry',
 		tag: '饼',
 		effect: { type: 'per_tag', tag: '饼', per: 1.26, as: 'mult', chipsPerFour: 375 }
+	},
+	{
+		id: 'lingyue',
+		name: '零月',
+		desc: '「亏月」「缺月」「残月」掷出四进、五子登科、六博黑时，该等级的基础分记成负数；本关这三张已经结算的得分，按「亏月 ×3 + 缺月 ×2 + 残月」加总，作为「零月」自己的基础分（全队都投完后结算，不受站位影响）',
+		rarity: 'legendary',
+		tag: '月',
+		skin: 'dark_chao',
+		effect: {
+			type: 'bundle',
+			parts: [
+				{
+					type: 'level_score_flip',
+					cards: ['kuiyue', 'queyue', 'canyue'],
+					levels: ['si_jin', 'wu_zi', 'liu_bo_hei']
+				},
+				{ type: 'collect_scores', cards: ['kuiyue', 'queyue', 'canyue'], weights: [3, 2, 1] }
+			]
+		}
 	},
 	{
 		id: 'mingyuegongzhao',
