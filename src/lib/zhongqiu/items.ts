@@ -33,7 +33,12 @@ export interface BuffEffect {
 		// 孤星赌(朔月符):face 点 from 颗起每多 1 颗 ×per;不足 from−1 颗 ×value(下注的代价)
 		| 'streak_mult'
 		// 月相符:可选任意数量的**作废骰子**改为 point 点(改点即活 = 救援)
-		| 'void_fix';
+		| 'void_fix'
+		// 片影卡:点一颗骰子,只取消**这一颗**的作废(不改面)。
+		// 三张抗作废的分工:月食卡整关全解除 / 半影卡按**面**(点了的骰子那个点数都不作废)/
+		// 片影卡按**颗**(只有点了的那一颗);月相符是按颗救 + 改成 N 点。
+		// 不走 clear_void 的 pick 分支:那个是「读点数 → 按面救」,塞一起会互相带偏。
+		| 'void_one';
 	value?: number;
 	chips?: number;
 	mult?: number;
@@ -616,9 +621,19 @@ export const BUFF_CARDS: BuffCard[] = [
 		desc: '选择一个骰子，取消所有该骰子点数的作废',
 		rarity: 'common',
 		skin: 'IceWitch_Witch',
-		price: 4,
+		price: 5,
 		turns: 1,
 		effect: { type: 'clear_void', pick: true }
+	},
+	{
+		id: 'pianyingka',
+		name: '片影卡',
+		desc: '选择一个骰子，取消这颗骰子的作废',
+		rarity: 'common',
+		skin: 'racerkitty',
+		price: 3,
+		turns: 1,
+		effect: { type: 'void_one' }
 	},
 
 	// 玩法:带上去之后重掷/改点的目标会变(追高的那个点数、躲低的那个),

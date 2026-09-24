@@ -9,6 +9,9 @@
 	import Codex from '$lib/zhongqiu/Codex.svelte';
 	import BuffTip from '$lib/zhongqiu/BuffTip.svelte';
 	import CardTip from '$lib/zhongqiu/CardTip.svelte';
+	import ShareModal from '$lib/zhongqiu/ShareModal.svelte';
+	import { buildShareText, buildShareTextPreview } from '$lib/zhongqiu/share';
+	import type { PosterData } from '$lib/zhongqiu/poster';
 	import {
 		unlockTees,
 		unlockBuffs,
@@ -141,6 +144,7 @@
 		faLock,
 		faLockOpen,
 		faRotate,
+		faShareNodes,
 		faStore,
 		faTrophy
 	} from '@fortawesome/free-solid-svg-icons';
@@ -381,11 +385,11 @@
 	/** 同一时刻只弹一个说明浮层:悬停优先于选中,否则两个浮层会叠在一起。
 	 *  选中只在开局编队有效——到了中秋集市它挂不上任何东西,别把上一次的选中带过来。 */
 	/**
-	 * 有弹窗开着:图鉴 / 规则 / 出售确认。
+	 * 有弹窗开着:图鉴 / 规则 / 出售确认 / 分享战绩。
 	 * 写成函数而不是 $derived:那几个开关声明在文件更靠后(它们才是弹窗逻辑的正文),
 	 * 这里直接引用会踩 TDZ;函数体只在真正读的时候求值,顺序无所谓。
 	 */
-	const modalOpen = () => showCodex || showRules || sellAsk !== null;
+	const modalOpen = () => showCodex || showRules || sellAsk !== null || showShare;
 	const shownBuff = $derived(
 		modalOpen() ? null : (peekBuff ?? (phase === 'intro' ? selectedBuff : null))
 	);
@@ -700,6 +704,13 @@
 		return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
 	};
 
+	/** 海报右上角的日期(局内开始那天;老存档没有 startedAt 就拿今天) */
+	const formatPosterDate = (ms: number) => {
+		const d = new Date(ms || Date.now());
+		const pad = (n: number) => String(n).padStart(2, '0');
+		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+	};
+
 	// 交互（改点/重掷）
 	// 半影卡:点一颗**作废的**骰子,读它的点数,本关该点数不作废(不弹选点器)
 	type PendingAction =
@@ -726,11 +737,20 @@
 				noVoid?: boolean;
 		  }
 		| { kind: 'bump'; count: number; step?: number; srcId?: string; noVoid?: boolean } // 月牙尺 +1 / 缺月尺 −1:点一颗骰子
-		| { kind: 'voidfix'; count: number; point?: number; srcId?: string }; // 月相符:作废骰子改为 N 点(任意数量)
+		| { kind: 'voidfix'; count: number; point?: number; srcId?: string } // 月相符:作废骰子改为 N 点(任意数量)
+		| { kind: 'voidone'; count: number; srcId?: string }; // 片影卡:只取消点的那一颗的作废(不改面)
 	let pendingAction = $state<PendingAction | null>(null);
 	let pointPicker = $state(false); // set_any 的点数选择(半影卡改成点骰子,不再用它)
 	/** 半影卡:第 i 个 Tee 本关挑选的「不作废」点数(从点的那颗作废骰子上读出来) */
 	let clearedVoid = $state<number[]>([]);
+	/**
+	 * 月相符本关**按颗**解除作废的下标(按 Tee 一份:`[[0,1], ...]`)。
+	 *
+	 * 为什么不能像以前那样「改点即活」:作废现在按**掷出**值判(见 isVoidDie)——
+	 * 掷出的 4 改成 1 也还是「掷出的 4 作废」,光改面救不回来。所以救援必须显式记账,
+	 * 由 modsFor 折成 `voidFixIdx` 进判定。半影卡那套(按面救)走 clearedVoid,别混。
+	 */
+	let voidFixed = $state<number[][]>([]);
 	let setQueue: SetOp[] = [];
 
 	let rollsLeft = $state(0); // 还能重掷几次
@@ -1179,7 +1199,7 @@
 					scoreInput(
 						0,
 						team[0].lastLevelId,
-						liveDiceValues(team[0].lastDice, modsFor(0)),
+						liveDiceValues(team[0].lastDice, modsFor(0), team[0].lastRolled),
 						team[0].lastDice
 					)
 				);
@@ -1347,6 +1367,7 @@
 		pendingAction = null;
 		pointPicker = false;
 		clearedVoid = [];
+		voidFixed = [];
 		choosing = false;
 		rollsLeft = 0;
 		rerollSel = Array(6).fill(false);
@@ -1491,6 +1512,7 @@
 			usedOpCount,
 			optedDice,
 			clearedVoid,
+			voidFixed,
 			pendingAction,
 			pointPicker,
 			setQueue,
@@ -1611,6 +1633,7 @@
 		usedOpSrc = d.usedOpSrc;
 		usedOpCount = d.usedOpCount ?? {};
 		clearedVoid = d.clearedVoid ?? [];
+		voidFixed = d.voidFixed ?? [];
 		optedDice = d.optedDice;
 		pendingAction = d.pendingAction;
 		pointPicker = d.pointPicker;
@@ -1747,7 +1770,7 @@
 			 * `lastBreakdown` 不入档(只在作弊/判定/重算三处赋值),直接拿它建行
 			 * 只会得到一个空的「= 0 分」—— 卡牌明细全丢(踩过)。
 			 */
-			const rawLevel = judgeRoll(dice, mods);
+			const rawLevel = judgeRoll(dice, mods, rolledDice);
 			let up = 0;
 			let upSrcId = '';
 			for (const { eff, srcId } of self)
@@ -1758,10 +1781,10 @@
 			const preUpLevel = getRollLevel(cappedLevelId(rawLevel.id, mods));
 			const level = getRollLevel(tee.lastLevelId);
 			lastLevel = level;
-			const shown = liveDiceValues(dice, mods);
+			const shown = liveDiceValues(dice, mods, rolledDice);
 			diceSum = shown.reduce((a, b) => a + b, 0);
 			// 高亮按抬档**前**那档画(和未刷新时同口径)
-			hitDice = hitIndices(dice, preUpLevel.id, mods);
+			hitDice = hitIndices(dice, preUpLevel.id, mods, rolledDice);
 			const levelUp =
 				up > 0 && rawLevel.id !== 'none' && level.score > preUpLevel.score
 					? { from: preUpLevel, name: cardById(upSrcId)?.name ?? '等级提升' }
@@ -1974,7 +1997,11 @@
 		const isMe = team[i]?.isSelf === true;
 		const selfIdx = team.findIndex((t) => t.isSelf === true);
 		const selfTee = selfIdx >= 0 ? team[selfIdx] : undefined;
-		const selfLiveDice = liveDiceValues(selfTee?.lastDice ?? [], modsFor(selfIdx));
+		const selfLiveDice = liveDiceValues(
+			selfTee?.lastDice ?? [],
+			modsFor(selfIdx),
+			selfTee?.lastRolled
+		);
 		const selfRawDice = rawLiveDice(selfTee?.lastDice ?? [], modsFor(selfIdx));
 		return {
 			// 寒月/凛月:本关加成卡的加值与乘值分别失效
@@ -2054,11 +2081,16 @@
 		);
 		// 半影卡:本关挑中的点数不再作废 —— 作废来自 Boss、自己的卡、还是按颗作废的花生,都算
 		const cleared = clearedVoid[i];
-		return cleared ? mergeMods(base, { clearVoidFaces: [cleared] }) : base;
+		// 月相符:本关按颗救回来的那几颗(和半影卡的按面救并存,谁在就折谁)
+		const fixed = voidFixed[i];
+		let out = cleared ? mergeMods(base, { clearVoidFaces: [cleared] }) : base;
+		if (fixed?.length) out = mergeMods(out, { voidFixIdx: [...fixed] });
+		return out;
 	};
 
 	const shownDice = $derived(applyDiceMods(dice, modsFor(currentTee)));
-	const dieVoid = (i: number) => !dieRolling(i) && isVoidDie(dice, i, modsFor(currentTee));
+	const dieVoid = (i: number) =>
+		!dieRolling(i) && isVoidDie(dice, i, modsFor(currentTee), rolledDice);
 	const diceModded = (i: number) =>
 		optedDice.includes(i) || (!dieRolling(i) && (dieVoid(i) || shownDice[i] !== dice[i]));
 	/**
@@ -2079,7 +2111,7 @@
 	 * 用 applyDiceMods(dice) 现算,不走 shownDice 派生值:调用点就在 dice[i] 赋值的下一行。
 	 */
 	const setOpTargets = (act: PendingAction): number => {
-		if (act.kind === 'voidfix' || act.kind === 'voidclear')
+		if (act.kind === 'voidfix' || act.kind === 'voidclear' || act.kind === 'voidone')
 			return dice.filter((_, k) => dieVoid(k)).length;
 		const shown = applyDiceMods(dice, modsFor(currentTee));
 		// Tee 卡的改点:作废的骰子不算可选(和 onDieClick 同一道门)
@@ -2549,8 +2581,9 @@
 			nextSetOp();
 			return;
 		}
-		// 半影卡:一颗作废的骰子都没有 → 没得点,跳过
-		if (op.kind === 'voidclear' && !dice.some((_, k) => dieVoid(k))) {
+		// 解除作废那三张(半影卡按面 / 片影卡按颗 / 月相符按颗改点):
+		// 一颗作废的骰子都没有 → 没得点,跳过(不算用掉,结算时按「没用掉就归还」退回库存)
+		if ((op.kind === 'voidclear' || op.kind === 'voidone') && !dice.some((_, k) => dieVoid(k))) {
 			nextSetOp();
 			return;
 		}
@@ -2586,6 +2619,8 @@
 			pendingAction = { kind: 'voidfix', count: op.count, point: op.point ?? 1, srcId: op.srcId };
 		else if (op.kind === 'voidclear')
 			pendingAction = { kind: 'voidclear', count: op.count, srcId: op.srcId };
+		else if (op.kind === 'voidone')
+			pendingAction = { kind: 'voidone', count: op.count, srcId: op.srcId };
 		else
 			pendingAction = {
 				kind: 'set_any',
@@ -2639,9 +2674,16 @@
 			if (act.srcId)
 				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 		} else if (act.kind === 'voidfix') {
-			// 月相符:作废骰子救援 —— 只点**作废**的骰子;改点即活(面作废改了面自然就不作废,
-			// 按下标作废要把下标从作废清单里摘掉)。「任意数量」:救完自动收工,想停就跳过
+			// 月相符:作废骰子救援 —— 只点**作废**的骰子,按卡面改成 N 点。
+			// 注意:**改面不再等于救援**(作废按掷出值判,掷出的 4 改走也照样作废),
+			// 所以这里显式记一笔「这颗救回来了」,由 modsFor 折成 voidFixIdx 进判定;
+			// 按下标作废的(花生/高照)也在同一笔里放行(见 isVoidDie,voidFixIdx 最先判)。
+			// 「任意数量」:救到场上没作废骰子了就自动收工,想停就跳过
 			if (!dieVoid(i)) return;
+			const fixedNext = [...voidFixed];
+			while (fixedNext.length <= currentTee) fixedNext.push([]);
+			fixedNext[currentTee] = [...(fixedNext[currentTee] ?? []), i];
+			voidFixed = fixedNext;
 			dice[i] = act.point ?? 1;
 			markOpted();
 			if (hsVoidTee === currentTee) hsVoid = hsVoid.filter((k) => k !== i);
@@ -2652,11 +2694,31 @@
 			if (act.srcId)
 				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 			if (!dice.some((_, k) => dieVoid(k))) act.count = 0;
+		} else if (act.kind === 'voidone') {
+			// 片影卡:按颗救 —— 只点**作废**的骰子,记一笔「这颗救回来了」进 voidFixed
+			// (由 modsFor 折成 voidFixIdx,和月相符共用同一个出口)。
+			// **不改面**:改面是月相符的事;这里连 markOpted 都不记 —— 没改点的骰子不该背上
+			// 「玩家改过」的豁免与退款账(它是被救的,不是被改的)。
+			if (!dieVoid(i)) return;
+			const fixedNext = [...voidFixed];
+			while (fixedNext.length <= currentTee) fixedNext.push([]);
+			fixedNext[currentTee] = [...(fixedNext[currentTee] ?? []), i];
+			voidFixed = fixedNext;
+			// 按下标作废的清单(花生/高照)也摘掉这颗:重掷时按普通规则走,
+			// 别被旧清单再拉回作废(和半影卡/月相符同一口径)
+			if (hsVoidTee === currentTee) hsVoid = hsVoid.filter((k) => k !== i);
+			if (sharedVoidTee === currentTee && sharedVoid)
+				sharedVoid = sharedVoid.filter((k) => k !== i);
+			act.count -= 1;
+			if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
+			if (act.srcId)
+				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 		} else if (act.kind === 'voidclear') {
 			// 半影卡:只点**作废的**骰子(其余画暗、点了没反应)—— 读它的点数,
 			// 本关该点数不作废;同一面的全解除,不管它是按面作废还是按颗作废的
 			if (!dieVoid(i)) return;
-			const face = dice[i];
+			// 认的是**掷出**的点数(作废按掷出判,取消作废也对着它取消)
+			const face = faceRolled(i);
 			const next = [...clearedVoid];
 			while (next.length <= currentTee) next.push(0);
 			next[currentTee] = face;
@@ -2664,9 +2726,9 @@
 			// 按下标作废的那些(花生 / 高照抄来的)也一起放行:同一面的都不再算作废。
 			// 从清单里摘掉之后,这些骰子重掷时就按普通重掷规则走(重掷解除作废),
 			// 而不是被花生那条「首掷作废」的旧清单再拉回来
-			if (hsVoidTee === currentTee) hsVoid = hsVoid.filter((k) => dice[k] !== face);
+			if (hsVoidTee === currentTee) hsVoid = hsVoid.filter((k) => faceRolled(k) !== face);
 			if (sharedVoidTee === currentTee && sharedVoid)
-				sharedVoid = sharedVoid.filter((k) => dice[k] !== face);
+				sharedVoid = sharedVoid.filter((k) => faceRolled(k) !== face);
 			act.count -= 1;
 			if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
 			if (act.srcId)
@@ -2916,7 +2978,7 @@
 		const self = selfEffects(currentTee);
 		const mods = modsFor(currentTee);
 
-		const rawLevel = judgeRoll(dice, mods);
+		const rawLevel = judgeRoll(dice, mods, rolledDice);
 		// 等级提升（玉兔捣药） → 加成卡保底。前提:这一手不是「再接再厉」(掷空不给抬)
 		let up = 0;
 		let upSrcId = '';
@@ -2954,11 +3016,11 @@
 		// 所以计数放这里(后羿自动重掷**之后**):放函数开头会把被重掷掉的那手也记上 = 一次 12 颗
 		for (const v of dice) runStats.scoredFaces[(v >= 1 && v <= 6 ? v : 1) - 1] += 1;
 
-		// 和值按「变换后的点数」算,并剔除作废的骰子 —— 和判定(liveDice)同口径
-		const shown = liveDiceValues(dice, mods);
+		// 和值按「变换后的点数」算,并剔除作废的骰子 —— 和判定(liveDice)同口径(作废按掷出值判)
+		const shown = liveDiceValues(dice, mods, rolledDice);
 		diceSum = shown.reduce((a, b) => a + b, 0);
 		// 高亮按**抬档前**的等级画:骰面兑现的是原等级,抬档单独成行
-		hitDice = hitIndices(dice, preUpLevel.id, mods);
+		hitDice = hitIndices(dice, preUpLevel.id, mods, rolledDice);
 		lastLevel = level;
 		frozenScoreInput = scoreInput(
 			currentTee,
@@ -2971,7 +3033,9 @@
 
 		tee.lastDice = [...dice];
 		// 记下这一手被判作废的骰子(高照抄牌面时要连作废状态一起抄)
-		tee.lastVoid = dice.map((_, k) => (isVoidDie(dice, k, mods) ? k : -1)).filter((k) => k >= 0);
+		tee.lastVoid = dice
+			.map((_, k) => (isVoidDie(dice, k, mods, rolledDice) ? k : -1))
+			.filter((k) => k >= 0);
 		// 玩家亲手改过的那几颗也要跟手记档(不吃「视为」的豁免)—— 队友回头数「我」的骰面、
 		// 回合末桂树记账都要用它,否则口径对不上(踩过)
 		tee.lastOpted = [...optedDice];
@@ -3202,7 +3266,7 @@
 				: scoreInput(
 						i,
 						lv.id,
-						liveDiceValues(team[i].lastDice ?? [], modsFor(i)),
+						liveDiceValues(team[i].lastDice ?? [], modsFor(i), team[i].lastRolled),
 						undefined,
 						// 丹火的「每掷出」口径:这只 Tee 那一手掷出的六颗(lastRolled 是随手的留档)
 						rolledLive(team[i].lastRolled, team[i].lastDice, modsFor(i))
@@ -3359,7 +3423,10 @@
 			const eff = cardById(sk.srcId)?.effect;
 			const pr = eff && eff.type === 'active' && eff.skill === 'sum' ? eff : null;
 			// 作废的骰子不计入和值(和判定同口径)
-			const sum = liveDiceValues(tee.lastDice ?? [], modsFor(i)).reduce((a, b) => a + b, 0);
+			const sum = liveDiceValues(tee.lastDice ?? [], modsFor(i), tee.lastRolled).reduce(
+				(a, b) => a + b,
+				0
+			);
 			const gain = Math.round(sum * (pr?.per ?? 1));
 			const m =
 				pr?.mult && pr.from !== undefined && sum > pr.from ? Math.pow(pr.mult, sum - pr.from) : 1;
@@ -3453,8 +3520,9 @@
 		// (不撤的话重来的那关结束照样卖「我」+发币,币还是白拿的)
 		homingSell = null;
 		// 半影卡挑的「不作废」点数也作废重来:usedOpCount 已经清了(卡会退回库存),
-		// 这份效果却留着 = 白拿一次整关的点数豁免(踩过)
+		// 这份效果却留着 = 白拿一次整关的点数豁免(踩过)。月相符按颗救的那份同理。
 		clearedVoid = [];
+		voidFixed = [];
 		rollCurrent();
 	};
 
@@ -3638,7 +3706,7 @@
 			// 按 Tee 记(不按卡):同名的两只各算各的,这只被卖掉它的数就没了。
 			team.forEach((t, k) => {
 				if (k > countedTee) return;
-				const shown = liveDiceValues(t.lastDice ?? [], modsFor(k));
+				const shown = liveDiceValues(t.lastDice ?? [], modsFor(k), t.lastRolled);
 				for (const { eff, srcId } of selfEffects(k)) {
 					if (eff.type !== 'own_face_grow') continue;
 					const n = shown.filter((v) => v === eff.face).length;
@@ -4172,6 +4240,55 @@
 	 * 结束屏(game_over)例外:仓库+队伍整块收起(它有自己的总结屏)、退回单列。
 	 */
 	const deskSplit = $derived(showTeamPanel);
+
+	// ---- 分享战绩(结算屏) ----
+	/** 分享弹窗开关 */
+	let showShare = $state(false);
+	/**
+	 * 「闯过 x 关」:和结算屏「倒在了第 N 关」同一口径 —— 倒下那关没过,所以是 N−1。
+	 * 复制文案和海报上读的都是这一个数(两处对不上就说明这里被改坏了)。
+	 */
+	const clearedRounds = $derived(Math.max(0, finalRound - 1));
+	const shareText = $derived(buildShareText(clearedRounds, finalRunScore));
+	/** 弹窗里那行预览:省掉链接(标点收在「你也来试试吧」),复制时照样是全文 */
+	const sharePreview = $derived(buildShareTextPreview(clearedRounds, finalRunScore));
+	/**
+	 * 海报数据:结算屏上展示的那些数原样搬过去(不再算一遍,免得两处口径跑偏)。
+	 * 队伍用**稀有度色**描边(和结算屏卡片一个口径),「我」固定琥珀 —— 海报上要一眼认出自己。
+	 */
+	const posterData = $derived<PosterData>({
+		score: finalRunScore,
+		round: finalRound,
+		roundScore: finalScore,
+		roundTarget: target,
+		bestScore: save.bestScore,
+		bestRound: save.bestRound,
+		isNewBest,
+		duration: formatDuration(runDurationMs),
+		soldTees,
+		cardsBought: runStats.cardsBought,
+		earnedMooncakes: runStats.earnedMooncakes,
+		rerolled: runStats.rerolled,
+		scoredFaces: [...runStats.scoredFaces],
+		team: team.map((t) => {
+			const card = cardOf(t);
+			return {
+				name: t.isSelf ? '我' : (card?.name ?? 'Tee'),
+				skin: card?.skin ?? (t.isSelf ? SELF_SKIN : (t.cardId ?? 'naomi')),
+				color: t.isSelf ? '#fbbf24' : RARITY_INFO[card?.rarity ?? 'common'].color,
+				isSelf: t.isSelf === true
+			};
+		}),
+		buffs: topBoughtBuffs.slice(0, 3).map(([id, count]) => {
+			const card = BUFF_BY_ID.get(id);
+			return {
+				name: card?.name ?? id,
+				color: RARITY_INFO[card?.rarity ?? 'common'].color,
+				count
+			};
+		}),
+		date: formatPosterDate(runStats.startedAt)
+	});
 </script>
 
 <svelte:head>
@@ -5058,6 +5175,10 @@
 											<span class="text-cyan-300"
 												>{opSrcName(pendingAction.srcId)} ✨ 点作废的骰子改为 {pendingAction.point} 点(救几颗随意)</span
 											>
+										{:else if pendingAction?.kind === 'voidone'}
+											<span class="text-cyan-300"
+												>{opSrcName(pendingAction.srcId)} ✨ 点一颗作废的骰子取消这颗的作废</span
+											>
 										{:else if pendingAction?.kind === 'voidclear'}
 											<span class="text-cyan-300"
 												>{opSrcName(pendingAction.srcId)} ✨ 点一颗作废的骰子取消作废</span
@@ -5603,12 +5724,22 @@
 									</div>
 								{/if}
 
-								<div class="go-row mt-2.5 flex justify-center gap-2 sm:gap-3">
+								<div class="go-row mt-2.5 flex flex-wrap justify-center gap-2 sm:gap-3">
 									<button
 										class="rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-6 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 sm:px-10 lg:text-lg"
 										onclick={startGame}
 									>
 										🎲 再来一局
+									</button>
+									<button
+										class="flex items-center gap-1.5 rounded-xl border border-sky-400/60 bg-sky-500/15 px-4 py-2.5 font-semibold text-sky-200 transition hover:bg-sky-500/25 active:scale-95 sm:px-6"
+										onclick={() => {
+											sfxClick();
+											showShare = true;
+										}}
+									>
+										<Fa icon={faShareNodes} />
+										<span>分享战绩</span>
 									</button>
 									<button
 										class="rounded-xl border border-slate-500 bg-slate-700 px-4 py-2.5 font-semibold text-slate-200 transition hover:bg-slate-600 sm:px-6"
@@ -5627,6 +5758,9 @@
 
 	<!-- ================= Tee 图鉴 ================= -->
 	<Codex bind:show={showCodex} />
+
+	<!-- ================= 分享战绩(结算屏) ================= -->
+	<ShareModal bind:show={showShare} data={posterData} text={shareText} preview={sharePreview} />
 
 	<!-- ================= 一次性提示 ================= -->
 	<!-- 不参与布局(fixed):掛卡被拒之类的一句话提示,2.6 秒后自己消失。

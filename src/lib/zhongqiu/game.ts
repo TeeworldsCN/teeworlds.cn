@@ -15,16 +15,45 @@ import { BUFF_BY_ID, type AppliedBuff } from './items';
 //
 
 // R1~R8 不动(新手区),R9 起坡度从 ×1.18 提到 ×1.23,到 R16 = 7200;
-// 超出 16 后按 ×1.25 递增(原来只有 ×1.15 —— 比数组本身的坡度还缓,后期反而变简单了)。
+// 超出 16 后按 ×1.25 递增(原来只有 ×1.15 —— 比数组本身的坡度还缓,后期反而变简单了);
+// **R31 起抬到 ×1.5**(原来 ×1.25 到 30 关后就跟不上队伍成长:R40 才 152 万),
+// **R41 起每关 ×1.55**(≈ 每 5 关 ×9)—— 后期继续指数上去,但比 ×1.585 收一点
+// (R45 ≈ 8445 万、R50 ≈ 7.6 亿、R55 ≈ 68 亿)。
 export const TARGETS = [
 	60, 120, 240, 450, 750, 1050, 1250, 1500, 1750, 2100, 2500, 3000, 3600, 4500, 5700, 7200
 ];
 
+/** R17 起每关的倍数(和 R13→R16 的实测斜率一致:30855→60000 ≈ ×1.25/关) */
+const TARGET_STEP = 1.25;
+/** 换挡的那一关:**R30 之后**(即 R31 起)走下面那个更陡的斜率,R30 及之前一律不动 */
+const TARGET_STEP_UP_AT = 30;
+/** R31 起的每关倍数 */
+const TARGET_STEP_LATE = 1.5;
+/**
+ * R41 起再换一挡:**每关 ×1.55**(≈ 每 5 关 ×9)。
+ *
+ * 前面那两挡(×1.25 / ×1.5)到后期跟不上了,这一挡把后期拉回指数;
+ * 但比「每 5 关 ×10」(×1.585)收一点 —— 那条在 R50 就到 9.4 亿,R55/R60 直接上百亿,
+ * 留给玩家构筑的空间太窄。×1.55 下:R45 ≈ 8445 万 · R50 ≈ 7.6 亿 · R55 ≈ 68 亿 · R60 ≈ 605 亿。
+ * (R30 / R40 两个换挡点之前的关卡一律不变。)
+ */
+const TARGET_LATE_AT = 40;
+const TARGET_STEP_LATE2 = 1.55;
+
+const roundTo10 = (x: number) => Math.round(x / 10) * 10;
+
+/** R17 起第 n 关的「基准值」(不取整):R16 的值 × TARGET_STEP^(n−16) */
+const targetAt = (n: number) =>
+	TARGETS[TARGETS.length - 1] * Math.pow(TARGET_STEP, n - TARGETS.length);
+
 export const roundTarget = (n: number): number => {
 	if (n <= TARGETS.length) return TARGETS[n - 1];
-	// 之后按 ×1.25 递增(和 R13→R16 的实测斜率一致:30855→60000 ≈ ×1.25/关)
-	const last = TARGETS[TARGETS.length - 1];
-	return Math.round((last * Math.pow(1.25, n - TARGETS.length)) / 10) * 10;
+	if (n <= TARGET_STEP_UP_AT) return roundTo10(targetAt(n));
+	// 换挡都从**未取整**的值接着乘(每关各自取整会让坡面有一格一格的小台阶)
+	const scaled = (k: number) =>
+		targetAt(TARGET_STEP_UP_AT) * Math.pow(TARGET_STEP_LATE, k - TARGET_STEP_UP_AT);
+	if (n <= TARGET_LATE_AT) return roundTo10(scaled(n));
+	return roundTo10(scaled(TARGET_LATE_AT) * Math.pow(TARGET_STEP_LATE2, n - TARGET_LATE_AT));
 };
 
 /** 是否 Boss 关(每 Ante 的第 3 关) */
@@ -540,7 +569,7 @@ export const upgradeLevel = (levelId: string, count: number): string => {
 };
 
 export interface SetOp {
-	kind: 'point' | 'any' | 'bump' | 'voidclear' | 'voidfix';
+	kind: 'point' | 'any' | 'bump' | 'voidclear' | 'voidfix' | 'voidone';
 	count: number;
 	point?: number;
 	/** bump: 位移方向(+1 月牙尺 / −1 缺月尺) */
@@ -604,6 +633,9 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 			// 月相符:作废骰子救援 —— 「任意数量」,上限就是全场骰子数,玩家点几颗算几颗
 			// (它是**救**作废骰子的,不带 noVoid)
 			ops.push({ kind: 'voidfix', count: 6, point: e.point ?? 1, srcId });
+		else if (e.type === 'void_one')
+			// 片影卡:只救点了的那**一颗**(不改面)—— 也走「救作废骰子」那条,所以不带 noVoid
+			ops.push({ kind: 'voidone', count: 1, srcId });
 	};
 	// Tee 卡(永久)的改点不能选作废骰子;加成卡的照旧,全部骰子都能改
 	for (const { eff, srcId } of self) walk(eff as unknown as AnyEff, srcId, true);
@@ -1886,7 +1918,9 @@ export type RunOp =
 	  }
 	| { kind: 'bump'; count: number; step?: number; srcId?: string }
 	| { kind: 'voidclear'; count: number; srcId?: string }
-	| { kind: 'voidfix'; count: number; point?: number; srcId?: string };
+	| { kind: 'voidfix'; count: number; point?: number; srcId?: string }
+	/** 片影卡:只取消点的那一颗的作废(不改面) */
+	| { kind: 'voidone'; count: number; srcId?: string };
 
 export type RunSave = {
 	v: number;
@@ -1944,6 +1978,8 @@ export type RunSave = {
 	usedOpCount?: Record<string, number>;
 	optedDice: number[];
 	clearedVoid: number[];
+	/** 月相符本关按颗解除作废的下标(按 Tee 记);老存档没有这个字段 → 读档兜底成 [] */
+	voidFixed?: number[][];
 	pendingAction: RunOp | null;
 	pointPicker: boolean;
 	setQueue: SetOp[];
@@ -2095,6 +2131,14 @@ const validateRun = (d: RunSave): void => {
 		'setQueue'
 	])
 		check(k, 'arr');
+	// 可选字段:在就必须是「数组的数组,元素是数字」(坏档宁可丢掉,别带病渲染)
+	if (d.voidFixed !== undefined) {
+		if (
+			!Array.isArray(d.voidFixed) ||
+			d.voidFixed.some((a) => !Array.isArray(a) || a.some((v) => !isNum(v)))
+		)
+			bad('voidFixed');
+	}
 	if (d.dice.some((v) => !isNum(v))) bad('dice');
 };
 

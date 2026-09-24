@@ -155,6 +155,15 @@ export interface DiceMods {
 	/** 按下标作废(花生:回合初始投掷整把作废,重掷的那几颗才解除) */
 	voidIdx?: number[];
 	/**
+	 * 「按颗解除作废」(月相符):这几颗**整颗**不再算作废。
+	 *
+	 * 和 `clearVoidFaces` 分工:那个是按**面**救(半影卡挑一个点数,那一面的都不作废),
+	 * 这个是按**颗**救。为什么需要它:作废按**掷出**值判(见 isVoidDie),掷出的 4 改点
+	 * 也还是「掷出的 4 作废」—— 月相符把作废骰子改成 1 点这件事本身**不再等于救援**,
+	 * 得显式记一笔「这颗是我救回来的」。优先于一切作废口径(点数作废 / 按下标作废)。
+	 */
+	voidFixIdx?: number[];
+	/**
 	 * 「重掷就作废」:这几颗**只要被重掷过**就整颗作废(滞月:左数第 N 颗)。
 	 * ⚠ 这是**声明**,引擎自己不看它 —— 「这一手哪几颗重掷过」只有页面知道,
 	 * 由页面折算成 `voidIdx` 再进判定(工具直接喂 voidIdx 就行)。
@@ -266,6 +275,13 @@ const clearedFacesOf = (mods?: DiceMods): number[] => {
 export const isVoidFace = (face: number, mods?: DiceMods): boolean =>
 	!clearedFacesOf(mods).includes(face) && voidFacesOf(mods).includes(face);
 
+/** 被月相符按颗解除作废的骰子 */
+export const voidFixIdxOf = (mods?: DiceMods): number[] => {
+	if (!mods) return [];
+	if (mods.chain?.length) return mods.chain.flatMap(voidFixIdxOf);
+	return mods.voidFixIdx ?? [];
+};
+
 /** 按下标作废的骰子(花生) */
 export const voidIdxOf = (mods?: DiceMods): number[] => {
 	if (!mods) return [];
@@ -276,42 +292,59 @@ export const voidIdxOf = (mods?: DiceMods): number[] => {
 /**
  * 第 i 颗骰子是否作废 —— 按点数(Boss/自己的卡)和按下标(花生 / 高照抄来的)两种口径合一。
  *
+ * 作废只看**掷出**的点数(用户裁定 2026-09):掷出的 4 改走也照样作废、改点改出来的 4
+ * 在蚀月下不作废 —— 「本关掷出的 4 作废」这句文案就是这么念的,骰子底面画的也是掷出值。
+ * 救作废的骰子只有两条正路:半影卡(`clearVoidFaces`,取消该点数的作废)/
+ * 月相符(`voidFixIdx`,按颗救),改点不算救援。
+ *
  * 半影卡挑中的点数**两种作废都救**:同一颗骰子只要它的面在「取消作废」名单里就不再算作废,
  * 不管它是按面作废还是按颗作废的 —— 花生整把作废时,挑一个点数至少能把这一面救回来。
  * (与月相符的「按颗救」不同:半影卡是按面救。名单为空的平时行为与以前完全一致。)
+ *
+ * `rolled` = 掷出那一刻的六颗(改点之后的手当 dice 传):判定一律按 rolled[i]。
+ * 不传就按 dice[i] —— 引擎/QA 直接拿一手骰子来算时,那手本来就是掷出值。
  */
-export const isVoidDie = (dice: number[], i: number, mods?: DiceMods): boolean =>
-	clearedFacesOf(mods).includes(dice[i])
+export const isVoidDie = (
+	dice: number[],
+	i: number,
+	mods?: DiceMods,
+	rolled?: number[]
+): boolean => {
+	// 月相符救回来的整颗最优先:它救的就是「掷出值判出来的作废」,不能被下面任何一条否掉
+	if (voidFixIdxOf(mods).includes(i)) return false;
+	const face = rolled?.[i] ?? dice[i];
+	return clearedFacesOf(mods).includes(face)
 		? false
-		: voidIdxOf(mods).includes(i) || isVoidFace(dice[i], mods);
+		: voidIdxOf(mods).includes(i) || isVoidFace(face, mods);
+};
 
 /**
  * 参与结算的点数:套上 map/shift 之后,把**作废**的骰子整个剔掉。
  * 判定、和值、点数类效果(每颗 4 分 / 某点数个数 / 连号)都要用这个 ——
  * 作废的意思是「这颗骰子本关不算数」,不只是不算牌型。
- * 作废按**原始骰面**判:改点把 6 改成 4 之后就不再作废了。
+ * 作废只看**掷出**的点数(见 isVoidDie):改点不改命。
  */
-export const liveDiceValues = (dice: number[], mods?: DiceMods): number[] => {
+export const liveDiceValues = (dice: number[], mods?: DiceMods, rolled?: number[]): number[] => {
 	const shown = applyDiceMods(dice, mods);
-	return shown.filter((_, i) => !isVoidDie(dice, i, mods));
+	return shown.filter((_, i) => !isVoidDie(dice, i, mods, rolled));
 };
 
 /** 原始骰面(不做 map/shift),只剔掉作废的 —— 给「重复牌倍率」这类数真实骰面的效果用 */
-export const rawLiveDice = (dice: number[], mods?: DiceMods): number[] =>
-	dice.filter((_, i) => !isVoidDie(dice, i, mods));
+export const rawLiveDice = (dice: number[], mods?: DiceMods, rolled?: number[]): number[] =>
+	dice.filter((_, i) => !isVoidDie(dice, i, mods, rolled));
 
 /**
  * 「掷出」的骰面:**改点之前**的值(骰子底面画的也是它)。
  *
- * 作废按**最终**骰面判(改点把作废面改走 = 改点即救援,与 liveDiceValues 同口径),
- * 所以两个数组都要传:rolled = 掷出来那一刻的手,dice = 改点之后的当前手。
+ * 作废只看**掷出**的点数,所以两个数组都要传:rolled = 掷出来那一刻的手,dice = 改点之后的
+ * 当前手 —— 剔哪几颗按 rolled 判(和 liveDiceValues 同一只 isVoidDie)。
  *
  * ⚠️ 只服务 `own_face.asRolled`(丹火:改点来的点数进不了乘算,
  *    「保底两颗 4 点 × 2/颗」会变成 80 分的保底)。
  *    文案写「每有」「最终骰子里」的那族一律用最终骰面(ownDice),别拿这个换。
  */
 export const rolledLiveDice = (rolled: number[], dice: number[], mods?: DiceMods): number[] =>
-	rolled.filter((_, i) => !isVoidDie(dice, i, mods));
+	rolled.filter((_, i) => !isVoidDie(dice, i, mods, rolled));
 
 /**
  * 「每**掷出** 1 颗 X 点」的计数:**原投掷的算,改成 X 点的也算,同一颗只算一次**。
@@ -389,21 +422,25 @@ export const cappedLevelId = (levelId: string, mods?: DiceMods): string =>
 const stripLevelCap = (mods: DiceMods): DiceMods =>
 	mods.chain ? { chain: mods.chain.map(stripLevelCap) } : { ...mods, levelCap: undefined };
 
-const liveDice = (dice: number[], mods?: DiceMods): { values: number[]; faces: number[] } => {
+const liveDice = (
+	dice: number[],
+	mods?: DiceMods,
+	rolled?: number[]
+): { values: number[]; faces: number[] } => {
 	const shown = applyDiceMods(dice, mods);
 	const values: number[] = [];
 	const faces: number[] = [];
 	dice.forEach((raw, i) => {
-		if (isVoidDie(dice, i, mods)) return;
+		if (isVoidDie(dice, i, mods, rolled)) return;
 		values.push(shown[i]);
 		faces.push(raw);
 	});
 	return { values, faces };
 };
 
-export function judgeRoll(dice: number[], mods?: DiceMods): RollLevel {
-	let res = judgeRollRaw(dice, mods);
-	const { values: d } = liveDice(dice, mods);
+export function judgeRoll(dice: number[], mods?: DiceMods, rolled?: number[]): RollLevel {
+	let res = judgeRollRaw(dice, mods, rolled);
+	const { values: d } = liveDice(dice, mods, rolled);
 	const raiseTo = (lid: string | null) => {
 		if (!lid) return;
 		const up = applyLevelCap(getRollLevel(lid), mods);
@@ -418,8 +455,8 @@ export function judgeRoll(dice: number[], mods?: DiceMods): RollLevel {
 	return res;
 }
 
-function judgeRollRaw(dice: number[], mods?: DiceMods): RollLevel {
-	const { values: d } = liveDice(dice, mods);
+function judgeRollRaw(dice: number[], mods?: DiceMods, rolled?: number[]): RollLevel {
+	const { values: d } = liveDice(dice, mods, rolled);
 	const counts = [0, 0, 0, 0, 0, 0, 0]; // index 1..6
 	for (const v of d) counts[v]++;
 
@@ -473,10 +510,15 @@ const faceFloorHit = (d: number[], at: (k: number) => number, levelId: string): 
 	return d.map((v, k) => (v === val ? at(k) : -1)).filter((i) => i >= 0);
 };
 
-export function hitIndices(dice: number[], levelId: string, mods?: DiceMods): number[] {
+export function hitIndices(
+	dice: number[],
+	levelId: string,
+	mods?: DiceMods,
+	rolled?: number[]
+): number[] {
 	const shown = applyDiceMods(dice, mods);
-	// 作废的骰子永不参与高亮
-	const idx = dice.map((_, i) => (isVoidDie(dice, i, mods) ? -1 : i)).filter((i) => i >= 0);
+	// 作废的骰子永不参与高亮(作废按掷出值判,见 isVoidDie)
+	const idx = dice.map((_, i) => (isVoidDie(dice, i, mods, rolled) ? -1 : i)).filter((i) => i >= 0);
 	const d = idx.map((i) => shown[i]);
 	// 封顶(血月)时按**原本掷出的牌型**高亮,否则玩家看不出是哪几颗凑的
 	if (hasMod(mods, 'levelCap')) levelId = judgeRoll(dice, stripLevelCap(mods!)).id;
