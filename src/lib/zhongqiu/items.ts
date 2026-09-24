@@ -630,7 +630,7 @@ export const BUFF_CARDS: BuffCard[] = [
 		name: '片影卡',
 		desc: '选择一个骰子，取消这颗骰子的作废',
 		rarity: 'common',
-		skin: 'Shadow',
+		skin: 'racerkitty',
 		price: 3,
 		turns: 1,
 		effect: { type: 'void_one' }
