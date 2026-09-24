@@ -87,6 +87,17 @@ const FONT_STACK = `"Zhongqiu Poster Emoji", ui-sans-serif, system-ui, -apple-sy
  */
 const FONT_BRUSH = `"Zhongqiu Brush", ${FONT_STACK}`;
 
+/**
+ * **纯系统 sans**(不带任何自带字体):给「不能受字体加载影响」的那几行用。
+ *
+ * 为什么要它:上面那个栈把自带的 emoji 子集放在最前。多数浏览器会按 `unicode-range`
+ * 把汉字让给后面的系统字体,但也有(尤其移动端)在 canvas 里不认这条,于是整行走自带字体 ——
+ * 自带字体一旦没就位/被解码器挑食,那行就**又小又糊甚至整行不见**(用户实测:二维码下面
+ * 「来挑战我的记录」在安卓上消失,而同样用系统字体的其它标签都好好的)。
+ * 二维码下面那行本来就该是普通黑体,索性钉死成系统字体。
+ */
+const FONT_SANS = `ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif`;
+
 const COLOR = {
 	bgTop: '#080d20',
 	bgMid: '#131c3d',
@@ -782,6 +793,8 @@ const drawHero = (
 		{
 			size: SIZE.qrCaption,
 			weight: 700,
+			// 钉死系统字体:这行只是普通黑体,不该赌自带字体在各设备上的表现(见 FONT_SANS)
+			family: FONT_SANS,
 			color: COLOR.plateText,
 			align: 'center'
 		}
