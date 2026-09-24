@@ -599,15 +599,17 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'change',
 		name: '丹砂',
-		desc: '改 1 颗骰子为 4 点；自己每有 1 颗 4 点：得分 ×1.25',
+		desc: '改 1 颗骰子为 4 点；自己每掷出 1 颗 4 点：得分 ×1.25',
 		rarity: 'rare',
 		tag: '丹',
 		skin: 'TeeAngel',
 		effect: {
 			type: 'bundle',
 			parts: [
+				// asRolled:和丹火同一口径 —— 改点来的 4 点只顶等级,不进乘算
+				// (否则「改 1 颗为 4」的保底 × 乘算叠在一起)
 				{ type: 'set_point', count: 1, point: 4 },
-				{ type: 'own_face', face: 4, mult: 1.25 }
+				{ type: 'own_face', face: 4, mult: 1.25, asRolled: true }
 			]
 		}
 	},
@@ -816,15 +818,16 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'wugang',
 		name: '丹诀',
-		desc: '把 1 颗骰子改为任意点数；自己每有 1 颗 4 点：得分 ×2',
+		desc: '把 1 颗骰子改为任意点数；自己每掷出 1 颗 4 点：得分 ×2',
 		rarity: 'legendary',
 		tag: '丹',
 		skin: 'king-greyfox',
 		effect: {
 			type: 'bundle',
 			parts: [
+				// asRolled:和丹火同一口径(丹家的三张都改成「掷出」了)
 				{ type: 'set_any', count: 1 },
-				{ type: 'own_face', face: 4, mult: 2 }
+				{ type: 'own_face', face: 4, mult: 2, asRolled: true }
 			]
 		}
 	},
