@@ -15,16 +15,31 @@ import { BUFF_BY_ID, type AppliedBuff } from './items';
 //
 
 // R1~R8 不动(新手区),R9 起坡度从 ×1.18 提到 ×1.23,到 R16 = 7200;
-// 超出 16 后按 ×1.25 递增(原来只有 ×1.15 —— 比数组本身的坡度还缓,后期反而变简单了)。
+// 超出 16 后按 ×1.25 递增(原来只有 ×1.15 —— 比数组本身的坡度还缓,后期反而变简单了);
+// **R31 起再抬到 ×1.5** —— 原来 ×1.25 到 30 关后就跟不上队伍成长了(R40 才 152 万),
+// 抬完之后 R35 ≈ 124 万、R40 ≈ 944 万,和「养成一路滚起来」的手感对得上。
 export const TARGETS = [
 	60, 120, 240, 450, 750, 1050, 1250, 1500, 1750, 2100, 2500, 3000, 3600, 4500, 5700, 7200
 ];
 
+/** R17 起每关的倍数(和 R13→R16 的实测斜率一致:30855→60000 ≈ ×1.25/关) */
+const TARGET_STEP = 1.25;
+/** 换挡的那一关:**R30 之后**(即 R31 起)走下面那个更陡的斜率,R30 及之前一律不动 */
+const TARGET_STEP_UP_AT = 30;
+/** R31 起的每关倍数 */
+const TARGET_STEP_LATE = 1.5;
+
+const roundTo10 = (x: number) => Math.round(x / 10) * 10;
+
+/** R17 起第 n 关的「基准值」(不取整):R16 的值 × TARGET_STEP^(n−16) */
+const targetAt = (n: number) =>
+	TARGETS[TARGETS.length - 1] * Math.pow(TARGET_STEP, n - TARGETS.length);
+
 export const roundTarget = (n: number): number => {
 	if (n <= TARGETS.length) return TARGETS[n - 1];
-	// 之后按 ×1.25 递增(和 R13→R16 的实测斜率一致:30855→60000 ≈ ×1.25/关)
-	const last = TARGETS[TARGETS.length - 1];
-	return Math.round((last * Math.pow(1.25, n - TARGETS.length)) / 10) * 10;
+	if (n <= TARGET_STEP_UP_AT) return roundTo10(targetAt(n));
+	// 换挡:从 R30 那一关的**未取整**值接着乘(每关各自取整会让坡面有一格一格的小台阶)
+	return roundTo10(targetAt(TARGET_STEP_UP_AT) * Math.pow(TARGET_STEP_LATE, n - TARGET_STEP_UP_AT));
 };
 
 /** 是否 Boss 关(每 Ante 的第 3 关) */
