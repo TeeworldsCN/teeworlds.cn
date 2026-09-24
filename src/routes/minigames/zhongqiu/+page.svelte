@@ -737,7 +737,8 @@
 				noVoid?: boolean;
 		  }
 		| { kind: 'bump'; count: number; step?: number; srcId?: string; noVoid?: boolean } // 月牙尺 +1 / 缺月尺 −1:点一颗骰子
-		| { kind: 'voidfix'; count: number; point?: number; srcId?: string }; // 月相符:作废骰子改为 N 点(任意数量)
+		| { kind: 'voidfix'; count: number; point?: number; srcId?: string } // 月相符:作废骰子改为 N 点(任意数量)
+		| { kind: 'voidone'; count: number; srcId?: string }; // 片影卡:只取消点的那一颗的作废(不改面)
 	let pendingAction = $state<PendingAction | null>(null);
 	let pointPicker = $state(false); // set_any 的点数选择(半影卡改成点骰子,不再用它)
 	/** 半影卡:第 i 个 Tee 本关挑选的「不作废」点数(从点的那颗作废骰子上读出来) */
@@ -2110,7 +2111,7 @@
 	 * 用 applyDiceMods(dice) 现算,不走 shownDice 派生值:调用点就在 dice[i] 赋值的下一行。
 	 */
 	const setOpTargets = (act: PendingAction): number => {
-		if (act.kind === 'voidfix' || act.kind === 'voidclear')
+		if (act.kind === 'voidfix' || act.kind === 'voidclear' || act.kind === 'voidone')
 			return dice.filter((_, k) => dieVoid(k)).length;
 		const shown = applyDiceMods(dice, modsFor(currentTee));
 		// Tee 卡的改点:作废的骰子不算可选(和 onDieClick 同一道门)
@@ -2580,8 +2581,9 @@
 			nextSetOp();
 			return;
 		}
-		// 半影卡:一颗作废的骰子都没有 → 没得点,跳过
-		if (op.kind === 'voidclear' && !dice.some((_, k) => dieVoid(k))) {
+		// 解除作废那三张(半影卡按面 / 片影卡按颗 / 月相符按颗改点):
+		// 一颗作废的骰子都没有 → 没得点,跳过(不算用掉,结算时按「没用掉就归还」退回库存)
+		if ((op.kind === 'voidclear' || op.kind === 'voidone') && !dice.some((_, k) => dieVoid(k))) {
 			nextSetOp();
 			return;
 		}
@@ -2617,6 +2619,8 @@
 			pendingAction = { kind: 'voidfix', count: op.count, point: op.point ?? 1, srcId: op.srcId };
 		else if (op.kind === 'voidclear')
 			pendingAction = { kind: 'voidclear', count: op.count, srcId: op.srcId };
+		else if (op.kind === 'voidone')
+			pendingAction = { kind: 'voidone', count: op.count, srcId: op.srcId };
 		else
 			pendingAction = {
 				kind: 'set_any',
@@ -2690,6 +2694,25 @@
 			if (act.srcId)
 				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 			if (!dice.some((_, k) => dieVoid(k))) act.count = 0;
+		} else if (act.kind === 'voidone') {
+			// 片影卡:按颗救 —— 只点**作废**的骰子,记一笔「这颗救回来了」进 voidFixed
+			// (由 modsFor 折成 voidFixIdx,和月相符共用同一个出口)。
+			// **不改面**:改面是月相符的事;这里连 markOpted 都不记 —— 没改点的骰子不该背上
+			// 「玩家改过」的豁免与退款账(它是被救的,不是被改的)。
+			if (!dieVoid(i)) return;
+			const fixedNext = [...voidFixed];
+			while (fixedNext.length <= currentTee) fixedNext.push([]);
+			fixedNext[currentTee] = [...(fixedNext[currentTee] ?? []), i];
+			voidFixed = fixedNext;
+			// 按下标作废的清单(花生/高照)也摘掉这颗:重掷时按普通规则走,
+			// 别被旧清单再拉回作废(和半影卡/月相符同一口径)
+			if (hsVoidTee === currentTee) hsVoid = hsVoid.filter((k) => k !== i);
+			if (sharedVoidTee === currentTee && sharedVoid)
+				sharedVoid = sharedVoid.filter((k) => k !== i);
+			act.count -= 1;
+			if (act.srcId && !usedOpSrc.includes(act.srcId)) usedOpSrc = [...usedOpSrc, act.srcId];
+			if (act.srcId)
+				usedOpCount = { ...usedOpCount, [act.srcId]: (usedOpCount[act.srcId] ?? 0) + 1 };
 		} else if (act.kind === 'voidclear') {
 			// 半影卡:只点**作废的**骰子(其余画暗、点了没反应)—— 读它的点数,
 			// 本关该点数不作废;同一面的全解除,不管它是按面作废还是按颗作废的
@@ -5151,6 +5174,10 @@
 										{:else if pendingAction?.kind === 'voidfix'}
 											<span class="text-cyan-300"
 												>{opSrcName(pendingAction.srcId)} ✨ 点作废的骰子改为 {pendingAction.point} 点(救几颗随意)</span
+											>
+										{:else if pendingAction?.kind === 'voidone'}
+											<span class="text-cyan-300"
+												>{opSrcName(pendingAction.srcId)} ✨ 点一颗作废的骰子取消这颗的作废</span
 											>
 										{:else if pendingAction?.kind === 'voidclear'}
 											<span class="text-cyan-300"

@@ -540,7 +540,7 @@ export const upgradeLevel = (levelId: string, count: number): string => {
 };
 
 export interface SetOp {
-	kind: 'point' | 'any' | 'bump' | 'voidclear' | 'voidfix';
+	kind: 'point' | 'any' | 'bump' | 'voidclear' | 'voidfix' | 'voidone';
 	count: number;
 	point?: number;
 	/** bump: 位移方向(+1 月牙尺 / −1 缺月尺) */
@@ -604,6 +604,9 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 			// 月相符:作废骰子救援 —— 「任意数量」,上限就是全场骰子数,玩家点几颗算几颗
 			// (它是**救**作废骰子的,不带 noVoid)
 			ops.push({ kind: 'voidfix', count: 6, point: e.point ?? 1, srcId });
+		else if (e.type === 'void_one')
+			// 片影卡:只救点了的那**一颗**(不改面)—— 也走「救作废骰子」那条,所以不带 noVoid
+			ops.push({ kind: 'voidone', count: 1, srcId });
 	};
 	// Tee 卡(永久)的改点不能选作废骰子;加成卡的照旧,全部骰子都能改
 	for (const { eff, srcId } of self) walk(eff as unknown as AnyEff, srcId, true);
@@ -1886,7 +1889,9 @@ export type RunOp =
 	  }
 	| { kind: 'bump'; count: number; step?: number; srcId?: string }
 	| { kind: 'voidclear'; count: number; srcId?: string }
-	| { kind: 'voidfix'; count: number; point?: number; srcId?: string };
+	| { kind: 'voidfix'; count: number; point?: number; srcId?: string }
+	/** 片影卡:只取消点的那一颗的作废(不改面) */
+	| { kind: 'voidone'; count: number; srcId?: string };
 
 export type RunSave = {
 	v: number;
