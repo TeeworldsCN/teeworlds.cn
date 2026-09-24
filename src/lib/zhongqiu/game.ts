@@ -895,6 +895,12 @@ export interface ScoreInput {
 	leftScore?: number;
 	/** 这只 Tee 入队之后卖掉过几个 Tee(sold_chips / sell_scale 用) */
 	soldCount?: number;
+	/**
+	 * 本关全队各判定等级出现了几次(键 = 等级 id)。
+	 * 逐 Tee 结算时**只是记账**(给团队那一轮用),`calcTeeScore` 自己不吃它 ——
+	 * 数得全的地方在 `calcTeamTotal`(同参数)。
+	 */
+	teamLevelCounts?: Record<string, number>;
 }
 
 export const calcTeeScore = ({
@@ -1626,7 +1632,15 @@ export const calcTeamTotal = (
 	 * 依赖「我」的团队效果(月上广寒的 team_ratio / 饼铺掌柜的 no_me_team_mult)都看它。
 	 * 不传就退回老口径(有无卡的那一位):工具侧的调用没身份信息。
 	 */
-	hasSelf?: boolean
+	hasSelf?: boolean,
+	/**
+	 * 本关全队各判定等级出现了几次(键 = 等级 id)。**只在团队那一轮读**(逐 Tee 结算时数不全)。
+	 * 「连珠灯照」的 `team_level_mult` 读它:本关掷出几个对堂,全队总分就再乘 per^几个(0 个 = ×1)。
+	 * 该效果自带 `free`(前几个不算,卡面写「每**多**出 1 个」):层数由**队伍人数**自然封住,
+	 * 六只最多 5 层 —— 正常队伍里「我」没有 Tee 卡、进不了这条线,所以常态上限是 4 层。
+	 * 只数这一关**真投过**的 Tee —— 云海提前收关的后面几位 lastLevelId 还是上一关的。
+	 */
+	teamLevelCounts?: Record<string, number>
 ): {
 	total: number;
 	teamMult: number;
@@ -1661,6 +1675,15 @@ export const calcTeamTotal = (
 	const hasMe = typeof hasSelf === 'boolean' ? hasSelf : cards.some((c) => c === null);
 	const walk = (eff: TeeEffect, i: number, cardId: string) => {
 		if (eff.type === 'team_mult') teamMult *= eff.value;
+		// 「连珠灯照」:本关每掷出 1 个该等级,全队总分 ×per^几个。0 个 = ×1(平时不生效),
+		// 也没有「至少一层」的保底 —— 扣掉 free 之后一个都不剩就整行不上结算。
+		else if (eff.type === 'team_level_mult') {
+			// 「每多出 1 个」:前 free 个不算(第 1 个对堂是本条线的入场券,不叠层)。
+			// 于是层数上限 = 队伍人数 − free − 1,不需要再写死一个 max。
+			const raw = teamLevelCounts?.[eff.levelId] ?? 0;
+			const n = Math.max(0, raw - (eff.free ?? 0));
+			if (n > 0) teamMult *= Math.pow(eff.per, n);
+		}
 		// 饼铺掌柜(二):队伍里没有「我」(被归家卖掉)→ 队伍总分 ×mult
 		else if (eff.type === 'no_me_team_mult') {
 			// 卡面条件只有「队伍里没有『我』」—— 不能加「持卡者本关得分 > 0」这种卡面上

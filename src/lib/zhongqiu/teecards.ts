@@ -183,9 +183,20 @@ export type TeeEffect =
 	| { type: 'stuck_reroll_chips'; per: number }
 	// 掷出 min 个同点数(任意点数)就 +chips,有几组算几组(点数线的橙卡)
 	| { type: 'same_face_chips'; min: number; chips: number }
+	// 「连珠灯照」:本关队伍里每掷出 1 个 `levelId`(如对堂),**全队总分** ×per^个数(0 个 = ×1)。
+	// `free` = 前几个不算(「每**多**出 1 个」)。层数于是被**队伍人数**自然封住:六只最多 5 层,
+	// 而正常队伍里「我」没有 Tee 卡、进不了这条线 —— 要六只都上线上还得先把「我」卖出去(归家)。
+	// 不封顶就会变成「多塞几张线上卡就多叠一层」的堆料游戏(实测两连珠灯不带串珠能把上限翻倍)。
+	// 算在团队那一轮(calcTeamTotal):先要全队都投完才数得清,逐 Tee 结算时数不全(会是半路的数)。
+	// 高照把首个投掷者的骰子抄给线上其他 Tee —— 一个对堂就此变成整队一层,这是那份配合的兑现处。
+	| { type: 'team_level_mult'; levelId: string; per: number; free?: number }
 	// 高照:「高照/串珠/七星灯/连珠灯」里**首个投掷者**的最终骰子状态(点数 + 作废)
 	//      → **这条线里其他 Tee** 回合内首次投掷的骰子(线上的 Tee 才吃复制,线外不抄)
 	| { type: 'shared_first_roll' } // 只有高照带这条;点名的四张既是「模板候选」也是「复制对象」
+	// 「连珠灯照」的接力版:线上每只 Tee 首次投掷抄的是**上一只线上 Tee 掷完后的最终骰子状态**
+	// (线上第一只自己掷)。高照只把**首个投掷者**那一手传给所有人 —— 第一手烂了整队跟着烂;
+	// 接力则是一手接一手地改:后一只可以在前一只的成果上继续救,救好了再往下传。
+	| { type: 'shared_prev_roll' }
 	| { type: 'bundle'; parts: TeeEffect[] }; // 复合:多个效果同时生效
 
 export type Tag = '兔' | '桂' | '饼' | '灯' | '月' | '仙' | '丹';
@@ -327,6 +338,21 @@ export const CARDS: TeeCard[] = [
 		rarity: 'common',
 		skin: 'red_flame',
 		effect: { type: 'shared_first_roll' }
+	},
+	{
+		id: 'lianzhudengzhao',
+		name: '连珠灯照',
+		desc: '「连珠灯照」在队伍中时：「高照」「串珠」「七星灯」「连珠灯」「连珠灯照」这条线上，每只 Tee 首次投掷的骰子都抄上一只线上 Tee 掷完后的最终骰子状态（线上第一只自己掷）；本关每多掷出 1 个对堂，全队总分 ×3（第 1 个不算）',
+		rarity: 'legendary',
+		tag: '灯',
+		skin: 'glow chinese',
+		effect: {
+			type: 'bundle',
+			parts: [
+				{ type: 'shared_prev_roll' },
+				{ type: 'team_level_mult', levelId: 'dui_tang', per: 3, free: 1 }
+			]
+		}
 	},
 	{
 		id: 'guazi',
