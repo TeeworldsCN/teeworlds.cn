@@ -87,7 +87,14 @@ export type TeeEffect =
 	| { type: 'copy_right'; mult?: number } // 复制右侧 Tee 的卡牌(可再 ×mult 超车);右侧还是复制卡就一路向右 —— 展开口径见 effectiveEffects
 	| { type: 'reroll_all_on_none' } // 掷出"再接再厉"时自动重掷全部(每回合 1 次)
 	| { type: 'sum_chips'; per: number } // 骰子点数和 ×per 计入基础分(和值流)
-	| { type: 'own_face'; face: number; chips?: number; mult?: number; multByCount?: boolean } // 自己最终骰子里每有 1 颗该点数(multByCount: 倍率 = 该点数颗数)
+	| {
+			type: 'own_face';
+			face: number;
+			chips?: number;
+			mult?: number;
+			multByCount?: boolean;
+			asRolled?: boolean;
+	  } // 自己最终骰子里每有 1 颗该点数(multByCount: 倍率 = 该点数颗数;asRolled: 只数**掷出**的,**改点来的不算**)
 	// 该 Tee 自己的骰子里每颗 face 点:倍率 **+per**(桂树 —— 乘值在增长,不是再乘一层)
 	| { type: 'own_face_add'; face: number; per: number; base: number }
 	// 桂树:同上,但颗数**跨关累计** —— 计分读 growth[srcId](页面把该 Tee 的累计数并进去);
@@ -532,7 +539,7 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'lianzhudeng',
 		name: '连珠灯',
-		desc: '投掷后可发动：把 1 颗骰子改为 4 点，冷却 2 关；投掷后可将任意数量的 4 点骰子改为任意点数；掷出对堂：基础分 +150，得分 ×12',
+		desc: '投掷后可发动：把 1 颗未作废的骰子改为 4 点，冷却 2 关；投掷后还可把未作废的 4 点骰子（任意数量）改为任意点数；掷出对堂：基础分 +150，得分 ×12',
 		rarity: 'rare',
 		tag: '灯',
 		skin: 'glow_coala_cammo',
@@ -592,15 +599,17 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'change',
 		name: '丹砂',
-		desc: '改 1 颗骰子为 4 点；自己每有 1 颗 4 点：得分 ×1.25',
+		desc: '改 1 颗未作废的骰子为 4 点；自己每掷出 1 颗 4 点：得分 ×1.25',
 		rarity: 'rare',
 		tag: '丹',
 		skin: 'TeeAngel',
 		effect: {
 			type: 'bundle',
 			parts: [
+				// asRolled:和丹火同一口径 —— 改点来的 4 点只顶等级,不进乘算
+				// (否则「改 1 颗为 4」的保底 × 乘算叠在一起)
 				{ type: 'set_point', count: 1, point: 4 },
-				{ type: 'own_face', face: 4, mult: 1.25 }
+				{ type: 'own_face', face: 4, mult: 1.25, asRolled: true }
 			]
 		}
 	},
@@ -809,15 +818,16 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'wugang',
 		name: '丹诀',
-		desc: '把 1 颗骰子改为任意点数；自己每有 1 颗 4 点：得分 ×2',
+		desc: '把 1 颗未作废的骰子改为任意点数；自己每掷出 1 颗 4 点：得分 ×2',
 		rarity: 'legendary',
 		tag: '丹',
 		skin: 'king-greyfox',
 		effect: {
 			type: 'bundle',
 			parts: [
+				// asRolled:和丹火同一口径(丹家的三张都改成「掷出」了)
 				{ type: 'set_any', count: 1 },
-				{ type: 'own_face', face: 4, mult: 2 }
+				{ type: 'own_face', face: 4, mult: 2, asRolled: true }
 			]
 		}
 	},
@@ -852,15 +862,18 @@ export const CARDS: TeeCard[] = [
 	{
 		id: 'changepair',
 		name: '丹火',
-		desc: '改 2 颗骰子为 4 点；自己每有 1 颗 4 点：得分 ×2',
+		desc: '改 2 颗未作废的骰子为 4 点；自己每掷出 1 颗 4 点：得分 ×2',
 		rarity: 'legendary',
 		tag: '丹',
 		skin: 'GlowPinky',
 		effect: {
 			type: 'bundle',
 			parts: [
+				// asRolled:「每有」会把保底那两颗 4 点也乘进去 —— 改 2 颗为 4 = 二举 20 分,
+				// 再 ×2² = **80 分保底**(正好是无卡时的平均分),p10 直接顶到 80。
+				// 改点只顶等级(那是它的设计意图),不进乘算。
 				{ type: 'set_point', count: 2, point: 4 },
-				{ type: 'own_face', face: 4, mult: 2 }
+				{ type: 'own_face', face: 4, mult: 2, asRolled: true }
 			]
 		}
 	},
@@ -1448,7 +1461,7 @@ export const CARDS: TeeCard[] = [
 		// 逆向的惩罚系数就是 −1(净值整个减掉),三档逆向卡的强弱差在 base / perRound 上
 		id: 'queyue',
 		name: '缺月',
-		desc: '基础分替换为（170，每关 +50 − 基础分）；掷完后把 1 颗骰子改为 2 点；自己掷出的 6 视为 4',
+		desc: '基础分替换为（170，每关 +50 − 基础分）；掷完后把 1 颗未作废的骰子改为 2 点；自己掷出的 6 视为 4',
 		rarity: 'rare',
 		tag: '月',
 		skin: 'darkforce',
@@ -1466,7 +1479,7 @@ export const CARDS: TeeCard[] = [
 		// 「空四」(自己 4 点作废,便宜普通、能囤)。
 		id: 'canyue',
 		name: '残月',
-		desc: '基础分替换为（320，每关 +100 − 基础分）；掷完后把 1 颗骰子改为 3 点；自己掷出的 5 视为 4',
+		desc: '基础分替换为（320，每关 +100 − 基础分）；掷完后把 1 颗未作废的骰子改为 3 点；自己掷出的 5 视为 4',
 		rarity: 'legendary',
 		tag: '月',
 		skin: 'IceWitch_Halloween',

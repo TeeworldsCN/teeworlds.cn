@@ -31,6 +31,7 @@
 		judgeRoll,
 		liveDiceValues,
 		rawLiveDice,
+		rolledLiveDice,
 		rollDice,
 		sampleDice,
 		showPip,
@@ -284,6 +285,21 @@
 	let team = $state<TeamTee[]>([]);
 
 	let dice = $state<number[]>([1, 1, 1, 1, 1, 1]);
+	/**
+	 * 这一手**掷出**的六颗(改点之前)。
+	 *
+	 * 两个用途,同一份数据:
+	 *  · 骰子**底面**画的是它 —— 改点只改「效能」(判定/乘算),画面上留「掷出什么」,
+	 *    改成了几点由 .die-mod 徽标负责;
+	 *  · 丹火的「每掷出 1 颗 4 点」乘算数它(改点来的 4 点不算 —— 否则改 2 颗为 4
+	 *    会连乘 2² = 80 分保底,正好是无卡时的平均分)。
+	 */
+	let rolledDice = $state<number[]>([1, 1, 1, 1, 1, 1]);
+	/**
+	 * 这一手**重掷过**的骰子下标(滞月:被抽中的那颗一重掷就作废)。
+	 * 只加不减:重掷过的骰子再改点也救不回来(作废的理由是「你重掷了它」)。
+	 */
+	let rerolledIdx = $state<number[]>([]);
 	let rolling = $state(false);
 	let currentTee = $state(0);
 	let usedRerollAll = $state<number[]>([]); // 后羿自动重掷:按 Tee 记(抄来的第二份也各管各)
@@ -696,6 +712,8 @@
 				point: number;
 				srcId?: string;
 				from?: number;
+				/** Tee 卡自带的改点:**作废的骰子不能选**(加成卡不带这条,照旧能改) */
+				noVoid?: boolean;
 		  }
 		| {
 				kind: 'set_any';
@@ -705,8 +723,9 @@
 				srcId?: string;
 				from?: number;
 				options?: number[];
+				noVoid?: boolean;
 		  }
-		| { kind: 'bump'; count: number; step?: number; srcId?: string } // 月牙尺 +1 / 缺月尺 −1:点一颗骰子
+		| { kind: 'bump'; count: number; step?: number; srcId?: string; noVoid?: boolean } // 月牙尺 +1 / 缺月尺 −1:点一颗骰子
 		| { kind: 'voidfix'; count: number; point?: number; srcId?: string }; // 月相符:作废骰子改为 N 点(任意数量)
 	let pendingAction = $state<PendingAction | null>(null);
 	let pointPicker = $state(false); // set_any 的点数选择(半影卡改成点骰子,不再用它)
@@ -946,6 +965,8 @@
 				slot.lastDice = [1, 1, 1, 1, 1, 1];
 				slot.lastVoid = [];
 				slot.lastOpted = [];
+				slot.lastRolled = [];
+				slot.lastRerollIdx = [];
 			},
 			/** 强制下一次掷骰结果 nextRoll([2,3,5,6,1,2]) */
 			nextRoll: (dice: number[]) => {
@@ -1136,6 +1157,9 @@
 					const lv = getRollLevel(levelIds[i % levelIds.length]);
 					const sample = sampleDice(lv); // 示例带 X,补成真实手牌再计分
 					t.lastDice = [...sample];
+					// 作弊直接塞的这手没有改点 → 「掷出」就是它本身
+					t.lastRolled = [...sample];
+					t.lastRerollIdx = [];
 					t.lastLevelId = lv.id;
 					t.lastScore = calcTeeScore(
 						scoreInput(i, lv.id, liveDiceValues(sample, modsFor(i)), sample)
@@ -1144,6 +1168,8 @@
 				});
 				currentScore = sum;
 				dice = [...team[0].lastDice];
+				rolledDice = [...team[0].lastDice];
+				rerolledIdx = [];
 				currentTee = 0;
 				rolling = false;
 				pendingAction = null;
@@ -1311,6 +1337,8 @@
 		countedTee = -1;
 		currentTee = 0;
 		dice = [1, 1, 1, 1, 1, 1];
+		rolledDice = [1, 1, 1, 1, 1, 1];
+		rerolledIdx = [];
 		usedRerollAll = [];
 		rerollCount = 0;
 		usedOpSrc = [];
@@ -1386,6 +1414,8 @@
 	const markHandFrozen = () => {
 		frozenHand = true;
 		settledDice = [...dice];
+		// 定格的这一刻就是「掷出」的那一刻:改点还没发生
+		rolledDice = [...dice];
 		saveRun(runSnapshot());
 	};
 	let pendingActiveKey: string | null = null;
@@ -1412,6 +1442,8 @@
 				lastDice: t.lastDice,
 				lastVoid: t.lastVoid ?? [],
 				lastOpted: t.lastOpted ?? [],
+				lastRolled: t.lastRolled ?? [],
+				lastRerollIdx: t.lastRerollIdx ?? [],
 				charge: t.charge ?? 0,
 				refundPending: t.refundPending ?? [],
 				skillChips: t.skillChips ?? [],
@@ -1438,6 +1470,8 @@
 			rewardChoices: rewardChoices.map((c) => c.id),
 			// ---- 回合内细节 ----
 			dice: settledDice,
+			rolledDice: [...rolledDice],
+			rerolledIdx: [...rerolledIdx],
 			currentTee,
 			currentScore,
 			roundTotal,
@@ -1503,6 +1537,8 @@
 				lastDice: t.lastDice,
 				lastVoid: t.lastVoid ?? [],
 				lastOpted: t.lastOpted ?? [],
+				lastRolled: t.lastRolled ?? [],
+				lastRerollIdx: t.lastRerollIdx ?? [],
 				buffs: t.buffs.map((b) => ({ cardId: b.cardId, turnsLeft: b.turnsLeft })),
 				faceGrow: t.faceGrow,
 				sold: t.sold,
@@ -1554,6 +1590,10 @@
 		// ---- 回合内细节 ----
 		dice = [...d.dice];
 		settledDice = [...d.dice];
+		// 老存档没这个字段 → 当作「掷出的就是当前这手」(口径退回「每有」,不会算错分)
+		rolledDice = d.rolledDice?.length ? [...d.rolledDice] : [...d.dice];
+		// 滞月:重掷记账;老存档没有 → 按「这一手没重掷过」处理(只多不少地给玩家分)
+		rerolledIdx = d.rerolledIdx ?? [];
 		currentTee = Math.min(d.currentTee, Math.max(0, team.length - 1));
 		currentScore = d.currentScore;
 		roundTotal = d.roundTotal;
@@ -1726,7 +1766,9 @@
 				up > 0 && rawLevel.id !== 'none' && level.score > preUpLevel.score
 					? { from: preUpLevel, name: cardById(upSrcId)?.name ?? '等级提升' }
 					: null;
-			const recomputed = calcTeeScore(scoreInput(currentTee, level.id, shown, dice));
+			const recomputed = calcTeeScore(
+				scoreInput(currentTee, level.id, shown, dice, rolledLive(rolledDice, dice, mods))
+			);
 			// 总分以**存档里的 lastScore** 为准(事后乘算的主动技只改了它、不改 breakdown);
 			// 明细行按现在的状态重推 —— 行和总分可能差一次事后乘算,但比分错到 0 好得多
 			lastBreakdown = { ...recomputed, total: tee.lastScore ?? recomputed.total };
@@ -1905,12 +1947,29 @@
 		for (const { eff } of selfEffects(i)) if (eff.type === 'jackpot') return eff;
 		return null;
 	};
+	/**
+	 * 「掷出」的手(丹火的 asRolled 口径):改点**之前**的那六颗,作废按**最终**手判
+	 * (改点把作废面改走 = 改点即救援,和 liveDiceValues 同口径),结果与 ownDice 同序。
+	 * 留档缺失(老存档 / QA 自造的手)→ undefined,引擎退回最终骰面。
+	 */
+	const rolledLive = (
+		rolled: number[] | undefined,
+		final: number[] | undefined,
+		mods?: DiceMods
+	): number[] | undefined =>
+		rolled?.length && final?.length ? rolledLiveDice(rolled, final, mods) : undefined;
+
 	const scoreInput = (
 		i: number,
 		levelId: string,
 		diceForSum: number[],
 		/** 原始手(未映射)—— isMe 的 playerRawDice 要从它剥,别拿映射后的 diceForSum 二次过滤 */
-		rawHand?: number[]
+		rawHand?: number[],
+		/**
+		 * 「掷出」的手(已剔作废、与 diceForSum 同序)—— 只给丹火的 asRolled 口径用。
+		 * 留档缺失(老存档 / QA 自造的手)就传 undefined:引擎会退回最终骰面(与「每有」同口径)。
+		 */
+		rolledHand?: number[]
 	): ScoreInput => {
 		const isMe = team[i]?.isSelf === true;
 		const selfIdx = team.findIndex((t) => t.isSelf === true);
@@ -1938,6 +1997,7 @@
 			teamSize: team.length,
 			diceSum: diceForSum.reduce((a, b) => a + b, 0),
 			ownDice: [...diceForSum],
+			ownRolledDice: rolledHand,
 			rerolled: rerollCount,
 			// 多出来的投掷机会(per_extra_roll 用)
 			extraRolls: Math.max(0, rollsFor(i) - BASE_ROLLS),
@@ -1968,8 +2028,14 @@
 		// (队友数「我」的骰面 / 回合末桂树记账),拿不到当时那份豁免名单,
 		// 亲手改出来的点又会被「X 视为 Y」改写一遍(踩过)。
 		const extra: DiceMods = { fixed: i === currentTee ? optedDice : (team[i]?.lastOpted ?? []) };
-		const vi = i === hsVoidTee && hsVoid.length ? hsVoid : undefined;
-		if (vi) extra.voidIdx = vi;
+		// 滞月:抽中的那颗只要这一手重掷过就作废(和花生的「按颗作废」同一个出口)
+		const rerollVoid = boss?.mods?.rerollVoidIdx ?? [];
+		const rerolled = i === currentTee ? rerolledIdx : (team[i]?.lastRerollIdx ?? []);
+		const vi = [
+			...(i === hsVoidTee && hsVoid.length ? hsVoid : []),
+			...rerollVoid.filter((k) => rerolled.includes(k))
+		];
+		if (vi.length) extra.voidIdx = vi;
 		// 高照:抄来的那一手连作废状态一起抄 —— 盖掉本关的点数作废,只认抄来的位置
 		if (i === sharedVoidTee && sharedVoid) {
 			extra.voidOverride = true;
@@ -1995,6 +2061,17 @@
 	const dieVoid = (i: number) => !dieRolling(i) && isVoidDie(dice, i, modsFor(currentTee));
 	const diceModded = (i: number) =>
 		optedDice.includes(i) || (!dieRolling(i) && (dieVoid(i) || shownDice[i] !== dice[i]));
+	/**
+	 * 骰子**底面**画哪个点数:改点只改「效能」,底面留**掷出**的那一刻(markHandFrozen 记的),
+	 * 改成了几点交给 .die-mod 徽标 —— 一眼能分出「掷出什么」和「改成什么」。
+	 * 正在摇的那几颗看动画里的 dice,不然点阵会定住不动。
+	 */
+	const faceRolled = (i: number) => (dieRolling(i) ? dice[i] : (rolledDice[i] ?? dice[i]));
+	/** 滞月抽中的那颗(重掷就作废)—— 画个角标,别让玩家去数「左数第几颗」 */
+	const bossRerollMark = (i: number) => (boss?.mods?.rerollVoidIdx ?? []).includes(i);
+
+	/** 这个改点能不能碰作废骰子 —— `noVoid` 只长在「改点数」那三个变体上(救作废骰的不受此限) */
+	const opNoVoid = (act: PendingAction): boolean => ('noVoid' in act ? !!act.noVoid : false);
 
 	/**
 	 * 这个改点操作现在还能点几颗骰子 —— 「只认 4 点」的卡不能超过场上真有的颗数,
@@ -2005,13 +2082,15 @@
 		if (act.kind === 'voidfix' || act.kind === 'voidclear')
 			return dice.filter((_, k) => dieVoid(k)).length;
 		const shown = applyDiceMods(dice, modsFor(currentTee));
+		// Tee 卡的改点:作废的骰子不算可选(和 onDieClick 同一道门)
+		const pickable = (k: number) => !(opNoVoid(act) && dieVoid(k));
 		if (act.kind === 'bump') {
 			const step = act.step ?? 1;
-			return shown.filter((v) => (step > 0 ? v < 6 : v > 1)).length;
+			return shown.filter((v, k) => pickable(k) && (step > 0 ? v < 6 : v > 1)).length;
 		}
 		if (act.kind === 'set_point' || act.kind === 'set_any') {
-			if (act.from === undefined) return dice.length;
-			return shown.filter((v) => v === act.from).length;
+			if (act.from === undefined) return shown.filter((_, k) => pickable(k)).length;
+			return shown.filter((v, k) => pickable(k) && v === act.from).length;
 		}
 		return 0;
 	};
@@ -2030,6 +2109,8 @@
 			usedOpCount = {};
 			pendingActive = null;
 			dice = [1, 1, 1, 1, 1, 1];
+			rolledDice = [1, 1, 1, 1, 1, 1];
+			rerolledIdx = [];
 			teeEmote = EMOTE.normal;
 			rollCurrent();
 		} else {
@@ -2069,6 +2150,8 @@
 			// 上一关留下的作废/改点豁免也清掉:骰子都重置成 1 了,名单没理由留着
 			t.lastVoid = [];
 			t.lastOpted = [];
+			t.lastRolled = [];
+			t.lastRerollIdx = [];
 		}
 		phase = 'intro';
 	};
@@ -2102,6 +2185,8 @@
 		rollMask = Array(6).fill(true);
 		rerollSel = Array(6).fill(false);
 		choosing = false;
+		// 新一手:重掷记账归零(滞月的「重掷就作废」看它)
+		rerolledIdx = [];
 		// 花生:回合初始投掷整把作废(重掷过的那几颗才解除)。换 Tee / 重开本关都在这里重置
 		// 蜜枣:本回合的 10% 每个 Tee 只抽一次(jackpotDone 记着;读档也不重抽)
 		hsVoidTee = hasFirstRollVoid(currentTee) ? currentTee : -1;
@@ -2328,6 +2413,9 @@
 		rolling = true;
 		rollKey += 1;
 		rollMask = [...sel];
+		// 滞月:重掷过的下标记账(抽中的那颗一重掷就作废)
+		if (sel.some(Boolean))
+			rerolledIdx = [...new Set([...rerolledIdx, ...sel.flatMap((s, i) => (s ? [i] : []))])];
 		// 被重掷的骰子不再算「改点」:它的点数已经不是我们改出来的那个了。
 		// 撤掉 overlay,同时把 fixed 豁免一起摘掉 —— 否则重掷出来的新点数还豁免点数映射
 		// (「6 视为 4」这类),判定会跟显示对不上。
@@ -2471,6 +2559,11 @@
 			nextSetOp();
 			return;
 		}
+		// Tee 卡的改点不能选作废骰子:一颗可改的都没有 → 这个 op 白给,跳过(不算用掉)
+		if (op.noVoid && !dice.some((_, k) => !dieVoid(k))) {
+			nextSetOp();
+			return;
+		}
 		if (op.kind === 'point')
 			pendingAction = {
 				kind: 'set_point',
@@ -2478,10 +2571,17 @@
 				total: op.count,
 				point: op.point ?? 4,
 				from: op.from,
+				noVoid: op.noVoid,
 				srcId: op.srcId
 			};
 		else if (op.kind === 'bump')
-			pendingAction = { kind: 'bump', count: op.count, step: op.step ?? 1, srcId: op.srcId };
+			pendingAction = {
+				kind: 'bump',
+				count: op.count,
+				step: op.step ?? 1,
+				noVoid: op.noVoid,
+				srcId: op.srcId
+			};
 		else if (op.kind === 'voidfix')
 			pendingAction = { kind: 'voidfix', count: op.count, point: op.point ?? 1, srcId: op.srcId };
 		else if (op.kind === 'voidclear')
@@ -2493,6 +2593,7 @@
 				total: op.count,
 				from: op.from,
 				options: op.options,
+				noVoid: op.noVoid,
 				srcId: op.srcId
 			};
 	};
@@ -2500,6 +2601,11 @@
 	const onDieClick = (i: number) => {
 		const act = pendingAction;
 		if (!act) return;
+		// Tee 卡的改点不能选作废的骰子(加成卡照旧:那条口子留给玩家救作废骰)
+		if (opNoVoid(act) && dieVoid(i)) {
+			showToast('作废的骰子改不了（加成卡可以）');
+			return;
+		}
 		// 「只认 4 点」的改点:点到别的点数没反应(判定用的是玩家看到的点数)
 		if (
 			(act.kind === 'set_point' || act.kind === 'set_any') &&
@@ -2600,6 +2706,7 @@
 				total: act.total,
 				from: act.from,
 				options: act.options,
+				noVoid: act.noVoid,
 				srcId: act.srcId
 			};
 		}
@@ -2611,14 +2718,16 @@
 			? (pendingAction.options ?? [1, 2, 3, 4, 5, 6])
 			: [1, 2, 3, 4, 5, 6];
 
-	/** 点错目标的骰子画暗一点:拆 4 系列只认 4 点;半影卡只认作废的骰子 */
+	/** 点错目标的骰子画暗一点:拆 4 系列只认 4 点;半影卡只认作废的骰子;Tee 卡的改点不认作废骰子 */
 	const dieOffTarget = (i: number) =>
 		!!pendingAction &&
 		(pendingAction.kind === 'voidclear'
 			? !dieVoid(i)
-			: (pendingAction.kind === 'set_point' || pendingAction.kind === 'set_any') &&
-				pendingAction.from !== undefined &&
-				shownDice[i] !== pendingAction.from);
+			: opNoVoid(pendingAction) && dieVoid(i)
+				? true
+				: (pendingAction.kind === 'set_point' || pendingAction.kind === 'set_any') &&
+					pendingAction.from !== undefined &&
+					shownDice[i] !== pendingAction.from);
 
 	/**
 	 * 田螺:身上的加成卡不生效 —— 它们**从来没被挂上**(见 applyBuffToTee 里的分支),
@@ -2851,7 +2960,13 @@
 		// 高亮按**抬档前**的等级画:骰面兑现的是原等级,抬档单独成行
 		hitDice = hitIndices(dice, preUpLevel.id, mods);
 		lastLevel = level;
-		frozenScoreInput = scoreInput(currentTee, level.id, shown, dice);
+		frozenScoreInput = scoreInput(
+			currentTee,
+			level.id,
+			shown,
+			dice,
+			rolledLive(rolledDice, dice, mods)
+		);
 		lastBreakdown = calcTeeScore(frozenScoreInput);
 
 		tee.lastDice = [...dice];
@@ -2860,6 +2975,10 @@
 		// 玩家亲手改过的那几颗也要跟手记档(不吃「视为」的豁免)—— 队友回头数「我」的骰面、
 		// 回合末桂树记账都要用它,否则口径对不上(踩过)
 		tee.lastOpted = [...optedDice];
+		// 「掷出」的那六颗也跟手记档:骰子底面画它,丹火的「每掷出」乘算回头也读它
+		tee.lastRolled = [...rolledDice];
+		// 滞月:这一手重掷过哪几颗也跟手记档(别的 Tee 结算时回头算它)
+		tee.lastRerollIdx = [...rerolledIdx];
 		tee.lastLevelId = level.id;
 		tee.lastScore = lastBreakdown.total;
 		currentScore += lastBreakdown.total;
@@ -3080,7 +3199,14 @@
 		const base =
 			frozenScoreInput && frozenScoreInput.index === i
 				? frozenScoreInput
-				: scoreInput(i, lv.id, liveDiceValues(team[i].lastDice ?? [], modsFor(i)));
+				: scoreInput(
+						i,
+						lv.id,
+						liveDiceValues(team[i].lastDice ?? [], modsFor(i)),
+						undefined,
+						// 丹火的「每掷出」口径:这只 Tee 那一手掷出的六颗(lastRolled 是随手的留档)
+						rolledLive(team[i].lastRolled, team[i].lastDice, modsFor(i))
+					);
 		lastBreakdown = calcTeeScore({
 			...base,
 			skillChips: team[i].skillChips ?? [],
@@ -3119,8 +3245,9 @@
 			// 主动技只加自己那一步(改 1 颗为 4 点),排在改点队列最前面 ——
 			// 顺序就是「主动技 → 卡牌改点 → 加成卡」。把 4 点改成任意点数是卡自带的
 			// 恒定效果,不管技能用没用都会在队列里(collectSetOps 收的)。
+			// noVoid:连珠灯是 Tee 卡 —— 和它的卡牌改点一样,作废的骰子不能选
 			setQueue = [
-				{ kind: 'point', count: 1, point: 4, srcId: sk.srcId },
+				{ kind: 'point', count: 1, point: 4, srcId: sk.srcId, noVoid: true },
 				...collectSetOps(selfEffects(currentTee), buffsOf(currentTee))
 			];
 			nextSetOp();
@@ -3305,6 +3432,8 @@
 			t.lastDice = [1, 1, 1, 1, 1, 1];
 			t.lastVoid = [];
 			t.lastOpted = [];
+			t.lastRolled = [];
+			t.lastRerollIdx = [];
 		}
 		currentScore = 0;
 		currentTee = 0;
@@ -4789,16 +4918,17 @@
 												<!-- 骰面用内联 SVG:不依赖 ::after/container-query/:has(),老浏览器也能渲染。
 												     外面套一层 .die-box(高度只靠百分比 padding 撑)、SVG 绝对铺满:
 												     iOS Safari 下「aspect-ratio 撑高的盒子 + height:100% 的子元素」会把高度
-												     按整个骰子(含 padding)解析,点阵整体偏下(详见 .die-box 处注释)。 -->
+												     按整个骰子(含 padding)解析,点阵整体偏下(详见 .die-box 处注释)。
+												     底面画的是**掷出**的点数(faceRolled),改点结果由 .die-mod 徽标负责。 -->
 												<span class="die-box">
 													<svg class="die-face" viewBox="0 0 24 24" aria-hidden="true">
 														{#each PIP_POS as [cx, cy], idx}
-															{#if showPip(dice[i], idx + 1)}
+															{#if showPip(faceRolled(i), idx + 1)}
 																<circle
 																	{cx}
 																	{cy}
 																	r="2.6"
-																	class:red={!dieRolling(i) && dice[i] === 4}
+																	class:red={!dieRolling(i) && faceRolled(i) === 4}
 																/>
 															{/if}
 														{/each}
@@ -4815,6 +4945,10 @@
 															>{shownDice[i]}</span
 														>
 													{/if}
+												{/if}
+												{#if bossRerollMark(i) && !dieVoid(i)}
+													<!-- 滞月:这颗一重掷就作废 -->
+													<span class="die-boss-mark" title="重掷这颗会作废">🌗</span>
 												{/if}
 												{#if choosing && rerollSel[i]}
 													<span class="reroll-mark">↻</span>
@@ -5797,6 +5931,19 @@
 		text-shadow:
 			0 0 3px rgb(255 255 255 / 0.9),
 			0 0 7px rgb(255 255 255 / 0.75);
+		pointer-events: none;
+		user-select: none;
+	}
+
+	/* 滞月:被抽中的那颗(重掷就作废)—— 右上角标,别让玩家去数「左数第几颗」 */
+	.die-boss-mark {
+		position: absolute;
+		top: 1%;
+		right: 3%;
+		font-size: 0.72rem;
+		line-height: 1;
+		opacity: 0.9;
+		filter: drop-shadow(0 0 2px rgb(0 0 0 / 0.65));
 		pointer-events: none;
 		user-select: none;
 	}

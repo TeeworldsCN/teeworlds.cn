@@ -55,13 +55,24 @@ export interface Boss {
 	/**
 	 * 随机规则:每关抽一组参数(rollBossVariant),抽完写进 mods、把 desc 里的 {0}/{1} 换成数字。
 	 * `void` = 抽 count(默认 1)个**互不相同**的点作废(迷月 1 个 / 霜月 2 个);
-	 * `map` = 抽 2 个**不同**的点做「X 点视为 Y 点」(影月/破月)。
+	 * `map` = 抽 2 个**不同**的点做「X 点视为 Y 点」(影月/破月);
+	 * `idx` = 抽 1 个**骰子位置**(池子是 [0..5],desc 里的 {0} 写成人类数法 1~6),
+	 *        写进 mods.rerollVoidIdx —— 滞月:这颗只要被重掷过就整颗作废。
 	 * 候选点一律不含 4(4 是博饼的硬通货,作废它就成蚀月那种重锤)。抽到的数写在 `rolled` 上、
 	 * 存进存档 bossArgs —— 刷新不重抽;横幅上写明是哪几点,玩家照着留骰子。
 	 */
-	randomRule?: { kind: 'void' | 'map'; pool: number[]; count?: number };
+	randomRule?: { kind: 'void' | 'map' | 'idx'; pool: number[]; count?: number };
 	/** 本关抽到的随机参数(randomRule 的产出,读档时回填) */
 	rolled?: number[];
+	/**
+	 * 权重重排(2025-09):这只 Boss 的权重从 `from` 关的 weight **线性涨到** `to` 关的 1
+	 * (和其他 Boss 一样)。
+	 *
+	 * 蚀月(纯「4 作废」)原来是 R16 之后的彩蛋 —— 权重 0.5、且 R16 前不进池;
+	 * 18~30 关逐渐放开,让后期真的会撞上它(4 点线不能只靠一张丹火兜底)。
+	 * 写成曲线而不是每关写死:改区间就是改两个数。
+	 */
+	weightRamp?: { from: number; to: number };
 }
 
 export const BOSSES: Boss[] = [
@@ -119,7 +130,9 @@ export const BOSSES: Boss[] = [
 		desc: '本关掷出的 4 作废；目标 ×0.3',
 		mods: { void: [4] },
 		targetMult: 0.3,
-		weight: 0.5
+		// 彩蛋期:权重 0.5。R18 起按 weightRamp 逐关恢复到和其他 Boss 一样(= 1)
+		weight: 0.5,
+		weightRamp: { from: 18, to: 30 }
 	},
 	{
 		id: 'boss_xueyue',
@@ -223,6 +236,23 @@ export const BOSSES: Boss[] = [
 		targetMult: 0.7,
 		weight: 0.5,
 		minRound: 18
+	},
+	{
+		id: 'boss_zhiyue',
+		name: '滞月',
+		emoji: '🌗',
+		// 位置每关抽一颗(池子是下标 [0..5],横幅写人类数法 1~6)。
+		// 不重掷它就没事 —— 惩罚的是「无脑全择」:那颗的初次点数就定在场上,要么留着用,
+		// 要么拿一颗骰子换掉重掷机会。
+		//
+		// 目标倍率按「体感 + 抽样」定的:boss.ts 跑一轮就几分钟,先按体感定 ×0.9
+		// (RUNS=600 那轮给的等难度目标是 ×0.89,同量级)。要精调:
+		// ROUND=18 RUNS=3000 bun tools/zhongqiu/boss.ts
+		desc: '左数第 {0} 颗骰子若重掷，本关作废；目标 ×0.9',
+		mods: {},
+		randomRule: { kind: 'idx', pool: [0, 1, 2, 3, 4, 5] },
+		targetMult: 0.9,
+		minRound: 18
 	}
 ];
 
@@ -235,13 +265,21 @@ export const bossPool = (n: number): Boss[] =>
 		n <= 6 ? b.mild : b.minRound ? n >= b.minRound : b.id !== 'boss_shiyue' || n > 16
 	);
 
+/** 第 n 关这只 Boss 的**实际权重**:带 weightRamp 的按关卡从 weight 渐变到 1 */
+export const bossWeight = (b: Boss, n: number): number => {
+	const base = b.weight ?? 1;
+	if (!b.weightRamp) return base;
+	const { from, to } = b.weightRamp;
+	const t = Math.min(1, Math.max(0, (n - from) / Math.max(1, to - from)));
+	return base + (1 - base) * t;
+};
+
 export const getBoss = (n: number): Boss => {
 	const pool = bossPool(n);
-	const weight = (b: Boss) => b.weight ?? 1;
-	const total = pool.reduce((a, b) => a + weight(b), 0);
+	const total = pool.reduce((a, b) => a + bossWeight(b, n), 0);
 	let r = Math.random() * total;
 	for (const b of pool) {
-		r -= weight(b);
+		r -= bossWeight(b, n);
 		if (r <= 0) return b;
 	}
 	return pool[pool.length - 1];
@@ -270,6 +308,12 @@ export const rollBossVariant = (boss: Boss, args?: number[]): Boss => {
 			: cands[Math.floor(Math.random() * cands.length)];
 	};
 	const mods: DiceMods = { ...(boss.mods ?? {}) };
+	if (rr.kind === 'idx') {
+		// 滞月:抽一颗**骰子位置**(池子是下标 0~5,desc 里换成人类数法 1~6)
+		const idx = draw([], 0);
+		mods.rerollVoidIdx = [idx];
+		return { ...boss, mods, desc: boss.desc.replace('{0}', String(idx + 1)), rolled: [idx] };
+	}
 	let rolled: number[];
 	if (rr.kind === 'void') {
 		// 抽 count(默认 1)个**互不相同**的点 —— draw 的 taken 参数就是干这个的
@@ -315,6 +359,14 @@ export interface TeamTee {
 	 * 拿不到当时那份豁免名单,亲手改出来的点又会被「X 视为 Y」改写一遍(踩过)。
 	 */
 	lastOpted?: number[];
+	/**
+	 * 这一手**掷出**的骰面(改点之前的那六颗)。
+	 * 骰子底面渲染用它,丹火的「每掷出」乘算也读它 —— 必须按 Tee 记:
+	 * 队友回头数这只 Tee 的骰面、结算頁重算那一手,都要拿得到「当时掷出的是什么」。
+	 */
+	lastRolled?: number[];
+	/** 这一手重掷过哪几颗(滞月:抽中的那颗一重掷就作废);老存档没有 → 按空算 */
+	lastRerollIdx?: number[];
 	buffs: AppliedBuff[];
 	charge?: number;
 	/**
@@ -497,6 +549,14 @@ export interface SetOp {
 	from?: number;
 	/** set_any: 可选的改后点数(不填 = 1~6 任选) */
 	options?: number[];
+	/**
+	 * 只能挑**未作废**的骰子 —— Tee 卡自带的改点全都带这条(加成卡不带)。
+	 *
+	 * 为什么:Tee 卡是永久的,不限制的话「改点」就成了绕过 Boss 机制的口子 ——
+	 * 蚀月「摘出的 4 作废」时,残月把一颗作废的 4 改成 3 = 白救一颗;
+	 * 加成卡那条口子留着(花一张存货救一颗,是一次性生意,不构成绕过)。
+	 */
+	noVoid?: boolean;
 	srcId?: string;
 }
 
@@ -512,28 +572,44 @@ export const collectSetOps = (self: EffectiveEffect[], buffs: AppliedBuff[] = []
 		options?: number[];
 		pick?: boolean;
 	};
-	const walk = (e: AnyEff, srcId: string) => {
+	const walk = (e: AnyEff, srcId: string, noVoid: boolean) => {
 		if (e.type === 'bundle') {
-			(e.parts ?? []).forEach((p) => walk(p, srcId));
+			(e.parts ?? []).forEach((p) => walk(p, srcId, noVoid));
 			return;
 		}
 		if (e.type === 'set_point')
-			ops.push({ kind: 'point', count: e.count ?? 1, point: e.point ?? 4, from: e.from, srcId });
+			ops.push({
+				kind: 'point',
+				count: e.count ?? 1,
+				point: e.point ?? 4,
+				from: e.from,
+				srcId,
+				noVoid
+			});
 		else if (e.type === 'set_any')
-			ops.push({ kind: 'any', count: e.count ?? 1, from: e.from, options: e.options, srcId });
+			ops.push({
+				kind: 'any',
+				count: e.count ?? 1,
+				from: e.from,
+				options: e.options,
+				srcId,
+				noVoid
+			});
 		// 半影卡:点一颗**作废的**骰子,读它的点数,本关该点数不作废(不弹选点器;
 		// 整关解除的月食卡没有 pick,不进队列)
 		else if (e.type === 'clear_void' && e.pick) ops.push({ kind: 'voidclear', count: 1, srcId });
 		else if (e.type === 'bump_point')
-			ops.push({ kind: 'bump', count: e.count ?? 1, step: e.value ?? 1, srcId });
+			ops.push({ kind: 'bump', count: e.count ?? 1, step: e.value ?? 1, srcId, noVoid });
 		else if (e.type === 'void_fix')
 			// 月相符:作废骰子救援 —— 「任意数量」,上限就是全场骰子数,玩家点几颗算几颗
+			// (它是**救**作废骰子的,不带 noVoid)
 			ops.push({ kind: 'voidfix', count: 6, point: e.point ?? 1, srcId });
 	};
-	for (const { eff, srcId } of self) walk(eff as unknown as AnyEff, srcId);
+	// Tee 卡(永久)的改点不能选作废骰子;加成卡的照旧,全部骰子都能改
+	for (const { eff, srcId } of self) walk(eff as unknown as AnyEff, srcId, true);
 	for (const b of buffs) {
 		const e = BUFF_BY_ID.get(b.cardId)?.effect;
-		if (e) walk(e as unknown as AnyEff, b.cardId);
+		if (e) walk(e as unknown as AnyEff, b.cardId, false);
 	}
 	return ops;
 };
@@ -754,7 +830,13 @@ export interface ScoreInput {
 	teamSize: number;
 	/** 判定用的骰子点数和 */
 	diceSum: number;
+	/** 该 Tee 的最终骰面(映射后、剔作废)—— 「每有」那族数的是它 */
 	ownDice?: number[];
+	/**
+	 * 该 Tee **掷出**的骰面(改点之前,剔作废)—— 只给 `own_face.asRolled` 用(丹火)。
+	 * 不传就退回 ownDice(与「每有」同口径):工具/QA 直接调引擎时不用刻意造一只手。
+	 */
+	ownRolledDice?: number[];
 	rerolled?: number;
 	/** 本回合多出来的投掷机会(per_extra_roll 用) */
 	extraRolls?: number;
@@ -796,6 +878,7 @@ export const calcTeeScore = ({
 	teamSize,
 	diceSum,
 	ownDice = [],
+	ownRolledDice,
 	rerolled = 0,
 	extraRolls = 0,
 	stuckRerolls = 0,
@@ -1195,7 +1278,10 @@ export const calcTeeScore = ({
 				break;
 			}
 			case 'own_face': {
-				const n = ownDice.filter((v) => v === eff.face).length;
+				// asRolled(丹火):只数**掷出**的面 —— 改点来的点数只顶等级,不进乘算。
+				// 「每有」那族照旧数最终骰面(ownDice),两套口径别混。
+				const hand = eff.asRolled && ownRolledDice?.length ? ownRolledDice : ownDice;
+				const n = hand.filter((v) => v === eff.face).length;
 				if (n <= 0) break;
 				const bc = chips;
 				const bm = mult;
@@ -1778,6 +1864,10 @@ export type RunTeamSlot = {
 	lastVoid?: number[];
 	/** 这一手哪些骰子是玩家亲手改的(改点豁免,回头读骰面用) */
 	lastOpted?: number[];
+	/** 这一手**掷出**的骰面(改点前);老存档没有 → 退回 lastDice(口径同「每有」) */
+	lastRolled?: number[];
+	/** 这一手重掷过哪几颗(滞月:抽中的那颗一重掷就作废);老存档没有 → 按「一颗都没重掷」算 */
+	lastRerollIdx?: number[];
 	/** 桂树那类累计(按 Tee 记,不按卡);老存档没有 → 按空处理 */
 	faceGrow?: GrowthMap;
 	/** 饼铺掌柜那类:这只 Tee 入队后卖掉的 Tee 数;老存档没有 → 按 0 处理 */
@@ -1824,6 +1914,13 @@ export type RunSave = {
 
 	// ---- v2:回合内的细节状态 ----
 	dice: number[];
+	/**
+	 * 正在进行的这一手**掷出**的骰面(改点之前)。
+	 * 骰子底面画的是它,丹火的「每掷出」乘算也读它;老存档没有 → 退回 dice。
+	 */
+	rolledDice?: number[];
+	/** 正在进行的这一手重掷过哪几颗(滞月);老存档没有 → 按空算 */
+	rerolledIdx?: number[];
 	/** 正在掷的是第几个 Tee */
 	currentTee: number;
 	currentScore: number;
