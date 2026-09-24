@@ -429,6 +429,39 @@ export interface TeamTee {
 	sold?: number;
 }
 
+/**
+ * 「零月」:收集队友**已经结算**的得分 —— 按卡 id 匹配,只在「这一关真投过」的范围内数。
+ *
+ * 为什么不放在 `calcTeeScore` 里:得分要等全队都投完才齐,逐 Tee 结算时只能数到半路的数
+ * (和 team_level_mult 同一个理由)。所以它是「团队那一轮之前」的一步:
+ * 页面把收集到的和当**基础分**塞回零月这只 Tee 重算一遍(这样它自己的加成卡、月系 teamWide 照乘),
+ * 工具侧也用这个纯函数镜像同一口径。
+ *
+ * @param cards 队伍(按位置)
+ * @param scores 各位置**本关**的已结算得分(没投的传 undefined)
+ * @param spec 卡 id + 权重(如 `{ cards:['kuiyue','queyue','canyue'], weights:[3,2,1] }`)
+ * @param playedUpTo 只数下标 ≤ 它的(云海提前收关时后面几位没投,lastScore 还是上一关的)
+ */
+export const collectByCard = (
+	cards: (TeeCard | null)[],
+	scores: (number | undefined)[],
+	spec: { cards: string[]; weights: number[] },
+	playedUpTo = cards.length - 1
+): { total: number; parts: { cardId: string; score: number; weight: number }[] } => {
+	const parts: { cardId: string; score: number; weight: number }[] = [];
+	let total = 0;
+	cards.forEach((c, i) => {
+		if (!c || i > playedUpTo) return;
+		const at = spec.cards.indexOf(c.id);
+		if (at < 0) return;
+		const score = scores[i] ?? 0;
+		const weight = spec.weights[at] ?? 0;
+		total += score * weight;
+		parts.push({ cardId: c.id, score, weight });
+	});
+	return { total, parts };
+};
+
 export const TEAM_LIMIT = 6;
 
 /**
@@ -896,6 +929,13 @@ export interface ScoreInput {
 	/** 这只 Tee 入队之后卖掉过几个 Tee(sold_chips / sell_scale 用) */
 	soldCount?: number;
 	/**
+	 * 「零月」的回合末换算:基础分替换为 0,「本关已得的净值」整个换成 `value`
+	 * (value = 亏月×3 + 缺月×2 + 残月 + 零月自己的基础分,由页面在团队那一轮之前算好)。
+	 * 和 reverse 是同一个位置、同一套 swap 行渲染,区别只是**没有** `base − net` 这一步 ——
+	 * 收集到的数直接就是替换值。
+	 */
+	collectBase?: { srcId: string; value: number };
+	/**
 	 * 本关全队各判定等级出现了几次(键 = 等级 id)。
 	 * 逐 Tee 结算时**只是记账**(给团队那一轮用),`calcTeeScore` 自己不吃它 ——
 	 * 数得全的地方在 `calcTeamTotal`(同参数)。
@@ -904,6 +944,7 @@ export interface ScoreInput {
 }
 
 export const calcTeeScore = ({
+	collectBase,
 	levelId,
 	self,
 	allSelf,
@@ -1536,7 +1577,33 @@ export const calcTeeScore = ({
 		chips += sc.chips;
 		note(sc.srcId, 'card', sc.chips, 1, sc.from);
 	}
-	const baseRaw = Math.max(level.score, baseFloor);
+	// 「零月」:被点名的卡掷出被点名的等级 → **等级分取负**(判定仍用原分值,见 condHit 那几处)。
+	// 作用在整块等级底分上(含点数阶梯的 floor),因为它就是「该等级的分数」。
+	// ⚠ 效果藏在 bundle 里,必须递归找 —— 只看顶层会静默失效
+	// (踩过:探针里「有零月 / 没零月」两组数字一模一样,才发现取负根本没生效)
+	const flatEffects = (e: TeeEffect): TeeEffect[] =>
+		e.type === 'bundle' ? e.parts.flatMap(flatEffects) : [e];
+	const selfId = teamCards[index]?.id;
+	const flipHit = selfId
+		? allSelf
+				.flatMap((list) => list)
+				.flatMap(({ eff, srcId }) => flatEffects(eff).map((e) => ({ e, srcId })))
+				.find(
+					({ e }) =>
+						e.type === 'level_score_flip' && e.cards.includes(selfId) && e.levels.includes(levelId)
+				)
+		: undefined;
+	const flipped = !!flipHit;
+	const flipSrcId = flipHit?.srcId ?? '';
+	const baseRaw = flipped ? -Math.max(level.score, baseFloor) : Math.max(level.score, baseFloor);
+	if (flipped)
+		note(
+			flipSrcId,
+			'card',
+			-2 * Math.max(level.score, baseFloor) - level.score,
+			1,
+			`${level.name} 等级分 ×(−1)`
+		);
 	const baseScaled = baseRaw * baseMult;
 	// 射日仙:每重掷一颗,整块基础分 ×N —— 等级底分、卡牌筹码、加成卡筹码一起放大
 	// (所以它能和道具的倍率叠着爆;作用在基础分侧而不是得分侧)
@@ -1548,16 +1615,18 @@ export const calcTeeScore = ({
 	// 逆向:chips 全部结算完、mult 之前,把「本回合已得的净值」整个替换掉 ——
 	// chips = reverseBase − 净值。掷得越漂亮(净值越高)逆向分越低,反之吃惩罚。
 	const net = base + chips + buffChips;
-	const swapped = reverseBase > 0 ? reverseBase - net : null;
+	// 「零月」:收集值直接当这一手的净值(基础分归零,连筹码一起换掉)。优先于 reverse。
+	const swapped =
+		collectBase !== undefined ? collectBase.value : reverseBase > 0 ? reverseBase - net : null;
 	if (swapped !== null) {
 		chips = swapped - base - buffChips; // 代进下面的算式后正好等于 swapped
 		// 不写进 chips 加算行:它语义上是「改写」,单独带 swap 给界面渲染
 		sources.push({
-			srcId: reverseSrc,
+			srcId: collectBase !== undefined ? collectBase.srcId : reverseSrc,
 			kind: 'card',
 			chips: swapped,
 			mult: 1,
-			swap: { from: net }
+			swap: { from: collectBase !== undefined ? base : net }
 		});
 	}
 	// 加成卡的「基础分翻倍」:整块放大(等级底分 + 卡牌筹码 + 加成卡筹码)。

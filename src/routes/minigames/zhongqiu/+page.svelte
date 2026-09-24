@@ -67,6 +67,7 @@
 		holderActiveSkills,
 		applyGrowth,
 		calcTeeScore,
+		collectByCard,
 		tickCharge,
 		calcTeamTotal,
 		cardById,
@@ -2256,6 +2257,7 @@
 		// 「重新进就是重掷本关」同一口径),上一次的抽奖跟着作废,10% 要能重新抽;
 		// 否则 jackpotDone 已经记了这只、结果却随旧骰子一起丢了(踩过)。
 		if (jackpotDone.includes(currentTee)) jackpotDone = jackpotDone.filter((x) => x !== currentTee);
+		zeroCollect = null; // 本关零月继承的账作废(重来要重新收)
 		sharedVoid = null; // 这一手还没抄到
 		sharedVoidTee = -1;
 		stuckRerolls = 0; // 猜谜:白掷计数随每只 Tee 的回合重置
@@ -3272,6 +3274,22 @@
 		levelUp?: { from: RollLevel; name: string } | null;
 	} | null = null;
 
+	/**
+	 * 「零月」本关继承到的账(结算行要写清出处:哪几张卡、各自多少分、加权后多少)。
+	 * 它在 `collectZeroMoon` 里算出来 —— 必须等**全队都投完**才数得全。
+	 */
+	let zeroCollect = $state<{
+		srcId: string;
+		parts: { cardId: string; score: number; weight: number }[];
+		/** 三张逆向加权求和 */
+		total: number;
+		/** 零月自己**替换前**的基础分(也并进收集里) */
+		ownBase: number;
+		/** 换成这一手的净值 = total + ownBase */
+		value: number;
+		gain: number;
+	} | null>(null);
+
 	/** 首算时的计分入参快照(rescoreTee 重算时必须用它,见那里的注释) */
 	let frozenScoreInput: ScoreInput | null = null;
 
@@ -3565,9 +3583,62 @@
 			stepsEl.scrollTop = settleScrollTarget;
 	};
 
+	/**
+	 * 「零月」:全队都投完之后,把三只逆向**已经结算的得分**收集起来,当**基础分**
+	 * 重算零月这只 Tee(这样它自己的加成卡、月系的 teamWide 照乘)。
+	 *
+	 * 为什么放在这里而不是逐 Tee 结算时:得分数要等六只都投完才齐 ——
+	 * 零月排在前面时,队友的分还没出。放在「团队那一轮」之前,天然和站位无关。
+	 * 只数这一关真投过的 Tee(`countedTee` 之后的是被云海提前收关、根本没投的)。
+	 */
+	const collectZeroMoon = () => {
+		zeroCollect = null;
+		for (let i = 0; i < team.length; i++) {
+			if (!team[i]) continue;
+			const hit = effectiveEffects(teamCards, i).find(({ eff }) => eff.type === 'collect_scores');
+			if (!hit) continue;
+			const spec = hit.eff as { type: 'collect_scores'; cards: string[]; weights: number[] };
+			const { total, parts } = collectByCard(
+				teamCards,
+				team.map((t) => t.lastScore),
+				spec,
+				countedTee
+			);
+			if (!parts.length) continue;
+			const t = team[i];
+			const input = scoreInput(
+				i,
+				t.lastLevelId,
+				liveDiceValues(t.lastDice ?? [], modsFor(i), t.lastRolled),
+				undefined,
+				rolledLive(t.lastRolled, t.lastDice, modsFor(i))
+			);
+			// ① 先按原样算一次,只为拿这只 Tee **替换前的基础分** —— 它也要并进收集里
+			//    (卡面:「… + 残月 + 零月基础分」)
+			const own = calcTeeScore(input);
+			const value = total + own.base;
+			const before = t.lastScore ?? 0;
+			// ② 再按「零月基础分替换为 0、这一手的净值整个换成收集值」重算:
+			//    得分 = 收集值 × 该 Tee 得分倍率(和 reverse 同一个位置,自带 swap 行)
+			const next = calcTeeScore({ ...input, collectBase: { srcId: hit.srcId, value } });
+			t.lastScore = next.total;
+			currentScore += next.total - before;
+			zeroCollect = {
+				srcId: hit.srcId,
+				parts,
+				total,
+				ownBase: own.base,
+				value,
+				gain: next.total - before
+			};
+			break; // 一张就够(同名多带也只算一次)
+		}
+	};
+
 	const confirmRound = () => {
 		sfxClick();
 		if (teamSettling || phase !== 'round_confirm') return;
+		collectZeroMoon(); // 零月:全队投完了,先把它继承的那笔算进 lastScore
 		const steps: { text: string; cls: string; kind: SettleKind }[] = [];
 		// 队伍里还有没有「我」——身份看 isSelf(不是「有没有无卡 Tee」),和引擎同口径
 		const hasMe = team.some((t) => t.isSelf === true);
@@ -3612,6 +3683,24 @@
 				}
 			}
 		});
+		// 「零月」:一条替换条(基础分 → 0,和残月那条 reverse 同一个样子)+ 一条出处
+		if (zeroCollect) {
+			const zc = zeroCollect;
+			const zname = cardById(zc.srcId)?.name ?? '零月';
+			const detail = zc.parts
+				.map((p) => `${cardById(p.cardId)?.name ?? p.cardId} ${formatScore(p.score)}×${p.weight}`)
+				.join(' + ');
+			steps.push({
+				text: `${zname} ${formatScore(zc.ownBase)} → 0`,
+				cls: 'font-bold text-amber-200',
+				kind: 'swap'
+			});
+			steps.push({
+				text: `Σ ${zname}：继承 ${detail} + ${zname}基础分 ${formatScore(zc.ownBase)} = ${formatScore(zc.value)}`,
+				cls: 'font-bold text-cyan-200',
+				kind: 'mult'
+			});
+		}
 		const sum = team.reduce((s, t) => s + t.lastScore, 0);
 		const { total, teamMult, relay, ratioBonus, relayLines, ratioLines } = calcTeamTotal(
 			team.map((t) => t.lastScore),
@@ -4266,9 +4355,19 @@
 				if (!teamCards[i]) return n;
 				return (
 					n +
-					effectiveEffects(teamCards, i).filter(({ eff }) =>
-						['team_mult', 'relay_pct', 'no_me_team_mult', 'team_level_mult'].includes(eff.type)
-					).length
+					effectiveEffects(teamCards, i).reduce(
+						(m, { eff }) =>
+							m +
+							// 零月占两条:替换条(基础分 → 0)+ 出处条
+							(eff.type === 'collect_scores'
+								? 2
+								: ['team_mult', 'relay_pct', 'no_me_team_mult', 'team_level_mult'].includes(
+											eff.type
+									  )
+									? 1
+									: 0),
+						0
+					)
 				);
 			}, 0) +
 				1 +
