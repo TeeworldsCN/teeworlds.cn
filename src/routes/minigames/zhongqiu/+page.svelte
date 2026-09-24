@@ -4897,6 +4897,7 @@
 												style={`animation-duration: ${rollDur}s; animation-delay: ${dieDelay(i)}s; animation-iteration-count: ${rollIter}`}
 												disabled={!choosing && !pendingAction}
 												class:voided={dieVoid(i)}
+												class:boss-marked={bossRerollMark(i) && !dieVoid(i)}
 												data-die={i}
 												class:selecting={choosing}
 												onpointerdown={(e) => startPaint(i, e)}
@@ -5933,6 +5934,24 @@
 			0 0 7px rgb(255 255 255 / 0.75);
 		pointer-events: none;
 		user-select: none;
+	}
+
+	/* 滞月:被抽中的那颗(重掷就作废)—— boss 红的发光(和横幅同一个红)+ 右上角标。
+	   角标只管「是哪一颗」,发光管「这颗有雷」:一屏里一眼能看见。 */
+	.die.boss-marked {
+		box-shadow:
+			0 0 0 1.5px rgb(248 113 113 / 0.7),
+			0 0 12px 4px rgb(239 68 68 / 0.45),
+			0 4px 10px rgba(0, 0, 0, 0.45),
+			inset 0 -2px 4px rgba(0, 0, 0, 0.15);
+	}
+
+	.die.boss-marked:hover {
+		box-shadow:
+			0 0 0 1.5px rgb(248 113 113 / 0.85),
+			0 0 16px 6px rgb(239 68 68 / 0.55),
+			0 4px 10px rgba(0, 0, 0, 0.45),
+			inset 0 -2px 4px rgba(0, 0, 0, 0.15);
 	}
 
 	/* 滞月:被抽中的那颗(重掷就作废)—— 右上角标,别让玩家去数「左数第几颗」 */
