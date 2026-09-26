@@ -14,10 +14,10 @@
  * - The final score is `max()` of both: either signal alone misses a whole
  *   class of near-misses (edit distance misses dropped words, bigram Dice
  *   scores word shuffles too generously), and `max()` keeps both honest.
- * - A single threshold of 0.8 rejects random input. On the real map list it
- *   recovers ~96% of single-edit typos (98.5% pointing at the intended map)
- *   while ~0.06% of random letter strings pass, all of which are one edit
- *   away from a real (very short) map name.
+ * - A single threshold of 0.75 rejects random input. On the real map list it
+ *   answers ~99% of single-edit typos (98.7% of suggestions point at the
+ *   intended map) while only ~0.3% of random letter strings pass, all of
+ *   which are one edit away from a real (very short) map name.
  *
  * Both metrics are computed on lowercased strings with separators
  * (`-`, `_`, spaces, dots, quotes) removed, so `Sunny-Side Up`, `sunny_side_up`
@@ -25,7 +25,7 @@
  */
 
 /** Scores below this never produce a match. */
-export const FUZZY_MATCH_THRESHOLD = 0.8;
+export const FUZZY_MATCH_THRESHOLD = 0.75;
 
 /** Do not attempt fuzzy matching for very short queries (too easy to match by accident). */
 export const FUZZY_MIN_QUERY_LENGTH = 3;
