@@ -6,6 +6,8 @@
  * fuzzy fallback (i.e. the regular `checkMapName` search matched nothing):
  *
  * - recall / top-1 accuracy on perturbed map names (should be high)
+ * - recall on names with a word missing from the middle ("back festi"),
+ *   which the chain score is responsible for
  * - false positive rate on random garbage input (should be near zero)
  *
  * Usage: bun run scripts/fuzzy-check.ts
@@ -24,6 +26,7 @@ const MAPS_URL = 'https://ddnet.org/releases/maps.json';
 const GUARDRAILS = {
 	minTypoRecall: 0.9,
 	minTypoTop1Accuracy: 0.95,
+	minGapRecall: 0.85,
 	maxRandomFalsePositiveRate: 0.01
 };
 
@@ -91,6 +94,26 @@ const main = async () => {
 		}
 	}
 
+	// ---- recall on queries with a word missing from the name ----
+	const gapCases: Case[] = [];
+	while (gapCases.length < 1500) {
+		const name = pick(names);
+		const words = name.split(' ');
+		if (words.length < 2) continue;
+		const dropped = [...words];
+		dropped.splice(Math.floor(rand() * dropped.length), 1);
+		const query = dropped.join(' ');
+		if (query.length >= 2 && reachesFuzzy(names, query)) {
+			gapCases.push({ query, expect: name });
+		}
+	}
+
+	let gapRecall = 0;
+	for (const { query, expect } of gapCases) {
+		const match = findBestFuzzyMatch(query, names, (name) => name);
+		if (match && match.item == expect) gapRecall++;
+	}
+
 	// ---- false positives on random garbage ----
 	const garbageQueries: string[] = [];
 	while (garbageQueries.length < 5000) {
@@ -106,11 +129,15 @@ const main = async () => {
 
 	const typoRecall = recall / typoCases.length;
 	const typoTop1 = recall > 0 ? top1 / recall : 0;
+	const gapRecallRate = gapRecall / gapCases.length;
 	const falsePositiveRate = garbageMatches.length / garbageQueries.length;
 
 	console.log(`fuzzy threshold: ${FUZZY_MATCH_THRESHOLD}`);
 	console.log(
 		`perturbed names (${typoCases.length} queries): answered ${(typoRecall * 100).toFixed(1)}%, ${top1}/${recall} suggestions (${(typoTop1 * 100).toFixed(1)}%) point at the intended map`
+	);
+	console.log(
+		`names with a word missing (${gapCases.length} queries): ${gapRecall}/${gapCases.length} (${(gapRecallRate * 100).toFixed(1)}%) point at the intended map`
 	);
 	console.log(
 		`random input (${garbageQueries.length} queries): ${garbageMatches.length} matched (${(falsePositiveRate * 100).toFixed(2)}%)`
@@ -129,6 +156,11 @@ const main = async () => {
 	if (typoTop1 < GUARDRAILS.minTypoTop1Accuracy) {
 		failures.push(
 			`typo top-1 accuracy ${(typoTop1 * 100).toFixed(1)}% < ${GUARDRAILS.minTypoTop1Accuracy * 100}%`
+		);
+	}
+	if (gapRecallRate < GUARDRAILS.minGapRecall) {
+		failures.push(
+			`gap recall ${(gapRecallRate * 100).toFixed(1)}% < ${GUARDRAILS.minGapRecall * 100}%`
 		);
 	}
 	if (falsePositiveRate > GUARDRAILS.maxRandomFalsePositiveRate) {
