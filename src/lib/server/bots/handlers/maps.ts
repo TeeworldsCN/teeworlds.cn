@@ -3,6 +3,7 @@ import { checkMapName } from '$lib/ddnet/searches';
 import { encodeAsciiURIComponent } from '$lib/link';
 import { maps, type MapList } from '$lib/server/fetches/maps';
 import type { Handler } from '../protocol/types';
+import { findBestFuzzyMatch } from '../utils/fuzzy';
 
 const MAPTYPE_KEYWORDS: Record<string, string> = {
 	'-rol': 'random',
@@ -188,69 +189,82 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 		return noSeparator;
 	};
 
-	const filteredMaps = mapData
-		.filter((map: (typeof mapData)[0]) => {
-			return (
-				(!type || map.type.toLowerCase().startsWith(type)) &&
-				(!diff || map.difficulty == diff) &&
-				checkMapName(map.name, mapName)
-			);
-		})
+	const typeDiffFilteredMaps = mapData.filter((map: (typeof mapData)[0]) => {
+		return (!type || map.type.toLowerCase().startsWith(type)) && (!diff || map.difficulty == diff);
+	});
+
+	const filteredMaps = typeDiffFilteredMaps
+		.filter((map) => checkMapName(map.name, mapName))
 		.map((map) => ({ ...map, nameNoSeparator: removeSeparator(map.name) }));
 
-	if (filteredMaps.length == 0) {
-		return await reply.text(`未找到名为 ${mapName} 的地图`);
-	}
-
 	let targetMap: MapList[0] | null = null;
+	let guessIntro = '';
 
 	const mapNameNoSpeparator = removeSeparator(mapName);
 
-	// sort by lowest point (easiest, probably finished by most players)
-	// then oldest
-	targetMap = filteredMaps.sort((a, b) => {
-		const aExact = a.name.toLowerCase() == mapName.toLowerCase();
-		const bExact = b.name.toLowerCase() == mapName.toLowerCase();
-		const aCaseExact = a.name == mapName;
-		const bCaseExact = b.name == mapName;
+	if (filteredMaps.length > 0) {
+		// sort by lowest point (easiest, probably finished by most players)
+		// then oldest
+		targetMap =
+			filteredMaps.sort((a, b) => {
+				const aExact = a.name.toLowerCase() == mapName.toLowerCase();
+				const bExact = b.name.toLowerCase() == mapName.toLowerCase();
+				const aCaseExact = a.name == mapName;
+				const bCaseExact = b.name == mapName;
 
-		if (aExact && bExact) {
-			if (aCaseExact != bCaseExact) {
-				return aCaseExact ? -1 : 1;
-			}
-		} else if (aExact && !bExact) {
-			return -1;
-		} else if (bExact && !aExact) {
-			return 1;
+				if (aExact && bExact) {
+					if (aCaseExact != bCaseExact) {
+						return aCaseExact ? -1 : 1;
+					}
+				} else if (aExact && !bExact) {
+					return -1;
+				} else if (bExact && !aExact) {
+					return 1;
+				}
+
+				const aStartsWith = a.nameNoSeparator.toLowerCase().startsWith(mapNameNoSpeparator);
+				const bStartsWith = b.nameNoSeparator.toLowerCase().startsWith(mapNameNoSpeparator);
+				const aCaseStartsWith = a.nameNoSeparator.startsWith(mapNameNoSpeparator);
+				const bCaseStartsWith = b.nameNoSeparator.startsWith(mapNameNoSpeparator);
+
+				if (aStartsWith == bStartsWith) {
+					if (aCaseStartsWith != bCaseStartsWith) {
+						return aCaseStartsWith ? -1 : 1;
+					}
+					if (a.points == b.points) {
+						return new Date(a.release || 0).getTime() - new Date(b.release || 0).getTime();
+					}
+					return a.points - b.points;
+				}
+
+				if (aStartsWith) {
+					return -1;
+				}
+
+				return 1;
+			})[0] ?? null;
+	} else {
+		// nothing matched the query, guess the closest map name with fuzzy matching
+		// candidates are pre-sorted so ties resolve to the easiest, then oldest map
+		const candidates = [...typeDiffFilteredMaps].sort(
+			(a, b) =>
+				a.points - b.points ||
+				new Date(a.release || 0).getTime() - new Date(b.release || 0).getTime()
+		);
+		const guess = findBestFuzzyMatch(mapName, candidates, (map) => map.name);
+
+		if (guess) {
+			targetMap = guess.item;
+			guessIntro = `没有找到名为 ${mapName} 的地图，你是否在找`;
 		}
-
-		const aStartsWith = a.nameNoSeparator.toLowerCase().startsWith(mapNameNoSpeparator);
-		const bStartsWith = b.nameNoSeparator.toLowerCase().startsWith(mapNameNoSpeparator);
-		const aCaseStartsWith = a.nameNoSeparator.startsWith(mapNameNoSpeparator);
-		const bCaseStartsWith = b.nameNoSeparator.startsWith(mapNameNoSpeparator);
-
-		if (aStartsWith == bStartsWith) {
-			if (aCaseStartsWith != bCaseStartsWith) {
-				return aCaseStartsWith ? -1 : 1;
-			}
-			if (a.points == b.points) {
-				return new Date(a.release || 0).getTime() - new Date(b.release || 0).getTime();
-			}
-			return a.points - b.points;
-		}
-
-		if (aStartsWith) {
-			return -1;
-		}
-
-		return 1;
-	})[0];
+	}
 
 	if (!targetMap) {
 		return await reply.text(`未找到名为 ${mapName} 的地图`);
 	}
 
 	const lines = [
+		...(guessIntro ? [guessIntro] : []),
 		`${targetMap.name} (by ${targetMap.mapper})`,
 		`[${mapType(targetMap.type)} ${numberToStars(targetMap.difficulty)}] ${targetMap.points}pts`
 	];
