@@ -48,6 +48,8 @@ export interface PosterData {
 	score: number;
 	/** 倒在了第几关 */
 	round: number;
+	/** 是不是「放弃结算」结束的(放弃按钮 / 长按关卡):海报文案据此区分「放弃结算」/「倒在了」 */
+	abandoned?: boolean;
 	/** 本关得分 / 本关目标 */
 	roundScore: number;
 	roundTarget: number;
@@ -780,7 +782,9 @@ const drawHero = (
 	});
 
 	// 左下的数据行:关卡 / 本关 / 历时。本关那条后期可能变长,所以整行按可用宽度降字号
-	const info = `倒在了第 ${data.round} 关 · 本关 ${data.roundScore.toLocaleString('zh-CN')} / ${data.roundTarget.toLocaleString('zh-CN')} · 历时 ${data.duration}`;
+	const info = data.abandoned
+		? `放弃结算 · 第 ${data.round} 关 · 本关 ${data.roundScore.toLocaleString('zh-CN')} / ${data.roundTarget.toLocaleString('zh-CN')} · 历时 ${data.duration}`
+		: `倒在了第 ${data.round} 关 · 本关 ${data.roundScore.toLocaleString('zh-CN')} / ${data.roundTarget.toLocaleString('zh-CN')} · 历时 ${data.duration}`;
 	const infoMaxW = W - M - QR_W - 24 - M;
 	paintText(ctx, info, M, L.infoBase, {
 		size: fittedSize(ctx, info, infoMaxW, SIZE.heroInfo, 22),

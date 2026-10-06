@@ -2083,6 +2083,8 @@ export type RunSave = {
 	finalScore: number;
 	finalRunScore: number;
 	finalRound: number;
+	/** 这局是「放弃结算」结束的(放弃按钮 / 长按关卡);老存档没有 → 按 false(「倒在了」) */
+	abandoned?: boolean;
 	isNewBest: boolean;
 	lastRewardIdx: number;
 	shopPickId: string | null;
@@ -2231,6 +2233,8 @@ const validateRun = (d: RunSave): void => {
 		)
 			bad('voidFixed');
 	}
+	// 可选字段:在就必须是布尔(放弃结算标记;坏档宁可丢掉,别带病渲染)
+	if (d.abandoned !== undefined && typeof d.abandoned !== 'boolean') bad('abandoned');
 	if (d.dice.some((v) => !isNum(v))) bad('dice');
 };
 
