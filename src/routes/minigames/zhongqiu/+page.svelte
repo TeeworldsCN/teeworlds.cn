@@ -342,6 +342,11 @@
 	let finalScore = $state(0);
 	let finalRunScore = $state(0);
 	let finalRound = $state(0);
+	/**
+	 * 这局是不是「放弃结算」结束的(放弃按钮 / 长按关卡):结束屏据此显示「放弃结算」
+	 * 而不是「倒在了」。要入档 —— 刷新回结束屏也得认得出是怎么结束的。
+	 */
+	let abandoned = $state(false);
 	let isNewBest = $state(false);
 
 	// 开局选卡（5 选 2）
@@ -1257,6 +1262,7 @@
 					finalScore = roundTotal;
 					finalRound = round;
 					isNewBest = false;
+					abandoned = false; // QA 快进的结束屏和真·失败同口径
 					phase = 'game_over';
 				}
 			},
@@ -1327,6 +1333,7 @@
 	/** 重置一局的公共状态 */
 	const resetRunState = () => {
 		runScore = 0;
+		abandoned = false; // 上一局的「放弃结算」不能带进新一局
 		mooncakes = 0;
 		buffInventory = {};
 		boughtCounts = {};
@@ -1525,6 +1532,7 @@
 			finalScore,
 			finalRunScore,
 			finalRound,
+			abandoned,
 			isNewBest,
 			lastRewardIdx,
 			shopPickId: shopPick?.id ?? null,
@@ -1654,6 +1662,7 @@
 		finalScore = d.finalScore;
 		finalRunScore = d.finalRunScore;
 		finalRound = d.finalRound;
+		abandoned = d.abandoned ?? false;
 		isNewBest = d.isNewBest;
 		lastRewardIdx = d.lastRewardIdx;
 		shopPick = d.shopPickId ? (BUFF_BY_ID.get(d.shopPickId) ?? null) : null;
@@ -3855,6 +3864,7 @@
 			finalScore = total;
 			finalRound = round;
 			finalRunScore = runScore;
+			abandoned = false; // 真·倒下:结束屏显示「倒在了」
 			const prevBest = save.bestScore;
 			save = saveResult(runScore, round);
 			isNewBest = runScore > prevBest && runScore > 0;
@@ -3867,14 +3877,16 @@
 	const abandonRun = () => {
 		sfxClick();
 		if (teamSettling || phase !== 'round_confirm') return; // 动画播到一半不给点;phase 守卫拦连击/程序化双触发 // 结算动画播到一半不给点，和「结算回合」一致
-		endRunEarly();
+		endRunEarly(true); // 记为放弃结算:结束屏显示「放弃结算」
 	};
 
 	/**
-	 * 真正写终局的那步。UI 的「放弃结算」过完守卫走这里;作弊引擎的 gameOver **故意**直呼它
-	 * (QA 套件从任意阶段快进到结束屏就靠这个)—— phase 守卫放在 abandonRun,不放这里。
+	 * 真正写终局的那步。UI 的「放弃结算」/长按关卡过完守卫走 `endRunEarly(true)`;
+	 * 作弊引擎的 gameOver **故意**直呼它(不带参 = 照常「倒在了」,QA 快进到结束屏靠这个)
+	 * —— phase 守卫放在 abandonRun,不放这里。
 	 */
-	const endRunEarly = () => {
+	const endRunEarly = (byAbandon = false) => {
+		abandoned = byAbandon;
 		// 本轮总分**当场重算**,和「结算回合」(confirmRound → settleRound)同一个
 		// calcTeamTotal 口径(含回流/全队倍率,上限目标)。不能拿 currentScore:它只是
 		// 逐 Tee 累加的**和**,不含团队加成,和过关/失败的算法对不上;更糟的是结算动画会
@@ -3929,7 +3941,7 @@
 				endHoldShown = false;
 				// 起始选卡回标题,游戏里直接进结束屏 —— 浮层文案不区分,行为区分
 				if (phase === 'draft') backToTitle();
-				else endRunEarly();
+				else endRunEarly(true); // 长按结束 = 放弃结算
 				return;
 			}
 		} else {
@@ -4409,6 +4421,7 @@
 		bestScore: save.bestScore,
 		bestRound: save.bestRound,
 		isNewBest,
+		abandoned,
 		duration: formatDuration(runDurationMs),
 		soldTees,
 		cardsBought: runStats.cardsBought,
@@ -5704,8 +5717,14 @@
 									</div>
 									<div class="min-w-0 flex-1 space-y-0.5 text-slate-400">
 										<div>
-											倒在了 <span class="font-bold text-slate-200">第 {finalRound} 关</span> · 本关
-											{formatScore(finalScore)} / 目标 {formatScore(target)}
+											{#if abandoned}
+												<span class="font-bold text-slate-200">放弃结算</span> · 第 {finalRound} 关 ·
+												本关 {formatScore(finalScore)} / 目标 {formatScore(target)}
+											{:else}
+												倒在了 <span class="font-bold text-slate-200">第 {finalRound} 关</span> ·
+												本关
+												{formatScore(finalScore)} / 目标 {formatScore(target)}
+											{/if}
 										</div>
 										<div class="text-slate-500">
 											最高总分 <span class="font-bold text-slate-300"
