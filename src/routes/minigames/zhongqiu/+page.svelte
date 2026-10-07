@@ -433,6 +433,10 @@
 		[20, 20]
 	];
 	let teamSettling = $state(false);
+	/** 回合结算清单(和每个 Tee 的结算清单各是一个滚动区,共用自动滚动那一套) */
+	let teamStepsEl: HTMLElement | undefined = $state();
+	/** 回合结算清单「当前行可见」应处的 scrollTop —— 用它回弹用户的手动滚动 */
+	let teamSettleScrollTarget = 0;
 
 	// ---- 加成卡 / 重构卡工具 ----
 
@@ -3147,7 +3151,7 @@
 		const rowGen = animGen;
 		settleSteps.forEach((_, i) => {
 			setTimeout(
-				() => {
+				async () => {
 					if (rowGen !== animGen) return;
 					settleIdx = i;
 					settlePreview = -settleTotal + Math.round(settleTotal * ((i + 1) / settleSteps.length));
@@ -3155,18 +3159,12 @@
 					if (!st) return;
 					if (st.kind === 'total') sfxTotal(settleTotal > 0);
 					else sfxStep(i, st.kind, lv.score);
-					// 只把「正在展示的这一行」滚进可视区,不做「永远贴底」——
-					// 结算框里那些不可见的占位行会把 scrollHeight 撑得很大,贴底就会把上面的行推走
-					if (stepsEl) {
-						const line = stepsEl.children[i] as HTMLElement | undefined;
-						if (line) {
-							const lb = line.getBoundingClientRect();
-							const sb = stepsEl.getBoundingClientRect();
-							if (lb.bottom > sb.bottom) stepsEl.scrollTop += lb.bottom - sb.bottom;
-							else if (lb.top < sb.top) stepsEl.scrollTop -= sb.top - lb.top;
-							settleScrollTarget = stepsEl.scrollTop;
-						}
-					}
+					// 只把「正在展示的这一行」滚进可视区(不做「永远贴底」,理由见 scrollStepIntoView)。
+					// 等 tick():写 settleIdx 的这一刻 DOM 还是上一帧(这一行还是占位行),
+					// 长行折行时占位行量出来的位置会偏。
+					await tick();
+					if (rowGen !== animGen) return;
+					settleScrollTarget = scrollStepIntoView(stepsEl, i);
 				},
 				(i + 1) * stepMs
 			);
@@ -3577,11 +3575,30 @@
 		phase = 'round_confirm';
 	};
 
-	/** 用户手动滚动结算框一律无视:立刻回到「当前行可见」的位置 */
-	const keepSettleScroll = () => {
-		if (stepsEl && Math.abs(stepsEl.scrollTop - settleScrollTarget) > 1)
-			stepsEl.scrollTop = settleScrollTarget;
+	/**
+	 * 把结算清单里「正在展示的这一行」滚进可视区,返回滚完后的 scrollTop。
+	 * 不做「永远贴底」—— 清单里那些不可见的占位行会把 scrollHeight 撑得很大,贴底就会把上面的行推走。
+	 * 每个 Tee 的结算清单 / 回合结算清单共用这一份。行上带 data-step:
+	 * 两个面板的清单结构不同(回合结算的行多包了一层居中壳),按 children 下标找行会找错。
+	 */
+	const scrollStepIntoView = (el: HTMLElement | undefined, i: number): number => {
+		if (!el) return 0;
+		const line = el.querySelector<HTMLElement>(`[data-step="${i}"]`);
+		if (!line) return el.scrollTop;
+		const lb = line.getBoundingClientRect();
+		const sb = el.getBoundingClientRect();
+		if (lb.bottom > sb.bottom) el.scrollTop += lb.bottom - sb.bottom;
+		else if (lb.top < sb.top) el.scrollTop -= sb.top - lb.top;
+		return el.scrollTop;
 	};
+
+	/** 用户手动滚动结算清单一律无视:立刻回到「当前行可见」的位置 */
+	const keepScrollAt = (el: HTMLElement | undefined, target: number) => {
+		if (el && Math.abs(el.scrollTop - target) > 1) el.scrollTop = target;
+	};
+
+	const keepSettleScroll = () => keepScrollAt(stepsEl, settleScrollTarget);
+	const keepTeamSettleScroll = () => keepScrollAt(teamStepsEl, teamSettleScrollTarget);
 
 	/**
 	 * 「零月」:全队都投完之后,把三只逆向**已经结算的得分**收集起来,当**基础分**
@@ -3748,7 +3765,7 @@
 		const rowGen = animGen;
 		steps.forEach((_, i) => {
 			setTimeout(
-				() => {
+				async () => {
 					if (rowGen !== animGen) return;
 					teamSettleIdx = i;
 					// 每出一条加一声(和每个 Tee 的结算同一套):最后那条「合计」用 total 音
@@ -3759,6 +3776,11 @@
 					}
 					// 回流/倍率播的时候进度条也往上走(终点正好是 total)
 					currentScore = Math.round(sum + (total - sum) * ((i + 1) / steps.length));
+					// 清单比面板高时(抄牌链能叠出十几条团队倍率),把正在弹的这一行滚进可视区。
+					// 和每个 Tee 的结算同一套;同样等 tick() 落定再量(见 playSettle)。
+					await tick();
+					if (rowGen !== animGen) return;
+					teamSettleScrollTarget = scrollStepIntoView(teamStepsEl, i);
 				},
 				(i + 1) * stepMs
 			);
@@ -5362,7 +5384,9 @@
 									>
 										{#each Array.from({ length: Math.max(settleReserveLines, settleSteps.length) }, (_, i) => i) as i (i)}
 											{#if i <= settleIdx && settleSteps[i]}
-												<div class="settle-step {settleSteps[i].cls}">{settleSteps[i].text}</div>
+												<div class="settle-step {settleSteps[i].cls}" data-step={i}>
+													{settleSteps[i].text}
+												</div>
 											{:else}
 												<div class="invisible" aria-hidden="true">&nbsp;</div>
 											{/if}
@@ -5379,30 +5403,43 @@
 							>
 								<!-- 主内容在「剩余空间」里居中,好让下面的放弃按钮贴到面板底沿 -->
 								<div class="phase-panel flex h-38 max-h-38 w-full flex-col justify-between">
-									<div class="text-base font-bold text-amber-200 lg:text-lg">🌕 回合结算</div>
+									<div class="shrink-0 text-base font-bold text-amber-200 lg:text-lg">
+										🌕 回合结算
+									</div>
 									<!-- 结算区按本轮行数预先占位(未弹的行用不可见空行顶着):
-					     否则团队倍率卡一条条弹出时,下面的按钮会被顶下去 -->
-									<div class="mt-1 flex flex-col items-center justify-center gap-0.5">
-										{#each Array.from({ length: Math.max(teamSettleReserveLines, teamSettleSteps.length) }, (_, i) => i) as i (i)}
-											{#if teamSettleSteps.length === 0 && i === 0}
-												<div class="text-slate-400">
-													全队已掷完，队伍得分合计
-													<span class="font-bold text-slate-200"
-														>{formatScore(team.reduce((s, t) => s + t.lastScore, 0))}</span
-													>
-												</div>
-											{:else if teamSettleSteps[i] && i <= teamSettleIdx}
-												<div class="settle-step {teamSettleSteps[i].cls}">
-													{teamSettleSteps[i].text}
-												</div>
-											{:else}
-												<div class="invisible" aria-hidden="true">&nbsp;</div>
-											{/if}
-										{/each}
+					     否则团队倍率卡一条条弹出时,下面的按钮会被顶下去。
+					     行数比面板高时(抄牌链能叠出十几条团队倍率)不能从面板里溢出来 ——
+					     这里和每个 Tee 的结算同一个口径:清单内部滚动 + 只把正在弹的这一行滚进可视区
+					     (见 confirmRound 里的 scrollStepIntoView)。
+					     居中交给内层壳的 my-auto:行少时竖直居中;行多到溢出时 auto 边距归零、
+					     第一行留在顶部 —— justify-center 溢出会把上面几行顶到滚不到的地方 -->
+									<div
+										bind:this={teamStepsEl}
+										onscroll={keepTeamSettleScroll}
+										class="no-scrollbar mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+									>
+										<div class="my-auto flex w-full flex-col items-center gap-0.5">
+											{#each Array.from({ length: Math.max(teamSettleReserveLines, teamSettleSteps.length) }, (_, i) => i) as i (i)}
+												{#if teamSettleSteps.length === 0 && i === 0}
+													<div class="text-slate-400">
+														全队已掷完，队伍得分合计
+														<span class="font-bold text-slate-200"
+															>{formatScore(team.reduce((s, t) => s + t.lastScore, 0))}</span
+														>
+													</div>
+												{:else if teamSettleSteps[i] && i <= teamSettleIdx}
+													<div class="settle-step {teamSettleSteps[i].cls}" data-step={i}>
+														{teamSettleSteps[i].text}
+													</div>
+												{:else}
+													<div class="invisible" aria-hidden="true">&nbsp;</div>
+												{/if}
+											{/each}
+										</div>
 									</div>
 									<!-- 结算期间保持按钮占位,不换成一行文字:44px 塌成 20px 会把上面的结算文字顶下去 -->
 									<button
-										class="mx-auto mt-2.5 w-full max-w-72 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:cursor-default disabled:opacity-60 disabled:hover:from-amber-400 disabled:hover:to-amber-600 sm:px-10 lg:text-lg"
+										class="mx-auto mt-2.5 w-full max-w-72 shrink-0 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-8 py-2.5 text-base font-bold text-amber-950 shadow-lg transition hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:cursor-default disabled:opacity-60 disabled:hover:from-amber-400 disabled:hover:to-amber-600 sm:px-10 lg:text-lg"
 										onclick={confirmRound}
 										disabled={teamSettling}
 									>
