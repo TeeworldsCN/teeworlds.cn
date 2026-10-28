@@ -181,7 +181,9 @@ const handle = async ({ platform, user, msg, raw, mode, reply, group, isAt }: ro
 };
 
 export const handleMessage = async ({}: rootHandlerArgs) => {
-	// TODO: implement
+	// Ignore ambient group chatter. Full-mode groups push every message, and
+	// scanning keyword replies against all of them is too expensive.
+	return { ignored: true, message: 'Message does not mention the bot' };
 };
 
 export const handlePing = async (

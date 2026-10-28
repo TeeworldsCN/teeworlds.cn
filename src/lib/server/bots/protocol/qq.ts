@@ -391,6 +391,7 @@ export type QQPayload =
 	| QQValidationPayload
 	| QQC2CMessageCreatePayload
 	| QQGroupAtMessageCreatePayload
+	| QQGroupMessageCreatePayload
 	| QQDirectMessageCreatePayload
 	| QQMessageCreatePayload
 	| QQAtMessageCreatePayload;
@@ -417,6 +418,33 @@ export type QQGroupAtMessageCreatePayload = CallbackPayload<
 		message_scene: { source: string };
 	},
 	'GROUP_AT_MESSAGE_CREATE'
+>;
+
+/** Group messages in full mode ("接收所有消息"), including messages that don't mention the bot */
+export type QQGroupMessageCreatePayload = CallbackPayload<
+	{
+		id: string;
+		content: string;
+		timestamp: string;
+		author: {
+			id: string;
+			user_openid?: string;
+			member_openid?: string;
+			union_openid?: string;
+			username?: string;
+			bot?: boolean;
+		};
+		group_id?: string;
+		group_openid: string;
+		message_scene?: { source: string; ext?: string[] };
+		mentions?: {
+			id: string;
+			username?: string;
+			bot?: boolean;
+			is_you?: boolean;
+		}[];
+	},
+	'GROUP_MESSAGE_CREATE'
 >;
 
 export type QQDirectMessageCreatePayload = CallbackPayload<

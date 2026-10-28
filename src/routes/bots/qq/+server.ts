@@ -47,10 +47,27 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 		let replyMethod = null;
 		let mode: 'GROUP' | 'DIRECT' = 'GROUP';
 		let message: string = payload.d.content;
-		let uid = payload.d.author.union_openid;
+		let isAt = false;
+
+		// union_openid is the cross-app identity, but it is not guaranteed to be present
+		const author = payload.d.author as {
+			id?: string;
+			user_openid?: string;
+			member_openid?: string;
+			union_openid?: string;
+			bot?: boolean;
+		};
+		const uid = author.union_openid || author.member_openid || author.user_openid || author.id;
 
 		if (!uid) {
 			return error(400, 'Bad Request');
+		}
+
+		if (author.bot) {
+			// don't answer other bots (or our own echoed messages) in full group mode
+			return new Response(JSON.stringify({ op: 12, d: 0 }), {
+				headers: { 'content-type': 'application/json' }
+			});
 		}
 
 		let group = 'DIRECT';
@@ -73,8 +90,30 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 				bot.sendDirectMessage(payload.d.guild_id, msg, { msgId: payload.d.id });
 		} else if (payload.t == 'GROUP_AT_MESSAGE_CREATE') {
 			onNewline = true;
-			group = payload.d.group_id;
+			isAt = true;
+			group = payload.d.group_id || payload.d.group_openid;
 			mode = 'GROUP';
+			replyMethod = (msg: QQMessage) =>
+				bot.sendGroupMessage(payload.d.group_openid, msg, { msgId: payload.d.id });
+		} else if (payload.t == 'GROUP_MESSAGE_CREATE') {
+			// full mode: every group message, mentions[].is_you tells us if the bot was at
+			group = payload.d.group_id || payload.d.group_openid;
+			mode = 'GROUP';
+
+			const mention = payload.d.mentions?.find((m) => m.is_you);
+			if (mention) {
+				isAt = true;
+				// only at-messages get the leading newline that separates the reply from the mention
+				onNewline = true;
+				// strip the bot mention (e.g. "<@7A3B...>") before parsing the command
+				message = (message || '')
+					.split(`<@!${mention.id}>`)
+					.join(' ')
+					.split(`<@${mention.id}>`)
+					.join(' ')
+					.trim();
+			}
+
 			replyMethod = (msg: QQMessage) =>
 				bot.sendGroupMessage(payload.d.group_openid, msg, { msgId: payload.d.id });
 		} else if (payload.t == 'AT_MESSAGE_CREATE') {
@@ -85,6 +124,7 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 			}
 			channel = true;
 			onNewline = false;
+			isAt = true;
 			group = `${payload.d.guild_id}:${payload.d.channel_id}`;
 			mode = 'GROUP';
 			replyMethod = (msg: QQMessage) =>
@@ -155,7 +195,7 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 				message,
 				payload.d,
 				mode,
-				payload.t == 'AT_MESSAGE_CREATE' || payload.t == 'GROUP_AT_MESSAGE_CREATE'
+				isAt
 			);
 		}
 
