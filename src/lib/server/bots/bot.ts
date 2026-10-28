@@ -72,7 +72,15 @@ type rootHandlerArgs = {
 	isAt: boolean;
 };
 
-const handle = async ({ platform, user, msg, raw, mode, reply, group, isAt }: rootHandlerArgs) => {
+type HandleOptions = {
+	/** Run the keyword fallback when the message is not a registered command */
+	allowFallback?: boolean;
+};
+
+const handle = async (
+	{ platform, user, msg, raw, mode, reply, group, isAt }: rootHandlerArgs,
+	{ allowFallback = true }: HandleOptions = {}
+) => {
 	const uid = `${platform}:${user}`;
 	const transaction: Transaction = {
 		uid,
@@ -111,6 +119,11 @@ const handle = async ({ platform, user, msg, raw, mode, reply, group, isAt }: ro
 	}
 
 	const cmd = commands.parse(msg, permissions);
+
+	if (!allowFallback && cmd.fallback) {
+		return { ignored: true, message: 'Unknown command' };
+	}
+
 	const groupOrGuild = mode == 'GROUP' ? group.split(':')[0] || 'DIRECT' : 'DIRECT';
 
 	if (mode == 'GROUP' && !cmd.fallback) {
@@ -180,10 +193,10 @@ const handle = async ({ platform, user, msg, raw, mode, reply, group, isAt }: ro
 	return result;
 };
 
-export const handleMessage = async ({}: rootHandlerArgs) => {
-	// Ignore ambient group chatter. Full-mode groups push every message, and
-	// scanning keyword replies against all of them is too expensive.
-	return { ignored: true, message: 'Message does not mention the bot' };
+export const handleMessage = async (args: rootHandlerArgs) => {
+	// Full-mode groups push every message. Run registered commands, but skip
+	// the keyword fallback so ordinary chatter doesn't scan the reply table.
+	return await handle(args, { allowFallback: false });
 };
 
 export const handlePing = async (
