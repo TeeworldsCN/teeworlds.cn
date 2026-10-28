@@ -396,8 +396,7 @@
 											: 'normal'}; text-decoration: {element.text.props?.underline
 											? 'underline'
 											: 'none'};"
-										rows="2"
-									></textarea>
+										rows="2"></textarea>
 								</div>
 							{:else if element.type === QQRichTextType.Image}
 								<div class="space-y-2">

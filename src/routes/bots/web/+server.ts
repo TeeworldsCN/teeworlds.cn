@@ -63,6 +63,12 @@ export const POST: RequestHandler = async ({ fetch, request, url }) => {
 				});
 				return { success: true };
 			},
+			markdown: (msg) => {
+				response = new Response(JSON.stringify({ content: msg }), {
+					headers: { 'content-type': 'application/json' }
+				});
+				return { success: true };
+			},
 			link: (link) => {
 				response = new Response(JSON.stringify({ content: `[${link.label}](${link.url})` }), {
 					headers: { 'content-type': 'application/json' }

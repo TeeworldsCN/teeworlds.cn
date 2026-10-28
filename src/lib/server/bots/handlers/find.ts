@@ -2,6 +2,7 @@ import { primaryAddress } from '$lib/ddnet/helpers';
 import { addrToBase64 } from '$lib/helpers';
 import { servers } from '$lib/server/fetches/servers';
 import type { Handler } from '../protocol/types';
+import { findMarkdown, findMissingMarkdown, findOfflineMarkdown } from '../markdown';
 
 const regionLevel = (location?: string) => {
 	if (!location) return 3;
@@ -10,9 +11,10 @@ const regionLevel = (location?: string) => {
 	return 2;
 };
 
-export const handleFind: Handler = async ({ user, reply, args }) => {
+export const handleFind: Handler = async ({ platform, user, reply, args }) => {
 	let name = args.trim();
 	let findingSelf = false;
+	const prefix = platform == 'wechat' ? '' : '/';
 
 	if (!name) {
 		findingSelf = true;
@@ -20,11 +22,7 @@ export const handleFind: Handler = async ({ user, reply, args }) => {
 	}
 
 	if (!name) {
-		return await reply.textLink('找人请提供 <玩家名>。或者使用 DDNet 工具箱直接搜索', {
-			label: '🔗 服务器列表',
-			prefix: '→ ',
-			url: 'https://teeworlds.cn/goto#s'
-		});
+		return await reply.markdown(findMissingMarkdown(prefix, 'https://teeworlds.cn/goto#s'));
 	}
 
 	const serverList = (await servers.fetchCache()).result;
@@ -33,7 +31,7 @@ export const handleFind: Handler = async ({ user, reply, args }) => {
 	);
 
 	if (playerServers.length == 0) {
-		return await reply.text(`玩家 ${name} 似乎不在线`);
+		return await reply.markdown(findOfflineMarkdown(name));
 	}
 
 	playerServers.sort((a, b) => {
@@ -45,23 +43,15 @@ export const handleFind: Handler = async ({ user, reply, args }) => {
 	const server = playerServers[0];
 	const others = playerServers.length - 1;
 
-	if (findingSelf) {
-		return await reply.textLink(
-			`${name} 在 ${server.info.name} 玩 ${server.info.game_type} - ${server.info.map.name}。快来加入吧！${others ? `\n（另有${others}个同名玩家在其他服务器，还请注意）` : ''}`,
-			{
-				label: '🔗 服务器信息',
-				prefix: '服务器信息：',
-				url: `https://teeworlds.cn/goto#s${addrToBase64(primaryAddress(server.addresses))}`
-			}
-		);
-	}
-
-	return await reply.textLink(
-		`玩家 ${name} 在 ${server.info.name} 玩 ${server.info.game_type} - ${server.info.map.name}${others ? `\n（另有${others}个同名玩家在其他服务器，还请注意）` : ''}`,
-		{
-			label: '🔗 服务器信息',
-			prefix: '服务器信息：',
+	return await reply.markdown(
+		findMarkdown({
+			name,
+			server: server.info.name,
+			gameType: server.info.game_type || '未知',
+			map: server.info.map.name,
+			others,
+			self: findingSelf,
 			url: `https://teeworlds.cn/goto#s${addrToBase64(primaryAddress(server.addresses))}`
-		}
+		})
 	);
 };

@@ -1,5 +1,6 @@
 import { handlePing } from '$lib/server/bots/bot';
 import { QQBot, type QQMessage, type QQPayload } from '$lib/server/bots/protocol/qq';
+import { markdownToText } from '$lib/server/bots/utils/markdown';
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -140,6 +141,22 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 				'qq',
 				{
 					text: (msg) => replyMethod(bot.makeText(wrapNewline(msg))),
+					markdown: async (msg) => {
+						if (channel) {
+							const result = await replyMethod(bot.makeChannelMarkdown(msg));
+							if (result?.error) {
+								// native channel markdown needs platform approval; keep the image when possible
+								const image = msg.match(/!\[[^\]]*\]\(([^)]+)\)/)?.[1];
+								const text = markdownToText(msg);
+								if (image) {
+									return replyMethod(bot.makeChannelTextImage(text, image));
+								}
+								return replyMethod(bot.makeText(text));
+							}
+							return result;
+						}
+						return replyMethod(bot.makeMarkdown(msg));
+					},
 					link: (link) => {
 						const msg = `${link.prefix}${link.url}`;
 						return replyMethod(bot.makeText(wrapNewline(msg)));

@@ -1,16 +1,13 @@
 import type { Handler } from '../protocol/types';
+import { identityMarkdown, toolboxMarkdown } from '../markdown';
 
 export const handleToolbox: Handler = async ({ reply }) =>
-	await reply.link({
-		label: '🔗 DDNet 工具箱',
-		prefix: 'DDNet 工具箱 → ',
-		url: 'https://teeworlds.cn/ddnet'
-	});
+	await reply.markdown(toolboxMarkdown('https://teeworlds.cn/ddnet'));
 
 export const handleShowUid: Handler = async ({ reply, uid }) => {
-	return await reply.text(`您的 UID 是 ${uid}`);
+	return await reply.markdown(identityMarkdown('你的 UID', uid));
 };
 
 export const handleShowGid: Handler = async ({ reply, group }) => {
-	return await reply.text(`这里的 GID 是 ${group}`);
+	return await reply.markdown(identityMarkdown('这里的 GID', group));
 };

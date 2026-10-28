@@ -4,6 +4,13 @@ import { encodeAsciiURIComponent } from '$lib/link';
 import { maps, type MapList } from '$lib/server/fetches/maps';
 import type { Handler } from '../protocol/types';
 import { findBestFuzzyMatch } from '../utils/fuzzy';
+import {
+	mapEmptyMarkdown,
+	mapMarkdown,
+	mapMissingMarkdown,
+	mapNotFoundMarkdown
+} from '../markdown';
+import { escapeMarkdown } from '../utils/markdown';
 
 const MAPTYPE_KEYWORDS: Record<string, string> = {
 	'-rol': 'random',
@@ -66,14 +73,11 @@ const MAPDIFF_KEYWORDS: Record<string, number> = {
 	五: 5
 };
 
-export const handleMaps: Handler = async ({ reply, user, args }) => {
+export const handleMaps: Handler = async ({ platform, reply, user, args }) => {
 	let mapName = args.trim();
+	const prefix = platform == 'wechat' ? '' : '/';
 	if (!mapName) {
-		return await reply.textLink('查图请提供 <地图名>。或者使用 DDNet 工具箱', {
-			label: '🔗 排名查询工具',
-			prefix: '→ ',
-			url: 'https://teeworlds.cn/goto#m'
-		});
+		return await reply.markdown(mapMissingMarkdown(prefix, 'https://teeworlds.cn/goto#m'));
 	}
 
 	let type = '';
@@ -131,50 +135,49 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 
 		const randomMap = targetGroup[Math.floor(Math.random() * targetGroup.length)];
 		const descriptor = `${type != 'random' ? mapType(type) : ''}${diff ? ` ${numberToStars(diff)}` : ''}`;
+		const bindName = user?.bind_name ? escapeMarkdown(user.bind_name) : '';
 		const finishingDesc = usingName
 			? unfinishedMaps.length > 0
 				? descriptor
-					? `随机找了一张 ${user?.bind_name} 未完成的 ${descriptor} 图`
-					: `随机找了一张 ${user?.bind_name} 未完成的图`
+					? `随机找了一张 ${bindName} 未完成的 ${descriptor} 图`
+					: `随机找了一张 ${bindName} 未完成的图`
 				: descriptor
-					? `没有找到 ${user?.bind_name} 未完成的 ${descriptor} 图，随机从所有图中选了一张`
-					: `没有找到 ${user?.bind_name} 未完成的图，随机从所有图中选了一张`
+					? `没有找到 ${bindName} 未完成的 ${descriptor} 图，随机从所有图中选了一张`
+					: `没有找到 ${bindName} 未完成的图，随机从所有图中选了一张`
 			: descriptor
 				? `随机找了一张 ${descriptor} 图`
 				: `随机找了一张图`;
 
 		if (randomMap) {
-			const lines = [
-				finishingDesc,
-				randomMap.mapper ? `${randomMap.name} (by ${randomMap.mapper})` : randomMap.name,
-				`[${mapType(randomMap.type)} ${numberToStars(randomMap.difficulty)}] ${randomMap.points}pts`
-			];
-
-			const text = lines.join('\n');
-			const image = randomMap.thumbnail;
 			const link = descriptor
 				? {
-						label: `🔗 查看所有 ${descriptor} 图`,
-						prefix: `${descriptor} 图列表: `,
+						label: `查看所有 ${descriptor} 图`,
 						url:
 							type == 'random'
 								? `https://teeworlds.cn/goto#ms${diff ? `diff=${diff}` : ''}`
 								: `https://teeworlds.cn/goto#mstype=${type}${diff ? `&diff=${diff}` : ''}`
 					}
 				: {
-						label: `🔗 查看所有图`,
-						prefix: `地图列表: `,
-						url: `https://teeworlds.cn/goto#m`
+						label: '查看所有图',
+						url: 'https://teeworlds.cn/goto#m'
 					};
 
-			if (reply.imageTextLink) {
-				return await reply.imageTextLink(text, image, link);
-			} else {
-				return await reply.textLink(text, link);
-			}
+			return await reply.markdown(
+				mapMarkdown(
+					{
+						name: randomMap.name,
+						mapper: randomMap.mapper,
+						type: randomMap.type,
+						difficulty: randomMap.difficulty,
+						points: randomMap.points,
+						thumbnail: randomMap.thumbnail
+					},
+					{ title: '🎲 随机地图', intro: finishingDesc, link }
+				)
+			);
 		}
 
-		return await reply.text(`不存在 ${descriptor} 图`);
+		return await reply.markdown(mapEmptyMarkdown(descriptor));
 	}
 
 	const removeSeparator = (str: string) => {
@@ -255,31 +258,31 @@ export const handleMaps: Handler = async ({ reply, user, args }) => {
 
 		if (guess) {
 			targetMap = guess.item;
-			guessIntro = `没有找到名为 ${mapName} 的地图，你是否在找`;
+			guessIntro = `没有找到名为 **${escapeMarkdown(mapName)}** 的地图，你是否在找`;
 		}
 	}
 
 	if (!targetMap) {
-		return await reply.text(`未找到名为 ${mapName} 的地图`);
+		return await reply.markdown(mapNotFoundMarkdown(mapName));
 	}
 
-	const lines = [
-		...(guessIntro ? [guessIntro] : []),
-		`${targetMap.name} (by ${targetMap.mapper})`,
-		`[${mapType(targetMap.type)} ${numberToStars(targetMap.difficulty)}] ${targetMap.points}pts`
-	];
-
-	const text = lines.join('\n');
-	const image = targetMap.thumbnail;
-	const link = {
-		label: '🔗 地图详情',
-		prefix: '详情: ',
-		url: `https://teeworlds.cn/goto#m${encodeAsciiURIComponent(targetMap.name)}`
-	};
-
-	if (reply.imageTextLink) {
-		return await reply.imageTextLink(text, image, link);
-	} else {
-		return await reply.textLink(text, link);
-	}
+	return await reply.markdown(
+		mapMarkdown(
+			{
+				name: targetMap.name,
+				mapper: targetMap.mapper,
+				type: targetMap.type,
+				difficulty: targetMap.difficulty,
+				points: targetMap.points,
+				thumbnail: targetMap.thumbnail
+			},
+			{
+				intro: guessIntro,
+				link: {
+					label: '地图详情',
+					url: `https://teeworlds.cn/goto#m${encodeAsciiURIComponent(targetMap.name)}`
+				}
+			}
+		)
+	);
 };

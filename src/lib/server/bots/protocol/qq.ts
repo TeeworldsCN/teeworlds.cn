@@ -5,7 +5,7 @@ import { volatile } from '$lib/server/keyv';
 const END_POINT = 'https://api.sgroup.qq.com';
 
 export interface QQMessage {
-	msg_type: number;
+	msg_type?: number;
 	content?: string;
 	embed?: any;
 	ark?: {
@@ -18,11 +18,14 @@ export interface QQMessage {
 	};
 	image?: string;
 	markdown?: {
-		template_id: number;
+		template_id?: number;
+		custom_template_id?: string;
 		params?: {
 			key: string;
 			values: string[];
 		}[];
+		/** Native markdown content, mutually exclusive with templates */
+		content?: string;
 	};
 	message_reference?: {
 		message_id: string;
@@ -163,6 +166,16 @@ export class QQBotProtocol {
 	/** Make custom message */
 	makeCustom(body: any): QQMessage {
 		return body;
+	}
+
+	/** Make a markdown message (QQ group/C2C) */
+	makeMarkdown(content: string): QQMessage {
+		return { msg_type: 2, markdown: { content } };
+	}
+
+	/** Make a markdown message for guild channels (msg_type is not used there) */
+	makeChannelMarkdown(content: string): QQMessage {
+		return { markdown: { content } };
 	}
 
 	/** Make text image (guild only) */

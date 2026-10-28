@@ -18,6 +18,8 @@ export interface SendTypeLink {
 
 export type SendReply = {
 	text: (msg: string) => Promise<SendResult> | SendResult;
+	/** Send a markdown message. Platforms without markdown support render a plain-text fallback. */
+	markdown: (msg: string) => Promise<SendResult> | SendResult;
 	link: (link: SendTypeLink) => Promise<SendResult> | SendResult;
 	textLink: (msg: string, link: SendTypeLink) => Promise<SendResult> | SendResult;
 	image?: (url: string) => Promise<SendResult> | SendResult;

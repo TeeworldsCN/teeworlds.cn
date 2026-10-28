@@ -1,10 +1,11 @@
 import { formatNumber } from '$lib/helpers';
 import type { Handler } from '../protocol/types';
+import { statsErrorMarkdown, statsMarkdown, type StatsServer } from '../markdown';
 
 export const handleStats: Handler = async ({ reply }) => {
 	const data = await fetch('https://ddnet.org/status/json/stats.json');
 	if (!data.ok) {
-		return await reply.text('服务器状态查询失败，可能为全局服务器故障。');
+		return await reply.markdown(statsErrorMarkdown());
 	}
 
 	const json = (await data.json()) as {
@@ -38,42 +39,38 @@ export const handleStats: Handler = async ({ reply }) => {
 		(server) => (server.packets_rx || 0) > 150000 || (server.packets_tx || 0) > 150000
 	);
 
-	let otherText = `外服正常服务器数量：${upServer.length - attackedServers.length} / ${otherServers.length}`;
-	if (attackedServers.length > 0) {
-		otherText += `\n${attackedServers
-			.map(
-				(server) =>
-					`[${server.name}] (${formatNumber((server.packets_rx || 0) + (server.packets_tx || 0), {
-						maxFractionDigits: 0,
-						unit: 'pps'
-					})})`
-			)
-			.join(',')} 正在被攻击 ⚔️`;
-	}
+	const chnServers: StatsServer[] = servers.map((server) => {
+		const online = !!server.uptime && (server.online4 || server.online6);
+		if (!online) {
+			return { name: server.name, online: false };
+		}
 
-	await reply.text(
-		servers
-			.map((server) => {
-				const loadPercent = Math.round((server.load || 0) * 100);
-				const packet = (server.packets_rx || 0) + (server.packets_tx || 0);
-				let packetText = formatNumber(packet, { maxFractionDigits: 0, unit: 'pps' });
-				let uploadText = formatNumber(server.network_tx || 0, {
-					maxFractionDigits: 1
-				});
-				let downloadText = formatNumber(server.network_rx || 0, {
-					maxFractionDigits: 1
-				});
+		const load = Math.round((server.load || 0) * 100);
+		const packet = (server.packets_rx || 0) + (server.packets_tx || 0);
 
-				if (!server.uptime || (!server.online4 && !server.online6)) {
-					return `🪦 [${server.name}]\t已失联`;
-				} else if ((server.packets_rx || 0) > 150000 || (server.packets_tx || 0) > 150000) {
-					return `⚔️ [${server.name}]\t负载 ${loadPercent}%\t数据 ${uploadText}↑/${downloadText}↓ (${packetText})\t疑似被攻击`;
-				} else if (loadPercent > 100) {
-					return `🔥 [${server.name}]\t负载 ${loadPercent}%\t数据 ${uploadText}↑/${downloadText}↓ (${packetText})\t高负载`;
-				} else {
-					return `✅ [${server.name}]\t负载 ${loadPercent}%\t数据 ${uploadText}↑/${downloadText}↓ (${packetText})\t在线`;
-				}
-			})
-			.join('\n') + `\n${otherText}\n数据有时效性，不保证完全准确`
+		return {
+			name: server.name,
+			online: true,
+			attacked: packet > 150000,
+			highLoad: load > 100,
+			load,
+			packet: formatNumber(packet, { maxFractionDigits: 0, unit: 'pps' }),
+			upload: formatNumber(server.network_tx || 0, { maxFractionDigits: 1 }),
+			download: formatNumber(server.network_rx || 0, { maxFractionDigits: 1 })
+		};
+	});
+
+	await reply.markdown(
+		statsMarkdown(chnServers, {
+			total: otherServers.length,
+			up: upServer.length,
+			attacked: attackedServers.map((server) => ({
+				name: server.name,
+				packet: formatNumber((server.packets_rx || 0) + (server.packets_tx || 0), {
+					maxFractionDigits: 0,
+					unit: 'pps'
+				})
+			}))
+		})
 	);
 };

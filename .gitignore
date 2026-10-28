@@ -44,5 +44,8 @@ skin_blocklist.txt
 # 中秋活动的开发探针(探针/生成器/QA),只放本地,不入库
 tools/zhongqiu/
 
+# QQ Markdown 预览输出(生成脚本入库,生成结果不入库)
+tools/qq-markdown-preview/preview.html
+
 # 会话工具的状态目录
 .pi-web/

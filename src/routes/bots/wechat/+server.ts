@@ -6,6 +6,7 @@ import {
 	type WeChatOutgoingMessage
 } from '$lib/server/bots/protocol/wechat';
 import { volatile } from '$lib/server/keyv.js';
+import { markdownToText } from '$lib/server/bots/utils/markdown';
 
 const cdata = <T>(str: T) => {
 	return {
@@ -97,6 +98,16 @@ export const POST = async ({ request, url, fetch }) => {
 						CreateTime: Math.floor(Date.now() / 1000),
 						MsgType: cdata('text'),
 						Content: cdata(msg)
+					};
+					return reply;
+				},
+				markdown: (msg) => {
+					reply = {
+						ToUserName: cdata(user),
+						FromUserName: cdata(receiver),
+						CreateTime: Math.floor(Date.now() / 1000),
+						MsgType: cdata('text'),
+						Content: cdata(markdownToText(msg))
 					};
 					return reply;
 				},

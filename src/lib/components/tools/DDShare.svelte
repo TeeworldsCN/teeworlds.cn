@@ -816,8 +816,7 @@
 					class="w-full resize-none rounded-lg border-none bg-transparent p-2 text-sm text-gray-600 focus:outline-none"
 					rows="3"
 					readonly
-					value={copyText}
-				></textarea>
+					value={copyText}></textarea>
 			</div>
 			<button
 				class="mt-6 w-full cursor-pointer rounded-full bg-linear-to-b from-[#ffe259] to-[#ffa751] py-3 text-lg font-bold text-[#c62828] shadow-[0_4px_0_#d84315] transition-all hover:scale-102 active:translate-y-1 active:shadow-none"

@@ -3,6 +3,8 @@ import { commands } from '.';
 import { getUserByUsername, hasPermission, type UserPermissions } from '../db/users';
 import { persistent } from '../db/kv';
 import { RateLimiter } from './utils/rate-limiter';
+import { rateLimitMarkdown } from './markdown';
+import { stripMarkdownLinks } from './utils/markdown';
 
 let customBody: any = null;
 let customToken: string | null = null;
@@ -131,11 +133,7 @@ const handle = async (
 		if (rateLimited && !hasPermission(databaseUser, 'GROUP_SETTINGS')) {
 			const { limited, triggered } = await limiter.isLimited(user, group);
 			if (triggered) {
-				return await reply.textLink('您操作太频繁了！请5分钟后再试。需要大量查询请私聊豆豆。', {
-					label: '🔗 DDNet 工具箱',
-					prefix: '或者直接用 DDNet 工具箱：',
-					url: 'https://teeworlds.cn/ddnet'
-				});
+				return await reply.markdown(rateLimitMarkdown('https://teeworlds.cn/ddnet'));
 			}
 
 			if (limited) {
@@ -149,6 +147,7 @@ const handle = async (
 		const originalReply = reply;
 		reply = {
 			...originalReply,
+			markdown: (msg) => originalReply.markdown(stripMarkdownLinks(msg)),
 			link: (link) => {
 				if (link.fallback) return originalReply.text(link.fallback);
 				if (link.bypass) return originalReply.link(link);

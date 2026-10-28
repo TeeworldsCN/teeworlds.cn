@@ -1,5 +1,5 @@
 #!/bin/sh
 set -e
 
-bun run lint
+bun fmt --check
 bun run check
