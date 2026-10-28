@@ -75,7 +75,7 @@ export const pointsMarkdown = (
 ${ranks
 	.map((rank) =>
 		rank.rank
-			? `- **${rank.label}**：${rank.points ?? 0} pts\t₍ₙ.${numberToSub(rank.rank)}₎`
+			? `- **${rank.label}**：${rank.points ?? 0}pts\t₍ₙ.${numberToSub(rank.rank)}₎`
 			: `- **${rank.label}**：无记录`
 	)
 	.join('\n')}
