@@ -41,6 +41,7 @@ import { escapeMarkdown, markdownToText } from '../../src/lib/server/bots/utils/
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: false });
 
+// 预览页直接用 ddnet.org 源图；机器人实际发送的是 convert() 后的 teeworlds.cn/api/img 代理地址。
 const MAP_IMAGE = 'https://ddnet.org/ranks/maps/Midsummer_Night.png';
 const RANDOM_MAP_IMAGE = 'https://ddnet.org/ranks/maps/Just_DoubleJump.png';
 const TOOLBOX_URL = 'https://teeworlds.cn/ddnet';
@@ -744,10 +745,10 @@ footer { max-width: 1380px; margin: 0 auto; padding: 0 28px 48px; color: var(--m
 			<span class="chip"><b>1.</b> 有序列表</span>
 			<span class="chip"><b>&gt;</b> 引用</span>
 			<span class="chip"><b>[文本](url)</b> 链接</span>
-			<span class="chip"><b>![](url)</b> 图片</span>
+			<span class="chip"><b>![说明 #宽px #高px](url)</b> 图片</span>
 			<span class="chip"><b>***</b> 分割线</span>
 		</div>
-		<p class="warn">未使用表格、代码块和 HTML：官方文档没有列出这些能力，部分 QQ 客户端也不支持。图片使用公网可访问的 DDNet 缩略图 URL，由平台转存。</p>
+		<p class="warn">未使用表格、代码块和 HTML：官方文档没有列出这些能力，部分 QQ 客户端也不支持。图片必须带 #宽px #高px 尺寸提示，否则 QQ 会显示 [说明] 文本。预览图使用 ddnet.org 上游原图；机器人实际发送的是 teeworlds.cn/api/img 代理 URL。</p>
 	</section>
 	${groups.map(renderGroup).join('\n')}
 </main>

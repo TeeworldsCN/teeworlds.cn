@@ -103,7 +103,9 @@ export const mapMarkdown = (
 ) => {
 	const title = options.title || '🗺️ 地图详情';
 	const intro = options.intro ? `> ${options.intro}\n\n` : '';
-	const image = map.thumbnail ? `![地图缩略图](${map.thumbnail})\n\n` : '';
+	// QQ markdown 图片必须带尺寸提示，否则客户端会退化成 [说明] 文本。
+	// DDNet 的 ranks/maps 缩略图统一为 360x225。
+	const image = map.thumbnail ? `![地图缩略图 #360px #225px](${map.thumbnail})\n\n` : '';
 	const link = options.link ? `[🔗 ${options.link.label}](${options.link.url})` : '';
 
 	return `# ${title}
