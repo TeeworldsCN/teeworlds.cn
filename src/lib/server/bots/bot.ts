@@ -193,8 +193,13 @@ const handle = async (
 };
 
 export const handleMessage = async (args: rootHandlerArgs) => {
-	// Full-mode groups push every message. Run registered commands, but skip
-	// the keyword fallback so ordinary chatter doesn't scan the reply table.
+	// Full-mode groups push every message. Without an @mention, only explicit
+	// slash commands are allowed; never run bare commands or keyword fallback.
+	const message = args.msg.trim();
+	if (!message.startsWith('/') || message === '/') {
+		return { ignored: true, message: 'Command must start with /' };
+	}
+
 	return await handle(args, { allowFallback: false });
 };
 
