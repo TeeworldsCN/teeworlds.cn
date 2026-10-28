@@ -1,3 +1,4 @@
+import { numberToSub } from '$lib/helpers';
 import { mapType, numberToStars } from '../../ddnet/helpers';
 import { escapeMarkdown } from './utils/markdown';
 
@@ -74,7 +75,7 @@ export const pointsMarkdown = (
 ${ranks
 	.map((rank) =>
 		rank.rank
-			? `- **${rank.label}**：${rank.points ?? 0} pts（第 ${rank.rank} 名）`
+			? `- **${rank.label}**：${rank.points ?? 0} pts\t₍ₙ.${numberToSub(rank.rank)}₎`
 			: `- **${rank.label}**：无记录`
 	)
 	.join('\n')}
