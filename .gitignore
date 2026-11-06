@@ -30,9 +30,14 @@ cache
 
 # Rust
 rust/target
+rust/twengine/target
 
-# 地图预览的编译产物(bun run mappreview 生成,源码在 vendor/twgpu 子模块)
-/static/ddnet/mappreview/
+# 引擎的编译产物(bun run engine 生成,源码在 rust/twengine + vendor/twgpu 子模块),
+# 地图预览和 demo 回放共用这一份。engine.js/sound.js/demo.js 是手写的前端,要入库
+/static/ddnet/engine/pkg/
+/static/ddnet/engine/assets/
+/static/ddnet/engine/sounds/
+/static/ddnet/engine/version.json
 
 # Data
 sensitive-lexicon.txt

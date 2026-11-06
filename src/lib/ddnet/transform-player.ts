@@ -4,7 +4,21 @@
  *
  * Extracted from the old +page.ts (SSR data transform).
  */
-export function transformPlayerData(data: { player: any; skin: any }) {
+/** 排位记录卡片要用的一条(服务端算好名次/排序/回放,见 /api/player-detail/[name]) */
+export type RankRecord = {
+	map: string;
+	type: string;
+	points: number;
+	/** min(个人名次, 团队名次) */
+	rank: number;
+	kind: 'solo' | 'team';
+	personal: number | null;
+	team: number | null;
+	time: number | null;
+	demo: { uuid: string; time: number; kind: string } | null;
+};
+
+export function transformPlayerData(data: { player: any; skin: any; top_ranks?: RankRecord[] }) {
 	const player = data.player;
 
 	const last_finish = player.last_finishes[0] || {
@@ -209,6 +223,7 @@ export function transformPlayerData(data: { player: any; skin: any }) {
 		},
 		activity: activityCols,
 		skin: data.skin,
+		top_ranks: data.top_ranks ?? [],
 		last_finish,
 		statsCols,
 		ranks,

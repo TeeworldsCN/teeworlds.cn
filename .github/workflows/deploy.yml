@@ -18,7 +18,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          # 地图预览渲染器(twgpu)是 submodule,构建时要从源码编译 wasm
+          # 引擎(twgpu + rust/twengine)是 submodule + 本地 crate,构建时从源码编译 wasm
           submodules: recursive
 
       - name: Setup Bun
@@ -36,19 +36,59 @@ jobs:
         id: twgpu
         run: echo "sha=$(git -C vendor/twgpu rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      # 产物 15MB 左右,子模块和补丁都没变的话直接复用,跳过 5~8 分钟的 wasm 编译
-      - name: Restore map preview build
+      # 产物 15MB 左右(wasm + 贴图 + 音效),子模块/crate/补丁都没变的话直接复用,
+      # 跳过 5~8 分钟的 wasm 编译和 131 个 .wv 的转码
+      - name: Restore engine build
+        id: engine
+        uses: actions/cache@v4
+        with:
+          # 只缓存"生成物"。static/ddnet/engine 下的 demo.js / engine.js / sound.js
+          # 是手写源码、跟着 git 走,绝不能进缓存 —— 命中的旧包会把它们覆盖成老版本。
+          path: |
+            static/ddnet/engine/pkg
+            static/ddnet/engine/assets
+            static/ddnet/engine/sounds
+            static/ddnet/engine/version.json
+            cache/engine
+          key: engine-${{ steps.twgpu.outputs.sha }}-${{ hashFiles('patches/**', 'scripts/build-engine.ts', 'scripts/twgpu-patch-prepare.py', 'scripts/twgpu-templates/**', 'rust/twengine/src/**', 'rust/twengine/Cargo.toml', 'rust/twengine/Cargo.lock') }}
+
+      # 下面这几步只在真的要重新编译 wasm 时才需要(产物缓存没命中)
+      - name: Restore cargo cache
+        id: cargo-cache
+        if: steps.engine.outputs.cache-hit != 'true'
         uses: actions/cache@v4
         with:
           path: |
-            static/ddnet/mappreview
-            cache/mappreview
-          key: mappreview-${{ steps.twgpu.outputs.sha }}-${{ hashFiles('patches/**', 'scripts/build-mappreview.ts') }}
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/.wasm-pack
+          key: cargo-${{ runner.os }}-${{ hashFiles('vendor/twgpu/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      # 编译产物(约 800MB):补丁变了但依赖没动时,cargo 只需要重编 twgpu 那几个 crate。
+      # key 里带补丁 hash,同时用 restore-keys 兜底复用同一次子模块提交的旧产物
+      - name: Restore twgpu build artifacts
+        if: steps.engine.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            vendor/twgpu/target
+            rust/twengine/target
+          key: twgpu-target-${{ runner.os }}-${{ steps.twgpu.outputs.sha }}-${{ hashFiles('patches/**', 'scripts/build-engine.ts', 'scripts/twgpu-patch-prepare.py', 'scripts/twgpu-templates/**', 'rust/twengine/src/**', 'rust/twengine/Cargo.toml', 'rust/twengine/Cargo.lock') }}
+          restore-keys: |
+            twgpu-target-${{ runner.os }}-${{ steps.twgpu.outputs.sha }}-
+            twgpu-target-${{ runner.os }}-
 
       - name: Add wasm target
+        if: steps.engine.outputs.cache-hit != 'true'
         run: rustup target add wasm32-unknown-unknown
 
+      - name: Install ffmpeg
+        if: steps.engine.outputs.cache-hit != 'true'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg unzip
+
       - name: Install wasm-pack
+        if: steps.engine.outputs.cache-hit != 'true'
         run: |
           if ! command -v wasm-pack >/dev/null 2>&1; then
             curl -sSfL -o /tmp/wasm-pack.tar.gz "https://github.com/rustwasm/wasm-pack/releases/download/v0.13.1/wasm-pack-v0.13.1-x86_64-unknown-linux-musl.tar.gz"
@@ -70,7 +110,9 @@ jobs:
         run: cd build && bun install && cd ..
 
       - name: Archive Build Folder
-        run: tar -czvf build.tar.gz -C build .
+        # 排除 wasm 的编译中间产物:几百 MB,部署包里用不到。
+        # (不能提前 rm —— 那个目录是 actions/cache 的 post 步骤要存的)
+        run: tar -czvf build.tar.gz --exclude='./rust/twengine/target' -C build .
 
       - name: Copy Files to Remote Server
         env:

@@ -60,6 +60,17 @@ if (process.env.NODE_ENV !== 'test') {
 export type BlockedSkin = string;
 
 /**
+ * DDNet 的内置功能皮肤(`x_ninja`、`x_spec` …)。
+ *
+ * 它们在皮肤库里是合法条目(客户端资源),但**玩家不能拿它们当自己的皮肤**:
+ * 谁都可以把名字改成 `x_ninja`,那样就能伪装成忍者/旁观皮肤,或者把内部资源
+ * 当普通皮肤展示。所以只拦"玩家皮肤"这条路径,皮肤库本身照旧提供。
+ */
+export function isInternalSkin(name: string): boolean {
+	return name.toLowerCase().startsWith('x_');
+}
+
+/**
  * Check if a skin name is blocked
  */
 export function isSkinBlocked(name: string): boolean {

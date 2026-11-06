@@ -1,0 +1,38 @@
+[package]
+name = "twengine"
+version = "0.1.0"
+edition = "2021"
+publish = false
+# 引擎本体派生自 twgpu-web(AGPL-3.0),因此这里同样只能是 AGPL
+license = "AGPL-3.0-only"
+description = "twgpu + demo playback + sound events, one wasm for map preview and demo player"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[workspace]
+
+[dependencies]
+twgpu = { path = "../../vendor/twgpu/twgpu" }
+twgpu-tools = { path = "../../vendor/twgpu/twgpu-tools" }
+twgame = "0.11.0"
+twmap = "0.14.0"
+twsnap = "0.9.2"
+twsnap-compat = "0.1.0"
+# 和 twsnap-compat 用同一批 libtw2,读 demo chunk 时才能拿到消息字节
+pre-rfc3243-libtw2-demo = "0.3.0"
+pre-rfc3243-libtw2-gamenet-ddnet = "0.2.1"
+pre-rfc3243-libtw2-warn = "0.2.0"
+fixed = "1.29"
+log = "0.4"
+# twsnap/libtw2 的依赖链会用到 getrandom,uuid;wasm 上需要显式打开 js 随机源
+# (twgpu-web 的 Cargo.toml 里也是这么做的)
+getrandom = { version = "0.2", features = ["js"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+console_error_panic_hook = "0.1"
+console_log = "1"
+wasm-bindgen = "0.2.97"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3.74", features = ["Element", "DomRect"] }
+wgpu = { version = "*", features = ["webgl"] }

@@ -67,8 +67,12 @@
 			}}
 			onclick={handleClick}
 		>
+			<!--
+				用皮肤库算好的 url(而不是名字):`x_ninja` / `x_spec` 这类内置皮肤
+				不许玩家用,按名字传会被 TeeRender 兜底成默认皮肤,图鉴里就成了一张错图。
+			-->
 			<TeeRender
-				name={skin.name}
+				url={skin.url}
 				className="w-full h-full"
 				emote={copiedSkin === skin.name ? EMOTE.hurt : EMOTE.normal}
 			/>

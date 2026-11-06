@@ -8,4 +8,7 @@ yarn.lock
 
 # 上游子模块和它的编译产物(不要被 prettier 改)
 vendor/
-static/ddnet/mappreview/
+static/ddnet/engine/pkg/
+static/ddnet/engine/assets/
+static/ddnet/engine/sounds/
+static/ddnet/engine/version.json

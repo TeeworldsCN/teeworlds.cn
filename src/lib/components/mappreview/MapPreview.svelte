@@ -21,11 +21,12 @@
 
 	const { map = null }: { map?: string | null } = $props();
 
-	const BASE = '/ddnet/mappreview';
+	// 渲染器启动、产物版本号、wasm 实例、贴图加载全部复用 /ddnet/engine/engine.js,
+	// 和 demo 播放器只有一份实现(QQ/X5 那些坑只在那边修一次)
+	import { assetUrl, bootRenderer, fetchBytes } from '../../../../static/ddnet/engine/engine.js';
 
-	/** 和 wasm 里 add_texture 认的名字一一对应 */
-	const TEXTURES = ['game', 'particles', 'emoticons', 'extras', 'entities', 'default', 'x_ninja'];
-	const FONT = 'DejaVuSans.ttf';
+	// 地图文件仍然走 mappreview 代理(和引擎产物无关,是服务端转发 ddnet.org/mappreview)
+	const MAP_BASE = '/ddnet/mappreview/map';
 
 	/** 相机 zoom:值越小放大越多,越大视野越广,给个上下限防止缩放到底后找不着北 */
 	const MIN_ZOOM = 0.05;
@@ -78,7 +79,8 @@
 		TwGpu: new (
 			backend?: string | null,
 			canvas?: HTMLCanvasElement | null,
-			mipmaps?: boolean | null
+			mipmaps?: boolean | null,
+			tilemapMips?: boolean | null
 		) => Promise<MpGpu>;
 		TwMapIntermediate: new (data: Uint8Array) => MpIntermediate;
 		TwCamera: new (aspectRatio: number) => MpCamera;
@@ -92,33 +94,6 @@
 
 	let entitiesLayer = $state(false);
 	let fullscreen = $state(false);
-
-	// ---- 静态产物的版本号:重新编译过 wasm 就换 key,免得拿到缓存里的旧文件 ----
-	let versionPromise: Promise<string> | null = null;
-	const getVersion = () => {
-		versionPromise ??= fetch(`${BASE}/version.json`)
-			.then((response) => (response.ok ? response.json() : null))
-			.then((data: { version?: string } | null) => data?.version ?? 'dev')
-			.catch(() => 'dev');
-		return versionPromise;
-	};
-
-	const assetUrl = async (file: string) => `${BASE}/${file}?v=${await getVersion()}`;
-
-	const fetchBytes = async (url: string) => {
-		const response = await fetch(url);
-		if (!response.ok) {
-			throw new Error(`${decodeURIComponent(url)} (${response.status})`);
-		}
-		return new Uint8Array(await response.arrayBuffer());
-	};
-
-	/** wasm 里的 panic 不会 reject promise,只能自己守着,否则界面就一直转圈 */
-	const withTimeout = <T,>(promise: Promise<T>, ms: number, message: string) =>
-		Promise.race([
-			promise,
-			new Promise<never>((_, reject) => setTimeout(() => reject(new Error(message)), ms))
-		]);
 
 	const describeError = (e: unknown) => {
 		const message = e instanceof Error ? e.message : String(e);
@@ -136,7 +111,6 @@
 	};
 
 	// ---- 一次预览 = 一份 wasm 实例 + canvas + wgpu device,关掉就全放掉 ----
-	let gluePromise: Promise<string> | null = null;
 	let module: MpModule | null = null;
 	let gpu: MpGpu | null = null;
 	let surface: MpSurface | null = null;
@@ -309,80 +283,7 @@
 		}
 	};
 
-	/**
-	 * 开预览前定下两件事:用哪个后端、要不要 mip。
-	 *
-	 * - QQ 浏览器(X5)暴露的 `navigator.gpu` 是桩:`requestAdapter()` 永不 resolve,
-	 *   wgpu 内部那句 `is_browser_webgpu_supported().await` 会一直挂着,表现就是卡在
-	 *   「初始化图形设备」且没有任何报错。所以这里带超时自己探一次,探不到就显式指定 webgl。
-	 * - 采样 mip level > 0 在部分设备的 WebGL 上取不到颜色(缩小后贴图整片消失),
-	 *   只有确认走 WebGPU 才启用 mip。`?backend=` / `?mips=` 可以强制覆盖。
-	 */
-	const BACKEND_STORAGE_KEY = 'ddnet:mappreview:backend';
-
-	/** 试过 WebGPU 不行的浏览器记下来, 下次直接走 WebGL(免得每次都要等超时) */
-	const rememberBackend = (backend: 'webgl') => {
-		try {
-			window.localStorage.setItem(BACKEND_STORAGE_KEY, backend);
-		} catch {
-			// 隐私模式就算了
-		}
-	};
-
-	const rememberedBackend = () => {
-		try {
-			return window.localStorage.getItem(BACKEND_STORAGE_KEY);
-		} catch {
-			return null;
-		}
-	};
-
-	const planGraphics = async (): Promise<{
-		backend: 'webgpu' | 'webgl';
-		mipmaps: boolean;
-	} | null> => {
-		const forcedBackend = debugParam('backend');
-		const forcedMips = debugParam('mips');
-		const plan = (backend: 'webgpu' | 'webgl') => ({
-			backend,
-			mipmaps: forcedMips === '1' ? true : forcedMips === '0' ? false : backend === 'webgpu'
-		});
-
-		// 之前这台上 WebGPU 翻过车, 就别再试了
-		if (!forcedBackend && rememberedBackend() === 'webgl') return plan('webgl');
-
-		if (forcedBackend !== 'webgl') {
-			type GpuAdapter = { requestDevice(): Promise<unknown> };
-			const gpu = (
-				navigator as Navigator & {
-					gpu?: { requestAdapter(): Promise<GpuAdapter | null> };
-				}
-			).gpu;
-			if (gpu) {
-				// 1.5 秒内拿不到 adapter + device 就当这个 WebGPU 不可用(桩实现会一直挂着)
-				const timeout = <T,>(fallback: T) =>
-					new Promise<T>((resolve) => setTimeout(() => resolve(fallback), 1500));
-				try {
-					const adapter = await Promise.race([gpu.requestAdapter(), timeout(null)]);
-					if (adapter) {
-						const device = await Promise.race([adapter.requestDevice(), timeout(null)]);
-						if (device) return plan('webgpu');
-					}
-				} catch {
-					// 探测失败就当没有 WebGPU
-				}
-			}
-			if (forcedBackend === 'webgpu') return plan('webgpu');
-		}
-
-		try {
-			if (document.createElement('canvas').getContext('webgl2')) return plan('webgl');
-		} catch {
-			// 建不了 canvas 就当不支持
-		}
-		return null;
-	};
-
+	/** 渲染分辨率倍数(可用 `?dpr=` 覆盖,上限 2) */
 	const dprScale = () => {
 		const requested = Number(debugParam('dpr'));
 		if (Number.isFinite(requested) && requested > 0) return Math.min(requested, 2);
@@ -418,40 +319,6 @@
 		canvas.remove();
 	};
 
-	// glue 只下载一次(浏览器缓存),每次打开用 blob URL 重新求值,拿到全新的 module 实例
-	const getGlueText = () => {
-		gluePromise ??= (async () => {
-			const response = await fetch(`${BASE}/pkg/twgpu_web.js?v=${await getVersion()}`);
-			if (!response.ok) {
-				throw new Error(`渲染器加载失败 (${response.status})`);
-			}
-			return response.text();
-		})().catch((e) => {
-			gluePromise = null;
-			throw e;
-		});
-		return gluePromise;
-	};
-
-	/**
-	 * 每次都拿一份全新的 wasm 实例。
-	 * twgpu 的全局初始化(日志、panic hook)在同一个实例上没法重置,而「关掉即释放」需要
-	 * 每次重建,所以这里把 glue 源码包成 blob URL 重新 import —— 新的 module 作用域 =
-	 * 新的 wasm 实例,旧实例 free 完之后就只剩垃圾等着回收。
-	 */
-	const loadFreshModule = async (): Promise<MpModule> => {
-		const source = await getGlueText();
-		const url = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
-		try {
-			const loaded = (await import(/* @vite-ignore */ url)) as unknown as MpModule;
-			// wasm 本体走 ?v= 的稳定地址,浏览器会缓存并复用编译结果
-			await loaded.default(await assetUrl('pkg/twgpu_web_bg.wasm'));
-			return loaded;
-		} finally {
-			URL.revokeObjectURL(url);
-		}
-	};
-
 	/** 首帧时 <dialog> 可能还没真正显示出来,等容器有尺寸再建 surface */
 	const waitForSize = async () => {
 		for (let i = 0; i < 60; i++) {
@@ -465,61 +332,24 @@
 	const boot = () => {
 		if (bootPromise) return bootPromise;
 		bootPromise = (async () => {
-			const plan = await planGraphics();
-			if (!plan) {
-				throw new Error(
-					'当前浏览器没有可用的 WebGL2 / WebGPU（QQ、微信等内置浏览器常见），用系统浏览器打开就能看'
-				);
-			}
-
-			statusText = '加载渲染引擎…';
-			module = await loadFreshModule();
-
-			statusText = '初始化图形设备…';
 			const rect = await waitForSize();
 			aspect = rect.width / rect.height;
 
-			/** 每次都开新 canvas:上一次尝试可能已经在旧 canvas 上建了 webgpu context */
-			const startGpu = (engine: MpModule, backend: 'webgpu' | 'webgl', mipmaps: boolean) => {
-				if (canvasEl) {
-					destroyCanvas(canvasEl);
-					canvasEl = null;
-				}
-				const canvas = createCanvas();
-				canvasEl = canvas;
-				return withTimeout(
-					new engine.TwGpu(backend, canvas, mipmaps),
-					backend === 'webgpu' ? 6000 : 12000,
-					'创建图形设备失败(这个浏览器可能不支持 WebGL2 / WebGPU,试试用系统浏览器打开)'
-				);
-			};
+			// 后端探测、X5 的 WebGPU 回退、新 wasm 实例、贴图加载全部在 bootRenderer 里,
+			// 和 demo 播放器共用同一份实现
+			const booted = await bootRenderer({
+				createCanvas,
+				rememberKey: 'ddnet:mappreview:backend',
+				onStatus: (text) => (statusText = text)
+			});
+			module = booted.module as unknown as MpModule;
+			gpu = booted.gpu as unknown as MpGpu;
+			canvasEl = booted.canvas;
 
-			let backend = plan.backend;
-			try {
-				gpu = await startGpu(module, backend, plan.mipmaps);
-			} catch (e) {
-				if (backend !== 'webgpu') throw e;
-				// 有些内置浏览器的 WebGPU 只“能探测”不能真用(比如 QQ/X5), 退回 WebGL 并记下来
-				console.warn('WebGPU 初始化失败,改用 WebGL', e);
-				backend = 'webgl';
-				rememberBackend('webgl');
-				// 同一个 wasm 实例上不能再 init 一次(全局 logger 会 panic), 换一份新实例
-				module = await loadFreshModule();
-				gpu = await startGpu(module, 'webgl', debugParam('mips') === '1');
-			}
 			surface = gpu.surface() ?? gpu.create_surface(canvasEl!);
-			const canvas = canvasEl!;
 			camera = new module.TwCamera(aspect);
-			canvas.width = canvas.clientWidth || 1;
+			canvasEl!.width = canvasEl!.clientWidth || 1;
 			resize();
-
-			statusText = '加载贴图…';
-			await Promise.all(
-				TEXTURES.map(async (name) => {
-					gpu!.add_texture(name, await fetchBytes(await assetUrl(`assets/${name}.png`)));
-				})
-			);
-			gpu.add_font(await fetchBytes(await assetUrl(`assets/${FONT}`)));
 		})().catch((e) => {
 			bootPromise = null;
 			throw e;
@@ -568,7 +398,7 @@
 			if (token !== loadToken) return;
 
 			statusText = '下载地图…';
-			const bytes = await fetchBytes(`${BASE}/map/${encodeURIComponent(name)}.map`);
+			const bytes = await fetchBytes(`${MAP_BASE}/${encodeURIComponent(name)}.map`);
 			if (token !== loadToken) return;
 
 			statusText = '解析地图…';

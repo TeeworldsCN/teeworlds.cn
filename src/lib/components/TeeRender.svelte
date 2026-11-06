@@ -60,10 +60,20 @@
 		useDefault ? (body && feet ? DEFAULT_SKIN_GS : DEFAULT_SKIN) : X_SPEC_SKIN
 	);
 
+	/**
+	 * `x_` 开头的是客户端内置的功能皮肤(`x_ninja` 忍者、`x_spec` 旁观 …)。
+	 * 皮肤库里有它们,但**玩家不能拿它们当自己的皮肤** —— 名字是玩家自己填的,
+	 * 谁都能改成一模一样的。所以按名字传进来时一律用兜底皮肤,不发请求。
+	 * (按 `url` 传的不拦:那是皮肤库自己的地址,比如图鉴里的预览。)
+	 */
+	const isInternalSkin = (name: string) => name.toLowerCase().startsWith('x_');
+
 	const updateSkin = async () => {
-		const thisLoadingSkin = url || name;
-		const thisUrl = url;
-		const thisName = name;
+		// 玩家传进来的内置功能皮肤名不请求,直接兜底
+		const internal = isInternalSkin(name);
+		const thisLoadingSkin = internal ? 'default' : url || name;
+		const thisUrl = internal ? '' : url;
+		const thisName = internal ? '' : name;
 
 		if (thisLoadingSkin == loadingSkin) {
 			return;
