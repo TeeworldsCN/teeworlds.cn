@@ -8,16 +8,21 @@
  * 和地图预览共用 /ddnet/engine/pkg/twengine.js 这一份 wasm,只是入口不同。
  */
 
-import {
-	BASE,
-	bootRenderer,
-	fetchBytes,
-	fetchMapByName,
-	getVersion,
-	gunzip,
-	loadMap
-} from './engine.js';
-import { SoundMixer } from './sound.js';
+/**
+ * 当前部署的版本号,来自这个模块自己的 URL(`demo.js?v=…`)。
+ *
+ * 为什么用动态 import:`demo.js` / `engine.js` / `sound.js` 是手写的静态文件,
+ * 前面的 CDN(腾讯 EdgeOne)会按 URL 缓存它们,而静态文件给不出 Cache-Control ——
+ * 结果就是**发了新版用户还在跑旧代码**(X5 那个修复就是这么被吞掉的)。
+ * 页面按版本号 import `demo.js?v=…`,这里再把同一个 `v` 传给两个依赖,
+ * 于是每次部署这三个文件的 URL 都变,CDN 必然回源。
+ */
+const VERSION = new URL(import.meta.url).searchParams.get('v') ?? '';
+const withVersion = (file) => (VERSION ? `${file}?v=${VERSION}` : file);
+
+const { SoundMixer } = await import(/* @vite-ignore */ withVersion('./sound.js'));
+const { BASE, bootRenderer, fetchBytes, fetchMapByName, getVersion, gunzip, loadMap } =
+	await import(/* @vite-ignore */ withVersion('./engine.js'));
 
 /** 自由视角的缩放范围,和地图预览页(mappreview)保持一致 */
 const ZOOM_MIN = 0.05;
@@ -169,7 +174,9 @@ export async function mountDemoPlayer(host, options) {
 		// 返回 null 表示皮肤库里没有,就按 default 渲染。
 		resolveSkin = null,
 		// QQ / 微信内置浏览器(X5):下载和全屏都不工作,按钮直接禁用
-		inApp = false
+		inApp = false,
+		// 强制图形后端。X5 的 WebGPU 只是"能探测",真用就炸,页面会在内置浏览器里传 'webgl'
+		backend = null
 	} = options;
 
 	host.replaceChildren();
@@ -309,9 +316,20 @@ export async function mountDemoPlayer(host, options) {
 
 		setStatus(`加载地图 ${intermediate.map_name}…`);
 		// demo 里内嵌了地图就用内嵌的(自己录的 demo 都有),否则按名字去代理取
-		const mapBytes =
-			intermediate.contained_map_data() ?? (await fetchMapByName(intermediate.map_name));
-		const { map } = await loadMap(module, gpu, mapBytes);
+		const embedded = intermediate.contained_map_data();
+		let map;
+		try {
+			map = (await loadMap(module, gpu, embedded ?? (await fetchMapByName(intermediate.map_name))))
+				.map;
+		} catch (error) {
+			if (!embedded) throw error;
+			// 内嵌的那份地图偶尔比 twmap 的校验更"脏":比如 Sunny Side Up 的 SoundSource
+			// 指向 envelope 3,而地图只有 2 个 envelope —— DDNet 客户端直接忽略,twmap 会拒绝解析。
+			// 退回用站内代理取的**当前版本**同一张图(可能和录像当时的版本略有出入,但能看)。
+			console.warn('[map] 内嵌地图加载失败,改用当前版本:', error);
+			setStatus(`内嵌地图有问题,改用当前版本…`);
+			map = (await loadMap(module, gpu, await fetchMapByName(intermediate.map_name))).map;
+		}
 
 		const demo = intermediate.build(map);
 		const camera = new module.TwCamera(1);
