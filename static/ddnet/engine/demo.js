@@ -176,7 +176,9 @@ export async function mountDemoPlayer(host, options) {
 		// QQ / 微信内置浏览器(X5):下载和全屏都不工作,按钮直接禁用
 		inApp = false,
 		// 强制图形后端。X5 的 WebGPU 只是"能探测",真用就炸,页面会在内置浏览器里传 'webgl'
-		backend = null
+		backend = null,
+		// 部署版本号(SSR 读的 version.json),传给 engine.js 就不再自己 fetch 一次
+		version = ''
 	} = options;
 
 	host.replaceChildren();

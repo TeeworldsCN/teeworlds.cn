@@ -40,6 +40,15 @@ export const FONT = 'DejaVuSans.ttf';
 export const MAP_PROXY = '/ddnet/mappreview/map';
 
 let versionPromise = null;
+/** SSR 直接给过来的版本号(省掉一次 version.json 请求) @type {string | null} */
+let injectedVersion = null;
+
+/** @param {string} version */
+export const setEngineVersion = (version) => {
+	if (!version) return;
+	injectedVersion = version;
+	versionPromise = Promise.resolve(version);
+};
 
 /**
  * 重新编译过 wasm / 换过贴图就换 key,免得吃到缓存里的旧文件。
@@ -51,6 +60,7 @@ let versionPromise = null;
  * 文件才 200 多字节,这点开销换来"每次部署都立刻生效"。
  */
 export const getVersion = () => {
+	if (injectedVersion) return Promise.resolve(injectedVersion);
 	versionPromise ??= fetch(`${BASE}/version.json?t=${Date.now()}`, { cache: 'no-store' })
 		.then((r) => (r.ok ? r.json() : null))
 		.then((data) => data?.version ?? 'dev')

@@ -16,6 +16,9 @@
 	// 全站共用的皮肤缓存(单例,只拉一次 /api/skins);播放器只按名字查 URL,不自己拼
 	import { getSkinUrl } from '$lib/stores/skins';
 
+	/** SSR 传过来的数据(目前只有引擎产物版本号,见 +page.server.ts) */
+	let { data } = $props();
+
 	/** 播放器是 static 下的独立模块(和地图预览共用同一个 wasm),运行时按 URL 加载,不打进 bundle */
 	type DemoModule = {
 		mountDemoPlayer: (
@@ -31,6 +34,8 @@
 				inApp?: boolean;
 				/** 强制图形后端(内置浏览器里直接 webgl) */
 				backend?: 'webgpu' | 'webgl';
+				/** 这次部署的版本号,给静态 JS / 贴图 URL 用 */
+				version?: string;
 			}
 		) => Promise<{ destroy(): void } | null>;
 	};
@@ -46,6 +51,9 @@
 		rev?: string;
 		cid?: number;
 	};
+
+	/** 引擎产物的版本号(SSR 时从 version.json 读出来,见 +page.server.ts) */
+	const engineVersion = $derived(data.engineVersion ?? '');
 
 	let host: HTMLDivElement;
 	let message = $state('');
@@ -137,15 +145,10 @@
 			if (cancelled || !host) return;
 			message = '';
 			document.title = title || 'demo 回放 - TeeworldsCN';
-			// 带上当前部署的版本号:`demo.js` / `engine.js` / `sound.js` 是静态文件,
-			// 前面的 CDN 按 URL 缓存、又不遵守 Cache-Control,不加 v 的话发了新版也拿不到。
-			// version.json 自己用唯一查询串取,保证拿到的是这次的版本。
-			const version = await fetch(`/ddnet/engine/version.json?t=${Date.now()}`, {
-				cache: 'no-store'
-			})
-				.then((response) => (response.ok ? response.json() : null))
-				.then((data) => data?.version ?? '')
-				.catch(() => '');
+			// 带上这次部署的版本号(SSR 已经读好了):`demo.js` / `engine.js` / `sound.js`
+			// 是静态文件,前面的 CDN 按 URL 缓存、又不遵守 Cache-Control ——
+			// 不加 v 的话发了新版用户还在跑旧代码。
+			const version = engineVersion;
 			const demoModuleUrl = `/ddnet/engine/demo.js${version ? `?v=${version}` : ''}`;
 			const engine = (await import(/* @vite-ignore */ demoModuleUrl)) as DemoModule;
 			if (cancelled || !host) return;
@@ -156,6 +159,7 @@
 				focus,
 				finishers,
 				resolveSkin: getSkinUrl,
+				version,
 				inApp,
 				// X5(QQ / 微信)的 WebGPU 只"能探测"不能真用,直接跳过,别浪费一次失败的初始化;
 				// 其它浏览器照旧自己探测、失败再回退
