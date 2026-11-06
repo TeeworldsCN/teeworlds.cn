@@ -389,10 +389,41 @@ enum TeeState {
         ("const HAMMER_STILL: Transformation = kf(0., 0., -0.1);", tpl("tee_run_keyframes.rs") + "const HAMMER_STILL: Transformation = kf(0., 0., -0.1);"),
         # 5) 定点转浮点要用 FromFixed
         ("use fixed::traits::{Fixed, ToFixed};", "use fixed::traits::{Fixed, FromFixed, ToFixed};"),
+        # 6) skid 粒子:客户端是 `!InAir`(在地上蹭),这里原来写成 in_air(天上才冒烟)
+        (
+            """        if want_other_direction
+            && in_air
+            && vel_length > 10.""",
+            """        // 客户端的条件是 `!InAir && WantOtherDir && length(Vel * 50) > 500`,
+        // 也就是"在地面上反着蹭",不是在天上。位置也放在身后(-Direction * 6)。
+        if want_other_direction
+            && !in_air
+            && vel_length > 10.""",
+        ),
+        (
+            "position + Vec2::new(direction * 6. / 32., 12. / 32.),",
+            "position + Vec2::new(-direction * 6. / 32., 12. / 32.),",
+        ),
         # 6) 判定表的单元测试(留在 patch 里,`cargo test -p twgpu` 能跑)
         (
             "const NINJA_SWING: &[(f32, Transformation)] = &[",
             tpl("tee_animation_tests.rs") + "const NINJA_SWING: &[(f32, Transformation)] = &[",
+        ),
+    )
+
+
+def particles_rs():
+    """skid 烟雾的重力方向。
+
+    客户端 `CEffects::SkidTrail` 用的是 `random_float(-500.0f)`,屏幕坐标 y 向下,
+    负重力 = 往上飘;twgpu 写成了 `rng.f32_max(500./32.)`(正的),烟往下掉。
+    """
+    edit(
+        "twgpu/src/sprites/particles.rs",
+        (
+            "            gravity: rng.f32_max(500. / 32.),",
+            """            // 客户端:random_float(-500.0f) —— 负重力,烟往上飘
+            gravity: -rng.f32_max(500. / 32.),""",
         ),
     )
 
@@ -457,6 +488,7 @@ def main():
     lib_rs()
     cargo_toml()
     tee_rendering_rs()
+    particles_rs()
 
     diff = sh("git", "diff").stdout
     if not diff.strip():

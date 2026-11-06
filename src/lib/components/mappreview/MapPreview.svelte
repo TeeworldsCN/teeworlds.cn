@@ -24,6 +24,7 @@
 	// 渲染器启动、产物版本号、wasm 实例、贴图加载全部复用 /ddnet/engine/engine.js,
 	// 和 demo 播放器只有一份实现(QQ/X5 那些坑只在那边修一次)
 	import { assetUrl, bootRenderer, fetchBytes } from '../../../../static/ddnet/engine/engine.js';
+	import { uaIsStrict } from '$lib/helpers';
 
 	// 地图文件仍然走 mappreview 代理(和引擎产物无关,是服务端转发 ddnet.org/mappreview)
 	const MAP_BASE = '/ddnet/mappreview/map';
@@ -94,6 +95,8 @@
 
 	let entitiesLayer = $state(false);
 	let fullscreen = $state(false);
+	/** QQ / 微信内置浏览器(X5)里没有 requestFullscreen,按钮直接禁用 */
+	let inApp = $state(false);
 
 	const describeError = (e: unknown) => {
 		const message = e instanceof Error ? e.message : String(e);
@@ -493,6 +496,7 @@
 	let observer: ResizeObserver | null = null;
 
 	onMount(() => {
+		inApp = uaIsStrict(navigator.userAgent);
 		if (!host) return;
 		observer = new ResizeObserver(() => resize());
 		observer.observe(host);
@@ -545,15 +549,18 @@
 					<Fa icon={faArrowsRotate} />
 					重置
 				</button>
-				<button
-					type="button"
-					class="{BTN} {BTN_IDLE}"
-					title="全屏查看 (F)"
-					onclick={toggleFullscreen}
-				>
-					<Fa icon={faExpand} />
-					{fullscreen ? '退出全屏' : '全屏'}
-				</button>
+				{#if !inApp}
+					<!-- QQ / 微信内置浏览器里没有 requestFullscreen,按钮直接不显示 -->
+					<button
+						type="button"
+						class="{BTN} {BTN_IDLE}"
+						title="全屏查看 (F)"
+						onclick={toggleFullscreen}
+					>
+						<Fa icon={faExpand} />
+						{fullscreen ? '退出全屏' : '全屏'}
+					</button>
+				{/if}
 			</div>
 		</div>
 	{/if}

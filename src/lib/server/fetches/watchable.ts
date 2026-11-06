@@ -198,7 +198,15 @@ export const matchRankedRecord = (
 };
 
 /** 页面上要用的一条可播录像 */
-export type PlayerDemo = { uuid: string; time: number; kind: string };
+export type PlayerDemo = {
+	uuid: string;
+	/** 完赛时间,秒 */
+	time: number;
+	/** 'team' | 'solo' */
+	kind: string;
+	/** 过图的人(团队就是整队) */
+	names: string[];
+};
 
 /**
  * 某个玩家在某张图上的可播录像。
@@ -222,9 +230,30 @@ export const findPlayerDemo = async (
 	for (const time of times) {
 		if (typeof time !== 'number' || !Number.isFinite(time)) continue;
 		const hit = mine.find((entry) => Math.abs(seconds(entry) - time) < 0.02);
-		if (hit) return { uuid: hit.uuid, time: seconds(hit), kind: hit.kind };
+		if (hit) return { uuid: hit.uuid, time: seconds(hit), kind: hit.kind, names: hit.names };
 	}
 
 	const fastest = mine.reduce((best, entry) => (seconds(entry) < seconds(best) ? entry : best));
-	return { uuid: fastest.uuid, time: seconds(fastest), kind: fastest.kind };
+	return { uuid: fastest.uuid, time: seconds(fastest), kind: fastest.kind, names: fastest.names };
+};
+
+/**
+ * 一张图「最值得看」的那条录像,**团队优先**:有团队纪录就取最快的团队,
+ * 没有团队才有个人。团队图本来就该给人看团队的那一档。
+ */
+export const findMapDemo = async (mapName: string): Promise<PlayerDemo | null> => {
+	const entries = await getWatchableEntriesByMap(mapName);
+	if (!entries.length) return null;
+
+	const fastest = (kind: string) =>
+		entries
+			.filter((entry) => entry.kind === kind)
+			.reduce<WatchableEntry | null>(
+				(best, entry) => (!best || parseFloat(entry.time) < parseFloat(best.time) ? entry : best),
+				null
+			);
+
+	const pick = fastest('team') ?? fastest('solo');
+	if (!pick) return null;
+	return { uuid: pick.uuid, time: parseFloat(pick.time), kind: pick.kind, names: pick.names };
 };

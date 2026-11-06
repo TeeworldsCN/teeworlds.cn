@@ -167,14 +167,16 @@ export async function mountDemoPlayer(host, options) {
 		// 皮肤名 → 图片 URL。由调用方注入(页面里传全局皮肤缓存的 getSkinUrl),
 		// 这个模块是浏览器直接加载的静态脚本,拿不到 Svelte 的 $lib。
 		// 返回 null 表示皮肤库里没有,就按 default 渲染。
-		resolveSkin = null
+		resolveSkin = null,
+		// QQ / 微信内置浏览器(X5):下载和全屏都不工作,按钮直接禁用
+		inApp = false
 	} = options;
 
 	host.replaceChildren();
 	const style = element('style');
 	style.textContent = CSS;
 	const root = element('div', 'tw-player');
-	const canvas = element('canvas', 'tw-canvas');
+	let canvas = element('canvas', 'tw-canvas');
 	// 名字牌用 DOM 渲染(浏览器自带字体,不用为 CJK 单独塞一份 Source Han Sans)
 	const nameLayer = element('div', 'tw-names');
 	const overlay = element('div', 'tw-overlay');
@@ -253,6 +255,12 @@ export async function mountDemoPlayer(host, options) {
 		download,
 		fullscreenButton
 	);
+	// QQ / 微信的内置浏览器(X5):`download` 属性不生效、`requestFullscreen` 也没有,
+	// 留着也只是点了没反应 —— 干脆不显示这两个按钮(要在 append 之后删,不然白删)。
+	if (inApp) {
+		download.remove();
+		fullscreenButton.remove();
+	}
 	bar.append(whoRow, seekRow, mainRow);
 	root.append(canvas, nameLayer, overlay);
 	if (title) root.append(top);
@@ -273,18 +281,27 @@ export async function mountDemoPlayer(host, options) {
 		// 后端探测 / X5 的 WebGPU 回退 / wasm 实例 / 贴图加载都在 bootRenderer 里,
 		// 和地图预览页共用同一份实现(那些坑只在 engine.js 修一次)。
 		// 名字牌走 DOM(系统字体),wasm 里的 SDF 字体用不上,别白下 757 KB 的 ttf。
-		const { module, gpu } = await bootRenderer({
+		const {
+			module,
+			gpu,
+			canvas: activeCanvas
+		} = await bootRenderer({
 			canvas,
 			font: false,
 			onStatus: setStatus,
 			...options.gpu
 		});
+		// 后端回退时 bootRenderer 可能换了一块新 canvas(旧的那块已经绑过上下文),
+		// 后面的 surface / 事件 / 尺寸计算都得用它的
+		if (activeCanvas && activeCanvas !== canvas) canvas = activeCanvas;
 		if (destroyed) return null;
 
 		setStatus('读取 demo…');
 		const raw = demoBytes ?? (await fetchBytes(demoUrl));
 		const bytes = await gunzip(raw);
-		download.href = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+		if (!inApp) {
+			download.href = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+		}
 
 		const intermediate = new module.TwDemoIntermediate(bytes);
 		const length = Number(intermediate.length);
@@ -1588,9 +1605,13 @@ const CSS = `
 .tw-btn:hover { background: rgba(255, 255, 255, 0.12); }
 .tw-btn:active { background: rgba(255, 255, 255, 0.2); }
 .tw-btn svg { display: block; }
-.tw-btn:disabled {
+.tw-btn:disabled,
+.tw-btn.tw-disabled {
 	opacity: 0.4;
 	cursor: not-allowed;
+}
+.tw-btn.tw-disabled {
+	pointer-events: none;
 }
 .tw-btn.tw-on {
 	background: var(--accent);
