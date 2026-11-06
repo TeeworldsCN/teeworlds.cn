@@ -65,6 +65,33 @@ def mipmap_rs():
     write(path, s + tpl("mipmap_cpu_helpers.rs"))
 
 
+def mipmap_upload_rs():
+    """精灵/皮肤的 2D 贴图(Blit::upload_mipmapped)也改成 CPU 生成 mip。
+
+    X5 的内置浏览器里 GPU blit 生成的 mip 是黑的(和 tilemap 同一个根因),
+    不换的话精灵拉远就糊成黑块。
+    """
+    edit(
+        "twgpu/src/mipmap.rs",
+        (
+            """        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: LABEL });
+        self.generate_mipmaps(&mut encoder, &texture);
+        queue.submit([encoder.finish()]);
+        texture""",
+            """        // mip 链在 CPU 上生成(理由见 fill_mip_levels_cpu):WebGL 上 GPU blit 出来的
+        // mip 在 X5 这类内置浏览器里是黑的,精灵拉远就糊成一片。
+        let mut level0 = Vec::with_capacity((width * height) as usize);
+        for pixel in image.as_raw().chunks_exact(4) {
+            level0.push(u32::from_le_bytes([pixel[0], pixel[1], pixel[2], pixel[3]]));
+        }
+        Self::fill_mip_levels_cpu(queue, &texture, level0, size);
+        texture""",
+        ),
+    )
+
+
 def mapres_rs():
     path = "twgpu/src/textures/mapres.rs"
     s = read(path)
@@ -109,6 +136,41 @@ def mapres_rs():
     )
     end = s.index("    /// Accessor to the array texture of this mapres")
     s = s[:start] + tpl("mapres_generate_array_texture.rs") + s[end:]
+
+    # 普通 2D 贴图的 mip 链也走 CPU:GPU blit 那条路在 X5 的内置浏览器上同样是黑的
+    s = s.replace(
+        """        queue.write_texture(
+            texture.as_image_copy(),
+            image.as_raw(),
+            TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
+            },
+            size,
+        );
+        blit.generate_mipmaps(encoder, &texture);""",
+        """        // level 0 照常上传,其余 mip 在 CPU 上算好逐级写进去 —— 和 array texture 同一个理由:
+        // WebGL 上「拿 mip N-1 当输入渲染进 mip N」是跨 level 的 feedback loop,
+        // 部分 mobile GLES 驱动(X5)直接给全黑,拉远之后整张图糊成一片黑/花。
+        let mut level0 = Vec::with_capacity((width * height) as usize);
+        for pixel in image.as_raw().chunks_exact(4) {
+            level0.push(u32::from_le_bytes([pixel[0], pixel[1], pixel[2], pixel[3]]));
+        }
+        queue.write_texture(
+            texture.as_image_copy(),
+            image.as_raw(),
+            TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
+            },
+            size,
+        );
+        let _ = (&blit, &encoder);
+        Blit::fill_mip_levels_cpu(queue, &texture, level0, size);""",
+        1,
+    )
 
     # 调用点改成传图像
     s = s.replace(
@@ -481,6 +543,7 @@ def main():
 
     mipmap_rs()
     mapres_rs()
+    mipmap_upload_rs()
     map_data_rs()
     samplers_rs()
     tilemap_render_rs()

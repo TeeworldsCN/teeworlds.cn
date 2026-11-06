@@ -1,11 +1,12 @@
 /// CPU 侧盒式滤波逐级生成 mip 链,就地缩小、逐级写进贴图。
     ///
-    /// 为什么需要这条路径:tilemap 采的是 array texture(16×16 个 tile 拼成 256 层),
-    /// 它的 mip 链原来靠 GPU blit 生成 —— 「拿 mip N-1 当输入、渲染进 mip N」。
-    /// 在 WebGL 上这两个 view 背后是同一个 GL texture,属于跨 level 的 feedback loop,
-    /// 规范上是 undefined behavior。ANGLE 放行,部分 mobile GLES 驱动直接返回全黑:
-    /// 于是 mip>=1 整片没内容,tilemap 的 lod 一变大地形就消失了。
-    /// quad 用的是普通 2D 贴图(完全不同的 GL code path),没踩到这个问题。
+    /// 为什么需要这条路径:twgpu 原来的 mip 链靠 GPU blit 生成 —— 「拿 mip N-1 当输入、
+    /// 渲染进 mip N」。在 WebGL 上这两个 view 背后是同一个 GL texture,属于跨 level 的
+    /// feedback loop,规范上是 undefined behavior。桌面 ANGLE 放行,部分 mobile GLES 驱动
+    /// (QQ/微信的 X5)直接返回全黑或花屏:
+    /// - array texture(tilemap)会在地形 lod 一变时整片消失
+    /// - 普通 2D 贴图(每个 mapres 的整图和精灵图集)也一样糊掉
+    /// 所以**所有**贴图的 mip 都改在 CPU 上算,`layers = 1` 就是普通 2D 贴图。
     ///
     /// **内存**:`level0` 直接接管(不拷贝),每级都在同一个缓冲区里就地缩小,
     /// 峰值就是 `level0` 本身 —— 不会为 mip 链额外再分配一份。
