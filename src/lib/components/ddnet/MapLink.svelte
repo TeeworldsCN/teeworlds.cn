@@ -5,15 +5,24 @@
 
 	const {
 		map,
+		region,
 		className,
 		children,
 		...rest
-	}: { map: string; className?: string; children: Snippet; [key: string]: any } = $props();
+	}: {
+		map: string;
+		region?: string;
+		className?: string;
+		children: Snippet;
+		[key: string]: any;
+	} = $props();
+
+	// 带区域时跳到该服的地图页（和 ddnet.org/maps/<region>/<map> 一致）
+	const href = $derived(
+		region && region.toLowerCase() != 'global'
+			? `/ddnet/maps/${encodeAsciiURIComponent(map)}?server=${region.toLowerCase()}`
+			: `/ddnet/maps/${encodeAsciiURIComponent(map)}`
+	);
 </script>
 
-<Link
-	data-sveltekit-preload-data="tap"
-	href={`/ddnet/maps/${encodeAsciiURIComponent(map)}`}
-	{...rest}
-	{className}>{@render children()}</Link
->
+<Link data-sveltekit-preload-data="tap" {href} {...rest} {className}>{@render children()}</Link>
