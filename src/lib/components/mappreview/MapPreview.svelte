@@ -316,8 +316,19 @@
 		}
 	};
 
-	/** ?mips=0 关掉 mip 采样(部分移动端设备上 mip 链不可用) */
-	const mipmapsEnabled = () => debugParam('mips') !== '0';
+	/**
+	 * mip 采样开关。
+	 * 部分设备(实测 Android Chrome + WebGL2)上,采样 mip level > 0 会直接取不到颜色,
+	 * 表现为缩小后整片贴图消失;钳到 mip 0 就正常。WebGPU 路径没这个问题。
+	 * 默认:有 WebGPU 用 mip,纯 WebGL 关掉;?mips=1 / ?mips=0 可强制。
+	 */
+	const mipmapsEnabled = () => {
+		const forced = debugParam('mips');
+		if (forced === '1') return true;
+		if (forced === '0') return false;
+		// 只有可能是 WebGPU 的浏览器才用 mip;纯 WebGL 上部分设备采样 mip>0 会全空
+		return 'gpu' in navigator;
+	};
 
 	const dprScale = () => {
 		const requested = Number(debugParam('dpr'));

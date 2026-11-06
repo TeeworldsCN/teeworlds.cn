@@ -22,7 +22,7 @@ const CACHE = path.join(ROOT, 'cache/mappreview');
 // 静态文件里不能带点开头(sirv 默认不 serve dotfiles),而且前端要读它做缓存版本号
 const STAMP = path.join(OUT, 'version.json');
 // 对 submodule 的补丁,编译前按顺序应用(见 patches/)
-const PATCHES = [path.join(ROOT, 'patches/twgpu-mipmaps.patch')];
+const PATCHES = [path.join(ROOT, 'patches/twgpu-mips-off.patch')];
 
 const force = process.argv.includes('--force');
 
