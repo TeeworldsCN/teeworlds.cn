@@ -122,8 +122,10 @@
 
 	const describeError = (e: unknown) => {
 		const message = e instanceof Error ? e.message : String(e);
+		// 带「系统浏览器」的是我们自己写的引导文案,原样显示
+		if (message.includes('系统浏览器')) return message;
 		if (/adapter|webgl|webgpu|graphics|surface|图形/i.test(message)) {
-			return '浏览器没能创建 WebGL2 / WebGPU 设备,换新版 Chrome / Firefox 再试试';
+			return '这个浏览器没法创建 WebGL2 / WebGPU 设备(QQ、微信等内置浏览器常见),用系统浏览器打开就能看';
 		}
 		return message || '地图预览加载失败';
 	};
@@ -292,6 +294,12 @@
 		requestAnimationFrame(resize);
 	};
 
+	/**
+	 * 开预览前先探一下能不能建 WebGL2 / WebGPU。
+	 * QQ、微信这类内置浏览器(X5/TBS)经常只有 WebGL1,wgpu 在里面会直接 panic,
+	 * 而且 panic 后 wasm 那边的 Promise 不会 reject,界面就一直卡在初始化。
+	 */
+
 	/** 调试用:?backend=webgl / webgpu 指定图形后端,?dpr=1 关掉高分屏渲染 */
 	const debugParam = (name: string) => {
 		try {
@@ -302,17 +310,55 @@
 	};
 
 	/**
-	 * mip 采样开关。
-	 * 部分设备(实测 Android Chrome + WebGL2)上,采样 mip level > 0 会直接取不到颜色,
-	 * 表现为缩小后整片贴图消失;钳到 mip 0 就正常。WebGPU 路径没这个问题。
-	 * 默认:有 WebGPU 用 mip,纯 WebGL 关掉;?mips=1 / ?mips=0 可强制。
+	 * 开预览前定下两件事:用哪个后端、要不要 mip。
+	 *
+	 * - QQ 浏览器(X5)暴露的 `navigator.gpu` 是桩:`requestAdapter()` 永不 resolve,
+	 *   wgpu 内部那句 `is_browser_webgpu_supported().await` 会一直挂着,表现就是卡在
+	 *   「初始化图形设备」且没有任何报错。所以这里带超时自己探一次,探不到就显式指定 webgl。
+	 * - 采样 mip level > 0 在部分设备的 WebGL 上取不到颜色(缩小后贴图整片消失),
+	 *   只有确认走 WebGPU 才启用 mip。`?backend=` / `?mips=` 可以强制覆盖。
 	 */
-	const mipmapsEnabled = () => {
-		const forced = debugParam('mips');
-		if (forced === '1') return true;
-		if (forced === '0') return false;
-		// 只有可能是 WebGPU 的浏览器才用 mip;纯 WebGL 上部分设备采样 mip>0 会全空
-		return 'gpu' in navigator;
+	const planGraphics = async (): Promise<{
+		backend: 'webgpu' | 'webgl';
+		mipmaps: boolean;
+	} | null> => {
+		const forcedBackend = debugParam('backend');
+		const forcedMips = debugParam('mips');
+		const plan = (backend: 'webgpu' | 'webgl') => ({
+			backend,
+			mipmaps: forcedMips === '1' ? true : forcedMips === '0' ? false : backend === 'webgpu'
+		});
+
+		if (forcedBackend !== 'webgl') {
+			type GpuAdapter = { requestDevice(): Promise<unknown> };
+			const gpu = (
+				navigator as Navigator & {
+					gpu?: { requestAdapter(): Promise<GpuAdapter | null> };
+				}
+			).gpu;
+			if (gpu) {
+				// 1.5 秒内拿不到 adapter + device 就当这个 WebGPU 不可用(桩实现会一直挂着)
+				const timeout = <T,>(fallback: T) =>
+					new Promise<T>((resolve) => setTimeout(() => resolve(fallback), 1500));
+				try {
+					const adapter = await Promise.race([gpu.requestAdapter(), timeout(null)]);
+					if (adapter) {
+						const device = await Promise.race([adapter.requestDevice(), timeout(null)]);
+						if (device) return plan('webgpu');
+					}
+				} catch {
+					// 探测失败就当没有 WebGPU
+				}
+			}
+			if (forcedBackend === 'webgpu') return plan('webgpu');
+		}
+
+		try {
+			if (document.createElement('canvas').getContext('webgl2')) return plan('webgl');
+		} catch {
+			// 建不了 canvas 就当不支持
+		}
+		return null;
 	};
 
 	const dprScale = () => {
@@ -397,6 +443,13 @@
 	const boot = () => {
 		if (bootPromise) return bootPromise;
 		bootPromise = (async () => {
+			const plan = await planGraphics();
+			if (!plan) {
+				throw new Error(
+					'当前浏览器没有可用的 WebGL2 / WebGPU（QQ、微信等内置浏览器常见），用系统浏览器打开就能看'
+				);
+			}
+
 			statusText = '加载渲染引擎…';
 			const loaded = await loadFreshModule();
 			module = loaded;
@@ -408,9 +461,9 @@
 			canvasEl = canvas;
 			// canvas 必须在 init 时就有尺寸:WebGL 后端要靠它建 context 才能找到 adapter
 			gpu = await withTimeout(
-				new loaded.TwGpu(debugParam('backend'), canvas, mipmapsEnabled()),
-				30000,
-				'初始化图形设备超时(可能是浏览器不支持 WebGL2 / WebGPU)'
+				new loaded.TwGpu(plan.backend, canvas, plan.mipmaps),
+				12000,
+				'创建图形设备失败(这个浏览器可能不支持 WebGL2 / WebGPU,试试用系统浏览器打开)'
 			);
 			surface = gpu.surface() ?? gpu.create_surface(canvas);
 			camera = new loaded.TwCamera(aspect);

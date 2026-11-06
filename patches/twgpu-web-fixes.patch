@@ -64,10 +64,10 @@ index e037098..fd5201a 100644
      let map_data_static = GpuMapDataStatic::upload(&map, &device, &queue);
      let map_data_dyn = GpuMapDataDyn::upload(&map, &device);
 diff --git a/twgpu-web/src/twgpu.rs b/twgpu-web/src/twgpu.rs
-index b1cfda3..b24af7e 100644
+index b1cfda3..0d5f87f 100644
 --- a/twgpu-web/src/twgpu.rs
 +++ b/twgpu-web/src/twgpu.rs
-@@ -33,6 +33,7 @@ impl TwGpu {
+@@ -33,12 +33,18 @@ impl TwGpu {
      pub async fn init(
          backend: Option<String>,
          canvas: Option<web_sys::HtmlCanvasElement>,
@@ -75,7 +75,19 @@ index b1cfda3..b24af7e 100644
      ) -> Result<Self, JsError> {
          std::panic::set_hook(Box::new(console_error_panic_hook::hook));
          console_log::init().expect("Could not initialize logger");
-@@ -90,7 +91,7 @@ impl TwGpu {
+         log::info!("Surface is some: {}", canvas.is_some());
+ 
+-        let webgpu_supported = wgpu::util::is_browser_webgpu_supported().await;
++        // 显式指定后端时不要再碰 navigator.gpu:有些内置浏览器(QQ/X5)的 WebGPU 是桩,
++        // `requestAdapter()` 会一直挂着,而 wgpu 这句探测没有超时,整个初始化就卡死了。
++        let webgpu_supported = match backend.as_deref() {
++            Some(_) => false,
++            None => wgpu::util::is_browser_webgpu_supported().await,
++        };
+         log::warn!("WebGPU supported: {webgpu_supported}");
+         let backend = match backend.as_ref().map(String::as_ref) {
+             None => None,
+@@ -90,7 +96,7 @@ impl TwGpu {
              surface.set_device(device.clone());
          }
  
