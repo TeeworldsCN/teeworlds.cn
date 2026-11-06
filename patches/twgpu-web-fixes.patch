@@ -394,8 +394,22 @@ index 06d6072..ef83fb0 100644
 +    }
 +}
 \ No newline at end of file
+diff --git a/twgpu/src/sprites/particles.rs b/twgpu/src/sprites/particles.rs
+index 071f359..ebb41f2 100644
+--- a/twgpu/src/sprites/particles.rs
++++ b/twgpu/src/sprites/particles.rs
+@@ -353,7 +353,8 @@ impl Particles {
+             velocity: velocity + rng.direction() * 50. / 32.,
+             life_span: rng.f32_range(0.5, 1.),
+             size_progression: [rng.f32_range(24., 36.) / 32., 0.],
+-            gravity: rng.f32_max(500. / 32.),
++            // 客户端:random_float(-500.0f) —— 负重力,烟往上飘
++            gravity: -rng.f32_max(500. / 32.),
+             friction: 0.7,
+             color: Rgba::new(191, 191, 191, 255), // 0.75 in u8
+             ..Particle::default()
 diff --git a/twgpu/src/sprites/tee_rendering.rs b/twgpu/src/sprites/tee_rendering.rs
-index c120bcb..902ee91 100644
+index c120bcb..a7dc746 100644
 --- a/twgpu/src/sprites/tee_rendering.rs
 +++ b/twgpu/src/sprites/tee_rendering.rs
 @@ -5,7 +5,7 @@ use crate::sprites::{
@@ -463,7 +477,7 @@ index c120bcb..902ee91 100644
          TeeSprite::FootOutline
              .transformed_sprite(position, animation.left_foot, skin)
              .multiply_color(feet_color)
-@@ -330,15 +334,11 @@ impl<'a> GenerateSprites<twsnap::items::Player> for SpriteRenderContext<'a> {
+@@ -330,22 +334,20 @@ impl<'a> GenerateSprites<twsnap::items::Player> for SpriteRenderContext<'a> {
              .multiply_color(feet_color)
              .pass_to(&mut sprite_fn);
  
@@ -480,10 +494,21 @@ index c120bcb..902ee91 100644
          let want_other_direction =
 -            (direction == -1. && velocity.x > 0.) || (direction == 1. && velocity.x < 0.);
 +            (facing == -1. && velocity.x > 0.) || (facing == 1. && velocity.x < 0.);
++        // 客户端的条件是 `!InAir && WantOtherDir && length(Vel * 50) > 500`,
++        // 也就是"在地面上反着蹭",不是在天上。位置也放在身后(-Direction * 6)。
          if want_other_direction
-             && in_air
+-            && in_air
++            && !in_air
              && vel_length > 10.
-@@ -524,11 +524,55 @@ impl SpriteRenderContext<'_> {
+             && self.particles.effect_100hz.active()
+         {
+             self.particles.skid_trail(
+-                position + Vec2::new(direction * 6. / 32., 12. / 32.),
++                position + Vec2::new(-direction * 6. / 32., 12. / 32.),
+                 Vec2::new(-direction * 100. / 32. * vel_length, -50. / 32.),
+                 self.textures,
+                 self.rng,
+@@ -524,11 +526,55 @@ impl SpriteRenderContext<'_> {
      }
  }
  
@@ -542,7 +567,7 @@ index c120bcb..902ee91 100644
  }
  
  // Next is tee animation code
-@@ -674,6 +718,33 @@ impl TeeKeyframe {
+@@ -674,6 +720,33 @@ impl TeeKeyframe {
      ];
  }
  
@@ -576,7 +601,7 @@ index c120bcb..902ee91 100644
  const HAMMER_STILL: Transformation = kf(0., 0., -0.1);
  const HAMMER_SWING: &[(f32, Transformation)] = &[
      (0.0, HAMMER_STILL),
-@@ -683,6 +754,57 @@ const HAMMER_SWING: &[(f32, Transformation)] = &[
+@@ -683,6 +756,57 @@ const HAMMER_SWING: &[(f32, Transformation)] = &[
      (1.0, HAMMER_STILL),
  ];
  
