@@ -13,7 +13,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import MapPreview from '$lib/components/mappreview/MapPreview.svelte';
 	import Fa from 'svelte-fa';
-	import { faMapLocation } from '@fortawesome/free-solid-svg-icons';
+	import { faMapLocation, faVideo } from '@fortawesome/free-solid-svg-icons';
 
 	const { data } = $props();
 
@@ -171,8 +171,20 @@
 							use:tippy={{
 								content: `于 ${secondsToDate(rank.timestamp)} 用时 ${secondsToChineseTime(rank.time)} 完成`
 							}}
-							class="inline-block w-20 text-right">{secondsToTime(rank.time)}</span
+							class="inline-block w-20 text-right align-middle">{secondsToTime(rank.time)}</span
 						>
+						<span class="ml-1 inline-block w-5 text-center align-middle">
+							{#if rank.demo}
+								<a
+									href={`/ddnet/watch?uuid=${rank.demo.uuid}&time=${rank.demo.time}`}
+									class="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-600/60 text-slate-400 transition-colors hover:bg-orange-500 hover:text-white"
+									use:tippy={{ content: `观看过图回放（${secondsToTime(rank.time)}）` }}
+									aria-label={`观看 ${rank.players.join(' & ')} 用时 ${secondsToTime(rank.time)} 的回放`}
+								>
+									<Fa icon={faVideo} size="xs" />
+								</a>
+							{/if}
+						</span>
 						{#if data.region == 'GLOBAL'}
 							<FlagSpan flag={rank.country} />
 						{/if}
@@ -203,8 +215,20 @@
 						use:tippy={{
 							content: `于 ${secondsToDate(rank.timestamp)} 用时 ${secondsToChineseTime(rank.time)} 完成`
 						}}
-						class="inline-block w-20 text-right">{secondsToTime(rank.time)}</span
+						class="inline-block w-20 text-right align-middle">{secondsToTime(rank.time)}</span
 					>
+					<span class="ml-1 inline-block w-5 text-center align-middle">
+						{#if rank.demo}
+							<a
+								href={`/ddnet/watch?uuid=${rank.demo.uuid}&time=${rank.demo.time}`}
+								class="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-600/60 text-slate-400 transition-colors hover:bg-orange-500 hover:text-white"
+								use:tippy={{ content: `观看过图回放（${secondsToTime(rank.time)}）` }}
+								aria-label={`观看 ${rank.player} 用时 ${secondsToTime(rank.time)} 的回放`}
+							>
+								<Fa icon={faVideo} size="xs" />
+							</a>
+						{/if}
+					</span>
 					{#if data.region == 'GLOBAL'}
 						<FlagSpan flag={rank.country} />
 					{/if}

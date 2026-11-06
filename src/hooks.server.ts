@@ -5,6 +5,7 @@ import { mapTracker } from '$lib/server/tasks/map-tracker';
 import { toolClear } from '$lib/server/tasks/tool-clear';
 import { ranks } from '$lib/server/fetches/ranks';
 import { maps } from '$lib/server/fetches/maps';
+import { warmWatchable } from '$lib/server/fetches/watchable';
 import { type ServerInit } from '@sveltejs/kit';
 import type { Cron } from 'croner';
 
@@ -34,12 +35,15 @@ export const init: ServerInit = async () => {
 		toolClear
 	);
 
-	// Pre-warm maps and ranks cache so the first API call doesn't hit cold start
+	// Pre-warm maps, ranks and watchable cache so the first API call doesn't hit cold start
 	setTimeout(() => {
-		console.log('[warmup] Pre-fetching maps and ranks cache...');
+		console.log('[warmup] Pre-fetching maps, ranks and watchable cache...');
 		Promise.allSettled([
 			maps.fetchCache().then(() => console.log('[warmup] Maps cache ready')),
-			ranks.fetchCache().then(() => console.log('[warmup] Ranks cache ready'))
+			ranks.fetchCache().then(() => console.log('[warmup] Ranks cache ready')),
+			// watchable.jsonl 是 3 MB 的 JSONL,冷启动解析要一两秒。
+			// 地图详情页每次 SSR 都要查它,别让第一个访客替我等着。
+			warmWatchable().then(() => console.log('[warmup] Watchable cache ready'))
 		]).catch(() => {});
 	}, 2000);
 };
