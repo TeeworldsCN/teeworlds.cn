@@ -1,10 +1,21 @@
-import { numberToSub } from '$lib/helpers';
+import { numberToSub, secondsToTime } from '$lib/helpers';
 import { mapType, numberToStars } from '../../ddnet/helpers';
 import { escapeMarkdown } from './utils/markdown';
 
 export type MarkdownLink = {
 	label: string;
 	url: string;
+};
+
+/** 地图对应的录像(和 /ddnet/watch 播放器同一套数据) */
+export type MarkdownMapDemo = {
+	uuid: string;
+	/** 秒 */
+	time: number;
+	/** 'team' | 'solo' */
+	kind: string;
+	/** 过图的人(团队就是整队) */
+	names: string[];
 };
 
 export type MarkdownMap = {
@@ -100,14 +111,32 @@ export const pointsNotFoundMarkdown = () => `## 🔍 未找到玩家
 
 export const mapMarkdown = (
 	map: MarkdownMap,
-	options: { title?: string; intro?: string; link?: MarkdownLink } = {}
+	options: {
+		title?: string;
+		intro?: string;
+		/** 结尾的链接,可以给多个;「地图详情」那条始终保留 */
+		links?: MarkdownLink[];
+		/** 有录像就多给一行「观看回放」 */
+		demo?: MarkdownMapDemo | null;
+	} = {}
 ) => {
 	const title = options.title || '🗺️ 地图详情';
 	const intro = options.intro ? `> ${options.intro}\n\n` : '';
 	// QQ markdown 图片必须带尺寸提示，否则客户端会退化成 [说明] 文本。
 	// DDNet 的 ranks/maps 缩略图统一为 360x225。
 	const image = map.thumbnail ? `![地图缩略图 #360px #225px](${map.thumbnail})\n\n` : '';
-	const link = options.link ? `[🔗 ${options.link.label}](${options.link.url})` : '';
+	const link = (options.links ?? []).map((item) => `[🔗 ${item.label}](${item.url})`).join(' · ');
+	// 「观看回放」这四个字本身就是链接,点开直接进播放器;
+	// 后面写谁过的图(团队就是整队),不写"团队/个人"
+	const demoWho = options.demo
+		? options.demo.names
+				.slice(0, 4)
+				.map((name) => escapeMarkdown(name))
+				.join(' & ') + (options.demo.names.length > 4 ? ' 等' : '')
+		: '';
+	const demo = options.demo
+		? `- [观看回放](https://teeworlds.cn/ddnet/watch?uuid=${options.demo.uuid}&time=${options.demo.time})：${demoWho} ${secondsToTime(options.demo.time)}`
+		: '';
 
 	return `# ${title}
 
@@ -116,6 +145,7 @@ ${intro}${image}## ${escapeMarkdown(map.name)}
 - **作者**：${map.mapper ? escapeMarkdown(map.mapper) : '未知'}
 - **类型**：${mapType(map.type)} ${numberToStars(map.difficulty)}
 - **分数**：${map.points} pts
+${demo}
 
 ${link}`.trim();
 };

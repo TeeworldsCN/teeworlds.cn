@@ -2,6 +2,7 @@ import { mapType, numberToStars } from '$lib/ddnet/helpers';
 import { checkMapName } from '$lib/ddnet/searches';
 import { encodeAsciiURIComponent } from '$lib/link';
 import { maps, type MapList } from '$lib/server/fetches/maps';
+import { findMapDemo } from '$lib/server/fetches/watchable';
 import type { Handler } from '../protocol/types';
 import { findBestFuzzyMatch } from '../utils/fuzzy';
 import {
@@ -73,9 +74,23 @@ const MAPDIFF_KEYWORDS: Record<string, number> = {
 	五: 5
 };
 
+/** 这张图有没有录像(有就给一行「观看回放」);查不到只是没有,不影响回复 */
+const mapDemo = async (name: string) => {
+	try {
+		return await findMapDemo(name);
+	} catch {
+		return null;
+	}
+};
+
 export const handleMaps: Handler = async ({ platform, reply, user, args }) => {
 	let mapName = args.trim();
 	const prefix = platform == 'wechat' ? '' : '/';
+	/**
+	 * 微信那边只发纯文本(markdown 会被转成 text),多给几个链接就是一堆长 URL ——
+	 * 所以"地图详情 + 查看所有图 + 观看回放"只在 markdown 里给,纯文本只留地图详情。
+	 */
+	const rich = platform !== 'wechat';
 	if (!mapName) {
 		return await reply.markdown(mapMissingMarkdown(prefix, 'https://teeworlds.cn/goto#m'));
 	}
@@ -149,18 +164,29 @@ export const handleMaps: Handler = async ({ platform, reply, user, args }) => {
 				: `随机找了一张图`;
 
 		if (randomMap) {
-			const link = descriptor
-				? {
-						label: `查看所有 ${descriptor} 图`,
-						url:
-							type == 'random'
-								? `https://teeworlds.cn/goto#ms${diff ? `diff=${diff}` : ''}`
-								: `https://teeworlds.cn/goto#mstype=${type}${diff ? `&diff=${diff}` : ''}`
-					}
-				: {
-						label: '查看所有图',
-						url: 'https://teeworlds.cn/goto#m'
-					};
+			// 「地图详情」始终保留;markdown 里随机图再多给一条「查看所有 X 图」
+			const links = [
+				{
+					label: '地图详情',
+					url: `https://teeworlds.cn/goto#m${encodeAsciiURIComponent(randomMap.name)}`
+				},
+				...(rich
+					? [
+							descriptor
+								? {
+										label: `查看所有 ${descriptor} 图`,
+										url:
+											type == 'random'
+												? `https://teeworlds.cn/goto#ms${diff ? `diff=${diff}` : ''}`
+												: `https://teeworlds.cn/goto#mstype=${type}${diff ? `&diff=${diff}` : ''}`
+									}
+								: {
+										label: '查看所有图',
+										url: 'https://teeworlds.cn/goto#m'
+									}
+						]
+					: [])
+			];
 
 			return await reply.markdown(
 				mapMarkdown(
@@ -172,7 +198,12 @@ export const handleMaps: Handler = async ({ platform, reply, user, args }) => {
 						points: randomMap.points,
 						thumbnail: randomMap.thumbnail
 					},
-					{ title: '🎲 随机地图', intro: finishingDesc, link }
+					{
+						title: '🎲 随机地图',
+						intro: finishingDesc,
+						links,
+						demo: rich ? await mapDemo(randomMap.name) : null
+					}
 				)
 			);
 		}
@@ -278,10 +309,13 @@ export const handleMaps: Handler = async ({ platform, reply, user, args }) => {
 			},
 			{
 				intro: guessIntro,
-				link: {
-					label: '地图详情',
-					url: `https://teeworlds.cn/goto#m${encodeAsciiURIComponent(targetMap.name)}`
-				}
+				links: [
+					{
+						label: '地图详情',
+						url: `https://teeworlds.cn/goto#m${encodeAsciiURIComponent(targetMap.name)}`
+					}
+				],
+				demo: rich ? await mapDemo(targetMap.name) : null
 			}
 		)
 	);
