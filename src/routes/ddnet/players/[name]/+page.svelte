@@ -17,7 +17,13 @@
 	import { share } from '$lib/share';
 	import { tippy } from '$lib/tippy';
 	import { transformPlayerData } from '$lib/ddnet/transform-player';
-	import { faCoins, faMap, faQuestionCircle, faSpinner } from '@fortawesome/free-solid-svg-icons';
+	import {
+		faCoins,
+		faMap,
+		faQuestionCircle,
+		faSpinner,
+		faVideo
+	} from '@fortawesome/free-solid-svg-icons';
 	import { Chart } from 'chart.js/auto';
 	import Fa from 'svelte-fa';
 	import VirtualScroll from '$lib/components/virtual-scroll';
@@ -42,6 +48,7 @@
 			points: { points: 0 }
 		},
 		skin: { n: '', b: 0, f: 0 },
+		top_ranks: [],
 		maps: [],
 		ranks: [{ rank: { points: 0, rank: 0 }, icon: '', name: '' }],
 		statsCols: [],
@@ -579,6 +586,54 @@
 						timeStyle: 'short'
 					})}
 				</div>
+			{/if}
+		</div>
+		<div class="rounded-lg bg-slate-700 p-2 shadow-md md:p-4">
+			<h2 class="mb-3 text-xl font-bold">
+				🏆 排位记录
+				<span class="ml-1 text-sm font-normal text-slate-400"
+					>名次最高的 {data.top_ranks.length} 张图（名次相同按分值）</span
+				>
+			</h2>
+			{#if data.top_ranks.length}
+				<div class="grid grid-cols-1 gap-1">
+					{#each data.top_ranks as record}
+						<div
+							class="flex flex-wrap items-center gap-x-2 rounded-lg bg-slate-600 px-2 py-1 md:px-3"
+						>
+							<span
+								class="w-14 shrink-0 text-right font-bold"
+								use:tippy={{
+									content:
+										record.kind === 'team' ? `团队第 ${record.rank} 名` : `个人第 ${record.rank} 名`
+								}}
+							>
+								<span class="mr-0.5 text-xs font-normal text-slate-400"
+									>{record.kind === 'team' ? '团' : '个'}</span
+								>No.{record.rank}
+							</span>
+							<MapLink map={record.map} className="truncate font-semibold"
+								>[{mapType(record.type)}] {record.map}</MapLink
+							>
+							<span class="ml-auto shrink-0 text-sm text-slate-400">
+								{record.time ? secondsToTime(record.time) : ''}
+							</span>
+							<span class="w-14 shrink-0 text-right text-sm">{record.points}pt</span>
+							{#if record.demo}
+								<a
+									href={`/ddnet/watch?uuid=${record.demo.uuid}&time=${record.demo.time}`}
+									class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-700/70 text-slate-300 transition-colors hover:bg-orange-500 hover:text-white"
+									use:tippy={{ content: `观看回放（${secondsToTime(record.demo.time)}）` }}
+									aria-label={`观看 ${record.map} 的回放`}
+								>
+									<Fa icon={faVideo} size="xs" />
+								</a>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<p class="text-slate-400">暂无排位记录</p>
 			{/if}
 		</div>
 		<div class="rounded-lg bg-slate-700 p-2 shadow-md md:p-4">

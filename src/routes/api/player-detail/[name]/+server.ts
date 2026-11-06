@@ -4,8 +4,33 @@ import { ranks, regionalRanks } from '$lib/server/fetches/ranks';
 import { maps } from '$lib/server/fetches/maps';
 import { getSkin } from '$lib/server/ddtracker';
 import { getPlayer } from '$lib/server/players';
+import { findPlayerDemo, type PlayerDemo } from '$lib/server/fetches/watchable';
 
 const DDNET_FETCH_TIMEOUT = 15000;
+/** 排位记录卡片最多列几条 */
+const TOP_RANKS = 10;
+
+/**
+ * 一条排位记录。
+ *
+ * 名次取 `min(个人名次, 团队名次)` —— 同一张图上哪个更高算哪个,
+ * 排序先按这个名次(小的在前),名次一样再按这张图的分值降序。
+ */
+export type RankRecord = {
+	map: string;
+	type: string;
+	points: number;
+	/** min(个人名次, 团队名次) */
+	rank: number;
+	/** 名次是哪边来的 */
+	kind: 'solo' | 'team';
+	personal: number | null;
+	team: number | null;
+	/** 这一档的用时(秒),没有就是 null */
+	time: number | null;
+	/** 可播的回放 */
+	demo: PlayerDemo | null;
+};
 
 /**
  * Fetch with timeout and throw on non-ok responses.
@@ -163,6 +188,46 @@ export const GET: RequestHandler = async ({ params, setHeaders }) => {
 		player.data_update_time = rankData.update_time;
 	}
 
+	// ---- 排位记录:名次最高(名次小的)在前,同名次按分值降序 ----
+	const records: RankRecord[] = [];
+	for (const type of Object.keys(player.types ?? {})) {
+		const typeMaps = (player.types[type]?.maps ?? {}) as Record<string, any>;
+		for (const [mapName, map] of Object.entries(typeMaps)) {
+			if (!map?.points) continue;
+			const personal: number | null = map.rank ?? null;
+			const team: number | null = map.team_rank ?? null;
+			const rank = Math.min(personal ?? Infinity, team ?? Infinity);
+			if (!Number.isFinite(rank)) continue;
+			const kind: 'solo' | 'team' =
+				team !== null && team <= (personal ?? Infinity) ? 'team' : 'solo';
+			records.push({
+				map: mapName,
+				type,
+				points: map.points,
+				rank,
+				kind,
+				personal,
+				team,
+				// 名次是从哪边来的,就显示哪边的用时
+				time: (kind === 'team' ? (map.team_time ?? map.time) : map.time) ?? null,
+				demo: null
+			});
+		}
+	}
+	records.sort((a, b) => a.rank - b.rank || b.points - a.points);
+	const top_ranks = records.slice(0, TOP_RANKS);
+
+	await Promise.all(
+		top_ranks.map(async (record) => {
+			try {
+				// 先按这一档的用时对,对不上 findPlayerDemo 会退到"他在这张图最快的那条"
+				record.demo = await findPlayerDemo(record.map, player.player, [record.time]);
+			} catch {
+				record.demo = null;
+			}
+		})
+	);
+
 	const isPartial = !!(mapError || rankError);
 
 	// Cache response on client for 10 minutes (only when not partial)
@@ -176,6 +241,7 @@ export const GET: RequestHandler = async ({ params, setHeaders }) => {
 		{
 			player,
 			skin,
+			top_ranks,
 			...(isPartial ? { partial: true, error: (mapError || rankError)! } : {})
 		},
 		{ status: isPartial ? 206 : 200 }

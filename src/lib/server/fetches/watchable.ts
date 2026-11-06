@@ -196,3 +196,35 @@ export const matchRankedRecord = (
 	}
 	return null;
 };
+
+/** 页面上要用的一条可播录像 */
+export type PlayerDemo = { uuid: string; time: number; kind: string };
+
+/**
+ * 某个玩家在某张图上的可播录像。
+ *
+ * 先按成绩时间对(0.02 秒容差,和地图详情页那套一致),对不上就退一步取他在这张图上
+ * 最快的一条 —— 页面上写的是"这个玩家的回放",不承诺正好是那一档。
+ */
+export const findPlayerDemo = async (
+	mapName: string,
+	player: string,
+	times: (number | null | undefined)[]
+): Promise<PlayerDemo | null> => {
+	const entries = await getWatchableEntriesByMap(mapName);
+	if (!entries.length) return null;
+
+	const lower = player.toLowerCase();
+	const mine = entries.filter((entry) => entry.names.some((name) => name.toLowerCase() === lower));
+	if (!mine.length) return null;
+
+	const seconds = (entry: WatchableEntry) => parseFloat(entry.time);
+	for (const time of times) {
+		if (typeof time !== 'number' || !Number.isFinite(time)) continue;
+		const hit = mine.find((entry) => Math.abs(seconds(entry) - time) < 0.02);
+		if (hit) return { uuid: hit.uuid, time: seconds(hit), kind: hit.kind };
+	}
+
+	const fastest = mine.reduce((best, entry) => (seconds(entry) < seconds(best) ? entry : best));
+	return { uuid: fastest.uuid, time: seconds(fastest), kind: fastest.kind };
+};
