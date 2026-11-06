@@ -95,22 +95,23 @@ index 35c996f..450152c 100644
                      binding: 5,
                      resource: BindingResource::TextureView(&tilemap_view),
 diff --git a/twgpu/src/mipmap.rs b/twgpu/src/mipmap.rs
-index 06d6072..ef83fb0 100644
+index 06d6072..89f163b 100644
 --- a/twgpu/src/mipmap.rs
 +++ b/twgpu/src/mipmap.rs
-@@ -86,7 +86,73 @@ impl Blit {
+@@ -86,7 +86,74 @@ impl Blit {
          }
      }
  
 -    fn generate_2d_mipmap(
 +/// CPU 侧盒式滤波逐级生成 mip 链,就地缩小、逐级写进贴图。
 +    ///
-+    /// 为什么需要这条路径:tilemap 采的是 array texture(16×16 个 tile 拼成 256 层),
-+    /// 它的 mip 链原来靠 GPU blit 生成 —— 「拿 mip N-1 当输入、渲染进 mip N」。
-+    /// 在 WebGL 上这两个 view 背后是同一个 GL texture,属于跨 level 的 feedback loop,
-+    /// 规范上是 undefined behavior。ANGLE 放行,部分 mobile GLES 驱动直接返回全黑:
-+    /// 于是 mip>=1 整片没内容,tilemap 的 lod 一变大地形就消失了。
-+    /// quad 用的是普通 2D 贴图(完全不同的 GL code path),没踩到这个问题。
++    /// 为什么需要这条路径:twgpu 原来的 mip 链靠 GPU blit 生成 —— 「拿 mip N-1 当输入、
++    /// 渲染进 mip N」。在 WebGL 上这两个 view 背后是同一个 GL texture,属于跨 level 的
++    /// feedback loop,规范上是 undefined behavior。桌面 ANGLE 放行,部分 mobile GLES 驱动
++    /// (QQ/微信的 X5)直接返回全黑或花屏:
++    /// - array texture(tilemap)会在地形 lod 一变时整片消失
++    /// - 普通 2D 贴图(每个 mapres 的整图和精灵图集)也一样糊掉
++    /// 所以**所有**贴图的 mip 都改在 CPU 上算,`layers = 1` 就是普通 2D 贴图。
 +    ///
 +    /// **内存**:`level0` 直接接管(不拷贝),每级都在同一个缓冲区里就地缩小,
 +    /// 峰值就是 `level0` 本身 —— 不会为 mip 链额外再分配一份。
@@ -173,7 +174,26 @@ index 06d6072..ef83fb0 100644
          &self,
          encoder: &mut wgpu::CommandEncoder,
          texture: &wgpu::Texture,
-@@ -175,3 +241,219 @@ impl Blit {
+@@ -155,11 +222,13 @@ impl Blit {
+                 depth_or_array_layers: 1,
+             },
+         );
+-        let mut encoder = self
+-            .device
+-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: LABEL });
+-        self.generate_mipmaps(&mut encoder, &texture);
+-        queue.submit([encoder.finish()]);
++        // mip 链在 CPU 上生成(理由见 fill_mip_levels_cpu):WebGL 上 GPU blit 出来的
++        // mip 在 X5 这类内置浏览器里是黑的,精灵拉远就糊成一片。
++        let mut level0 = Vec::with_capacity((width * height) as usize);
++        for pixel in image.as_raw().chunks_exact(4) {
++            level0.push(u32::from_le_bytes([pixel[0], pixel[1], pixel[2], pixel[3]]));
++        }
++        Self::fill_mip_levels_cpu(queue, &texture, level0, size);
+         texture
+     }
+ 
+@@ -175,3 +244,219 @@ impl Blit {
              .collect()
      }
  }
@@ -660,7 +680,7 @@ index c120bcb..a7dc746 100644
      (0.00, kf(0., 0., -0.25)),
      (0.10, kf(0., 0., -0.05)),
 diff --git a/twgpu/src/textures/mapres.rs b/twgpu/src/textures/mapres.rs
-index b18e880..b2fa385 100644
+index b18e880..8383b20 100644
 --- a/twgpu/src/textures/mapres.rs
 +++ b/twgpu/src/textures/mapres.rs
 @@ -12,6 +12,25 @@ use wgpu::{CommandEncoder, TexelCopyBufferLayout, TexelCopyTextureInfo};
@@ -700,7 +720,30 @@ index b18e880..b2fa385 100644
  }
  
  /// Contains all textures used in a map
-@@ -92,17 +115,20 @@ impl Mapres {
+@@ -75,6 +98,13 @@ impl Mapres {
+                 | TextureUsages::RENDER_ATTACHMENT,
+             view_formats: &[],
+         });
++        // level 0 照常上传,其余 mip 在 CPU 上算好逐级写进去 —— 和 array texture 同一个理由:
++        // WebGL 上「拿 mip N-1 当输入渲染进 mip N」是跨 level 的 feedback loop,
++        // 部分 mobile GLES 驱动(X5)直接给全黑,拉远之后整张图糊成一片黑/花。
++        let mut level0 = Vec::with_capacity((width * height) as usize);
++        for pixel in image.as_raw().chunks_exact(4) {
++            level0.push(u32::from_le_bytes([pixel[0], pixel[1], pixel[2], pixel[3]]));
++        }
+         queue.write_texture(
+             texture.as_image_copy(),
+             image.as_raw(),
+@@ -85,24 +115,28 @@ impl Mapres {
+             },
+             size,
+         );
+-        blit.generate_mipmaps(encoder, &texture);
++        let _ = (&blit, &encoder);
++        Blit::fill_mip_levels_cpu(queue, &texture, level0, size);
+         Self {
+             name,
+             width,
              height,
              texture,
              array_texture: None,
@@ -729,7 +772,7 @@ index b18e880..b2fa385 100644
          if self.array_texture.is_some() {
              return;
          }
-@@ -110,8 +136,6 @@ impl Mapres {
+@@ -110,8 +144,6 @@ impl Mapres {
          assert_eq!(self.height % 16, 0);
          let tile_width = self.width / 16;
          let tile_height = self.height / 16;
@@ -738,7 +781,7 @@ index b18e880..b2fa385 100644
          let size = Extent3d {
              width: tile_width,
              height: tile_height,
-@@ -130,63 +154,32 @@ impl Mapres {
+@@ -130,63 +162,32 @@ impl Mapres {
                  | TextureUsages::RENDER_ATTACHMENT,
              view_formats: &[],
          });
@@ -817,7 +860,7 @@ index b18e880..b2fa385 100644
      /// Panics it `generate_array_texture` wasn't called previously
      pub fn array_texture(&self) -> &Texture {
          match &self.array_texture {
-@@ -199,6 +192,15 @@ impl Mapres {
+@@ -199,6 +200,15 @@ impl Mapres {
  }
  
  impl MapresStorage {
@@ -833,7 +876,7 @@ index b18e880..b2fa385 100644
      pub fn upload(map: &TwMap, device: &Device, queue: &Queue) -> Self {
          let mut mapres = Vec::new();
          let mut blit = Blit::new(device.clone());
-@@ -236,24 +238,23 @@ impl MapresStorage {
+@@ -236,24 +246,23 @@ impl MapresStorage {
  
          for (i, mapres) in mapres.iter_mut().enumerate() {
              if tilemap_textures[i] {
@@ -864,7 +907,7 @@ index b18e880..b2fa385 100644
          Self {
              mapres,
              blank,
-@@ -296,3 +297,103 @@ impl MapresStorage {
+@@ -296,3 +305,103 @@ impl MapresStorage {
          }
      }
  }
