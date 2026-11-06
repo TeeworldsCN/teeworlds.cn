@@ -17,7 +17,8 @@
  * @typedef {any} WasmModule
  * @typedef {{ backend: 'webgpu' | 'webgl', mipmaps: boolean, tilemapMips: boolean }} GraphicsPlan
  * @typedef {{ canvas?: HTMLCanvasElement, createCanvas?: () => HTMLCanvasElement,
- *   rememberKey?: string, font?: boolean, onStatus?: (text: string) => void }} BootOptions
+ *   rememberKey?: string, backend?: 'webgpu' | 'webgl' | null, font?: boolean,
+ *   onStatus?: (text: string) => void }} BootOptions
  * @typedef {{ module: WasmModule, gpu: any, canvas: HTMLCanvasElement, backend: 'webgpu' | 'webgl' }} Booted
  */
 
@@ -43,12 +44,14 @@ let versionPromise = null;
 /**
  * 重新编译过 wasm / 换过贴图就换 key,免得吃到缓存里的旧文件。
  *
- * `cache: 'no-cache'` 是必须的:这个文件本身就是"指针",被浏览器缓存住的话
- * 就算产物全换了,前端还是会用旧 version 去请求旧 URL。带上它走一次条件请求
- * (没变就 304,几乎没成本),保证拿到的是这次部署的版本号。
+ * 这个文件本身是"指针":它被缓存住的话,产物全换了前端还是拿旧 version。
+ * 光靠 `cache: 'no-cache'` 不够 —— 前面的 CDN(腾讯 EdgeOne)是按完整 URL 缓存的,
+ * 只认 origin 的 Cache-Control,而我们这边给不出(静态文件由 Caddy 直接发)。
+ * 所以**每次带一个唯一查询串**:CDN 那里必然是 MISS,一定回源拿新的。
+ * 文件才 200 多字节,这点开销换来"每次部署都立刻生效"。
  */
 export const getVersion = () => {
-	versionPromise ??= fetch(`${BASE}/version.json`, { cache: 'no-cache' })
+	versionPromise ??= fetch(`${BASE}/version.json?t=${Date.now()}`, { cache: 'no-store' })
 		.then((r) => (r.ok ? r.json() : null))
 		.then((data) => data?.version ?? 'dev')
 		.catch(() => 'dev');
@@ -132,11 +135,12 @@ export const rememberedBackend = (key) => {
  * mip 改成在 CPU 上生成后就没这个问题了,`?mips=0` 仍然是全局兜底开关。
  *
  * `rememberKey`:如果传了,之前记录过 `webgl` 就直接跳过 WebGPU 探测。
+ * `backend`:调用方直接点名(内置浏览器就传 `'webgl'`,别去碰 WebGPU)。
  *
- * @param {{ rememberKey?: string | null }} [options]
+ * @param {{ rememberKey?: string | null, backend?: 'webgpu' | 'webgl' | null }} [options]
  * @returns {Promise<GraphicsPlan | null>}
  */
-export const planGraphics = async ({ rememberKey = null } = {}) => {
+export const planGraphics = async ({ rememberKey = null, backend = null } = {}) => {
 	const params = new URLSearchParams(location.search);
 	const forcedBackend = params.get('backend');
 	const forcedMips = params.get('mips');
@@ -259,15 +263,14 @@ const withTimeout = (promise, ms, message) =>
  * @param {(text: string) => void} [opts.onStatus] 进度文本
  * @returns {Promise<Booted>}
  */
-export const bootRenderer = async ({
-	canvas,
-	createCanvas,
-	rememberKey,
-	font = true,
-	onStatus = () => {}
-} = /** @type {BootOptions} */ ({})) => {
+export const bootRenderer = async (
+	/** @type {BootOptions} */
+	{ canvas, createCanvas, rememberKey, backend = null, font = true, onStatus = () => {} } = {}
+) => {
 	/** @type {GraphicsPlan} */
-	let plan = /** @type {GraphicsPlan} */ (await planGraphics({ rememberKey: rememberKey ?? null }));
+	let plan = /** @type {GraphicsPlan} */ (
+		await planGraphics({ rememberKey: rememberKey ?? null, backend })
+	);
 	if (!plan) {
 		throw new Error(
 			'当前浏览器没有可用的 WebGL2 / WebGPU(QQ、微信等内置浏览器常见),用系统浏览器打开就能看'
@@ -320,20 +323,35 @@ export const bootRenderer = async ({
 	};
 
 	onStatus('初始化图形设备…');
-	/** @type {{ gpu: any, canvas: HTMLCanvasElement }} */
-	let built;
-	try {
-		built = await build(plan.backend, plan.mipmaps);
-	} catch (error) {
-		if (plan.backend !== 'webgpu') throw error;
-		// 有些内置浏览器的 WebGPU 只“能探测”不能真用(比如 QQ / X5),退回 WebGL 并记下来
-		console.warn('WebGPU 初始化失败,改用 WebGL', error);
-		rememberBackend(rememberKey, 'webgl');
-		plan = { ...plan, backend: 'webgl' };
-		// 同一个 wasm 实例上不能再 init 一次(全局 logger 会 panic),换一份新实例
-		module = await freshEngine();
-		built = await build('webgl', plan.mipmaps);
+	/** @type {{ gpu: any; canvas: HTMLCanvasElement } | null} */
+	let built = null;
+	/**
+	 * 每个后端最多试两次:第一次用现成的 canvas,失败就换一块新的再来一次。
+	 *
+	 * 内置浏览器(X5)有个很烦的行为:canvas 的 WebGL 上下文可能一次拿不到
+	 * (`canvas.getContext() returned null ... already in use`),同一块 canvas 再要
+	 * webgl2 永远是 null —— 但换一块新的就好了。WebGPU 失败再退 WebGL 也走同一条路。
+	 */
+	/** @type {('webgpu' | 'webgl')[]} */
+	const backends = plan.backend === 'webgpu' ? ['webgpu', 'webgl'] : ['webgl'];
+	let lastError = null;
+	for (const backend of backends) {
+		for (let attempt = 0; attempt < 2 && !built; attempt++) {
+			try {
+				built = await build(backend, plan.mipmaps);
+				plan = { ...plan, backend };
+				// 能从 webgpu 退到 webgl 说明这台机器别再试 WebGPU 了,记下来
+				if (backend === 'webgl' && backends.length > 1) rememberBackend(rememberKey, 'webgl');
+			} catch (error) {
+				lastError = error;
+				console.warn(`初始化 ${backend} 失败(第 ${attempt + 1} 次)`, error);
+				// 同一个 wasm 实例上不能再 init 一次(全局 logger 会 panic),换一份新实例
+				if (attempt === 0) module = await freshEngine();
+			}
+		}
+		if (built) break;
 	}
+	if (!built) throw lastError ?? new Error('创建图形设备失败');
 
 	onStatus('加载贴图…');
 	await loadTextures(built.gpu, { font });

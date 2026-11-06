@@ -29,6 +29,8 @@
 				resolveSkin?: (name: string) => Promise<string | null>;
 				/** QQ / 微信内置浏览器:下载和全屏按钮直接禁用 */
 				inApp?: boolean;
+				/** 强制图形后端(内置浏览器里直接 webgl) */
+				backend?: 'webgpu' | 'webgl';
 			}
 		) => Promise<{ destroy(): void } | null>;
 	};
@@ -135,17 +137,29 @@
 			if (cancelled || !host) return;
 			message = '';
 			document.title = title || 'demo 回放 - TeeworldsCN';
-			// 变量形式的 URL:TS 不去解析,运行时由 dev server / CDN 提供
-			const demoModuleUrl = '/ddnet/engine/demo.js';
+			// 带上当前部署的版本号:`demo.js` / `engine.js` / `sound.js` 是静态文件,
+			// 前面的 CDN 按 URL 缓存、又不遵守 Cache-Control,不加 v 的话发了新版也拿不到。
+			// version.json 自己用唯一查询串取,保证拿到的是这次的版本。
+			const version = await fetch(`/ddnet/engine/version.json?t=${Date.now()}`, {
+				cache: 'no-store'
+			})
+				.then((response) => (response.ok ? response.json() : null))
+				.then((data) => data?.version ?? '')
+				.catch(() => '');
+			const demoModuleUrl = `/ddnet/engine/demo.js${version ? `?v=${version}` : ''}`;
 			const engine = (await import(/* @vite-ignore */ demoModuleUrl)) as DemoModule;
 			if (cancelled || !host) return;
+			const inApp = uaIsStrict(navigator.userAgent);
 			player = await engine.mountDemoPlayer(host, {
 				demoUrl,
 				title,
 				focus,
 				finishers,
 				resolveSkin: getSkinUrl,
-				inApp: uaIsStrict(navigator.userAgent)
+				inApp,
+				// X5(QQ / 微信)的 WebGPU 只"能探测"不能真用,直接跳过,别浪费一次失败的初始化;
+				// 其它浏览器照旧自己探测、失败再回退
+				backend: inApp ? 'webgl' : undefined
 			});
 		};
 
