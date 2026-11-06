@@ -11,6 +11,7 @@
 	import { share } from '$lib/share';
 	import { tippy } from '$lib/tippy';
 	import Modal from '$lib/components/Modal.svelte';
+	import MapPreview from '$lib/components/mappreview/MapPreview.svelte';
 	import Fa from 'svelte-fa';
 	import { faMapLocation } from '@fortawesome/free-solid-svg-icons';
 
@@ -250,13 +251,6 @@
 	<div
 		class="h-[calc(100vh-5rem)] w-[calc(100vw-3rem)] rounded-l-lg rounded-br-lg bg-slate-700 p-1 shadow-md sm:w-[calc(100vw-5rem)]"
 	>
-		{#if showMapPreviewModal}
-			<iframe
-				src={`https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(data.map.name)}.map`}
-				title="Map Preview"
-				class="h-full w-full rounded border-0 bg-black"
-				loading="lazy"
-			></iframe>
-		{/if}
+		<MapPreview map={showMapPreviewModal ? data.map.name : null} />
 	</div>
 </Modal>

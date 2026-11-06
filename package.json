@@ -46,14 +46,15 @@
 	"private": true,
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "bun run mappreview && vite build",
 		"preview": "vite preview",
 		"bundle": "bun run bundler.ts",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "bun fmt",
 		"lint": "bun fmt --check",
-		"prepare": "husky"
+		"prepare": "husky",
+		"mappreview": "bun scripts/build-mappreview.ts"
 	},
 	"type": "module",
 	"dependencies": {

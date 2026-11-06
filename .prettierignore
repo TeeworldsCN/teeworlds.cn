@@ -5,3 +5,7 @@ yarn.lock
 
 # 会话工具的状态目录(不是项目代码)
 .pi-web/
+
+# 上游子模块和它的编译产物(不要被 prettier 改)
+vendor/
+static/ddnet/mappreview/

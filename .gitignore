@@ -31,6 +31,9 @@ cache
 # Rust
 rust/target
 
+# 地图预览的编译产物(bun run mappreview 生成,源码在 vendor/twgpu 子模块)
+/static/ddnet/mappreview/
+
 # Data
 sensitive-lexicon.txt
 skin_blocklist.txt

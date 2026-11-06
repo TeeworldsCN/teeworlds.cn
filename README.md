@@ -30,6 +30,22 @@ bun install
 bun --bun run dev
 ```
 
+### 地图预览（mappreview）
+
+`/ddnet/maps` 的地图预览用的是 [twgpu](https://gitlab.com/ddnet-rs/twgpu) 的 `twgpu-web`（Rust → wasm），
+直接嵌在页面里跑，不再经过外部静态服务。
+
+- 源码以 submodule 形式引在 `vendor/twgpu`，检出后需要 `git submodule update --init --recursive`
+- 编译产物（wasm、贴图、外部 mapres）不进版本库，需要先构建一次：
+
+```bash
+bun run mappreview   # 需要 rust + wasm32-unknown-unknown + wasm-pack + unzip
+```
+
+产物落在 `static/ddnet/mappreview/`，由 SvelteKit 当静态资源服务；`bun run build` 会自动先跑这一步，
+子模块没变且产物已存在时会直接跳过。地图 `.map` 文件由
+`src/routes/ddnet/mappreview/map/[file]/+server.ts` 从 `ddnet.org/mappreview` 流式代理，不落内存。
+
 ## 构建
 
 ```bash
