@@ -621,8 +621,11 @@
 								? `团队第 ${record.rank} 名`
 								: `个人第 ${record.rank} 名`}
 						>
-							<span class="w-11 shrink-0 text-right font-bold {podiumText(record.rank)}"
-								>No.{record.rank}</span
+							<!-- 普通玩家的名次可能有四五位数(No.222034),所以字号压小、列宽留够 -->
+							<span
+								class="w-16 shrink-0 text-right text-xs font-bold tabular-nums {podiumText(
+									record.rank
+								)}">No.{record.rank}</span
 							>
 							<span
 								class="shrink-0 rounded px-1 text-xs {record.kind === 'team'
