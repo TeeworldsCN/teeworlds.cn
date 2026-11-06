@@ -36,7 +36,9 @@ rust/twengine/target
 # 地图预览和 demo 回放共用这一份。engine.js/sound.js/demo.js 是手写的前端,要入库
 /static/ddnet/engine/pkg/
 /static/ddnet/engine/assets/
-/static/ddnet/engine/sounds/
+# 声音包提交在仓库里(音频数据几年不变,没必要每次构建都转一遍),其余产物忽略
+/static/ddnet/engine/sounds/*
+!/static/ddnet/engine/sounds/sounds.zip
 /static/ddnet/engine/version.json
 
 # Data

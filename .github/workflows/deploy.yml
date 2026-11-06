@@ -47,7 +47,6 @@ jobs:
           path: |
             static/ddnet/engine/pkg
             static/ddnet/engine/assets
-            static/ddnet/engine/sounds
             static/ddnet/engine/version.json
             cache/engine
           key: engine-${{ steps.twgpu.outputs.sha }}-${{ hashFiles('patches/**', 'scripts/build-engine.ts', 'scripts/twgpu-patch-prepare.py', 'scripts/twgpu-templates/**', 'rust/twengine/src/**', 'rust/twengine/Cargo.toml', 'rust/twengine/Cargo.lock') }}
@@ -83,9 +82,11 @@ jobs:
         if: steps.engine.outputs.cache-hit != 'true'
         run: rustup target add wasm32-unknown-unknown
 
-      - name: Install ffmpeg
+      # 音频包(sounds.zip)已经提交在仓库里,构建不再需要 ffmpeg;
+      # 只有 `bun run engine --sounds` 重转时才要,那是手动的活。
+      - name: Install unzip
         if: steps.engine.outputs.cache-hit != 'true'
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg unzip
+        run: sudo apt-get update && sudo apt-get install -y unzip
 
       - name: Install wasm-pack
         if: steps.engine.outputs.cache-hit != 'true'

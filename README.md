@@ -45,11 +45,15 @@ bun --bun run dev
 - 编译产物（wasm、贴图、外部 mapres、音效）不进版本库，需要先构建一次：
 
 ```bash
-bun run engine   # 需要 rust + wasm32-unknown-unknown + wasm-pack + unzip + ffmpeg
+bun run engine   # 需要 rust + wasm32-unknown-unknown + wasm-pack + unzip
+bun run engine --sounds   # 重转声音包(额外需要 ffmpeg + 网络)
 ```
 
+声音包 `static/ddnet/engine/sounds/sounds.zip`（213 KiB，Opus）**提交在仓库里**：ddnet 的音频
+数据好几年不动，没必要每次构建都下 131 个 `.wv` 再转一遍。要重新生成才加 `--sounds`。
+
 产物落在 `static/ddnet/engine/`（`engine.js`/`sound.js`/`demo.js` 是手写的前端，在库里；
-`pkg/`、`assets/`、`sounds/`、`version.json` 是构建产物，忽略）。`bun run build` 会自动先跑这一步，
+`pkg/`、`assets/`、`version.json` 是构建产物，忽略；`sounds/sounds.zip` 例外，进库）。`bun run build` 会自动先跑这一步，
 子模块 / crate / 补丁 / 声音表都没变且产物已存在时直接跳过。
 
 前端所有会变的产物都挂 `?v=<version>`（`pkg/twengine.js`、`pkg/twengine_bg.wasm`、
@@ -64,9 +68,10 @@ bun run engine   # 需要 rust + wasm32-unknown-unknown + wasm-pack + unzip + ff
 - `src/routes/ddnet/watch/api/[...path]/+server.ts` → `ddnet.org/watch/{runs,demos,watchable.jsonl}`
 - `src/routes/ddnet/skins/[...path]/+server.ts` → `ddnet.org/skins/skin/<名字>.png`
 
-声音来自 DDNet 的 `data/audio/*.wv`（WavPack，浏览器不认），构建时用 ffmpeg 转成 Opus
+声音来自 DDNet 的 `data/audio/*.wv`（WavPack，浏览器不认），用 ffmpeg 转成 Opus
 （浏览器支持的最新编码），再打进一个 STORE 的 `sounds.zip`（约 210 KiB）：只发一个请求，
 前端解包后每个音效各自解码，互不串音。只打包 demo 里真的会出现的声音。
+转好的包直接提交在仓库里（见上），平时构建只做一次拷贝。
 声音表（41 个声音集的顺序 = `SOUND_*` 枚举 id）在构建时从 ddnet 的 `datasrc/content.py` 读，
 并和 `rust/twengine/src/sound.rs` 里的表逐项比对，不一致就构建失败。
 
