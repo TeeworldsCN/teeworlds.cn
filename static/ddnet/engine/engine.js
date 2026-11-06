@@ -277,8 +277,31 @@ export const bootRenderer = async ({
 	onStatus('加载渲染引擎…');
 	let module = await freshEngine();
 
-	/** @returns {HTMLCanvasElement | null} */
-	const nextCanvas = () => (createCanvas ? createCanvas() : (canvas ?? null));
+	/**
+	 * 拿一块**没被用过**的 canvas。
+	 *
+	 * 关键:一个 canvas 一旦绑过某种上下文,再要另一种会直接返回 null
+	 * (`getContext() returned null; webgl2 not available or canvas already in use`)。
+	 * WebGPU 探测成功、真建 surface 时才失败的内置浏览器(QQ/X5)就会踩到:
+	 * 第一次是 webgpu 把 canvas 占了,回退到 webgl 时同一个 canvas 再也拿不到 webgl2。
+	 * 所以回退必须换一块新的 —— 调用方给了 `createCanvas` 就用它的,
+	 * 没给就把原来那块(它在 DOM 里)换成克隆出来的新 canvas,位置不变。
+	 * @returns {HTMLCanvasElement | null}
+	 */
+	const nextCanvas = () => {
+		if (createCanvas) return createCanvas();
+		if (!canvas) return null;
+		if (!reused) {
+			reused = true;
+			return canvas;
+		}
+		const fresh = /** @type {HTMLCanvasElement} */ (canvas.cloneNode(false));
+		canvas.replaceWith(fresh);
+		canvas = fresh;
+		return fresh;
+	};
+	/** 第一次请求 canvas 不用克隆 */
+	let reused = false;
 
 	/**
 	 * @param {'webgpu' | 'webgl'} backend
