@@ -16,8 +16,6 @@
 		faArrowsRotate,
 		faExpand,
 		faLayerGroup,
-		faPause,
-		faPlay,
 		faTriangleExclamation
 	} from '@fortawesome/free-solid-svg-icons';
 
@@ -92,7 +90,6 @@
 	let statusText = $state('加载渲染引擎…');
 	let errorText = $state('');
 
-	let paused = $state(false);
 	let entitiesLayer = $state(false);
 	let fullscreen = $state(false);
 
@@ -150,11 +147,9 @@
 	let entitiesView: MpMap | null = null;
 	let rendering = false;
 	let raf = 0;
-	let pausedNow = false;
 	let entitiesNow = false;
 	let time = 0;
 	let lastTimestamp: number | null = null;
-	let dirty = false;
 	let loadToken = 0;
 
 	const pointers = new Map<number, [number, number]>();
@@ -169,28 +164,27 @@
 		surface.resize(width, height);
 		aspect = width / height;
 		camera.aspect_ratio = aspect;
-		dirty = true;
 	};
 
 	const draw = (timestamp: number) => {
 		if (!rendering) return;
 		raf = requestAnimationFrame(draw);
 
-		if (lastTimestamp !== null && !pausedNow) time += (timestamp - lastTimestamp) / 1000;
+		if (lastTimestamp !== null) time += (timestamp - lastTimestamp) / 1000;
 		lastTimestamp = timestamp;
 
 		const target = entitiesNow ? (entitiesView ?? mapView) : mapView;
 		if (!gpu || !surface || !camera || !target) return;
-		// 标签页不可见 / 暂停且画面没变化时不用重绘,省点电
-		if (document.hidden || (pausedNow && !dirty)) return;
-		dirty = false;
+		// 标签页不可见就不画,省点电
+		if (document.hidden) return;
 
 		try {
 			target.set_time(time);
 			gpu.render_map(surface, camera, target);
 		} catch (e) {
+			// 出一次错就一直失败,别每帧刷日志
 			console.error(e);
-			pausedNow = true;
+			stopRendering();
 		}
 	};
 
@@ -198,7 +192,6 @@
 		if (rendering) return;
 		rendering = true;
 		lastTimestamp = null;
-		dirty = true;
 		raf = requestAnimationFrame(draw);
 	};
 
@@ -248,7 +241,6 @@
 			return;
 		}
 		clampZoom(camera);
-		dirty = true;
 	};
 
 	const onPointerUp = (event: PointerEvent) => {
@@ -265,7 +257,6 @@
 		// 向上滚放大、向下滚缩小
 		camera.move_zoom(x, y, x, y, Math.exp(event.deltaY * 0.0015));
 		clampZoom(camera);
-		dirty = true;
 	};
 
 	const onKeyDown = (event: KeyboardEvent) => {
@@ -275,13 +266,11 @@
 			case '=':
 				camera.move_zoom(0.5, 0.5, 0.5, 0.5, 1 / 1.3);
 				clampZoom(camera);
-				dirty = true;
 				break;
 			case '-':
 			case '_':
 				camera.move_zoom(0.5, 0.5, 0.5, 0.5, 1.3);
 				clampZoom(camera);
-				dirty = true;
 				break;
 			case 'r':
 			case 'R':
@@ -290,10 +279,6 @@
 			case 'g':
 			case 'G':
 				setEntitiesLayer(!entitiesNow);
-				break;
-			case ' ':
-				event.preventDefault();
-				setPaused(!pausedNow);
 				break;
 			case 'f':
 			case 'F':
@@ -473,8 +458,6 @@
 		}
 		module = null;
 		bootPromise = null;
-		paused = false;
-		pausedNow = false;
 		time = 0;
 		pointers.clear();
 	};
@@ -550,12 +533,6 @@
 	};
 
 	// ---- 控件 ----
-	const setPaused = (value: boolean) => {
-		paused = value;
-		pausedNow = value;
-		dirty = true;
-	};
-
 	const setEntitiesLayer = (value: boolean) => {
 		if (entitiesNow === value) return;
 		entitiesNow = value;
@@ -569,7 +546,6 @@
 				entitiesLayer = false;
 			}
 		}
-		dirty = true;
 	};
 
 	const resetView = () => {
@@ -578,7 +554,6 @@
 		camera.x = spawn[0] ?? 0;
 		camera.y = spawn[1] ?? 0;
 		camera.zoom = 1;
-		dirty = true;
 	};
 
 	const toggleFullscreen = () => {
@@ -634,15 +609,6 @@
 				>
 					<Fa icon={faLayerGroup} />
 					实体层
-				</button>
-				<button
-					type="button"
-					class="{BTN} {BTN_IDLE}"
-					title={paused ? '继续播放地图动画 (空格)' : '暂停地图动画 (空格)'}
-					onclick={() => setPaused(!paused)}
-				>
-					<Fa icon={paused ? faPlay : faPause} />
-					{paused ? '继续' : '暂停'}
 				</button>
 				<button
 					type="button"
