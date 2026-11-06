@@ -64,6 +64,28 @@
 			points: 0
 		}
 	});
+	/**
+	 * 排位记录卡片:名次 1/2/3 的记录高亮,三级都用金色、只改强度 ——
+	 * 第一名特别亮(带一点外发光),第二名中等,第三名只是淡淡一层。
+	 * (原来 2/3 用银色/铜色,银灰和卡片底色几乎分不出来,不如同一色系的梯度清楚。)
+	 */
+	const podiumRow = (rank: number) =>
+		rank === 1
+			? 'bg-amber-400/30 ring-1 ring-inset ring-amber-300/70 shadow-[0_0_16px_-6px] shadow-amber-300/80'
+			: rank === 2
+				? 'bg-amber-400/16 ring-1 ring-inset ring-amber-300/35'
+				: rank === 3
+					? 'bg-amber-400/8'
+					: 'bg-slate-600';
+	const podiumText = (rank: number) =>
+		rank === 1
+			? 'text-amber-200'
+			: rank === 2
+				? 'text-amber-300'
+				: rank === 3
+					? 'text-amber-300/70'
+					: '';
+
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
 	let loadAttempt = $state(0);
@@ -589,36 +611,33 @@
 			{/if}
 		</div>
 		<div class="rounded-lg bg-slate-700 p-2 shadow-md md:p-4">
-			<h2 class="mb-3 text-xl font-bold">
-				🏆 排位记录
-				<span class="ml-1 text-sm font-normal text-slate-400"
-					>名次最高的 {data.top_ranks.length} 张图（名次相同按分值）</span
-				>
-			</h2>
+			<h2 class="mb-3 text-xl font-bold">🏆 排位记录</h2>
 			{#if data.top_ranks.length}
-				<div class="grid grid-cols-1 gap-1">
+				<div class="grid grid-cols-1 gap-1 md:grid-cols-2">
 					{#each data.top_ranks as record}
 						<div
-							class="flex flex-wrap items-center gap-x-2 rounded-lg bg-slate-600 px-2 py-1 md:px-3"
+							class="flex items-center gap-2 rounded-lg px-2 py-1 {podiumRow(record.rank)}"
+							title={record.kind === 'team'
+								? `团队第 ${record.rank} 名`
+								: `个人第 ${record.rank} 名`}
 						>
-							<span
-								class="w-14 shrink-0 text-right font-bold"
-								use:tippy={{
-									content:
-										record.kind === 'team' ? `团队第 ${record.rank} 名` : `个人第 ${record.rank} 名`
-								}}
+							<span class="w-11 shrink-0 text-right font-bold {podiumText(record.rank)}"
+								>No.{record.rank}</span
 							>
-								<span class="mr-0.5 text-xs font-normal text-slate-400"
-									>{record.kind === 'team' ? '团' : '个'}</span
-								>No.{record.rank}
+							<span
+								class="shrink-0 rounded px-1 text-xs {record.kind === 'team'
+									? 'bg-sky-500/20 text-sky-300'
+									: 'bg-emerald-500/20 text-emerald-300'}"
+							>
+								{record.kind === 'team' ? '团队' : '个人'}
 							</span>
-							<MapLink map={record.map} className="truncate font-semibold"
+							<MapLink map={record.map} className="min-w-0 flex-1 truncate font-semibold"
 								>[{mapType(record.type)}] {record.map}</MapLink
 							>
-							<span class="ml-auto shrink-0 text-sm text-slate-400">
+							<span class="hidden shrink-0 text-sm text-slate-400 sm:inline">
 								{record.time ? secondsToTime(record.time) : ''}
 							</span>
-							<span class="w-14 shrink-0 text-right text-sm">{record.points}pt</span>
+							<span class="w-11 shrink-0 text-right text-sm">{record.points}pt</span>
 							{#if record.demo}
 								<a
 									href={`/ddnet/watch?uuid=${record.demo.uuid}&time=${record.demo.time}`}
