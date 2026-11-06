@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          # 地图预览渲染器(twgpu)是 submodule,构建时要从源码编译 wasm
+          submodules: recursive
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -28,6 +31,31 @@ jobs:
 
       - name: Create cache directory
         run: mkdir -p cache
+
+      - name: Read twgpu revision
+        id: twgpu
+        run: echo "sha=$(git -C vendor/twgpu rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # 产物 15MB 左右,子模块和补丁都没变的话直接复用,跳过 5~8 分钟的 wasm 编译
+      - name: Restore map preview build
+        uses: actions/cache@v4
+        with:
+          path: |
+            static/ddnet/mappreview
+            cache/mappreview
+          key: mappreview-${{ steps.twgpu.outputs.sha }}-${{ hashFiles('patches/**', 'scripts/build-mappreview.ts') }}
+
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: |
+          if ! command -v wasm-pack >/dev/null 2>&1; then
+            curl -sSfL -o /tmp/wasm-pack.tar.gz "https://github.com/rustwasm/wasm-pack/releases/download/v0.13.1/wasm-pack-v0.13.1-x86_64-unknown-linux-musl.tar.gz"
+            tar xzf /tmp/wasm-pack.tar.gz -C /tmp
+            sudo install /tmp/wasm-pack-v0.13.1-x86_64-unknown-linux-musl/wasm-pack /usr/local/bin/wasm-pack
+          fi
+          wasm-pack --version
 
       - name: Build Project
         run: bun --bun run build
