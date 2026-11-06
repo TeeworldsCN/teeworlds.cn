@@ -1,85 +1,19 @@
-diff --git a/twgpu-tools/src/bin/twgpu-benchmark.rs b/twgpu-tools/src/bin/twgpu-benchmark.rs
-index 99b3db4..a38c636 100644
---- a/twgpu-tools/src/bin/twgpu-benchmark.rs
-+++ b/twgpu-tools/src/bin/twgpu-benchmark.rs
-@@ -92,7 +92,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
-         .iter()
-         .map(|c| c.camera_bind_group(&device))
-         .collect();
--    let samplers = twgpu::textures::Samplers::new(&device);
-+    let samplers = twgpu::textures::Samplers::new(&device, true);
-     let textures = twgpu::sprites::SpriteTextures::new(samplers, device.clone(), queue.clone());
- 
-     // Create and fill sprite cache
-diff --git a/twgpu-tools/src/bin/twgpu-demo-viewer.rs b/twgpu-tools/src/bin/twgpu-demo-viewer.rs
-index cc10dde..79b2380 100644
---- a/twgpu-tools/src/bin/twgpu-demo-viewer.rs
-+++ b/twgpu-tools/src/bin/twgpu-demo-viewer.rs
-@@ -82,7 +82,7 @@ fn main() -> Result<(), Box<dyn Error>> {
-         .block_on()?;
- 
-     println!("Uploading data to GPU");
--    let samplers = Samplers::new(&device);
-+    let samplers = Samplers::new(&device, true);
-     let mut camera = Camera::new(1.);
-     let gpu_camera = Arc::new(GpuCamera::upload(&camera, &device));
-     let camera_bind_group = gpu_camera.camera_bind_group(&device);
-diff --git a/twgpu-tools/src/bin/twgpu-encode-demo.rs b/twgpu-tools/src/bin/twgpu-encode-demo.rs
-index 1583f9f..0647287 100644
---- a/twgpu-tools/src/bin/twgpu-encode-demo.rs
-+++ b/twgpu-tools/src/bin/twgpu-encode-demo.rs
-@@ -242,7 +242,7 @@ impl SharedGraphics {
-         let map_static = Arc::new(GpuMapStatic::new(FORMAT, &device));
-         let map_data_static =
-             Arc::new(GpuMapDataStatic::upload(&shared.twmap_map, &device, &queue));
--        let samplers = Samplers::new(&device);
-+        let samplers = Samplers::new(&device, true);
-         let blit = Arc::new(Blit::new(device.clone()));
-         Ok(Self {
-             shared,
-diff --git a/twgpu-tools/src/bin/twgpu-map-inspect.rs b/twgpu-tools/src/bin/twgpu-map-inspect.rs
-index fcd6130..32dada7 100644
---- a/twgpu-tools/src/bin/twgpu-map-inspect.rs
-+++ b/twgpu-tools/src/bin/twgpu-map-inspect.rs
-@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn Error>> {
- 
-     let mut camera = Camera::new(1.);
-     let gpu_camera = Arc::new(GpuCamera::upload(&camera, &device));
--    let samplers = Arc::new(Samplers::new(&device));
-+    let samplers = Arc::new(Samplers::new(&device, true));
-     let map_static = Arc::new(GpuMapStatic::new(FORMAT, &device));
- 
-     let (map_tx, map_rx) = sync::mpsc::channel();
-diff --git a/twgpu-tools/src/bin/twgpu-map-photography.rs b/twgpu-tools/src/bin/twgpu-map-photography.rs
-index e037098..fd5201a 100644
---- a/twgpu-tools/src/bin/twgpu-map-photography.rs
-+++ b/twgpu-tools/src/bin/twgpu-map-photography.rs
-@@ -90,7 +90,7 @@ fn main() -> Result<(), Box<dyn Error>> {
-     println!("Uploading data to GPU");
-     let mut camera = Camera::new(1.);
-     let gpu_camera = GpuCamera::upload(&camera, &device);
--    let samplers = Samplers::new(&device);
-+    let samplers = Samplers::new(&device, true);
-     let map_static = GpuMapStatic::new(FORMAT, &device);
-     let map_data_static = GpuMapDataStatic::upload(&map, &device, &queue);
-     let map_data_dyn = GpuMapDataDyn::upload(&map, &device);
 diff --git a/twgpu-web/src/twgpu.rs b/twgpu-web/src/twgpu.rs
-index b1cfda3..0d5f87f 100644
+index b1cfda3..d522b8f 100644
 --- a/twgpu-web/src/twgpu.rs
 +++ b/twgpu-web/src/twgpu.rs
-@@ -33,12 +33,18 @@ impl TwGpu {
+@@ -33,12 +33,17 @@ impl TwGpu {
      pub async fn init(
          backend: Option<String>,
          canvas: Option<web_sys::HtmlCanvasElement>,
 +        mipmaps: Option<bool>,
++        tilemap_mips: Option<bool>,
      ) -> Result<Self, JsError> {
          std::panic::set_hook(Box::new(console_error_panic_hook::hook));
          console_log::init().expect("Could not initialize logger");
          log::info!("Surface is some: {}", canvas.is_some());
  
 -        let webgpu_supported = wgpu::util::is_browser_webgpu_supported().await;
-+        // 显式指定后端时不要再碰 navigator.gpu:有些内置浏览器(QQ/X5)的 WebGPU 是桩,
-+        // `requestAdapter()` 会一直挂着,而 wgpu 这句探测没有超时,整个初始化就卡死了。
 +        let webgpu_supported = match backend.as_deref() {
 +            Some(_) => false,
 +            None => wgpu::util::is_browser_webgpu_supported().await,
@@ -87,42 +21,1006 @@ index b1cfda3..0d5f87f 100644
          log::warn!("WebGPU supported: {webgpu_supported}");
          let backend = match backend.as_ref().map(String::as_ref) {
              None => None,
-@@ -90,7 +96,7 @@ impl TwGpu {
+@@ -90,7 +95,11 @@ impl TwGpu {
              surface.set_device(device.clone());
          }
  
 -        let samplers = twgpu::textures::Samplers::new(&device);
-+        let samplers = twgpu::textures::Samplers::new(&device, mipmaps.unwrap_or(true));
++        // `mipmaps=false` 全局退回 level 0;`tilemap_mips=false` 只让 tilemap 退回,
++        // 精灵/tee 继续享受 mipmap(部分 mobile GLES 上 array texture 的 mip 链是坏的)。
++        let samplers = twgpu::textures::Samplers::new(&device)
++            .with_mipmaps(mipmaps.unwrap_or(true))
++            .with_tilemap_lod0(!tilemap_mips.unwrap_or(true));
          let map_static = twgpu::map::GpuMapStatic::new(FORMAT, &device);
          let sprite_textures =
              twgpu::sprites::SpriteTextures::new(samplers.clone(), device.clone(), queue.clone());
-diff --git a/twgpu/src/textures/samplers.rs b/twgpu/src/textures/samplers.rs
-index 8536cc0..1f2b6dc 100644
---- a/twgpu/src/textures/samplers.rs
-+++ b/twgpu/src/textures/samplers.rs
-@@ -38,13 +38,24 @@ impl Samplers {
+diff --git a/twgpu/Cargo.toml b/twgpu/Cargo.toml
+index db951c1..8d0d72b 100644
+--- a/twgpu/Cargo.toml
++++ b/twgpu/Cargo.toml
+@@ -9,6 +9,7 @@ repository = "https://gitlab.com/Patiga/twgpu"
+ keywords = ["teeworlds", "ddnet", "graphics"]
+ 
+ [dependencies]
++web-sys = { version = "0.3.74", features = ["Performance", "Window"] }
+ bytemuck = { version = "1.9.1", features = ["derive"] }
+ etagere = "0.3.0"
+ msdf_font = "0.3.1"
+diff --git a/twgpu/src/lib.rs b/twgpu/src/lib.rs
+index 999041f..42cc0c4 100644
+--- a/twgpu/src/lib.rs
++++ b/twgpu/src/lib.rs
+@@ -5,7 +5,7 @@ pub mod buffer;
+ mod camera;
+ /// Map-specific rendering code
+ pub mod map;
+-mod mipmap;
++pub mod mipmap;
+ /// Structs and traits that are helpful in multiple modules
+ pub mod shared;
+ //pub mod tee;
+diff --git a/twgpu/src/map/map_data.rs b/twgpu/src/map/map_data.rs
+index 0b52a7a..65708b6 100644
+--- a/twgpu/src/map/map_data.rs
++++ b/twgpu/src/map/map_data.rs
+@@ -14,6 +14,13 @@ pub struct GpuMapDataStatic {
+     pub(crate) groups: Vec<GpuGroupData>,
+ }
+ 
++impl GpuMapDataStatic {
++    /// 只读访问 mapres 存储(统计/诊断用)
++    pub fn mapres(&self) -> &MapresStorage {
++        &self.textures
++    }
++}
++
+ pub struct GpuMapDataDyn {
+     pub(crate) envelopes: GpuEnvelopesData,
+     pub(crate) tilemap_vertices: Vec<Vec<Option<GpuBuffer<[TilemapCorner; 4]>>>>,
+diff --git a/twgpu/src/map/tilemap/tilemap_render.rs b/twgpu/src/map/tilemap/tilemap_render.rs
+index 35c996f..450152c 100644
+--- a/twgpu/src/map/tilemap/tilemap_render.rs
++++ b/twgpu/src/map/tilemap/tilemap_render.rs
+@@ -38,7 +38,11 @@ impl GpuTilemapStatic {
+                         &map_data_static.textures.view_array_texture(layer.image),
+                     ),
+                 },
+-                samplers.clamp_to_edge(4),
++                if samplers.tilemap_needs_lod0() {
++                    samplers.clamp_to_edge_lod0(4)
++                } else {
++                    samplers.clamp_to_edge(4)
++                },
+                 BindGroupEntry {
+                     binding: 5,
+                     resource: BindingResource::TextureView(&tilemap_view),
+diff --git a/twgpu/src/mipmap.rs b/twgpu/src/mipmap.rs
+index 06d6072..ef83fb0 100644
+--- a/twgpu/src/mipmap.rs
++++ b/twgpu/src/mipmap.rs
+@@ -86,7 +86,73 @@ impl Blit {
          }
      }
  
--    pub fn new(device: &Device) -> Self {
-+    /// `mipmaps: false` clamps sampling to mip level 0, for devices where the mip
-+    /// chain cannot be used at all.
-+    pub fn new(device: &Device, mipmaps: bool) -> Self {
-         let settings = SamplerDescriptor {
-             mag_filter: FilterMode::Linear,
-             min_filter: FilterMode::Linear,
+-    fn generate_2d_mipmap(
++/// CPU 侧盒式滤波逐级生成 mip 链,就地缩小、逐级写进贴图。
++    ///
++    /// 为什么需要这条路径:tilemap 采的是 array texture(16×16 个 tile 拼成 256 层),
++    /// 它的 mip 链原来靠 GPU blit 生成 —— 「拿 mip N-1 当输入、渲染进 mip N」。
++    /// 在 WebGL 上这两个 view 背后是同一个 GL texture,属于跨 level 的 feedback loop,
++    /// 规范上是 undefined behavior。ANGLE 放行,部分 mobile GLES 驱动直接返回全黑:
++    /// 于是 mip>=1 整片没内容,tilemap 的 lod 一变大地形就消失了。
++    /// quad 用的是普通 2D 贴图(完全不同的 GL code path),没踩到这个问题。
++    ///
++    /// **内存**:`level0` 直接接管(不拷贝),每级都在同一个缓冲区里就地缩小,
++    /// 峰值就是 `level0` 本身 —— 不会为 mip 链额外再分配一份。
++    ///
++    /// **速度**:数据是 `Vec<u32>`(每个元素一个像素),整条链都在 32 位视图上跑,
++    /// 没有逐字节的边界检查,每像素只花 4 次 load + 1 次 store + 3 次位运算平均。
++    /// 写进纹理时才 `cast_slice` 回字节。
++    pub fn fill_mip_levels_cpu(
++        queue: &wgpu::Queue,
++        texture: &wgpu::Texture,
++        mut level0: Vec<u32>,
++        size: wgpu::Extent3d,
++    ) {
++        let layers = size.depth_or_array_layers as usize;
++        let mut src_w = size.width as usize;
++        let mut src_h = size.height as usize;
++        for level in 1..texture.mip_level_count() {
++            let dst_w = (src_w >> 1).max(1);
++            let dst_h = (src_h >> 1).max(1);
++            let src_layer_len = src_w * src_h;
++            let dst_layer_len = dst_w * dst_h;
++            // 每层就地缩到**紧凑**位置:读 layer*src_layer_len,写 layer*dst_layer_len。
++            // 因为 dst_layer_len <= src_layer_len,写永远落在读过的区域之前,原地安全;
++            // 缩完就是紧凑布局,不需要再搬一次(省掉一整遍全量拷贝)。
++            for layer in 0..layers {
++                downsample_in_place(
++                    &mut level0,
++                    src_w,
++                    src_h,
++                    dst_w,
++                    dst_h,
++                    layer * src_layer_len,
++                    layer * dst_layer_len,
++                );
++            }
++            queue.write_texture(
++                wgpu::TexelCopyTextureInfo {
++                    texture,
++                    mip_level: level,
++                    origin: wgpu::Origin3d::default(),
++                    aspect: wgpu::TextureAspect::All,
++                },
++                bytemuck::cast_slice(&level0[..dst_layer_len * layers]),
++                wgpu::TexelCopyBufferLayout {
++                    offset: 0,
++                    bytes_per_row: Some(dst_w as u32 * 4),
++                    rows_per_image: Some(dst_h as u32),
++                },
++                wgpu::Extent3d {
++                    width: dst_w as u32,
++                    height: dst_h as u32,
++                    depth_or_array_layers: size.depth_or_array_layers,
++                },
++            );
++            src_w = dst_w;
++            src_h = dst_h;
++            level0.truncate(src_w * src_h * layers);
++        }
++    }    fn generate_2d_mipmap(
+         &self,
+         encoder: &mut wgpu::CommandEncoder,
+         texture: &wgpu::Texture,
+@@ -175,3 +241,219 @@ impl Blit {
+             .collect()
+     }
+ }
++/// 逐通道计算两个 RGBA8 像素的 floor 平均,整个 u32 一次算完。
++///
++/// 经典技巧:`(x & y) + (((x ^ y) >> 1) & 0x7f7f7f7f)` 等价于每通道 `(a+b)/2`,
++/// 没有除法、没有浮点、没有分支。用 u32 而不是拆 4 个 u8,
++/// 也让 wasm 侧每个像素只有 1 次 32 位 load/store 而不是 4 次 8 位。
++#[inline(always)]
++fn avg2(x: u32, y: u32) -> u32 {
++    (x & y) + (((x ^ y) >> 1) & 0x7f7f_7f7f)
++}
++
++/// 2x2 盒式滤波,**就地**把一张 RGBA8 图层缩小到 `dst_w x dst_h`。
++///
++/// `src_base`/`dst_base` 是这一层在缓冲区里的起点(单位:像素)。写位置恒 <= 读位置
++/// (`dst_w <= src_w` 且 `dst_base <= src_base`),所以边读边写是安全的。
++///
++/// 性能取向:
++/// - 数据是 `&mut [u32]`,索引一次就是一次 32 位访问,没有逐字节边界检查
++/// - 每像素 4 次 load + 1 次 store,平均只花 3 次 `avg2`
++/// - 宽高都是偶数时(绝大多数贴图)走无分支快路径,不做 clamp
++fn downsample_in_place(
++    buf: &mut [u32],
++    src_w: usize,
++    src_h: usize,
++    dst_w: usize,
++    dst_h: usize,
++    src_base: usize,
++    dst_base: usize,
++) {
++    let exact = src_w % 2 == 0 && src_h % 2 == 0;
++
++    for y in 0..dst_h {
++        let row0 = src_base + (y * 2) * src_w;
++        let row1 = if exact {
++            row0 + src_w
++        } else {
++            src_base + (y * 2 + 1).min(src_h - 1) * src_w
++        };
++        let dst_row = dst_base + y * dst_w;
++
++        if exact {
++            // 快路径:行内 2 像素步进。
++            // 每次索引都独立借用(先读进局部变量再写),因为源和目标区域可能重叠 ——
++            // 第 0 层第 0 行就是 src 和 dst 同一块内存。这样写是安全的:
++            // 写位置 x 用的 4 个源像素 (2x, 2x+1) 恒在 x 之后,不会被本次写入破坏。
++            for x in 0..dst_w {
++                let i = x * 2;
++                let a = buf[row0 + i];
++                let b = buf[row0 + i + 1];
++                let c = buf[row1 + i];
++                let d = buf[row1 + i + 1];
++                buf[dst_row + x] = avg2(avg2(a, b), avg2(c, d));
++            }
++        } else {
++            for x in 0..dst_w {
++                let x0 = (x * 2).min(src_w - 1);
++                let x1 = (x * 2 + 1).min(src_w - 1);
++                buf[dst_row + x] = avg2(
++                    avg2(buf[row0 + x0], buf[row0 + x1]),
++                    avg2(buf[row1 + x0], buf[row1 + x1]),
++                );
++            }
++        }
++    }
++}
++
++#[cfg(test)]
++mod mip_tests {
++    use super::*;
++
++    /// 跑完整条链(和 fill_mip_levels_cpu 完全同一套算法)
++    fn chain(level0: &[u32], size: wgpu::Extent3d, mip_count: u32) -> Vec<(u32, u32, Vec<u32>)> {
++        let layers = size.depth_or_array_layers as usize;
++        let mut buf = level0.to_vec();
++        let mut src_w = size.width as usize;
++        let mut src_h = size.height as usize;
++        let mut out = Vec::new();
++        for _ in 1..mip_count {
++            let dst_w = (src_w >> 1).max(1);
++            let dst_h = (src_h >> 1).max(1);
++            let src_layer_len = src_w * src_h;
++            let dst_layer_len = dst_w * dst_h;
++            for layer in 0..layers {
++                downsample_in_place(
++                    &mut buf,
++                    src_w,
++                    src_h,
++                    dst_w,
++                    dst_h,
++                    layer * src_layer_len,
++                    layer * dst_layer_len,
++                );
++            }
++            buf.truncate(dst_layer_len * layers);
++            out.push((dst_w as u32, dst_h as u32, buf.clone()));
++            src_w = dst_w;
++            src_h = dst_h;
++        }
++        out
++    }
++
++    fn extent(w: u32, h: u32, layers: u32) -> wgpu::Extent3d {
++        wgpu::Extent3d {
++            width: w,
++            height: h,
++            depth_or_array_layers: layers,
++        }
++    }
++
++    #[inline]
++    fn px(r: u8, g: u8, b: u8, a: u8) -> u32 {
++        u32::from_le_bytes([r, g, b, a])
++    }
++
++    /// 每一级都必须有内容 —— 这正好是手机上坏掉的表现
++    #[test]
++    fn every_level_keeps_content() {
++        let (w, h, layers) = (64u32, 64u32, 4u32);
++        let l0: Vec<u32> = (0..(w * h * layers) as usize)
++            .map(|i| {
++                px(
++                    ((i / 3) % 255) as u8,
++                    90,
++                    if (i / 8) % 2 == 0 { 200 } else { 40 },
++                    255,
++                )
++            })
++            .collect();
++        let levels = chain(&l0, extent(w, h, layers), 7);
++        for (w, h, data) in &levels {
++            let expect = (*w * *h * layers) as usize;
++            assert_eq!(data.len(), expect, "{w}x{h} 像素数");
++            let alive = data.iter().filter(|p| (*p >> 24) != 0).count();
++            assert_eq!(alive, expect, "{w}x{h} 有像素 alpha 丢了");
++        }
++        let (w, h, data) = levels.last().unwrap();
++        assert_eq!((*w, *h), (1, 1));
++        assert_eq!(data[0] >> 24, 255, "最后一级 alpha 丢了");
++    }
++
++    /// 纯色必须原样保留(证明 avg2 没有系统性偏差)
++    #[test]
++    fn flat_color_survives_downsampling() {
++        let (w, h) = (32u32, 32u32);
++        let color = px(10, 20, 30, 255);
++        let l0 = vec![color; (w * h) as usize];
++        for (_, _, data) in chain(&l0, extent(w, h, 1), 6) {
++            assert!(data.iter().all(|p| *p == color), "纯色被改动了");
++        }
++    }
++
++    /// 每层独立:就地缩小时最容易踩的坑就是层间串色
++    #[test]
++    fn layers_do_not_bleed() {
++        let (w, h, layers) = (8u32, 8u32, 3u32);
++        let colors = [px(255, 0, 0, 255), px(0, 0, 255, 255), px(0, 255, 0, 255)];
++        let mut l0 = Vec::new();
++        for layer in 0..layers as usize {
++            for _ in 0..(w * h) as usize {
++                l0.push(colors[layer]);
++            }
++        }
++        for (lv_w, lv_h, data) in chain(&l0, extent(w, h, layers), 4) {
++            let per_layer = lv_w as usize * lv_h as usize;
++            for layer in 0..layers as usize {
++                let base = layer * per_layer;
++                assert!(
++                    data[base..base + per_layer].iter().all(|p| *p == colors[layer]),
++                    "{lv_w}x{lv_h} 的层 {layer} 串色了"
++                );
++            }
++        }
++    }
++
++    /// 奇数尺寸不能越界,结果尺寸是 floor 的一半
++    #[test]
++    fn odd_sizes_do_not_panic() {
++        let (w, h) = (7u32, 5u32);
++        let color = px(200, 200, 200, 255);
++        let l0 = vec![color; (w * h) as usize];
++        let levels = chain(&l0, extent(w, h, 1), 4);
++        let sizes: Vec<(u32, u32)> = levels.iter().map(|(w, h, _)| (*w, *h)).collect();
++        assert_eq!(sizes, vec![(3, 2), (1, 1), (1, 1)]);
++        for (_, _, data) in &levels {
++            assert!(data.iter().all(|p| *p == color), "奇数尺寸下纯色被改动了");
++        }
++    }
++
++    /// avg2 必须等于逐通道 floor 平均(位运算别写错)
++    #[test]
++    fn avg2_matches_manual_average() {
++        let cases: [u8; 7] = [0, 1, 7, 100, 128, 254, 255];
++        for &a in &cases {
++            for &b in &cases {
++                let pa = px(a, a.wrapping_add(3), a ^ 0x55, a / 2);
++                let pb = px(b, b.wrapping_add(5), b ^ 0x11, b / 3);
++                let got = avg2(pa, pb).to_le_bytes();
++                let expect = [
++                    (a as u32 + b as u32) / 2,
++                    (a.wrapping_add(3) as u32 + b.wrapping_add(5) as u32) / 2,
++                    ((a ^ 0x55) as u32 + (b ^ 0x11) as u32) / 2,
++                    (a as u32 / 2 + b as u32 / 3) / 2,
++                ];
++                assert_eq!(
++                    got,
++                    [
++                        expect[0] as u8,
++                        expect[1] as u8,
++                        expect[2] as u8,
++                        expect[3] as u8
++                    ],
++                    "avg2({a},{b}) 每通道对不上"
++                );
++            }
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/twgpu/src/sprites/tee_rendering.rs b/twgpu/src/sprites/tee_rendering.rs
+index c120bcb..902ee91 100644
+--- a/twgpu/src/sprites/tee_rendering.rs
++++ b/twgpu/src/sprites/tee_rendering.rs
+@@ -5,7 +5,7 @@ use crate::sprites::{
+     SpriteVertex, TeeSprite, TextureToken, Transformation,
+ };
+ use crate::{fixed, vek};
+-use fixed::traits::{Fixed, ToFixed};
++use fixed::traits::{Fixed, FromFixed, ToFixed};
+ use fixed::types::I24F8;
+ use std::f32::consts;
+ use std::f32::consts::PI;
+@@ -257,31 +257,35 @@ impl<'a> GenerateSprites<twsnap::items::Player> for SpriteRenderContext<'a> {
+             }
+         }
+ 
+-        let in_air = solid_at(self.map, position + Vec2::new(0., 0.5));
+-        let tee_state = if [Vec2::new(14., 19.) / 32., Vec2::new(-14., 19.) / 32.]
+-            .iter()
+-            .any(|offset| solid_at(self.map, position + *offset))
+-        {
+-            if tee1.pos.x == tee2.pos.x {
+-                TeeState::Idle
+-            } else {
+-                TeeState::Walking
+-            }
+-        } else {
+-            TeeState::InAir
++        // ---- 动画状态 ----
++        // 判定和客户端 players.cpp 的 "evaluate animation" 一致,细节见 `tee_anim`
++        let velocity = self.clock.lerp_tee_vec(tees, |tee| tee.vel);
++        let facing = match tee2.direction {
++            twsnap::enums::Direction::Left => -1.,
++            twsnap::enums::Direction::Right => 1.,
++            twsnap::enums::Direction::None => 0.,
+         };
++        // `m_VelX` 是 NetObj 里的定点值(速度 ×256,单位 DDNet 世界单位/tick)
++        let vel_x_net = f32::from_fixed(tee2.vel.x) * 256.;
++        // 客户端:Collision()->CheckPoint(x, y + 16),脚下 16 单位那一个点
++        let in_air = !solid_at(self.map, position + Vec2::new(0., 16. / 32.));
+ 
+         let animation = TeeKeyframe::BASE
+-            + match tee_state {
+-                TeeState::Idle => TeeKeyframe::IDLE,
+-                TeeState::InAir => TeeKeyframe::IN_AIR,
+-                TeeState::Walking => {
+-                    let repeat_interval = 100. / 32.;
+-                    let walk_time =
+-                        position.x.rem_euclid(repeat_interval) / repeat_interval + repeat_interval;
+-                    sample(TeeKeyframe::WALK, walk_time)
++            + match tee_anim(vel_x_net, velocity.x, facing, in_air) {
++                TeeAnim::InAir => TeeKeyframe::IN_AIR,
++                TeeAnim::Idle => TeeKeyframe::IDLE,
++                // 走/跑的相位都取自世界坐标 x:走 100 单位一轮,跑 200 单位一轮
++                TeeAnim::Walk => sample(TeeKeyframe::WALK, cycle_time(position.x * 32., 100.)),
++                TeeAnim::RunLeft => {
++                    sample(TeeKeyframe::RUN_LEFT, cycle_time(position.x * 32., 200.))
++                }
++                TeeAnim::RunRight => {
++                    sample(TeeKeyframe::RUN_RIGHT, cycle_time(position.x * 32., 200.))
+                 }
++                // 想往反方向走(滑步):客户端这时不加走路动画,脚停在 base 姿势
++                TeeAnim::Blocked => TeeKeyframe::EMPTY,
+             };
++
+         TeeSprite::FootOutline
+             .transformed_sprite(position, animation.left_foot, skin)
+             .multiply_color(feet_color)
+@@ -330,15 +334,11 @@ impl<'a> GenerateSprites<twsnap::items::Player> for SpriteRenderContext<'a> {
+             .multiply_color(feet_color)
+             .pass_to(&mut sprite_fn);
+ 
+-        let velocity = self.clock.lerp_tee_vec(tees, |tee| tee.vel);
+-        let vel_length = (velocity).magnitude();
+-        let direction = match tee1.direction {
+-            twsnap::enums::Direction::Left => -1.,
+-            twsnap::enums::Direction::None => 0.,
+-            twsnap::enums::Direction::Right => 1.,
+-        };
++        let vel_length = velocity.magnitude();
++        let direction = facing;
++        // 滑步粒子:朝向和速度反着、且在地上蹭
+         let want_other_direction =
+-            (direction == -1. && velocity.x > 0.) || (direction == 1. && velocity.x < 0.);
++            (facing == -1. && velocity.x > 0.) || (facing == 1. && velocity.x < 0.);
+         if want_other_direction
+             && in_air
+             && vel_length > 10.
+@@ -524,11 +524,55 @@ impl SpriteRenderContext<'_> {
+     }
+ }
+ 
++/// tee 的动画状态,和客户端 `players.cpp` 里挑动画的那套判定一一对应(含单元测试)
+ #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+-enum TeeState {
+-    Idle,
++enum TeeAnim {
+     InAir,
+-    Walking,
++    Idle,
++    Walk,
++    RunLeft,
++    RunRight,
++    /// 想反着走(滑步):客户端这时不加走路动画
++    Blocked,
++}
++
++/// 挑动画状态,顺序照抄客户端 `players.cpp`:
++///
++/// ```c
++/// bool Stationary = m_VelX <= 1 && m_VelX >= -1;
++/// bool InAir = !Collision()->CheckPoint(x, y + 16);
++/// bool Running = m_VelX >= 5000 || m_VelX <= -5000;
++/// bool WantOtherDir = (m_Direction == -1 && Vel.x > 0) || (m_Direction == 1 && Vel.x < 0);
++/// if (InAir)                    ANIM_INAIR
++/// else if (Stationary)          ANIM_IDLE
++/// else if (!WantOtherDir)       Running ? ANIM_RUN_LEFT/RIGHT : ANIM_WALK
++/// ```
++///
++/// 注意 `vel_x_net` 是 NetObj 里的 `m_VelX`(速度 ×256),`velocity_x` 是插值后的速度
++/// (DDNet 单位/tick)—— 客户端也是两个不同口径的输入。
++fn tee_anim(vel_x_net: f32, velocity_x: f32, facing: f32, in_air: bool) -> TeeAnim {
++    if in_air {
++        return TeeAnim::InAir;
++    }
++    if vel_x_net <= 1. && vel_x_net >= -1. {
++        return TeeAnim::Idle;
++    }
++    if (facing == -1. && velocity_x > 0.) || (facing == 1. && velocity_x < 0.) {
++        return TeeAnim::Blocked;
++    }
++    if vel_x_net >= 5000. {
++        return TeeAnim::RunRight;
++    }
++    if vel_x_net <= -5000. {
++        return TeeAnim::RunLeft;
++    }
++    TeeAnim::Walk
++}
++
++/// 走/跑动画的相位:世界坐标 x 每走过 `period` 个 DDNet 单位循环一次
++/// (客户端的 `WalkTime = fmod(x, 100) / 100`,`RunTime = fmod(x, 200) / 200`)
++fn cycle_time(x_units: f32, period: f32) -> f32 {
++    (x_units / period).rem_euclid(1.)
+ }
+ 
+ // Next is tee animation code
+@@ -674,6 +718,33 @@ impl TeeKeyframe {
+     ];
+ }
+ 
++impl TeeKeyframe {
++    /// 不加任何姿态(客户端在这时候只留 base):想反向走、滑步时用
++    const EMPTY: TeeKeyframe = TeeKeyframe {
++        body: Transformation::DEFAULT,
++        left_foot: Transformation::DEFAULT,
++        right_foot: Transformation::DEFAULT,
++    };
++    /// 跑起来(带速度加成 / hook 飞行)才用:周期 200 单位,幅度比走路大一圈。
++    /// 数据照抄客户端 `datasrc/content.py` 里的 `run_left` / `run_right`。
++    const RUN_LEFT: &'static [(f32, TeeKeyframe)] = &[
++        (0.0, TeeKeyframe { body: kf(0., -1., 0.), left_foot: kf(18., -8., -0.27), right_foot: kf(-11., -2.5, 0.05) }),
++        (0.2, TeeKeyframe { body: kf(0., 0., 0.), left_foot: kf(6., 0., 0.), right_foot: kf(-14., -5., 0.1) }),
++        (0.4, TeeKeyframe { body: kf(0., -1., 0.), left_foot: kf(-7., 0., 0.), right_foot: kf(11., -8., -0.3) }),
++        (0.6, TeeKeyframe { body: kf(0., 0., 0.), left_foot: kf(-13., -4.5, 0.05), right_foot: kf(18., -8., -0.27) }),
++        (0.8, TeeKeyframe { body: kf(0., 0., 0.), left_foot: kf(0., -8., -0.2), right_foot: kf(3., 0., 0.) }),
++        (1.0, TeeKeyframe { body: kf(0., -1., 0.), left_foot: kf(18., -8., -0.27), right_foot: kf(-11., -2.5, 0.05) }),
++    ];
++    const RUN_RIGHT: &'static [(f32, TeeKeyframe)] = &[
++        (0.0, TeeKeyframe { body: kf(0., -1., 0.), left_foot: kf(-18., -8., 0.27), right_foot: kf(11., -2.5, -0.05) }),
++        (0.2, TeeKeyframe { body: kf(0., 0., 0.), left_foot: kf(0., -8., 0.2), right_foot: kf(-3., 0., 0.) }),
++        (0.4, TeeKeyframe { body: kf(0., 0., 0.), left_foot: kf(13., -4.5, -0.05), right_foot: kf(-18., -8., 0.27) }),
++        (0.6, TeeKeyframe { body: kf(0., -1., 0.), left_foot: kf(7., 0., 0.), right_foot: kf(-11., -8., 0.3) }),
++        (0.8, TeeKeyframe { body: kf(0., 0., 0.), left_foot: kf(-6., 0., 0.), right_foot: kf(14., -5., -0.1) }),
++        (1.0, TeeKeyframe { body: kf(0., -1., 0.), left_foot: kf(-18., -8., 0.27), right_foot: kf(11., -2.5, -0.05) }),
++    ];
++}
++
+ const HAMMER_STILL: Transformation = kf(0., 0., -0.1);
+ const HAMMER_SWING: &[(f32, Transformation)] = &[
+     (0.0, HAMMER_STILL),
+@@ -683,6 +754,57 @@ const HAMMER_SWING: &[(f32, Transformation)] = &[
+     (1.0, HAMMER_STILL),
+ ];
+ 
++
++#[cfg(test)]
++mod tests {
++    use super::{cycle_time, tee_anim, TeeAnim};
++
++    #[test]
++    fn in_air_wins_over_everything() {
++        assert_eq!(tee_anim(0., 0., 1., true), TeeAnim::InAir);
++        assert_eq!(tee_anim(9000., -30., -1., true), TeeAnim::InAir);
++    }
++
++    #[test]
++    fn tiny_horizontal_velocity_is_idle() {
++        // 客户端:Stationary = m_VelX ∈ [-1, 1],和位置有没有变无关
++        assert_eq!(tee_anim(0., 0., 1., false), TeeAnim::Idle);
++        assert_eq!(tee_anim(1., 0., 1., false), TeeAnim::Idle);
++        assert_eq!(tee_anim(-1., 0., 1., false), TeeAnim::Idle);
++        assert_eq!(tee_anim(2., 0.01, 1., false), TeeAnim::Walk);
++    }
++
++    #[test]
++    fn running_needs_5000() {
++        assert_eq!(tee_anim(4999., 19., 1., false), TeeAnim::Walk);
++        assert_eq!(tee_anim(5000., 19., 1., false), TeeAnim::RunRight);
++        assert_eq!(tee_anim(-5000., -19., -1., false), TeeAnim::RunLeft);
++    }
++
++    #[test]
++    fn moving_against_facing_freeze_the_walk_cycle() {
++        // 朝左但往右飘 -> 客户端不加走路动画
++        assert_eq!(tee_anim(3000., 5., -1., false), TeeAnim::Blocked);
++        assert_eq!(tee_anim(-3000., -5., 1., false), TeeAnim::Blocked);
++        // 同向就正常走
++        assert_eq!(tee_anim(3000., -5., -1., false), TeeAnim::Walk);
++        // 没有朝向(None)时 WantOtherDir 不成立
++        assert_eq!(tee_anim(3000., 5., 0., false), TeeAnim::Walk);
++    }
++
++    #[test]
++    fn walk_phase_wraps_every_100_units() {
++        assert!((cycle_time(0., 100.) - 0.).abs() < 1e-6);
++        assert!((cycle_time(50., 100.) - 0.5).abs() < 1e-6);
++        assert!((cycle_time(150., 100.) - 0.5).abs() < 1e-6);
++        // 负坐标也要落在 [0, 1):客户端是 fmod 之后 +1
++        assert!((cycle_time(-50., 100.) - 0.5).abs() < 1e-6);
++        assert!((cycle_time(-150., 100.) - 0.5).abs() < 1e-6);
++        assert!((cycle_time(-1., 100.) - 0.99).abs() < 1e-6);
++        // 跑是 200 单位一轮
++        assert!((cycle_time(100., 200.) - 0.5).abs() < 1e-6);
++    }
++}
+ const NINJA_SWING: &[(f32, Transformation)] = &[
+     (0.00, kf(0., 0., -0.25)),
+     (0.10, kf(0., 0., -0.05)),
+diff --git a/twgpu/src/textures/mapres.rs b/twgpu/src/textures/mapres.rs
+index b18e880..b2fa385 100644
+--- a/twgpu/src/textures/mapres.rs
++++ b/twgpu/src/textures/mapres.rs
+@@ -12,6 +12,25 @@ use wgpu::{CommandEncoder, TexelCopyBufferLayout, TexelCopyTextureInfo};
+ 
+ const LABEL: Option<&str> = Some("Mapres");
+ 
++/// 跨平台毫秒时间戳(wasm 上没有可用的 std::time::Instant)
++fn now_millis() -> f64 {
++    #[cfg(target_arch = "wasm32")]
++    {
++        web_sys::window()
++            .and_then(|w| w.performance())
++            .map(|p| p.now())
++            .unwrap_or(0.0)
++    }
++    #[cfg(not(target_arch = "wasm32"))]
++    {
++        use std::time::{SystemTime, UNIX_EPOCH};
++        SystemTime::now()
++            .duration_since(UNIX_EPOCH)
++            .map(|d| d.as_secs_f64() * 1000.0)
++            .unwrap_or(0.0)
++    }
++}
++
+ // TODO: maybe make texture optional as well
+ pub struct Mapres {
+     pub name: String,
+@@ -19,6 +38,10 @@ pub struct Mapres {
+     pub height: u32,
+     pub texture: Texture,
+     pub array_texture: Option<Texture>,
++    /// 生成 array texture 时 level 0 的字节数(CPU mip 的内存峰值就是它)
++    pub mip_bytes: usize,
++    /// 生成整条 mip 链花了多少毫秒
++    pub mip_millis: f64,
+ }
+ 
+ /// Contains all textures used in a map
+@@ -92,17 +115,20 @@ impl Mapres {
+             height,
+             texture,
+             array_texture: None,
++            mip_bytes: 0,
++            mip_millis: 0.0,
+         }
+     }
+ 
+-    /// Generates the array texture for this mapres, if it isn't already generated
+-    pub fn generate_array_texture(
+-        &mut self,
+-        blit: &mut Blit,
+-        encoder: &mut CommandEncoder,
+-        device: &Device,
+-        queue: &Queue,
+-    ) {
++/// Generates the array texture for this mapres, if it isn't already generated.
++    ///
++    /// 整块(把 16×16 网格切成 256 层 + 生成完整 mip 链)都在 CPU 上做,再一次性写进去。
++    /// 原来用的是 GPU blit:先 `copy_texture_to_texture` 256 次,再用「拿 mip N-1 当输入、
++    /// 渲染进 mip N」的办法生成 mip。后者在 WebGL 里两个 view 指向同一个 GL texture,
++    /// 是跨 level 的 feedback loop(undefined behavior)——桌面 ANGLE 放行,mobile GLES
++    /// 驱动往往返回全黑,于是 tilemap 在 lod>0 时整片消失
++    /// (quad 用的是普通 2D 纹理,走的是完全不同的 GL 路径,没踩到这个问题)。
++    pub fn generate_array_texture(&mut self, image: &RgbaImage, device: &Device, queue: &Queue) {
+         if self.array_texture.is_some() {
+             return;
+         }
+@@ -110,8 +136,6 @@ impl Mapres {
+         assert_eq!(self.height % 16, 0);
+         let tile_width = self.width / 16;
+         let tile_height = self.height / 16;
+-        let tile_row_data_size = tile_width.unwrapped_as::<usize>() * 4;
+-        let tile_data_size: usize = tile_row_data_size * tile_height.unwrapped_as::<usize>() * 4;
+         let size = Extent3d {
+             width: tile_width,
+             height: tile_height,
+@@ -130,63 +154,32 @@ impl Mapres {
+                 | TextureUsages::RENDER_ATTACHMENT,
+             view_formats: &[],
+         });
+-        let copy_size = Extent3d {
+-            width: tile_width,
+-            height: tile_height,
+-            depth_or_array_layers: 1,
+-        };
+ 
+-        let top_left_tile = vec![0; tile_data_size];
++        // 切网格 + 缩 mip 全程在 u32 视图上做,这里只在最后 cast 回字节
++        let level0 = tile_grid_to_layers(image.as_raw(), image.width(), image.height());
++        let level0_bytes = level0.len() * 4;
+         queue.write_texture(
+             TexelCopyTextureInfo {
+                 texture: &array_texture,
+                 mip_level: 0,
+-                origin: Origin3d { x: 0, y: 0, z: 0 },
++                origin: Origin3d::default(),
+                 aspect: TextureAspect::All,
+             },
+-            &top_left_tile,
++            bytemuck::cast_slice(&level0),
+             TexelCopyBufferLayout {
+-                bytes_per_row: Some(tile_row_data_size.unwrapped_as()),
+-                ..TexelCopyBufferLayout::default()
++                offset: 0,
++                bytes_per_row: Some(tile_width * 4),
++                rows_per_image: Some(tile_height),
+             },
+-            copy_size,
++            size,
+         );
+-
+-        for y in 0..16 {
+-            for x in 0..16 {
+-                if (x, y) == (0, 0) {
+-                    continue;
+-                }
+-                encoder.copy_texture_to_texture(
+-                    TexelCopyTextureInfo {
+-                        texture: &self.texture,
+-                        mip_level: 0,
+-                        origin: Origin3d {
+-                            x: x * tile_width,
+-                            y: y * tile_height,
+-                            z: 0,
+-                        },
+-                        aspect: TextureAspect::All,
+-                    },
+-                    TexelCopyTextureInfo {
+-                        texture: &array_texture,
+-                        mip_level: 0,
+-                        origin: Origin3d {
+-                            x: 0,
+-                            y: 0,
+-                            z: y * 16 + x,
+-                        },
+-                        aspect: TextureAspect::All,
+-                    },
+-                    copy_size,
+-                );
+-            }
+-        }
+-        blit.generate_mipmaps(encoder, &array_texture);
++        let started = now_millis();
++        // 传所有权:内部就地逐级缩小,峰值内存就等于这份 level0,不再额外分配
++        Blit::fill_mip_levels_cpu(queue, &array_texture, level0, size);
++        self.mip_bytes = level0_bytes;
++        self.mip_millis = now_millis() - started;
+         self.array_texture = Some(array_texture);
+-    }
+-
+-    /// Accessor to the array texture of this mapres
++    }    /// Accessor to the array texture of this mapres
+     /// Panics it `generate_array_texture` wasn't called previously
+     pub fn array_texture(&self) -> &Texture {
+         match &self.array_texture {
+@@ -199,6 +192,15 @@ impl Mapres {
+ }
+ 
+ impl MapresStorage {
++    /// 每张 mapres 生成 mip 链的耗时与内存(诊断用)
++    pub fn mip_stats(&self) -> Vec<(&str, usize, f64)> {
++        self.mapres
++            .iter()
++            .filter(|m| m.mip_bytes > 0)
++            .map(|m| (m.name.as_str(), m.mip_bytes, m.mip_millis))
++            .collect()
++    }
++
+     pub fn upload(map: &TwMap, device: &Device, queue: &Queue) -> Self {
+         let mut mapres = Vec::new();
+         let mut blit = Blit::new(device.clone());
+@@ -236,24 +238,23 @@ impl MapresStorage {
+ 
+         for (i, mapres) in mapres.iter_mut().enumerate() {
+             if tilemap_textures[i] {
+-                let mut encoder =
+-                    device.create_command_encoder(&CommandEncoderDescriptor { label: LABEL });
+-                mapres.generate_array_texture(&mut blit, &mut encoder, device, queue);
+-                queue.submit([encoder.finish()]);
++                if let Some(Image::Embedded(emb)) = map.images.get(i) {
++                    mapres.generate_array_texture(emb.image.unwrap_ref(), device, queue);
++                }
+             }
+         }
+ 
+         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: LABEL });
++        let blank_image = RgbaImage::from_pixel(16, 16, Rgba([255; 4]));
+         let mut blank = Mapres::from_rgba(
+             "Blank Image".into(),
+-            &RgbaImage::from_pixel(16, 16, Rgba([255; 4])),
++            &blank_image,
+             &mut blit,
+             &mut encoder,
+             device,
+             queue,
+         );
+-        blank.generate_array_texture(&mut blit, &mut encoder, device, queue);
+-        queue.submit([encoder.finish()]);
++        blank.generate_array_texture(&blank_image, device, queue);
+         Self {
+             mapres,
+             blank,
+@@ -296,3 +297,103 @@ impl MapresStorage {
+         }
+     }
+ }
++/// 把 DDNet 的 mapres(16×16 网格图像)切成 256 层,每层一个 tile。
++///
++/// 层号 = y * 16 + x,和 `tile_to_gpu` 里 `tile.y` 编码的 tile 索引一致。
++/// 层 0 保持全透明 —— 客户端把 tile 索引 0 当作「这里什么都没有」,
++/// tilemap 着色器也会对 index 0 直接 discard。
++///
++/// 直接产出 `Vec<u32>`(每元素一个像素):后面整条 mip 链都在这个视图上跑,
++/// 避免了逐字节的索引和边界检查。
++pub fn tile_grid_to_layers(source: &[u8], width: u32, height: u32) -> Vec<u32> {
++    assert_eq!(width % 16, 0, "mapres 宽度必须是 16 的倍数");
++    assert_eq!(height % 16, 0, "mapres 高度必须是 16 的倍数");
++    let tile_width = (width / 16) as usize;
++    let tile_height = (height / 16) as usize;
++    let source_width = width as usize;
++    let tile_pixels = tile_width * tile_height;
++    let mut layers = vec![0u32; tile_pixels * 256].into_boxed_slice();
++    for tile_y in 0..16usize {
++        for tile_x in 0..16usize {
++            if (tile_x, tile_y) == (0, 0) {
++                continue;
++            }
++            let base = (tile_y * 16 + tile_x) * tile_pixels;
++            for y in 0..tile_height {
++                // 源行里本 tile 的起点
++                let src_row = (tile_y * tile_height + y) * source_width + tile_x * tile_width;
++                let dst_row = base + y * tile_width;
++                for x in 0..tile_width {
++                    let si = (src_row + x) * 4;
++                    layers[dst_row + x] = u32::from_le_bytes([
++                        source[si],
++                        source[si + 1],
++                        source[si + 2],
++                        source[si + 3],
++                    ]);
++                }
++            }
++        }
++    }
++    layers.into_vec()
++}
++
++#[cfg(test)]
++mod tile_tests {
++    use super::*;
++
++    /// 16×16 的 mapres,每个 tile 是 1×1,颜色 = (tile_y, tile_x, 0, 255)
++    #[test]
++    fn slices_tiles_in_row_major_order() {
++        let mut src = vec![0u8; 16 * 16 * 4];
++        for y in 0..16 {
++            for x in 0..16 {
++                let i = (y * 16 + x) * 4;
++                src[i] = y as u8;
++                src[i + 1] = x as u8;
++                src[i + 2] = 7;
++                src[i + 3] = 255;
++            }
++        }
++        let layers = tile_grid_to_layers(&src, 16, 16);
++        assert_eq!(layers.len(), 256);
++        assert_eq!(layers[0], 0, "层 0 必须全透明");
++        for tile_y in 0..16usize {
++            for tile_x in 0..16usize {
++                if (tile_x, tile_y) == (0, 0) {
++                    continue;
++                }
++                let layer = tile_y * 16 + tile_x;
++                assert_eq!(
++                    layers[layer].to_le_bytes(),
++                    [tile_y as u8, tile_x as u8, 7, 255],
++                    "层 {layer} 应该是 tile ({tile_x}, {tile_y})"
++                );
++            }
++        }
++    }
++
++    /// 每个 tile 4×2 像素:检查块内像素没有转置/错行
++    #[test]
++    fn keeps_pixels_inside_tile() {
++        let (w, h) = (64u32, 32u32);
++        let mut src = vec![0u8; (w * h * 4) as usize];
++        for y in 0..h as usize {
++            for x in 0..w as usize {
++                let i = (y * w as usize + x) * 4;
++                src[i] = (x % 4) as u8;
++                src[i + 1] = (y % 2) as u8;
++                src[i + 3] = 255;
++            }
++        }
++        let layers = tile_grid_to_layers(&src, w, h);
++        for y in 0..2usize {
++            for x in 0..4usize {
++                let di = 4 * 2 + (y * 4 + x); // tile (1, 0)
++                let bytes = layers[di].to_le_bytes();
++                assert_eq!(bytes[0], x as u8, "像素 ({x},{y}) 的 R");
++                assert_eq!(bytes[1], y as u8, "像素 ({x},{y}) 的 G");
++            }
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/twgpu/src/textures/samplers.rs b/twgpu/src/textures/samplers.rs
+index 8536cc0..b4987d3 100644
+--- a/twgpu/src/textures/samplers.rs
++++ b/twgpu/src/textures/samplers.rs
+@@ -12,6 +12,12 @@ use wgpu::{
+ pub struct Samplers {
+     clamp_to_edge: Sampler,
+     repeating: Sampler,
++    /// 只采 mip level 0 的 clamp-to-edge 采样器(tilemap 兜底用)
++    clamp_to_edge_lod0: Sampler,
++    /// 全局是否启用 mipmap(见 `with_mipmaps`)
++    mipmaps: bool,
++    /// tilemap 是否强制只采 level 0(见 `with_tilemap_lod0`)
++    pub tilemap_lod0: bool,
+ }
+ 
+ impl Samplers {
+@@ -45,6 +51,14 @@ impl Samplers {
              mipmap_filter: wgpu::MipmapFilterMode::Linear,
              ..SamplerDescriptor::default()
          };
-+        let settings = if mipmaps {
-+            settings
-+        } else {
-+            SamplerDescriptor {
-+                mipmap_filter: wgpu::MipmapFilterMode::Nearest,
-+                lod_max_clamp: 0.0,
-+                ..settings.clone()
-+            }
++        // 只暴露 level 0:min_filter 也必须换成不带 mip 的那档,
++        // 否则 GL 侧的 MIN_FILTER 仍然是 *_MIPMAP_*,采样器依旧不完整。
++        let lod0_settings = SamplerDescriptor {
++            min_filter: FilterMode::Linear,
++            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
++            lod_max_clamp: 0.0,
++            ..settings.clone()
 +        };
          Self {
              clamp_to_edge: device.create_sampler(&SamplerDescriptor {
                  label: Some("Clamp-To-Edge"),
+@@ -54,12 +68,46 @@ impl Samplers {
+                 ..settings.clone()
+             }),
+             repeating: device.create_sampler(&SamplerDescriptor {
+-                label: Some("Clamp-To-Edge"),
++                label: Some("Repeat"),
+                 address_mode_u: AddressMode::Repeat,
+                 address_mode_v: AddressMode::Repeat,
+                 address_mode_w: AddressMode::Repeat,
+                 ..settings.clone()
+             }),
++            clamp_to_edge_lod0: device.create_sampler(&SamplerDescriptor {
++                label: Some("Clamp-To-Edge (lod 0)"),
++                address_mode_u: AddressMode::ClampToEdge,
++                address_mode_v: AddressMode::ClampToEdge,
++                address_mode_w: AddressMode::ClampToEdge,
++                ..lod0_settings
++            }),
++            mipmaps: true,
++            tilemap_lod0: false,
++        }
++    }
++
++    /// 全局开/关 mipmap(`?mips=0` 的兜底开关)
++    pub fn with_mipmaps(mut self, enabled: bool) -> Self {
++        self.mipmaps = enabled;
++        self
++    }
++
++    /// 让 tilemap 只采 mip level 0,其余渲染照常用 mipmap
++    pub fn with_tilemap_lod0(mut self, enabled: bool) -> Self {
++        self.tilemap_lod0 = enabled;
++        self
++    }
++
++    /// tilemap 该用只采 level 0 的采样器吗(全局关了 mip 或单独关了 tilemap)
++    pub fn tilemap_needs_lod0(&self) -> bool {
++        self.tilemap_lod0 || !self.mipmaps
++    }
++
++    /// 强制只采 mip level 0 的 clamp-to-edge 采样器(tilemap 用)
++    pub fn clamp_to_edge_lod0(&self, binding: u32) -> BindGroupEntry<'_> {
++        BindGroupEntry {
++            binding,
++            resource: BindingResource::Sampler(&self.clamp_to_edge_lod0),
+         }
+     }
+ }

@@ -30,21 +30,45 @@ bun install
 bun --bun run dev
 ```
 
-### 地图预览（mappreview）
+### 渲染引擎（twengine）
 
-`/ddnet/maps` 的地图预览用的是 [twgpu](https://gitlab.com/ddnet-rs/twgpu) 的 `twgpu-web`（Rust → wasm），
-直接嵌在页面里跑，不再经过外部静态服务。
+地图预览和 demo 回放共用**一个 wasm**：`rust/twengine`（Rust → wasm），底座是
+[twgpu](https://gitlab.com/ddnet-rs/twgpu)，另外加了自己的 `.demo` reader 和声音事件抽取。
+两个前端各是一个普通 JS 模块，`import` 同一份 `pkg/twengine.js`：
 
-- 源码以 submodule 形式引在 `vendor/twgpu`，检出后需要 `git submodule update --init --recursive`
-- 编译产物（wasm、贴图、外部 mapres）不进版本库，需要先构建一次：
+| 前端      | 文件                                              | 用途                          |
+| --------- | ------------------------------------------------- | ----------------------------- |
+| 地图预览  | `src/lib/components/mappreview/MapPreview.svelte` | `/ddnet/maps/<地图>` 里看地图 |
+| demo 回放 | `static/ddnet/engine/demo.js`                     | `/ddnet/watch?uuid=…` 看录像  |
+
+- twgpu 以 submodule 形式引在 `vendor/twgpu`，检出后需要 `git submodule update --init --recursive`
+- 编译产物（wasm、贴图、外部 mapres、音效）不进版本库，需要先构建一次：
 
 ```bash
-bun run mappreview   # 需要 rust + wasm32-unknown-unknown + wasm-pack + unzip
+bun run engine   # 需要 rust + wasm32-unknown-unknown + wasm-pack + unzip + ffmpeg
 ```
 
-产物落在 `static/ddnet/mappreview/`，由 SvelteKit 当静态资源服务；`bun run build` 会自动先跑这一步，
-子模块没变且产物已存在时会直接跳过。地图 `.map` 文件由
-`src/routes/ddnet/mappreview/map/[file]/+server.ts` 从 `ddnet.org/mappreview` 流式代理，不落内存。
+产物落在 `static/ddnet/engine/`（`engine.js`/`sound.js`/`demo.js` 是手写的前端，在库里；
+`pkg/`、`assets/`、`sounds/`、`version.json` 是构建产物，忽略）。`bun run build` 会自动先跑这一步，
+子模块 / crate / 补丁 / 声音表都没变且产物已存在时直接跳过。
+
+前端所有会变的产物都挂 `?v=<version>`（`pkg/twengine.js`、`pkg/twengine_bg.wasm`、
+`assets/*.png`、`sounds/sounds.zip`），版本号本身放在 `version.json` 里，
+由 `子模块提交 / crate 指纹 / 资源指纹 / wasm 哈希` 四段拼成 —— **任何一项变了 URL 就变**，
+所以缓存不会串。`version.json` 自己用 `cache: 'no-cache'` 取（条件请求，没变就 304），
+它就是那个"指针"，被缓存住的话整套缓存都会失效成旧版本。
+
+几个外部数据的代理（都在本站范围内转发，不改内容）：
+
+- `src/routes/ddnet/mappreview/map/[file]/+server.ts` → `ddnet.org/mappreview/<名字>.map`
+- `src/routes/ddnet/watch/api/[...path]/+server.ts` → `ddnet.org/watch/{runs,demos,watchable.jsonl}`
+- `src/routes/ddnet/skins/[...path]/+server.ts` → `ddnet.org/skins/skin/<名字>.png`
+
+声音来自 DDNet 的 `data/audio/*.wv`（WavPack，浏览器不认），构建时用 ffmpeg 转成 Opus
+（浏览器支持的最新编码），再打进一个 STORE 的 `sounds.zip`（约 210 KiB）：只发一个请求，
+前端解包后每个音效各自解码，互不串音。只打包 demo 里真的会出现的声音。
+声音表（41 个声音集的顺序 = `SOUND_*` 枚举 id）在构建时从 ddnet 的 `datasrc/content.py` 读，
+并和 `rust/twengine/src/sound.rs` 里的表逐项比对，不一致就构建失败。
 
 ## 构建
 
