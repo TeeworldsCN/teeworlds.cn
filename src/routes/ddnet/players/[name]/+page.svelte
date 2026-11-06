@@ -637,10 +637,10 @@
 							<MapLink map={record.map} className="min-w-0 flex-1 truncate font-semibold"
 								>[{mapType(record.type)}] {record.map}</MapLink
 							>
-							<span class="hidden shrink-0 text-sm text-slate-400 sm:inline">
+							<!-- 显示用时而不是分值(分值只在排序里用) -->
+							<span class="w-14 shrink-0 text-right text-sm text-slate-300 tabular-nums">
 								{record.time ? secondsToTime(record.time) : ''}
 							</span>
-							<span class="w-11 shrink-0 text-right text-sm">{record.points}pt</span>
 							{#if record.demo}
 								<a
 									href={`/ddnet/watch?uuid=${record.demo.uuid}&time=${record.demo.time}`}
