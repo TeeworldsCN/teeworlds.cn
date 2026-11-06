@@ -15,8 +15,11 @@ export const GET = async ({ url }) => {
 	const pathWithoutPrefix = path.slice(11);
 	const name = pathWithoutPrefix.replace(/\.[^.]+$/, ''); // Remove file extension
 
-	// Block list check
-	if (isSkinBlocked(decodeURIComponent(name))) {
+	// Block list check。路径可能是 `名字` 也可能是 `类型/名字`(community 皮肤),
+	// 所以对最后一段也查一次,别让 `community/<被屏蔽的名字>` 绕过去。
+	const decoded = decodeURIComponent(name);
+	const bareName = decoded.split('/').pop() ?? decoded;
+	if (isSkinBlocked(decoded) || isSkinBlocked(bareName)) {
 		return error(451, 'Unavailable For Legal Reasons');
 	}
 

@@ -9,8 +9,9 @@ export const getSkinImageByName = async (
 	grayscale: boolean,
 	def?: string
 ): Promise<{ result: Uint8Array | null; hit: boolean }> => {
+	// map 的 key 是小写(见 fetches/skins.ts),统一按小写查
 	const skinMap = (await skins.fetchCache()).result.map;
-	const skinPath = skinMap[name] || (def ? skinMap[def] : null);
+	const skinPath = skinMap[name.toLowerCase()] || (def ? skinMap[def.toLowerCase()] : null);
 	if (!skinPath) {
 		return { result: null, hit: false };
 	}

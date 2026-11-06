@@ -92,6 +92,12 @@ export const loadTeeSkin = async (skin: TeeSkin | string): Promise<HTMLImageElem
 	const { name = '', url = '' } = typeof skin === 'string' ? { name: skin } : skin;
 	if (!browser) return null;
 
+	// `x_` 开头是客户端内置功能皮肤(x_ninja / x_spec),玩家不能拿它们当皮肤,直接走兜底。
+	// 只按名字拦:按 url 传的是皮肤库自己的地址,照常加载。
+	if (name.toLowerCase().startsWith('x_')) {
+		return await fallbackImage();
+	}
+
 	const key = url || name;
 	if (key) {
 		const hit = imageCache.get(key);

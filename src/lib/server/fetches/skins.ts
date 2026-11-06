@@ -2,6 +2,7 @@ import { FetchCache } from '../fetch-cache';
 
 export type SkinInfo = {
 	skins: {
+		/** 皮肤库里的原名,区分大小写(展示、拼 URL 都用它) */
 		name: string;
 		type: string;
 		hd: {
@@ -31,11 +32,14 @@ export const skins = new FetchCache<SkinInfo>(
 						? `/api/skins/${encodeURIComponent(skin.name)}.${skin.imgtype}`
 						: `/api/skins/${encodeURIComponent(skin.type)}/${encodeURIComponent(skin.name)}.${skin.imgtype}`
 				).toString();
-				map[skin.name] = skin.url;
+				// 只有 map 的 key 小写(查找用),`skin.name` 和 `skin.url` 都保留原名 ——
+				// 上游皮肤路径是大小写敏感的(10Nanami_glow.png)。
+				map[skin.name.toLowerCase()] = skin.url;
 			})
 		);
 		result.map = map;
 		return result;
 	},
-	{ version: 6 }
+	// 恢复完整皮肤库(上一版曾把 `x_` 内置皮肤过滤掉),升 version 让老缓存失效
+	{ version: 10 }
 );
