@@ -12,6 +12,7 @@
 	 * QQ/微信内置浏览器直接挂);这边是 twgpu 渲染 + Web Audio,单线程 wasm,不需要 SAB。
 	 */
 	import { onMount } from 'svelte';
+	import { uaIsStrict } from '$lib/helpers';
 	// 全站共用的皮肤缓存(单例,只拉一次 /api/skins);播放器只按名字查 URL,不自己拼
 	import { getSkinUrl } from '$lib/stores/skins';
 
@@ -26,6 +27,8 @@
 				finishers?: number[];
 				/** 皮肤名 → 图片 URL(null = 皮肤库里没有,用 default 渲染) */
 				resolveSkin?: (name: string) => Promise<string | null>;
+				/** QQ / 微信内置浏览器:下载和全屏按钮直接禁用 */
+				inApp?: boolean;
 			}
 		) => Promise<{ destroy(): void } | null>;
 	};
@@ -141,7 +144,8 @@
 				title,
 				focus,
 				finishers,
-				resolveSkin: getSkinUrl
+				resolveSkin: getSkinUrl,
+				inApp: uaIsStrict(navigator.userAgent)
 			});
 		};
 
