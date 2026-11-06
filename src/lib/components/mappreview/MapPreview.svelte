@@ -77,7 +77,11 @@
 
 	interface MpModule {
 		default: (input?: string) => Promise<void>;
-		TwGpu: new (backend?: string | null, canvas?: HTMLCanvasElement | null) => Promise<MpGpu>;
+		TwGpu: new (
+			backend?: string | null,
+			canvas?: HTMLCanvasElement | null,
+			mipmaps?: boolean | null
+		) => Promise<MpGpu>;
 		TwMapIntermediate: new (data: Uint8Array) => MpIntermediate;
 		TwCamera: new (aspectRatio: number) => MpCamera;
 	}
@@ -158,7 +162,7 @@
 	const resize = () => {
 		if (!host || !surface || !camera) return;
 		const rect = host.getBoundingClientRect();
-		const dpr = Math.min(window.devicePixelRatio || 1, 2);
+		const dpr = dprScale();
 		const width = Math.max(1, Math.round(rect.width * dpr));
 		const height = Math.max(1, Math.round(rect.height * dpr));
 		if (!width || !height) return;
@@ -303,6 +307,24 @@
 		requestAnimationFrame(resize);
 	};
 
+	/** 调试用:?backend=webgl / webgpu 指定图形后端,?dpr=1 关掉高分屏渲染 */
+	const debugParam = (name: string) => {
+		try {
+			return new URLSearchParams(window.location.search).get(name);
+		} catch {
+			return null;
+		}
+	};
+
+	/** ?mips=0 关掉 mip 采样(部分移动端设备上 mip 链不可用) */
+	const mipmapsEnabled = () => debugParam('mips') !== '0';
+
+	const dprScale = () => {
+		const requested = Number(debugParam('dpr'));
+		if (Number.isFinite(requested) && requested > 0) return Math.min(requested, 2);
+		return Math.min(window.devicePixelRatio || 1, 2);
+	};
+
 	/** 每次预览都换一块新 canvas:旧 context 跟着旧 device 一起还给浏览器 */
 	const createCanvas = () => {
 		const canvas = document.createElement('canvas');
@@ -390,7 +412,7 @@
 			canvasEl = canvas;
 			// canvas 必须在 init 时就有尺寸:WebGL 后端要靠它建 context 才能找到 adapter
 			gpu = await withTimeout(
-				new loaded.TwGpu(null, canvas),
+				new loaded.TwGpu(debugParam('backend'), canvas, mipmapsEnabled()),
 				30000,
 				'初始化图形设备超时(可能是浏览器不支持 WebGL2 / WebGPU)'
 			);

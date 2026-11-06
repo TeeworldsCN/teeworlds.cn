@@ -21,6 +21,8 @@ const OUT = path.join(ROOT, 'static/ddnet/mappreview');
 const CACHE = path.join(ROOT, 'cache/mappreview');
 // 静态文件里不能带点开头(sirv 默认不 serve dotfiles),而且前端要读它做缓存版本号
 const STAMP = path.join(OUT, 'version.json');
+// 对 submodule 的补丁,编译前按顺序应用(见 patches/)
+const PATCHES = [path.join(ROOT, 'patches/twgpu-mipmaps.patch')];
 
 const force = process.argv.includes('--force');
 
@@ -79,7 +81,9 @@ const downloadCached = async (url: string, cached: string) => {
 // 产物和上游 commit、贴图列表绑在一起,任一边变了就得重编
 const assetsFingerprint = JSON.stringify({
 	textures: TEXTURES.map((t) => `${t.name}:${t.file}:${t.url}`),
-	mapres: MAPRES
+	mapres: MAPRES,
+	// 补丁内容也参与指纹:改了补丁就得重编
+	patches: PATCHES.map((file) => (existsSync(file) ? readFileSync(file, 'utf-8') : ''))
 });
 
 const readStamp = () => {
@@ -122,7 +126,17 @@ if (!hasCommand('unzip')) {
 	process.exit(1);
 }
 
-// 1. 编译 wasm(submodule 保持原样,不做任何改动)
+// 1. 应用补丁(先还原,保证可重复执行)
+await sh(['git', 'checkout', '--', '.'], { cwd: SUBMODULE });
+for (const patch of PATCHES) {
+	if (!existsSync(patch)) {
+		throw new Error(`找不到补丁 ${patch}`);
+	}
+	log(`应用补丁 ${path.basename(patch)}`);
+	await sh(['git', 'apply', patch], { cwd: SUBMODULE });
+}
+
+// 2. 编译 wasm
 const pkgTmp = path.join(CACHE, 'pkg');
 rmSync(pkgTmp, { recursive: true, force: true });
 log(`编译 twgpu-web @ ${commit.slice(0, 8)}(release,首次编译需要几分钟)`);
@@ -144,14 +158,14 @@ log(`wasm:${(wasmBytes.length / 1024 / 1024).toFixed(2)} MiB`);
 // 前端拿这个版本号给 pkg/assets 加 ?v=,内容变了就得换 key,不然老访客会用到缓存里的旧 wasm
 const version = `${commit.slice(0, 8)}-${createHash('sha256').update(wasmBytes).digest('hex').slice(0, 8)}`;
 
-// 2. 贴图 / 字体
+// 3. 贴图 / 字体
 mkdirSync(path.join(OUT, 'assets'), { recursive: true });
 for (const texture of TEXTURES) {
 	const cached = await downloadCached(texture.url, path.join(CACHE, 'assets', texture.file));
 	copyFileSync(cached, path.join(OUT, 'assets', texture.file));
 }
 
-// 3. 外部 mapres
+// 4. 外部 mapres
 for (const version of MAPRES) {
 	const zip = await downloadCached(
 		`https://twdata.pati.ga/mapres/${version}/external.zip`,
@@ -162,6 +176,9 @@ for (const version of MAPRES) {
 	mkdirSync(dir, { recursive: true });
 	await sh(['unzip', '-qo', zip, '-d', dir]);
 }
+
+// 产物好了就把 submodule 还原成上游原样,git status 保持干净
+await sh(['git', 'checkout', '--', '.'], { cwd: SUBMODULE });
 
 writeFileSync(
 	STAMP,
