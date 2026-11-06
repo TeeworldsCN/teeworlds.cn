@@ -110,7 +110,9 @@ jobs:
         run: cd build && bun install && cd ..
 
       - name: Archive Build Folder
-        run: tar -czvf build.tar.gz -C build .
+        # 排除 wasm 的编译中间产物:几百 MB,部署包里用不到。
+        # (不能提前 rm —— 那个目录是 actions/cache 的 post 步骤要存的)
+        run: tar -czvf build.tar.gz --exclude='./rust/twengine/target' -C build .
 
       - name: Copy Files to Remote Server
         env:
