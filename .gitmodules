@@ -1,0 +1,3 @@
+[submodule "vendor/twgpu"]
+	path = vendor/twgpu
+	url = https://gitlab.com/ddnet-rs/twgpu.git

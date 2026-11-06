@@ -1,0 +1,116 @@
+diff --git a/twgpu-tools/src/bin/twgpu-benchmark.rs b/twgpu-tools/src/bin/twgpu-benchmark.rs
+index 99b3db4..a38c636 100644
+--- a/twgpu-tools/src/bin/twgpu-benchmark.rs
++++ b/twgpu-tools/src/bin/twgpu-benchmark.rs
+@@ -92,7 +92,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
+         .iter()
+         .map(|c| c.camera_bind_group(&device))
+         .collect();
+-    let samplers = twgpu::textures::Samplers::new(&device);
++    let samplers = twgpu::textures::Samplers::new(&device, true);
+     let textures = twgpu::sprites::SpriteTextures::new(samplers, device.clone(), queue.clone());
+ 
+     // Create and fill sprite cache
+diff --git a/twgpu-tools/src/bin/twgpu-demo-viewer.rs b/twgpu-tools/src/bin/twgpu-demo-viewer.rs
+index cc10dde..79b2380 100644
+--- a/twgpu-tools/src/bin/twgpu-demo-viewer.rs
++++ b/twgpu-tools/src/bin/twgpu-demo-viewer.rs
+@@ -82,7 +82,7 @@ fn main() -> Result<(), Box<dyn Error>> {
+         .block_on()?;
+ 
+     println!("Uploading data to GPU");
+-    let samplers = Samplers::new(&device);
++    let samplers = Samplers::new(&device, true);
+     let mut camera = Camera::new(1.);
+     let gpu_camera = Arc::new(GpuCamera::upload(&camera, &device));
+     let camera_bind_group = gpu_camera.camera_bind_group(&device);
+diff --git a/twgpu-tools/src/bin/twgpu-encode-demo.rs b/twgpu-tools/src/bin/twgpu-encode-demo.rs
+index 1583f9f..0647287 100644
+--- a/twgpu-tools/src/bin/twgpu-encode-demo.rs
++++ b/twgpu-tools/src/bin/twgpu-encode-demo.rs
+@@ -242,7 +242,7 @@ impl SharedGraphics {
+         let map_static = Arc::new(GpuMapStatic::new(FORMAT, &device));
+         let map_data_static =
+             Arc::new(GpuMapDataStatic::upload(&shared.twmap_map, &device, &queue));
+-        let samplers = Samplers::new(&device);
++        let samplers = Samplers::new(&device, true);
+         let blit = Arc::new(Blit::new(device.clone()));
+         Ok(Self {
+             shared,
+diff --git a/twgpu-tools/src/bin/twgpu-map-inspect.rs b/twgpu-tools/src/bin/twgpu-map-inspect.rs
+index fcd6130..32dada7 100644
+--- a/twgpu-tools/src/bin/twgpu-map-inspect.rs
++++ b/twgpu-tools/src/bin/twgpu-map-inspect.rs
+@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn Error>> {
+ 
+     let mut camera = Camera::new(1.);
+     let gpu_camera = Arc::new(GpuCamera::upload(&camera, &device));
+-    let samplers = Arc::new(Samplers::new(&device));
++    let samplers = Arc::new(Samplers::new(&device, true));
+     let map_static = Arc::new(GpuMapStatic::new(FORMAT, &device));
+ 
+     let (map_tx, map_rx) = sync::mpsc::channel();
+diff --git a/twgpu-tools/src/bin/twgpu-map-photography.rs b/twgpu-tools/src/bin/twgpu-map-photography.rs
+index e037098..fd5201a 100644
+--- a/twgpu-tools/src/bin/twgpu-map-photography.rs
++++ b/twgpu-tools/src/bin/twgpu-map-photography.rs
+@@ -90,7 +90,7 @@ fn main() -> Result<(), Box<dyn Error>> {
+     println!("Uploading data to GPU");
+     let mut camera = Camera::new(1.);
+     let gpu_camera = GpuCamera::upload(&camera, &device);
+-    let samplers = Samplers::new(&device);
++    let samplers = Samplers::new(&device, true);
+     let map_static = GpuMapStatic::new(FORMAT, &device);
+     let map_data_static = GpuMapDataStatic::upload(&map, &device, &queue);
+     let map_data_dyn = GpuMapDataDyn::upload(&map, &device);
+diff --git a/twgpu-web/src/twgpu.rs b/twgpu-web/src/twgpu.rs
+index b1cfda3..b24af7e 100644
+--- a/twgpu-web/src/twgpu.rs
++++ b/twgpu-web/src/twgpu.rs
+@@ -33,6 +33,7 @@ impl TwGpu {
+     pub async fn init(
+         backend: Option<String>,
+         canvas: Option<web_sys::HtmlCanvasElement>,
++        mipmaps: Option<bool>,
+     ) -> Result<Self, JsError> {
+         std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+         console_log::init().expect("Could not initialize logger");
+@@ -90,7 +91,7 @@ impl TwGpu {
+             surface.set_device(device.clone());
+         }
+ 
+-        let samplers = twgpu::textures::Samplers::new(&device);
++        let samplers = twgpu::textures::Samplers::new(&device, mipmaps.unwrap_or(true));
+         let map_static = twgpu::map::GpuMapStatic::new(FORMAT, &device);
+         let sprite_textures =
+             twgpu::sprites::SpriteTextures::new(samplers.clone(), device.clone(), queue.clone());
+diff --git a/twgpu/src/textures/samplers.rs b/twgpu/src/textures/samplers.rs
+index 8536cc0..1f2b6dc 100644
+--- a/twgpu/src/textures/samplers.rs
++++ b/twgpu/src/textures/samplers.rs
+@@ -38,13 +38,24 @@ impl Samplers {
+         }
+     }
+ 
+-    pub fn new(device: &Device) -> Self {
++    /// `mipmaps: false` clamps sampling to mip level 0, for devices where the mip
++    /// chain cannot be used at all.
++    pub fn new(device: &Device, mipmaps: bool) -> Self {
+         let settings = SamplerDescriptor {
+             mag_filter: FilterMode::Linear,
+             min_filter: FilterMode::Linear,
+             mipmap_filter: wgpu::MipmapFilterMode::Linear,
+             ..SamplerDescriptor::default()
+         };
++        let settings = if mipmaps {
++            settings
++        } else {
++            SamplerDescriptor {
++                mipmap_filter: wgpu::MipmapFilterMode::Nearest,
++                lod_max_clamp: 0.0,
++                ..settings.clone()
++            }
++        };
+         Self {
+             clamp_to_edge: device.create_sampler(&SamplerDescriptor {
+                 label: Some("Clamp-To-Edge"),

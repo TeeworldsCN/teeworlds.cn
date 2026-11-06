@@ -14,6 +14,7 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import { secondsToDateHM } from '$lib/date';
 	import Modal from '$lib/components/Modal.svelte';
+	import MapPreview from '$lib/components/mappreview/MapPreview.svelte';
 	import Fa from 'svelte-fa';
 	import { faMapLocation } from '@fortawesome/free-solid-svg-icons';
 
@@ -476,15 +477,8 @@
 
 <Modal bind:show={showMapPreviewModal}>
 	<div
-		class="h-[calc(100vh-5rem)] w-[calc(100vw-3rem)] rounded-l-lg rounded-br-lg bg-slate-700 p-1 shadow-md sm:w-[calc(100vw-5rem)]"
+		class="h-[calc(100svh-4rem)] max-h-[calc(100svh-4rem)] w-[calc(100vw-2rem)] overflow-hidden rounded-l-lg rounded-br-lg bg-slate-700 p-1 shadow-md sm:w-[calc(100vw-5rem)]"
 	>
-		{#if showMapPreviewModal && previewMapName}
-			<iframe
-				src={`https://teeworlds.cn/ddnet/mappreview/?url=map/${encodeURIComponent(previewMapName)}.map`}
-				title="Map Preview"
-				class="h-full w-full rounded border-0 bg-black"
-				loading="lazy"
-			></iframe>
-		{/if}
+		<MapPreview map={showMapPreviewModal ? previewMapName : null} />
 	</div>
 </Modal>
