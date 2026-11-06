@@ -318,6 +318,25 @@
 	 * - 采样 mip level > 0 在部分设备的 WebGL 上取不到颜色(缩小后贴图整片消失),
 	 *   只有确认走 WebGPU 才启用 mip。`?backend=` / `?mips=` 可以强制覆盖。
 	 */
+	const BACKEND_STORAGE_KEY = 'ddnet:mappreview:backend';
+
+	/** 试过 WebGPU 不行的浏览器记下来, 下次直接走 WebGL(免得每次都要等超时) */
+	const rememberBackend = (backend: 'webgl') => {
+		try {
+			window.localStorage.setItem(BACKEND_STORAGE_KEY, backend);
+		} catch {
+			// 隐私模式就算了
+		}
+	};
+
+	const rememberedBackend = () => {
+		try {
+			return window.localStorage.getItem(BACKEND_STORAGE_KEY);
+		} catch {
+			return null;
+		}
+	};
+
 	const planGraphics = async (): Promise<{
 		backend: 'webgpu' | 'webgl';
 		mipmaps: boolean;
@@ -328,6 +347,9 @@
 			backend,
 			mipmaps: forcedMips === '1' ? true : forcedMips === '0' ? false : backend === 'webgpu'
 		});
+
+		// 之前这台上 WebGPU 翻过车, 就别再试了
+		if (!forcedBackend && rememberedBackend() === 'webgl') return plan('webgl');
 
 		if (forcedBackend !== 'webgl') {
 			type GpuAdapter = { requestDevice(): Promise<unknown> };
@@ -451,22 +473,43 @@
 			}
 
 			statusText = '加载渲染引擎…';
-			const loaded = await loadFreshModule();
-			module = loaded;
+			module = await loadFreshModule();
 
 			statusText = '初始化图形设备…';
 			const rect = await waitForSize();
 			aspect = rect.width / rect.height;
-			const canvas = createCanvas();
-			canvasEl = canvas;
-			// canvas 必须在 init 时就有尺寸:WebGL 后端要靠它建 context 才能找到 adapter
-			gpu = await withTimeout(
-				new loaded.TwGpu(plan.backend, canvas, plan.mipmaps),
-				12000,
-				'创建图形设备失败(这个浏览器可能不支持 WebGL2 / WebGPU,试试用系统浏览器打开)'
-			);
-			surface = gpu.surface() ?? gpu.create_surface(canvas);
-			camera = new loaded.TwCamera(aspect);
+
+			/** 每次都开新 canvas:上一次尝试可能已经在旧 canvas 上建了 webgpu context */
+			const startGpu = (engine: MpModule, backend: 'webgpu' | 'webgl', mipmaps: boolean) => {
+				if (canvasEl) {
+					destroyCanvas(canvasEl);
+					canvasEl = null;
+				}
+				const canvas = createCanvas();
+				canvasEl = canvas;
+				return withTimeout(
+					new engine.TwGpu(backend, canvas, mipmaps),
+					backend === 'webgpu' ? 6000 : 12000,
+					'创建图形设备失败(这个浏览器可能不支持 WebGL2 / WebGPU,试试用系统浏览器打开)'
+				);
+			};
+
+			let backend = plan.backend;
+			try {
+				gpu = await startGpu(module, backend, plan.mipmaps);
+			} catch (e) {
+				if (backend !== 'webgpu') throw e;
+				// 有些内置浏览器的 WebGPU 只“能探测”不能真用(比如 QQ/X5), 退回 WebGL 并记下来
+				console.warn('WebGPU 初始化失败,改用 WebGL', e);
+				backend = 'webgl';
+				rememberBackend('webgl');
+				// 同一个 wasm 实例上不能再 init 一次(全局 logger 会 panic), 换一份新实例
+				module = await loadFreshModule();
+				gpu = await startGpu(module, 'webgl', debugParam('mips') === '1');
+			}
+			surface = gpu.surface() ?? gpu.create_surface(canvasEl!);
+			const canvas = canvasEl!;
+			camera = new module.TwCamera(aspect);
 			canvas.width = canvas.clientWidth || 1;
 			resize();
 
