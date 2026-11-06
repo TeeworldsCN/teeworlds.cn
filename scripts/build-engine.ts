@@ -10,13 +10,22 @@
  *   sounds/sounds.json, sounds/*.opus       音效(从 ddnet 的 .wv 转 opus)
  *   version.json                            前端拼 ?v= 用
  *
- * 依赖:rust(wasm32-unknown-unknown)、wasm-pack、unzip、ffmpeg
+ * 依赖:rust(wasm32-unknown-unknown)、wasm-pack、unzip
+ * 声音包(sounds.zip)已经提交在仓库里,平时不需要 ffmpeg;要重转才加 `--sounds`。
  *
  * 用法:
  *   bun scripts/build-engine.ts           # 已有产物且源码/上游没动过就跳过
  *   bun scripts/build-engine.ts --force   # 强制重编
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, copyFileSync } from 'fs';
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+	copyFileSync
+} from 'fs';
 import { createHash } from 'crypto';
 import path from 'path';
 
@@ -30,6 +39,8 @@ const STAMP = path.join(OUT, 'version.json');
 const PATCHES = [path.join(ROOT, 'patches/twgpu-web-fixes.patch')];
 
 const force = process.argv.includes('--force');
+/** 重新从 ddnet 的 .wv 转码声音(需要 ffmpeg + 网络),平时用仓库里的 sounds.zip */
+const rebuildSounds = process.argv.includes('--sounds');
 
 const DDNET_DATA = 'https://raw.githubusercontent.com/ddnet/ddnet/master/data';
 const DDNET_CONTENT = 'https://raw.githubusercontent.com/ddnet/ddnet/master/datasrc/content.py';
@@ -97,6 +108,15 @@ const USED_SOUNDS = new Set([
  * VBR + 最高压缩 effort,40k 单声道对这类短音效够用;
  * 压到 32k 体积只省 30KB,但打击感会糊。
  */
+/**
+ * 打包好的声音包。**提交在仓库里**:
+ * - ddnet 的音频数据好几年不动一次,每次部署都下载 131 个 .wv 再 ffmpeg 转一遍太浪费
+ *   (CI 里光是装 ffmpeg 就要几十秒),而且哪天上游改了包名就整条部署挂掉
+ * - 产物 213 KiB,直接进库最省事
+ * 要重新生成:`bun run engine --sounds`
+ */
+const SOUNDS_ZIP = path.join(OUT, 'sounds', 'sounds.zip');
+
 const OPUS_ARGS = [
 	'-c:a',
 	'libopus',
@@ -203,11 +223,6 @@ const checkSoundTable = (sets: { name: string }[]) => {
 };
 
 /**
- * 每段前后各垫 60ms 静音再拼接。
- * Opus 是有状态的变换编码,直接在样本级切段会让上一段的尾巴/下一段的头漏进来
- * (听感上就是“别的音效混进来了”);垫静音之后,切片位置仍然精确,编码的糊边落在静音里。
- */
-/**
  * 声音文件是 .wv(wavpack),浏览器不认,全部转成 Opus(浏览器能用的最新编码)。
  *
  * 打包成一个 zip(STORE,不二次压缩)一次请求拿到,但里面**每个音效都是独立的 opus 流**:
@@ -216,7 +231,16 @@ const checkSoundTable = (sets: { name: string }[]) => {
  * 不压缩(zip method 0)是因为 opus 已经压过了,再 deflate 只是白花 CPU;
  * 前端解 zip 也只要切字节,几十行就够。
  */
-const buildSounds = async (sets: { name: string; files: string[] }[]) => {
+const buildSounds = async (sets: { name: string; files: string[] }[] | null) => {
+	// 仓库里已经有一份打包好的:直接用它。音频数据好几年不变,
+	// 没必要每次构建都下载 131 个 .wv 再转一遍(CI 里连 ffmpeg 都不用装)。
+	if (!rebuildSounds && existsSync(SOUNDS_ZIP)) {
+		const size = statSync(SOUNDS_ZIP).size;
+		log(`声音:用仓库里的 sounds.zip(${(size / 1024).toFixed(0)} KiB),重转加 --sounds`);
+		return;
+	}
+
+	if (!sets) throw new Error('要重转声音,但没读到 ddnet 的声音表');
 	if (!hasCommand('ffmpeg')) throw new Error('缺少 ffmpeg(声音要转 opus)');
 	const outDir = path.join(OUT, 'sounds');
 	const workDir = path.join(CACHE, 'opus');
@@ -377,21 +401,20 @@ for (const file of [
 }
 const crateFingerprint = crateHash.digest('hex').slice(0, 16);
 
-const soundSets = await readSoundTable();
-checkSoundTable(soundSets);
-const soundFingerprint = createHash('sha256')
-	.update(
-		JSON.stringify({
-			encoder: OPUS_ARGS,
-			sets: soundSets
-				.filter((s) => USED_SOUNDS.has(s.name))
-				.map((s) => `${s.name}:${s.files.join(',')}`)
-		})
-	)
-	.digest('hex')
-	.slice(0, 16);
-/** 贴图 + mapres + 补丁 + 音效表的总指纹:变了就得重下资源,version 也得跟着变 */
-const assets = assetsFingerprint(soundFingerprint);
+// 只有要重转(或仓库里没有包)时才去读 ddnet 的声音表 —— 平时这一步连网络都不碰
+const needsSounds = rebuildSounds || !existsSync(SOUNDS_ZIP);
+const soundSets = needsSounds ? await readSoundTable() : null;
+if (soundSets) checkSoundTable(soundSets);
+
+// 声音指纹就是这个包本身的哈希:包没变,前端就不需要重新下载。
+// 要算两次 —— `--sounds` 重转之后包会变,版本号得用最终那个文件算。
+const hashSounds = () =>
+	existsSync(SOUNDS_ZIP)
+		? createHash('sha256').update(readFileSync(SOUNDS_ZIP)).digest('hex').slice(0, 16)
+		: 'missing';
+
+/** 贴图 + mapres + 补丁 + 读音效的总指纹:变了就得重下资源,version 也得跟着变 */
+const assets = assetsFingerprint(hashSounds());
 
 const readStamp = () => {
 	try {
@@ -408,6 +431,7 @@ const readStamp = () => {
 const stamp = readStamp();
 const upToDate =
 	!force &&
+	!rebuildSounds &&
 	stamp?.commit === commit &&
 	stamp?.crate === crateFingerprint &&
 	stamp?.assets === assets &&
@@ -473,19 +497,6 @@ for (const file of ['twengine.js', 'twengine_bg.wasm']) {
 const wasmBytes = readFileSync(path.join(OUT, 'pkg/twengine_bg.wasm'));
 log(`wasm:${(wasmBytes.length / 1024 / 1024).toFixed(2)} MiB`);
 
-// 前端拿这个版本号给 pkg/assets/sounds 都加 ?v=,所以它必须**覆盖所有会被缓存的东西**:
-//   commit      子模块(twgpu)的提交
-//   crate       我们自己的 crate 源码指纹
-//   assets      贴图 + mapres + 补丁 + 音效表的指纹(assetsFingerprint 里已经含声音)
-//   wasm        wasm 二进制的哈希(兜底:源码指纹漏了什么也不会漏它)
-// 少算任何一项,对应文件的 URL 就不会变,浏览器那边就会一直吃旧缓存。
-const version = `${commit.slice(0, 8)}-${crateFingerprint.slice(0, 8)}-${assets.slice(0, 8)}-${createHash(
-	'sha256'
-)
-	.update(wasmBytes)
-	.digest('hex')
-	.slice(0, 8)}`;
-
 // 3. 贴图 / 字体
 mkdirSync(path.join(OUT, 'assets'), { recursive: true });
 for (const texture of TEXTURES) {
@@ -508,6 +519,23 @@ for (const version of MAPRES) {
 // 5. 声音
 await buildSounds(soundSets);
 
+// 声音包可能刚被重转过(哈希变了),下面的指纹/版本号都用**最终**的文件算
+const soundFingerprint = hashSounds();
+const assetsFinal = assetsFingerprint(soundFingerprint);
+
+// 前端拿这个版本号给 pkg/assets/sounds 都加 ?v=,所以它必须**覆盖所有会被缓存的东西**:
+//   commit      子模块(twgpu)的提交
+//   crate       我们自己的 crate 源码指纹
+//   assets      贴图 + mapres + 补丁 + 声音包的指纹
+//   wasm        wasm 二进制的哈希(兜底:源码指纹漏了什么也不会漏它)
+// 少算任何一项,对应文件的 URL 就不会变,浏览器那边就会一直吃旧缓存。
+const version = `${commit.slice(0, 8)}-${crateFingerprint.slice(0, 8)}-${assetsFinal.slice(0, 8)}-${createHash(
+	'sha256'
+)
+	.update(wasmBytes)
+	.digest('hex')
+	.slice(0, 8)}`;
+
 // 产物好了就把 submodule 还原成上游原样
 await sh(['git', 'checkout', '--', '.'], { cwd: SUBMODULE });
 
@@ -518,7 +546,7 @@ writeFileSync(
 			version,
 			commit,
 			crate: crateFingerprint,
-			assets,
+			assets: assetsFinal,
 			sounds: soundFingerprint,
 			built: new Date().toISOString()
 		},
