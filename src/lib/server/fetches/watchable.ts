@@ -51,6 +51,14 @@ const createWatchable = () =>
 				if (raw.status !== 'ok' || typeof raw.demo !== 'string' || !raw.demo) continue;
 				if (typeof raw.map !== 'string' || typeof raw.uuid !== 'string') continue;
 
+				// `kept` 是上游保留下来的「名次已经不存在」的 demo:成绩因作弊等被删,
+				// 或者玩家改名后旧名字不再持有这条名次,本地 demo 文件还会留着,清单里就标
+				// `kept: true`。例子:Kobra 的两条 176.96 团队第一名([D] 秋落 / [D] пендос)
+				// 在 watchable.jsonl 里是 kept,但地图详情页的官方名次里根本没有它们。
+				// 这些行只会在 bot/播放器里给出一个指向「已删除记录」的链接,建索引时直接丢掉;
+				// 顺带把 3.2 MB 的清单缩掉约 18%。
+				if (raw.kept === true) continue;
+
 				const entry: WatchableEntry = {
 					uuid: raw.uuid,
 					map: raw.map,
@@ -76,7 +84,8 @@ const createWatchable = () =>
 			// JSONL 全量 3.2 MB,每张图都要看,不缓存到磁盘就等于每次冷启动再拉一遍。
 			// 上游每分钟级更新,HEAD 的请求频率控制在这里。
 			minQueryInterval: 300,
-			version: 1
+			// v2: 建索引时过滤掉 `kept` 的历史 demo,旧缓存要重新 parse
+			version: 2
 		}
 	);
 
