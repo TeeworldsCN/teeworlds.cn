@@ -90,6 +90,7 @@
 		difficulty[0] = 0;
 		difficulty[1] = 5;
 		hasTiles.clear();
+		filterTiles = false;
 	}
 
 	const createHashQuery = () => {
@@ -102,8 +103,10 @@
 			else params.set('diff', `${difficulty[0]}-${difficulty[1]}`);
 		}
 		if (currentPage > 1) params.set('page', currentPage.toString());
-		if (filterTiles && hasTiles.size > 0) {
-			params.set('tile', Array.from(hasTiles).join('!'));
+		// 菜单打开本身也写进 hash(空值 tile=):不然点开菜单后 effect 把 hash 刷成
+		// 不带 tile 的,hashchange 又会把 filterTiles 置回 false,菜单根本打不开。
+		if (filterTiles) {
+			params.set('tile', hasTiles.size > 0 ? Array.from(hasTiles).join('!') : '');
 		}
 		const result = `#${params.toString()}`;
 		if (result.length == 1) return '';
@@ -132,12 +135,16 @@
 		type = params.get('type') || 'all';
 		filterTiles = params.has('tile');
 		if (filterTiles) {
-			const tiles = params.get('tile')?.split('!');
-			if (tiles) {
-				for (const tile of tiles) {
-					hasTiles.add(tile);
-				}
+			// tile= 空值表示「菜单开着,但还没选图块」
+			const wanted = new Set((params.get('tile') ?? '').split('!').filter(Boolean));
+			for (const tile of hasTiles) {
+				if (!wanted.has(tile)) hasTiles.delete(tile);
 			}
+			for (const tile of wanted) {
+				if (!hasTiles.has(tile)) hasTiles.add(tile);
+			}
+		} else if (hasTiles.size > 0) {
+			hasTiles.clear();
 		}
 	};
 
@@ -156,7 +163,7 @@
 		if (!filterTiles) return true;
 		if (!tiles) return true;
 		if (tiles.length == 0) return true;
-		return tiles.every((t) => map.tiles.includes(t));
+		return tiles.every((t) => (map.tiles ?? []).includes(t));
 	};
 
 	$effect(() => {
@@ -209,7 +216,7 @@
 			error = (e as Error).message;
 		}
 
-		allTiles = Array.from(new Set(maps.flatMap((map) => map.tiles))).sort();
+		allTiles = Array.from(new Set(maps.flatMap((map) => map.tiles ?? []))).sort();
 	};
 
 	onMount(loadMaps);
@@ -460,7 +467,7 @@
 						</button>
 					</p>
 				</div>
-				<MapTiles tiles={map.tiles} class="mt-1" />
+				<MapTiles tiles={map.tiles ?? []} class="mt-1" />
 			</div>
 		{/each}
 		{#each Array(Math.max(12 - paginatedMaps.length, 0)) as _}
