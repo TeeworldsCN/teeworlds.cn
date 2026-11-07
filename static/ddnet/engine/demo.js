@@ -69,7 +69,13 @@ const DYN = {
 	deadzone: 300,
 	followFactor: 60,
 	/** OffsetAmount 的上限是 350 * zoom(客户端那行) */
-	maxOffset: 350
+	maxOffset: 350,
+	/**
+	 * 偏移最多把被跟随的 tee 推到屏幕内这个比例的位置。
+	 * 客户端的 350*zoom 在 16:9 默认视野下约是半屏的 87%,再往外主视角 tee 就快出屏了;
+	 * 这里按实际视野再收一刀,保证 tee 始终留在画面里。
+	 */
+	safeScreenRatio: 0.6
 };
 /** (1 - smoothness/100) * 9.5 + 0.5 */
 const DYN_CAMERA_SPEED = (1 - DYN.smoothness / 100) * 9.5 + 0.5;
@@ -731,6 +737,11 @@ export async function mountDemoPlayer(host, options) {
 				let amount = Math.max(length - DYN.deadzone, 0) * (DYN.followFactor / 100);
 				// 客户端:OffsetAmount = min(OffsetAmount, 350 * zoom)
 				amount = Math.min(amount, DYN.maxOffset * camera.zoom);
+				// 再按实际视野收一刀:偏移越大 tee 离屏幕中心越远,取半屏高度(DDNet 单位)
+				// 的 safeScreenRatio 封顶,避免主视角 tee 被推出画面。
+				const [viewWidth, viewHeight] = visibleTiles();
+				const halfViewUnits = (Math.min(viewWidth, viewHeight) / 2) * 32;
+				amount = Math.min(amount, halfViewUnits * DYN.safeScreenRatio);
 				target = { x: (aim.x / length) * amount, y: (aim.y / length) * amount };
 			}
 
@@ -775,7 +786,9 @@ export async function mountDemoPlayer(host, options) {
 		const updateSpecCursor = (dt, snap) => {
 			// 团队视角照画:准星挂在被跟随的玩家身上,跟着他自己走。
 			// 死了的人没有瞄准点(player_aim 拿不到 tee 就返回 null)。
-			if (!showCursor || follow === null) {
+			// 被跟随的玩家自己按了暂停(Esc)时也不画,和 DDNet 的 UpdateSpectatorCursor 一致。
+			const owner = playersCache.find((p) => p.id === follow);
+			if (!showCursor || follow === null || owner?.paused) {
 				cursorSmooth.valid = false;
 				demo.hide_cursor();
 				return;

@@ -665,6 +665,8 @@ impl TwDemo {
                     "team": p.team,
                     "local": p.local,
                     "alive": p.tee.is_some(),
+                    // 玩家自己在 Esc 菜单里暂停时,旁观准星要隐藏(和 DDNet UpdateSpectatorCursor 一致)
+                    "paused": p.flags.contains(twsnap::flags::PlayerFlags::PAUSED),
                 })
             })
             .collect();
