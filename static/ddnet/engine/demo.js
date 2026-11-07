@@ -119,7 +119,7 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
  * 都不会把播放器搞坏。localStorage 本身在无痕模式 / 存满时可能直接抛异常,兜住。
  */
 const PREFS_KEY = 'tw-demo-prefs';
-const DEFAULT_PREFS = { dyncam: true, entities: false, names: true, cursor: true };
+const DEFAULT_PREFS = { dyncam: true, entities: false, names: true, cursor: true, perfMode: false };
 
 const readPrefs = () => {
 	const prefs = { ...DEFAULT_PREFS };
@@ -186,6 +186,8 @@ const ICONS = {
 	/* 实体层 */
 	layers:
 		'<path d="M12 3.8l8.2 4.3-8.2 4.3-8.2-4.3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3.8 12.2l8.2 4.3 8.2-4.3M3.8 16.1l8.2 4.3 8.2-4.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+	/* 性能模式:闪电 */
+	perf: '<path d="M13.4 3.2L5.6 13.1h4.6l-1.6 7.7 7.8-9.9h-4.6z" fill="currentColor"/>',
 	/* 播放速度:半圆表盘 + 指针 */
 	speed:
 		'<path d="M4.6 17.4a8.4 8.4 0 1 1 14.8 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 13.6l3.6-3.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="14.6" r="1.5"/>',
@@ -421,6 +423,8 @@ export async function mountDemoPlayer(host, options) {
 	const cursorRow = menuRow('cursor', '准星', '显示被跟随玩家的瞄准点');
 	// 实体层这行左边带箭头:点名字 = 进二级菜单挑样式(顺手打开实体层),点右边开关 = 单纯开关
 	const entitiesRow = menuRow('layers', '实体层', '实体层:点名字选图集风格', { submenu: true });
+	// 性能模式:强制 1x 渲染。只在 DPR > 1 的设备上有意义,别的设备直接不显示
+	const perfRow = menuRow('perf', '性能模式', '按 1x 分辨率渲染,高 DPI 屏幕上更省 GPU');
 
 	const styleBack = element('button', 'tw-menu-back');
 	styleBack.type = 'button';
@@ -435,7 +439,7 @@ export async function mountDemoPlayer(host, options) {
 		return row;
 	});
 	menuStyle.append(styleBack, ...styleRows);
-	menuMain.append(dyncamRow.row, entitiesRow.row, namesRow.row, cursorRow.row);
+	menuMain.append(dyncamRow.row, entitiesRow.row, perfRow.row, namesRow.row, cursorRow.row);
 	menu.append(menuMain, menuStyle);
 
 	const whoLabel = element('span', 'tw-who-label', '跟随');
@@ -534,11 +538,21 @@ export async function mountDemoPlayer(host, options) {
 		const camera = new module.TwCamera(1);
 		const surface = gpu.create_surface(canvas);
 
+		// 显示偏好要在这里读:下面的 resize 一创建就会跑一次,得先知道性能模式开没开
+		const prefs = readPrefs();
+		let perfMode = prefs.perfMode;
+		/** 性能模式只对 DPR > 1 的设备有意义,1x 屏幕直接不显示这一行 */
+		const syncPerfRow = () => {
+			perfRow.row.hidden = !((window.devicePixelRatio || 1) > 1);
+		};
+		syncPerfRow();
+
 		let aspect = 1;
 		const resize = () => {
 			const rect = root.getBoundingClientRect();
 			const realDpr = window.devicePixelRatio || 1;
-			const nextRender = Math.min(2, realDpr);
+			// 性能模式:强制 1x 渲染。手机上 DPR 3 的屏幕等于少画 9 倍的像素
+			const nextRender = perfMode ? 1 : Math.min(2, realDpr);
 			const width = Math.max(1, Math.round((rect.width || canvas.clientWidth) * nextRender));
 			const height = Math.max(1, Math.round((rect.height || canvas.clientHeight) * nextRender));
 			surface.resize(width, height);
@@ -550,12 +564,21 @@ export async function mountDemoPlayer(host, options) {
 		observer.observe(root);
 		// 把窗口拖到另一块不同 DPI 的屏幕上时 CSS 尺寸不变,ResizeObserver 不会触发,
 		// 得单独听一下 dpr 的变化
-		const dprQuery = window.matchMedia?.(`(resolution: ${window.devicePixelRatio}dppx)`);
+		// `matchMedia` 的 resolution 查询只匹配「当前那个 dpr」,变一次就得重新挂,
+		// 否则拖到别的屏上就只能响应第一次
+		let dprQuery = null;
 		const onDprChange = () => {
 			resize();
-			dprQuery?.removeEventListener?.('change', onDprChange);
+			// DPR 变了可能就不该显示性能模式那一行了(1x 屏幕上没有意义)
+			syncPerfRow();
+			watchDpr();
 		};
-		dprQuery?.addEventListener?.('change', onDprChange);
+		const watchDpr = () => {
+			dprQuery?.removeEventListener?.('change', onDprChange);
+			dprQuery = window.matchMedia?.(`(resolution: ${window.devicePixelRatio}dppx)`);
+			dprQuery?.addEventListener?.('change', onDprChange);
+		};
+		watchDpr();
 
 		// ---- 播放状态 ----
 		let playing = false;
@@ -708,8 +731,8 @@ export async function mountDemoPlayer(host, options) {
 			else camera.zoom += (zoom - camera.zoom) * (1 - Math.exp(-dt / MV.zoomTau));
 		};
 
-		// ---- 显示偏好(动态镜头 / 实体层 / 名字 / 准星),存 localStorage ----
-		const prefs = readPrefs();
+		// ---- 显示偏好(动态镜头 / 实体层 / 名字 / 准星 / 性能模式),存 localStorage ----
+		// (`prefs` 在 resize 之前就读过了,这里直接用)
 		/** 三个上拉浮层是否展开(显示选项 / 播放速度 / 跟随谁) */
 		let menuOpen = false;
 		let speedOpen = false;
@@ -727,6 +750,7 @@ export async function mountDemoPlayer(host, options) {
 			for (const [item, value] of [
 				[dyncamRow, showDyncam],
 				[entitiesRow, showEntities],
+				[perfRow, perfMode],
 				[namesRow, showNames],
 				[cursorRow, showCursor]
 			]) {
@@ -747,7 +771,8 @@ export async function mountDemoPlayer(host, options) {
 				dyncam: showDyncam,
 				entities: showEntities,
 				names: showNames,
-				cursor: showCursor
+				cursor: showCursor,
+				perfMode
 			});
 
 		/**
@@ -806,6 +831,14 @@ export async function mountDemoPlayer(host, options) {
 			savePrefs();
 			// 立刻刷新:关掉时给 wasm 一个空列表,打开时也不用等下一帧
 			updateNameplates();
+		};
+
+		/** 性能模式:改完立刻按新倍率重开 surface */
+		const setPerfMode = (value) => {
+			perfMode = value;
+			syncMenu();
+			savePrefs();
+			resize();
 		};
 
 		/** 准星开关(客户端 cl_spec_cursor 默认开着) */
@@ -1926,6 +1959,8 @@ export async function mountDemoPlayer(host, options) {
 		};
 		cursorRow.main.addEventListener('click', toggleCursorRow);
 		cursorRow.switch.addEventListener('click', toggleCursorRow);
+		perfRow.main.addEventListener('click', () => setPerfMode(!perfMode));
+		perfRow.switch.addEventListener('click', () => setPerfMode(!perfMode));
 		// 点别处关浮层。用 capture 阶段:先把浮层关了,点击本身的语义(开始播放/拖进度条)照旧
 		const onDocumentPointerDown = (event) => {
 			const outside = (button, panel) =>
@@ -2100,6 +2135,7 @@ export async function mountDemoPlayer(host, options) {
 		// 恢复上次的显示偏好。放在这里而不是控件初始化那里:名字牌 / 相机 / 地图这些
 		// 依赖的状态都是后面才建好的(`updateNameplates` 里要用 `visibleTiles`)。
 		setDyncamEnabled(prefs.dyncam);
+		syncPerfRow();
 		setEntitiesVisible(prefs.entities);
 		setNameplatesVisible(prefs.names);
 		setCursorVisible(prefs.cursor);
@@ -2200,6 +2236,7 @@ export async function mountDemoPlayer(host, options) {
 					},
 					/** 四个显示开关(名字/准星/动态镜头/实体层)的当前值 */
 					prefs: {
+						perfMode,
 						dyncam: showDyncam,
 						entities: showEntities,
 						entitiesStyle,
