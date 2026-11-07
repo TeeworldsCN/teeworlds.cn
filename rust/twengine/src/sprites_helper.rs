@@ -12,6 +12,8 @@ pub struct CtxRenderer {
     particle_ranges: [std::ops::Range<usize>; 4],
     /// 准星那一格(总是画在最上层,所以单独一段)
     cursor_range: std::ops::Range<usize>,
+    /// 自己拼的世界精灵(地图激光的光束/光头、血包),和玩家同一批画
+    world_range: std::ops::Range<usize>,
     sprites_static: twgpu::sprites::SpritesStatic,
     cache: twgpu::sprites::SpriteCache,
 }
@@ -27,6 +29,7 @@ impl CtxRenderer {
             sprite_range: 0..0,
             particle_ranges: [(); 4].map(|_| 0..0),
             cursor_range: 0..0,
+            world_range: 0..0,
             sprites_static,
             cache: twgpu::sprites::SpriteCache::default(),
         }
@@ -37,6 +40,7 @@ impl CtxRenderer {
         ctx: &mut twgpu::sprites::SpriteRenderContext,
         new_snap: bool,
         cursor: Option<CursorSprite>,
+        world: &[WorldSprite],
     ) {
         fn drain_sprites<T: twgpu::sprites::SpriteGenerator>(
             cache: &mut twgpu::sprites::SpriteCache,
@@ -52,6 +56,12 @@ impl CtxRenderer {
             ctx.process_events();
         }
         self.cache.clear();
+        // 世界精灵先入队:服务端/客户端里道具都在玩家之前画
+        let start = self.cache.len();
+        for sprite in world {
+            self.cache.add_sprite(&sprite.quad(), sprite.texture);
+        }
+        self.world_range = start..self.cache.len();
         self.sprite_range = drain_sprites(&mut self.cache, &mut ctx.snap_sprite_generator());
         self.particle_ranges = twgpu::sprites::ParticleGroup::ALL
             .map(|group| drain_sprites(&mut self.cache, &mut ctx.particles.get_group(group)));
@@ -74,6 +84,14 @@ impl CtxRenderer {
     ) {
         self.sprites_static.render_range(
             self.particle_ranges[twgpu::sprites::ParticleGroup::Trails].clone(),
+            camera_bind_group,
+            &self.buffer,
+            self.cache.textures(),
+            textures,
+            render_pass,
+        );
+        self.sprites_static.render_range(
+            self.world_range.clone(),
             camera_bind_group,
             &self.buffer,
             self.cache.textures(),
@@ -129,6 +147,38 @@ impl CtxRenderer {
     }
 }
 
+/// 一份「自己拼」的精灵:世界中点(tile)+ 尺寸(tile)+ 旋转 + 颜色 + 贴图。
+/// `size.x` 是沿旋转方向的长度,`size.y` 是宽度(光束就是靠这个拼的)。
+pub struct WorldSprite {
+    pub center: twgpu::vek::Vec2<f32>,
+    pub size: twgpu::vek::Vec2<f32>,
+    pub rotation: f32,
+    pub color: twgpu::vek::Rgba<u8>,
+    pub texture: twgpu::sprites::TextureToken,
+}
+
+impl WorldSprite {
+    fn quad(&self) -> [twgpu::sprites::SpriteVertex; 4] {
+        use twgpu::shared::{Vertex, QUAD};
+        let (sin, cos) = self.rotation.sin_cos();
+        let half = self.size / 2.;
+        QUAD.map(|corner| {
+            let direction = corner.direction();
+            let rotated = twgpu::vek::Vec2::new(
+                direction.x * cos - direction.y * sin,
+                direction.x * sin + direction.y * cos,
+            );
+            twgpu::sprites::SpriteVertex {
+                vertex: Vertex {
+                    position: self.center + rotated * half,
+                    uv: corner.uv(),
+                },
+                color: self.color,
+            }
+        })
+    }
+}
+
 /// 要画的一个准星:世界中点(tile)+ 边长(tile)+ 贴图 + 透明度
 pub struct CursorSprite {
     /// 世界中点,单位是 tile
@@ -153,9 +203,9 @@ impl CursorSprite {
     }
 }
 
+/// 没有 demo 时的渲染上下文:地图预览用,精灵来自「空服务器」那份 snap(`ServerWorld`)。
+/// 那份额外的 `twsnap::Snap` 不在这里持有,由调用方传进来,省掉每帧一次 clone。
 pub struct SimpleCtx {
-    pub from_snap: twsnap::Snap,
-    pub to_snap: twsnap::Snap,
     map: Arc<twgame::Map>,
     particles: twgpu::sprites::Particles,
     rng: twgpu::shared::Rng,
@@ -164,8 +214,6 @@ pub struct SimpleCtx {
 impl SimpleCtx {
     pub(crate) fn new(map: Arc<twgame::Map>) -> Self {
         Self {
-            from_snap: twsnap::Snap::default(),
-            to_snap: twsnap::Snap::default(),
             map,
             particles: twgpu::sprites::Particles::new(0.),
             rng: twgpu::shared::Rng::new(21),
@@ -176,11 +224,12 @@ impl SimpleCtx {
         &'a mut self,
         textures: &'a twgpu::sprites::SpriteTextures,
         clock: &'a twgpu::shared::Clock,
+        snap: &'a twsnap::Snap,
     ) -> twgpu::sprites::SpriteRenderContext<'a> {
         twgpu::sprites::SpriteRenderContext {
             clock,
-            from_snap: &self.from_snap,
-            to_snap: &self.to_snap,
+            from_snap: snap,
+            to_snap: snap,
             map: &self.map,
             particles: &mut self.particles,
             textures,

@@ -20,6 +20,7 @@
 import {
 	existsSync,
 	mkdirSync,
+	readdirSync,
 	readFileSync,
 	rmSync,
 	statSync,
@@ -405,18 +406,16 @@ if (!existsSync(path.join(CRATE, 'Cargo.toml'))) {
 }
 
 const commit = (await sh(['git', 'rev-parse', 'HEAD'], { cwd: SUBMODULE })).out;
-// crate 自己也参与指纹:改了 rust 代码就得重编
+// crate 自己也参与指纹:改了 rust 代码就得重编。
+// 列目录而不是写死模块名,新加的 src/*.rs 才不会漏掉。
 const crateHash = createHash('sha256');
-for (const file of [
-	'Cargo.toml',
-	'Cargo.lock',
-	...['lib', 'camera', 'demo', 'gpu', 'map', 'nameplate', 'sound', 'sprites_helper', 'surface'].map(
-		(m) => `src/${m}.rs`
-	),
-	// 名字牌的 WGSL 也是编译产物的一部分
-	'src/nameplate.wgsl',
-	'src/nameplate_sdf.wgsl'
-]) {
+const crateSources = readdirSync(path.join(CRATE, 'src'))
+	.filter((file) => file.endsWith('.rs'))
+	.sort()
+	.map((file) => `src/${file}`);
+// 名字牌的 WGSL 也是编译产物的一部分
+const shaderSources = ['src/nameplate.wgsl', 'src/nameplate_sdf.wgsl'];
+for (const file of ['Cargo.toml', 'Cargo.lock', ...crateSources, ...shaderSources]) {
 	crateHash.update(file).update(readFileSync(path.join(CRATE, file)));
 }
 const crateFingerprint = crateHash.digest('hex').slice(0, 16);
