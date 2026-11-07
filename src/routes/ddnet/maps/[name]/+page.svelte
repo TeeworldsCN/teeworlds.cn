@@ -5,7 +5,7 @@
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import { secondsToDate, secondsToDateHM } from '$lib/date';
-	import { KNOWN_REGIONS, mapType, numberToStars } from '$lib/ddnet/helpers';
+	import { KNOWN_REGIONS, mapType, numberToStars, watchLink } from '$lib/ddnet/helpers';
 	import { secondsToChineseTime, secondsToTime } from '$lib/helpers';
 	import { encodeAsciiURIComponent } from '$lib/link.js';
 	import { share } from '$lib/share';
@@ -176,7 +176,7 @@
 						<span class="ml-1 inline-block w-5 text-center align-middle">
 							{#if rank.demo}
 								<a
-									href={`/ddnet/watch?uuid=${rank.demo.uuid}&time=${rank.demo.time}`}
+									href={watchLink(rank.demo)}
 									class="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-600/60 text-slate-400 transition-colors hover:bg-orange-500 hover:text-white"
 									use:tippy={{ content: `观看过图回放（${secondsToTime(rank.time)}）` }}
 									aria-label={`观看 ${rank.players.join(' & ')} 用时 ${secondsToTime(rank.time)} 的回放`}
@@ -220,7 +220,7 @@
 					<span class="ml-1 inline-block w-5 text-center align-middle">
 						{#if rank.demo}
 							<a
-								href={`/ddnet/watch?uuid=${rank.demo.uuid}&time=${rank.demo.time}`}
+								href={watchLink({ ...rank.demo, names: [rank.player] })}
 								class="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-600/60 text-slate-400 transition-colors hover:bg-orange-500 hover:text-white"
 								use:tippy={{ content: `观看过图回放（${secondsToTime(rank.time)}）` }}
 								aria-label={`观看 ${rank.player} 用时 ${secondsToTime(rank.time)} 的回放`}

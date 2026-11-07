@@ -221,7 +221,8 @@ export const GET: RequestHandler = async ({ params, setHeaders }) => {
 		top_ranks.map(async (record) => {
 			try {
 				// 先按这一档的用时对,对不上 findPlayerDemo 会退到"他在这张图最快的那条"
-				record.demo = await findPlayerDemo(record.map, player.player, [record.time]);
+				// 名次是团队的就取 team 视角,个人的就取 solo 视角(镜头跟着本人)
+				record.demo = await findPlayerDemo(record.map, player.player, [record.time], record.kind);
 			} catch {
 				record.demo = null;
 			}

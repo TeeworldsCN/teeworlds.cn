@@ -4,6 +4,7 @@
 	 *
 	 *   /ddnet/watch?uuid=<游戏 uuid>            从 runs/<uuid>.jsonl 里找这一档
 	 *   /ddnet/watch?uuid=<uuid>&time=372.98     同一场回放里有多个名次时用来选
+	 *   ...&kind=solo&player=<玩家名>             同一场完赛有多条视角时挑人(个人记录默认关团队视角)
 	 *
 	 * 注意 `time` 是这一档成绩的完赛时间(官方页面也只用它画终点标记和标题),不是播放起点。
 	 *   /ddnet/watch?demo=<runs 里的相对路径>   直接给 demo(相对 /ddnet/watch/api/)
@@ -28,6 +29,8 @@
 				title?: string;
 				focus?: number;
 				finishers?: number[];
+				/** 是否默认开启团队视角(个人记录传 false) */
+				team?: boolean;
 				/** 皮肤名 → 图片 URL(null = 皮肤库里没有,用 default 渲染) */
 				resolveSkin?: (name: string) => Promise<string | null>;
 				/** QQ / 微信内置浏览器:下载和全屏按钮直接禁用 */
@@ -47,6 +50,8 @@
 		time: string;
 		names?: string[];
 		finishers?: number[];
+		/** 'team' | 'solo' —— 同一次完赛 team 一条 + 每个完成者各一条 solo */
+		kind?: string;
 		demo?: string;
 		rev?: string;
 		cid?: number;
@@ -82,17 +87,30 @@
 			let title = '';
 			let focus;
 			let finishers;
+			let team = true;
 
-			if (params.get('demo')) {
-				demoUrl = `${API}/${params.get('demo')}${params.get('v') ? `?v=${params.get('v')}` : ''}`;
-				title = params.get('name') ?? '';
-			} else if (params.get('uuid')) {
-				message = '查找过图回放…';
-				const uuid = params.get('uuid')!;
-				const wanted = params.get('time');
-				let found: Entry | null = null;
+			// 同一次完赛在清单里有多条:team 一条 + 每个完成者各一条 solo。
+			// 链接上的 kind / player 用来挑对视角(个人记录默认不进团队视角)。
+			const wantedKind = params.get('kind');
+			const wantedPlayer = params.get('player')?.toLowerCase() ?? null;
+			const pickEntry = (entries: Entry[]) => {
+				let candidates = entries.filter((entry) => entry.demo);
+				if (wantedKind) {
+					const byKind = candidates.filter((entry) => entry.kind === wantedKind);
+					if (byKind.length) candidates = byKind;
+				}
+				if (wantedPlayer) {
+					const byPlayer = candidates.filter((entry) =>
+						(entry.names ?? []).some((name) => name.toLowerCase() === wantedPlayer)
+					);
+					if (byPlayer.length) candidates = byPlayer;
+				}
+				return candidates[0] ?? null;
+			};
 
+			const findEntry = async (uuid: string, wanted: string | null) => {
 				// 先看这一场的 runs/<uuid>.jsonl(上游为每场单独生成的,很小、最新)。
+				const candidates: Entry[] = [];
 				const response = await fetch(`${API}/runs/${uuid}.jsonl`);
 				if (response.ok) {
 					for (const line of (await response.text()).split('\n')) {
@@ -104,39 +122,48 @@
 								wanted === null ||
 								Math.abs(parseFloat(entry.time) - parseFloat(wanted)) < 0.005
 							) {
-								found = entry;
-								break;
+								candidates.push(entry);
 							}
 						} catch {
 							// 半行/坏行跳过
 						}
 					}
 				}
+				const local = pickEntry(candidates);
+				if (local) return local;
 
 				// 退路:服务端已经索引好的 watchable.jsonl,按 uuid 查一条。
 				// 别在这里拉整个 watchable.jsonl —— 它现在 3 MB 多,还是每分钟级更新的。
-				if (!found) {
-					const lookupUrl = new URL(`${API}/lookup`, location.href);
-					lookupUrl.searchParams.set('uuid', uuid);
-					if (wanted !== null) lookupUrl.searchParams.set('time', wanted);
-					const lookup = await fetch(lookupUrl);
-					if (lookup.ok) {
-						const { entries } = (await lookup.json()) as { entries?: Entry[] };
-						found = entries?.find((entry) => entry.demo) ?? null;
-					}
-				}
+				const lookupUrl = new URL(`${API}/lookup`, location.href);
+				lookupUrl.searchParams.set('uuid', uuid);
+				if (wanted !== null) lookupUrl.searchParams.set('time', wanted);
+				const lookup = await fetch(lookupUrl);
+				if (!lookup.ok) return null;
+				const { entries } = (await lookup.json()) as { entries?: Entry[] };
+				return pickEntry(entries ?? []);
+			};
+
+			if (params.get('demo')) {
+				demoUrl = `${API}/${params.get('demo')}${params.get('v') ? `?v=${params.get('v')}` : ''}`;
+				title = params.get('name') ?? '';
+			} else if (params.get('uuid')) {
+				message = '查找过图回放…';
+				const uuid = params.get('uuid')!;
+				const found = await findEntry(uuid, params.get('time'));
 
 				if (!found) {
 					message = '过图回放还没有预生成的 demo';
 					return;
 				}
-				const entry = found as Entry;
-				demoUrl = `${API}/demos/${entry.demo}${entry.rev ? `?v=${entry.rev}` : ''}`;
-				title = titleOf(entry);
+				demoUrl = `${API}/demos/${found.demo}${found.rev ? `?v=${found.rev}` : ''}`;
+				title = titleOf(found);
 				// 相机默认跟这一档的完成者(服务端转出来的 demo 里没有“本机玩家”)
-				focus = entry.cid;
+				focus = found.cid;
 				// 同队伍的其他人:转换出来的 demo 里队伍号全是 0,只能用名次数据
-				finishers = entry.finishers;
+				finishers = found.finishers;
+				// 个人记录(链接上写了 solo,或这一档本身就是 solo)默认不开团队视角;
+				// 播放器里的「团队视角」按钮仍然可以手动打开
+				team = (wantedKind ?? found.kind) !== 'solo';
 			} else {
 				message = '链接里要有 ?uuid= 或 ?demo=';
 				return;
@@ -158,6 +185,7 @@
 				title,
 				focus,
 				finishers,
+				team,
 				resolveSkin: getSkinUrl,
 				version,
 				inApp,

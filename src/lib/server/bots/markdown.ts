@@ -1,5 +1,5 @@
 import { numberToSub, secondsToTime } from '$lib/helpers';
-import { mapType, numberToStars } from '../../ddnet/helpers';
+import { mapType, numberToStars, watchLink } from '../../ddnet/helpers';
 import { escapeMarkdown } from './utils/markdown';
 
 export type MarkdownLink = {
@@ -31,6 +31,12 @@ export type PointsRank = {
 	label: string;
 	points?: number;
 	rank?: number;
+};
+
+/** 玩家最新的一条回放(points 回复里的「最新回放」行) */
+export type MarkdownPlayerDemo = MarkdownMapDemo & {
+	/** 地图名 */
+	map: string;
 };
 
 export type FindResult = {
@@ -78,7 +84,8 @@ export const helpMarkdown = (prefix: string, toolboxUrl: string) => `# 🫘 DDNe
 export const pointsMarkdown = (
 	name: string,
 	ranks: PointsRank[],
-	detailUrl: string
+	detailUrl: string,
+	latestDemo?: MarkdownPlayerDemo | null
 ) => `# 🏆 ${escapeMarkdown(name)}
 
 > DDNet 全球排行数据
@@ -91,7 +98,11 @@ ${ranks
 	)
 	.join('\n')}
 
-[🔗 查看玩家详情](${detailUrl})`;
+${
+	latestDemo
+		? `- [🎬 最新回放](https://teeworlds.cn${watchLink(latestDemo)})：${escapeMarkdown(latestDemo.map)} ${secondsToTime(latestDemo.time)}\n\n`
+		: ''
+}[🔗 查看玩家详情](${detailUrl})`;
 
 export const pointsMissingMarkdown = (prefix: string, url: string) => `## 🏆 查分
 
@@ -135,7 +146,7 @@ export const mapMarkdown = (
 				.join(' & ') + (options.demo.names.length > 4 ? ' 等' : '')
 		: '';
 	const demo = options.demo
-		? `- [观看回放](https://teeworlds.cn/ddnet/watch?uuid=${options.demo.uuid}&time=${options.demo.time})：${demoWho} ${secondsToTime(options.demo.time)}`
+		? `- [观看回放](https://teeworlds.cn${watchLink(options.demo)})：${demoWho} ${secondsToTime(options.demo.time)}`
 		: '';
 
 	return `# ${title}

@@ -30,6 +30,27 @@ export const mapType = (type: string) => {
 	return MAP_TYPES[type?.toLowerCase?.()] || type;
 };
 
+/**
+ * /ddnet/watch 的回放链接。
+ *
+ * 同一次完赛在 watchable.jsonl 里有多条:team 一条 + 每个完成者各一条 solo,
+ * 所以带上 kind 让播放器挑对视角;solo 再带上玩家名,不然会随机跟到另一个完成者。
+ */
+export const watchLink = (demo: {
+	uuid: string;
+	/** 完赛时间,秒 */
+	time: number;
+	/** 'team' | 'solo' */
+	kind?: string;
+	/** 完成者(团队就是整队) */
+	names?: string[];
+}) => {
+	const params = new URLSearchParams({ uuid: demo.uuid, time: String(demo.time) });
+	if (demo.kind) params.set('kind', demo.kind);
+	if (demo.kind == 'solo' && demo.names?.length == 1) params.set('player', demo.names[0]);
+	return `/ddnet/watch?${params.toString()}`;
+};
+
 const FLAG_DEFAULT: string = '/assets/flags/default.png';
 const FLAG_MAP: { [key: string]: typeof FLAG_DEFAULT } = {
 	CHN: '/assets/flags/CN.png',
