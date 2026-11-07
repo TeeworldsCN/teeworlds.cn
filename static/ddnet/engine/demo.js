@@ -316,13 +316,28 @@ export async function mountDemoPlayer(host, options) {
 	seek.step = '1';
 	seek.setAttribute('aria-label', '进度');
 	seekWrap.append(seekTrack, seek);
-	/** 进度条百分比(`seek.value` 是毫秒) */
-	const seekPercent = (ms) => clamp((ms / (Number(seek.max) || 1)) * 100, 0, 100);
-	/** 只画自绘的填充条和滑块 */
+	/** 进度条百分比(`seek.value` 是毫秒)。只保留 0.1% 粒度:样式没变就不碰 DOM */
+	const seekPercent = (ms) => {
+		const max = Number(seek.max) || 1;
+		return Math.round(clamp((ms / max) * 100, 0, 100) * 10) / 10;
+	};
+	/** 上一次画到 DOM 上的百分比(填充条/滑块是 in-flow 里的 width/left,写了就要 layout) */
+	let seekPainted = -1;
 	const paintSeek = (percent) => {
+		if (percent === seekPainted) return;
+		seekPainted = percent;
 		seekFill.style.width = `${percent}%`;
 		seekKnob.style.left = `${percent}%`;
 	};
+	/** 时间文字:字数固定 + tabular-nums,内容不变就别写(每次 textContent 都会重新排文字) */
+	let timePainted = '';
+	const paintTime = (text) => {
+		if (text === timePainted) return;
+		timePainted = text;
+		timeLabel.textContent = text;
+	};
+	/** 上一次写进原生 input 的毫秒值(它被隐藏了,但也没必要每次都碰) */
+	let seekValuePainted = -1;
 	const duration = element('span', 'tw-time tw-dur', '00:00.00');
 	const muteButton = iconButton('volumeOff', '取消静音 / 静音', 'tw-mute tw-off');
 
@@ -1202,7 +1217,12 @@ export async function mountDemoPlayer(host, options) {
 				// 团队视角那边算出来的 zoom 不用了,回到用户自己的
 				easeZoom(followZoom, dt, snapCamera);
 				if (target) {
-					const aim = playerAim(follow);
+					// 只跟"真的在操作 tee"的玩家:暂停了(PLAYERFLAG_PAUSED)、或者没有 tee
+					// (旁观/spec cam)时他的 target 是旧值,准星不画,动态镜头也别被它推着走
+					// —— 和客户端 `CanUseCameraInfo` + `UpdateSpectatorCursor` 一致
+					const owner = playersCache.find((p) => p.id === follow);
+					const aiming = !!owner && owner.alive && !owner.paused;
+					const aim = aiming ? playerAim(follow) : null;
 					if (aim) {
 						// 动态镜头(不跟随团队视角且开关打开时):镜头 = 玩家位置 + 偏移。
 						// 位置本身不再额外平滑(客户端也是这样,只有偏移是平滑的),
@@ -1763,12 +1783,13 @@ export async function mountDemoPlayer(host, options) {
 			// 写回去,和手上的拖动位置互相打架(看起来就是数字和滑块乱跳)
 			if (now - uiUpdatedAt >= 100 && !dragging) {
 				uiUpdatedAt = now;
-				if (now - seekbarHold > 120 && document.activeElement !== seek) {
-					seek.value = String(Math.round(time * 1000));
+				const ms = Math.round(time * 1000);
+				if (ms !== seekValuePainted && now - seekbarHold > 120 && document.activeElement !== seek) {
+					seekValuePainted = ms;
+					seek.value = String(ms);
 				}
-				paintSeek(seekPercent(time * 1000));
-				const label = formatTime(time);
-				if (timeLabel.textContent !== label) timeLabel.textContent = label;
+				paintSeek(seekPercent(ms));
+				paintTime(formatTime(time));
 			}
 			mark('ui');
 
@@ -1836,13 +1857,15 @@ export async function mountDemoPlayer(host, options) {
 			const ms = Number(seek.value);
 			// 拖动期间只更新预览:真的 seek 留到松手(否则每个 pointermove 都要读一遍 demo)
 			time = clamp(ms / 1000, 0, Math.max(0, length - 0.02));
-			timeLabel.textContent = formatTime(time);
+			paintTime(formatTime(time));
 			paintSeek(seekPercent(ms));
 		});
 		// 松手 / 失焦都要收掉拖动状态,不然播放时间会一直冻着
 		const endSeekDrag = () => {
 			dragging = false;
 			seekbarHold = 0;
+			// 松手后原生 input 的值可能被拖动改过,让 10Hz 那次重新写一遍
+			seekValuePainted = -1;
 		};
 		seek.addEventListener('change', () => {
 			endSeekDrag();
@@ -2158,7 +2181,7 @@ export async function mountDemoPlayer(host, options) {
 		// 播放失败/渲染失败的消息会一直留着,方便看到
 		setStatus('');
 		seekTo(time);
-		timeLabel.textContent = formatTime(time);
+		paintTime(formatTime(time));
 		duration.textContent = formatTime(length);
 		setPlaying(Number.isFinite(length) && length > 0);
 		frame = requestAnimationFrame(tick);
@@ -2401,6 +2424,8 @@ const CSS = `
 /* 进度条:独占整行 */
 .tw-row-seek {
 	padding: 0 0.45rem;
+	/* 这一行只自己内部变(填充条/时间),不要往上冒泡重新布局整条控制栏 */
+	contain: layout;
 }
 .tw-row-seek .tw-time {
 	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
@@ -2489,7 +2514,11 @@ const CSS = `
 
 /* ---- 时间 ---- */
 .tw-time {
+	/* 等宽数字 + 固定字数(mm:ss.cc),改内容不会让整行重新排版 */
 	font-variant-numeric: tabular-nums;
+	min-width: 8ch;
+	display: inline-block;
+	text-align: center;
 	font-size: 12.5px;
 	color: #cfdae7;
 	padding: 0 0.25rem;
@@ -2516,6 +2545,8 @@ const CSS = `
 	background: rgba(255, 255, 255, 0.22);
 	overflow: hidden;
 	pointer-events: none;
+	/* 填充条的 width 每 100ms 变一次:把 layout 关在这一格里面,别影响旁边的时间和输入框 */
+	contain: layout;
 }
 .tw-seekfill {
 	height: 100%;
