@@ -18,6 +18,9 @@ pub struct CtxRenderer {
     cache: twgpu::sprites::SpriteCache,
     /// 这一帧要放的爆炸(地图预览里 crazy shotgun EX 撞墙),`prepare_render` 时喂给粒子系统
     explosions: Vec<twgpu::vek::Vec2<f32>>,
+    /// 视锥裁剪之后真正上传的 quad / 对应贴图(和 `cache` 内容一一对应的子集)
+    visible_quads: Vec<[twgpu::sprites::SpriteVertex; 4]>,
+    visible_textures: Vec<twgpu::sprites::TextureToken>,
 }
 
 impl CtxRenderer {
@@ -35,6 +38,8 @@ impl CtxRenderer {
             sprites_static,
             cache: twgpu::sprites::SpriteCache::default(),
             explosions: Vec::new(),
+            visible_quads: Vec::new(),
+            visible_textures: Vec::new(),
         }
     }
 
@@ -49,6 +54,7 @@ impl CtxRenderer {
         new_snap: bool,
         cursor: Option<CursorSprite>,
         world: &[WorldSprite],
+        view: twgpu::vek::Aabr<f32>,
     ) {
         fn drain_sprites<T: twgpu::sprites::SpriteGenerator>(
             cache: &mut twgpu::sprites::SpriteCache,
@@ -90,11 +96,60 @@ impl CtxRenderer {
             self.cache.add_sprite(&cursor.quad(), cursor.texture);
         }
         self.cursor_range = start..self.cache.len();
+        self.cull(view);
         self.buffer
-            .upload(self.cache.sprites(), &self.device, &self.queue)
+            .upload(&self.visible_quads, &self.device, &self.queue)
             .expect("GPU Buffer size limit exceeded");
         ctx.particles.finished_tick();
     }
+
+    /// 视锥裁剪:只保留和相机视野相交的 quad,顺便把每一段的 range 映射到新下标。
+    ///
+    /// 生成阶段拦不住(twgpu 的 generator 不知道相机),但上传和绘制都能省:一张大图上
+    /// 几百个 pickup / 子弹 / 粒子,真正在画面里的可能就十几个。
+    fn cull(&mut self, view: twgpu::vek::Aabr<f32>) {
+        let quads = self.cache.sprites();
+        let textures = self.cache.textures();
+        self.visible_quads.clear();
+        self.visible_textures.clear();
+        self.visible_quads.reserve(quads.len());
+        self.visible_textures.reserve(textures.len());
+        // quad 是轴对齐包围盒判断(旋转过的 quad 用包围盒偏保守,只会多画不会漏画)
+        let visible = |quad: &[twgpu::sprites::SpriteVertex; 4]| {
+            let mut min = twgpu::vek::Vec2::broadcast(f32::INFINITY);
+            let mut max = twgpu::vek::Vec2::broadcast(f32::NEG_INFINITY);
+            for vertex in quad {
+                let p: twgpu::vek::Vec2<f32> = vertex.vertex.position.into();
+                min.x = min.x.min(p.x);
+                min.y = min.y.min(p.y);
+                max.x = max.x.max(p.x);
+                max.y = max.y.max(p.y);
+            }
+            max.x >= view.min.x && min.x <= view.max.x && max.y >= view.min.y && min.y <= view.max.y
+        };
+        let mut ranges = Vec::with_capacity(6);
+        for range in std::iter::once(self.world_range.clone())
+            .chain(std::iter::once(self.sprite_range.clone()))
+            .chain(self.particle_ranges.iter().cloned())
+            .chain(std::iter::once(self.cursor_range.clone()))
+        {
+            let start = self.visible_quads.len();
+            for index in range {
+                if visible(&quads[index]) {
+                    self.visible_quads.push(quads[index]);
+                    self.visible_textures.push(textures[index]);
+                }
+            }
+            ranges.push(start..self.visible_quads.len());
+        }
+        self.world_range = ranges[0].clone();
+        self.sprite_range = ranges[1].clone();
+        for (i, range) in self.particle_ranges.iter_mut().enumerate() {
+            *range = ranges[2 + i].clone();
+        }
+        self.cursor_range = ranges[6].clone();
+    }
+
     pub fn render_bg<'a>(
         &'a self,
         render_pass: &mut wgpu::RenderPass<'a>,
@@ -105,7 +160,7 @@ impl CtxRenderer {
             self.particle_ranges[twgpu::sprites::ParticleGroup::Trails].clone(),
             camera_bind_group,
             &self.buffer,
-            self.cache.textures(),
+            &self.visible_textures,
             textures,
             render_pass,
         );
@@ -113,7 +168,7 @@ impl CtxRenderer {
             self.world_range.clone(),
             camera_bind_group,
             &self.buffer,
-            self.cache.textures(),
+            &self.visible_textures,
             textures,
             render_pass,
         );
@@ -121,7 +176,7 @@ impl CtxRenderer {
             self.sprite_range.clone(),
             camera_bind_group,
             &self.buffer,
-            self.cache.textures(),
+            &self.visible_textures,
             textures,
             render_pass,
         );
@@ -141,7 +196,7 @@ impl CtxRenderer {
                 self.particle_ranges[group].clone(),
                 camera_bind_group,
                 &self.buffer,
-                self.cache.textures(),
+                &self.visible_textures,
                 textures,
                 render_pass,
             );
@@ -159,7 +214,7 @@ impl CtxRenderer {
             self.cursor_range.clone(),
             camera_bind_group,
             &self.buffer,
-            self.cache.textures(),
+            &self.visible_textures,
             textures,
             render_pass,
         );
