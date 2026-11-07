@@ -10,6 +10,7 @@
 	import { browser } from '$app/environment';
 	import { tippy } from '$lib/tippy';
 	import { checkMapName, checkMapper } from '$lib/ddnet/searches';
+	import { loadMapList } from '$lib/ddnet/map-list';
 	import RangeSlider from '$lib/components/RangeSlider.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { secondsToDateHM } from '$lib/date';
@@ -103,6 +104,12 @@
 
 	processHashQuery(page.url.hash);
 
+	// 从别的页面带 ?type= 进来(比如排位页的「查看全部地图」):套用一次这个类型筛选。
+	// #hash 里已有 type 时以 #hash 为准(那是页面自己的筛选状态)。
+	const initialHash = new URLSearchParams(page.url.hash.replace(/^#/, ''));
+	const typeParam = page.url.searchParams.get('type');
+	if (!initialHash.get('type') && typeParam && MAP_TYPES[typeParam]) type = typeParam;
+
 	let paginatedMaps = $state<MapList>([]);
 	let totalPages = $state(1);
 
@@ -144,7 +151,10 @@
 		paginatedMaps = filteredMaps.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
 		const hashQuery = createHashQuery();
-		goto(hashQuery, { keepFocus: true, noScroll: true, replaceState: true });
+		// 用固定路径而不是只给 hash:把进来时的 ?type= 参数一并去掉,后续只认 #hash。
+		// 注意别在这里读 page.url —— goto 会更新它,effect 会把自己再触发一遍(死循环)。
+		// 不加 noScroll:进来 / 筛选 / 翻页都回到页面顶部(和 /goto 跳地图类型的行为一致)。
+		goto(`/ddnet/maps${hashQuery}`, { keepFocus: true, replaceState: true });
 	});
 
 	const loadPage = (page: number) => {
@@ -154,12 +164,10 @@
 
 	const loadMaps = async () => {
 		error = void 0;
-		processHashQuery(page.url.hash);
-		const response = await fetch('/api/maps');
-		if (response.ok) {
-			maps = await response.json();
-		} else {
-			error = response.statusText;
+		try {
+			maps = await loadMapList();
+		} catch (e) {
+			error = (e as Error).message;
 		}
 
 		allTiles = Array.from(new Set(maps.flatMap((map) => map.tiles))).sort();

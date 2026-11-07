@@ -104,6 +104,27 @@ export const KNOWN_REGIONS: Record<string, string> = {
 	OLD: '历史遗留服'
 };
 
+/**
+ * 地图类型排行（ddnet.org/ranks/<类型>/）
+ * key 为 ?server= 参数的大写形式（地区服也是大写），顺序与 DDNet 官网一致
+ */
+export const MAP_TYPE_SERVERS: Record<string, string> = {
+	NOVICE: '新手图',
+	MODERATE: '中阶图',
+	BRUTAL: '高阶图',
+	INSANE: '疯狂图',
+	DUMMY: '分身图',
+	'DDMAX.EASY': '古典.Easy图',
+	'DDMAX.NEXT': '古典.Next图',
+	'DDMAX.PRO': '古典.Pro图',
+	'DDMAX.NUT': '古典.Nut图',
+	OLDSCHOOL: '传统图',
+	SOLO: '单人图',
+	RACE: '竞速图',
+	FUN: '娱乐图',
+	EVENT: '活动图'
+};
+
 export const flagAsset = (flag: string) => {
 	return FLAG_MAP[flag] || FLAG_DEFAULT;
 };
