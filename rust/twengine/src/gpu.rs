@@ -27,7 +27,9 @@ pub struct TwGpu {
     external_06: HashMap<String, image::RgbaImage>,
     external_07: HashMap<String, image::RgbaImage>,
     ctx_renderer: sprites_helper::CtxRenderer,
-    entities: Option<image::RgbaImage>,
+    /// 实体层图集。客户端那套 `cl_assets_entities` 有好几种风格(comfort / default …),
+    /// 这里按 id 存,由前端决定用哪一张;反正格子布局都是 16x16 个 64px tile,转换逻辑一样。
+    entities: HashMap<String, image::RgbaImage>,
     render_nameplates: bool,
     scribble: twgpu::text::Scribble,
     /// DDNet 的 6 个武器准星,从 game.png 里裁出来的(索引 = 武器 id,见 `CURSOR_ROWS`)
@@ -134,7 +136,7 @@ impl TwGpu {
             external_06: HashMap::new(),
             external_07: HashMap::new(),
             ctx_renderer,
-            entities: None,
+            entities: HashMap::new(),
             render_nameplates: false,
             scribble,
             cursor_textures: [twgpu::sprites::TextureToken::INVALID; 6],
@@ -169,10 +171,32 @@ impl TwGpu {
         )
     }
 
+    /// 把地图转成「只有实体层」的那一份(地图预览页用,默认取 comfort)。
     #[wasm_bindgen]
     pub fn map_to_entities(&self, map: &TwMap) -> Result<TwMap, JsError> {
-        let Some(entities) = &self.entities else {
-            return Err(JsError::new("No entities set on TwGpu object"));
+        self.entities_map(map, None)
+    }
+
+    /// 指定实体层风格(demo 播放器的「实体层样式」子菜单用)。
+    #[wasm_bindgen]
+    pub fn map_to_entities_with_style(&self, map: &TwMap, style: &str) -> Result<TwMap, JsError> {
+        self.entities_map(map, Some(style))
+    }
+
+    fn entities_map(&self, map: &TwMap, style: Option<&str>) -> Result<TwMap, JsError> {
+        let entities = match style {
+            Some(style) => self.entities.get(style),
+            // 不指定风格时优先 comfort,再退到随便一张(预览页的老调用)
+            None => self
+                .entities
+                .get("comfort")
+                .or_else(|| self.entities.values().next()),
+        };
+        let Some(entities) = entities else {
+            return Err(JsError::new(&match style {
+                Some(style) => format!("Unknown entities style: {style}"),
+                None => "No entities texture set on TwGpu object".to_string(),
+            }));
         };
         let entities_map = twgpu_tools::map_to_entities(map.twmap_map(), entities.clone());
         let intermediate = TwMapIntermediate {
@@ -362,11 +386,18 @@ impl TwGpu {
         Ok(())
     }
 
+    /// 实体层图集,一套风格一张(`comfort` / `classic` …)。
+    /// 和 `add_texture` 分开是因为这个图集不止一张,前端要按名字挑。
+    #[wasm_bindgen]
+    pub fn add_entities(&mut self, name: String, bytes: &[u8]) -> Result<(), JsError> {
+        self.entities.insert(name, decode_image(bytes)?);
+        Ok(())
+    }
+
     #[wasm_bindgen]
     pub fn add_texture(&mut self, name: String, bytes: &[u8]) -> Result<(), JsError> {
         let image = decode_image(bytes)?;
         match name.as_ref() {
-            "entities" => self.entities = Some(image),
             "game" => {
                 self.sprite_textures.game_skin = self.sprite_textures.register_atlas_image(&image);
                 // 准星是独立的小图(64x64),单独注册成贴图,画的时候一个 quad 就行,
@@ -395,7 +426,7 @@ impl TwGpu {
             }
             _ => {
                 return Err(JsError::new(
-                    "Unknown texture, known are: game, entities, particles",
+                    "Unknown texture, known are: game, particles, emoticons, extras, default, x_ninja",
                 ))
             }
         }

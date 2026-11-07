@@ -25,15 +25,43 @@
 export const BASE = '/ddnet/engine';
 
 /** 和 wasm 里 add_texture 认的名字一一对应 */
-export const TEXTURES = [
-	'game',
-	'particles',
-	'emoticons',
-	'extras',
-	'entities',
-	'default',
-	'x_ninja'
+export const TEXTURES = ['game', 'particles', 'emoticons', 'extras', 'default', 'x_ninja'];
+
+/**
+ * 实体层图集(和 wasm 里 `add_entities` 认的 id 一一对应)。
+ *
+ * 对应客户端 `cl_assets_entities` 的两套:comfort 是官方那套扁平风格,
+ * classic 是 `editor/entities_clear` 里的 DDNet 版(客户端默认用的那套)。
+ * 都是 1024x1024 / 16x16 个 64px tile,渲染逻辑完全一样。
+ * `id` 会被存进用户偏好,改 id 等于让老用户的偏好失效,别随便改。
+ */
+export const ENTITIES = [
+	{ id: 'comfort', label: '舒适' },
+	{ id: 'classic', label: '经典' }
 ];
+
+/** 实体层风格偏好的 key:地图预览和 demo 播放器共用一个,用户在哪儿改都算数 */
+const ENTITIES_STYLE_KEY = 'tw-entities-style';
+
+/** @returns {string} 存过的风格 id,认不出来就退回第一套 */
+export const readEntitiesStyle = () => {
+	try {
+		const stored = localStorage.getItem(ENTITIES_STYLE_KEY);
+		if (stored && ENTITIES.some((entry) => entry.id === stored)) return stored;
+	} catch {
+		// 无痕模式 / 禁用了存储
+	}
+	return ENTITIES[0].id;
+};
+
+/** @param {string} id */
+export const writeEntitiesStyle = (id) => {
+	try {
+		localStorage.setItem(ENTITIES_STYLE_KEY, id);
+	} catch {
+		// 存不了就算了
+	}
+};
 export const FONT = 'DejaVuSans.ttf';
 
 /** 地图预览用的地图代理(同源,见 src/routes/ddnet/mappreview/map/[file]/+server.ts) */
@@ -209,6 +237,9 @@ export const loadTextures = async (gpu, { font = true } = {}) => {
 	await Promise.all([
 		...TEXTURES.map(async (name) => {
 			gpu.add_texture(name, await fetchBytes(await assetUrl(`assets/${name}.png`)));
+		}),
+		...ENTITIES.map(async ({ id }) => {
+			gpu.add_entities(id, await fetchBytes(await assetUrl(`assets/entities-${id}.png`)));
 		}),
 		font ? fetchBytes(await assetUrl(`assets/${FONT}`)).then((bytes) => gpu.add_font(bytes)) : null
 	]);

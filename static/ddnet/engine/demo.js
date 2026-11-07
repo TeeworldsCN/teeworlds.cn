@@ -21,8 +21,18 @@ const VERSION = new URL(import.meta.url).searchParams.get('v') ?? '';
 const withVersion = (file) => (VERSION ? `${file}?v=${VERSION}` : file);
 
 const { SoundMixer } = await import(/* @vite-ignore */ withVersion('./sound.js'));
-const { BASE, bootRenderer, fetchBytes, fetchMapByName, getVersion, gunzip, loadMap } =
-	await import(/* @vite-ignore */ withVersion('./engine.js'));
+const {
+	BASE,
+	bootRenderer,
+	ENTITIES,
+	fetchBytes,
+	fetchMapByName,
+	getVersion,
+	gunzip,
+	loadMap,
+	readEntitiesStyle,
+	writeEntitiesStyle
+} = await import(/* @vite-ignore */ withVersion('./engine.js'));
 
 /** 自由视角的缩放范围,和地图预览页(mappreview)保持一致 */
 const ZOOM_MIN = 0.05;
@@ -93,9 +103,52 @@ const zoomStepsToValue = (steps) => Math.pow(0.866025, steps);
 /** 没有音量滑杆了,就一个固定的舒适音量 */
 const DEFAULT_VOLUME = 0.7;
 const SPEEDS = [0.25, 0.5, 1, 2];
+/** 速滑条的范围:0.1× 用来看慢动作,3× 够快了 */
+const SPEED_MIN = 0.1;
+const SPEED_MAX = 3;
+const formatSpeed = (value) => `${Number(value.toFixed(2))}×`;
 const TICKS_PER_SECOND = 50;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+/**
+ * 播放器的显示偏好。名字 / 准星以前是两个独立按钮,现在和动态镜头、实体层一起
+ * 收进了「显示选项」上拉菜单,并写到 localStorage 里记住用户的选择。
+ *
+ * 读的时候对每个键都做类型校验(只收 boolean):用户手改 / 别的版本写过垃圾值
+ * 都不会把播放器搞坏。localStorage 本身在无痕模式 / 存满时可能直接抛异常,兜住。
+ */
+const PREFS_KEY = 'tw-demo-prefs';
+const DEFAULT_PREFS = { dyncam: true, entities: false, names: true, cursor: true };
+
+const readPrefs = () => {
+	const prefs = { ...DEFAULT_PREFS };
+	try {
+		const stored = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null');
+		if (stored && typeof stored === 'object') {
+			for (const [key, fallback] of Object.entries(DEFAULT_PREFS)) {
+				const value = stored[key];
+				// 布尔开关和字符串(实体层风格)分开校验,脏值一律忽略
+				if (typeof fallback === 'boolean' && typeof value === 'boolean') {
+					prefs[key] = value;
+				} else if (typeof fallback === 'string' && typeof value === 'string' && value.length < 32) {
+					prefs[key] = value;
+				}
+			}
+		}
+	} catch {
+		// 隐私模式禁用存储 / 存了坏 JSON:用默认值就行,不该因此起不来
+	}
+	return prefs;
+};
+
+const writePrefs = (prefs) => {
+	try {
+		localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+	} catch {
+		// 同上,存不了就算了
+	}
+};
 
 const formatTime = (seconds) => {
 	const total = Math.max(0, seconds);
@@ -123,7 +176,25 @@ const ICONS = {
 		'<rect x="3.2" y="5.6" width="17.6" height="12.8" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 10.2h3.6M7 13.9h9.4M13.4 10.2h3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
 	cursor:
 		'<path d="M12 3v4.2M12 16.8V21M3 12h4.2M16.8 12H21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="12" r="1.7"/>',
-	team: '<path d="M8.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM15.5 11a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 19c0-2.8 2.5-4.6 5.5-4.6S14 16.2 14 19M14.5 14.8c2.6.2 4.5 1.8 4.5 4.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
+	team: '<path d="M8.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM15.5 11a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 19c0-2.8 2.5-4.6 5.5-4.6S14 16.2 14 19M14.5 14.8c2.6.2 4.5 1.8 4.5 4.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+	/* 「显示选项」上拉菜单:三条带旋钮的滑杆 */
+	sliders:
+		'<path d="M4 7h6.5M15.5 7H20M4 12h3.5M12.5 12H20M4 17h8.5M17.5 17H20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="13" cy="7" r="2.1"/><circle cx="10" cy="12" r="2.1"/><circle cx="15" cy="17" r="2.1"/>',
+	/* 动态镜头 */
+	camera:
+		'<path d="M3.4 8.3h3.2l1.4-2.3h8l1.4 2.3h3.2v9.4H3.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12.7" r="3.1" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+	/* 实体层 */
+	layers:
+		'<path d="M12 3.8l8.2 4.3-8.2 4.3-8.2-4.3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3.8 12.2l8.2 4.3 8.2-4.3M3.8 16.1l8.2 4.3 8.2-4.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+	/* 播放速度:半圆表盘 + 指针 */
+	speed:
+		'<path d="M4.6 17.4a8.4 8.4 0 1 1 14.8 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 13.6l3.6-3.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="14.6" r="1.5"/>',
+	/* 下拉箭頭 */
+	caret:
+		'<path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+	/* 二级菜单:进入 / 返回 */
+	next: '<path d="M10 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+	back: '<path d="M14 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
 };
 
 const icon = (name) =>
@@ -137,6 +208,30 @@ const iconButton = (name, title, className = '') => {
 	button.setAttribute('aria-label', title);
 	button.innerHTML = icon(name);
 	return button;
+};
+
+/** 上拉菜单里的一行:图标 + 文字 + 开关,整行就是个 role=menuitemcheckbox 按钮 */
+const menuRow = (iconName, label, hint, { submenu = false } = {}) => {
+	const row = element('div', 'tw-menu-row');
+	const main = element('button', 'tw-menu-main');
+	main.type = 'button';
+	main.title = hint;
+	const glyph = element('span', 'tw-menu-glyph');
+	glyph.innerHTML = icon(iconName);
+	main.append(glyph, element('span', 'tw-menu-label', label));
+	if (submenu) {
+		const chevron = element('span', 'tw-menu-chevron');
+		chevron.innerHTML = icon('next');
+		main.append(chevron);
+	}
+	const switchButton = element('button', 'tw-menu-switch');
+	switchButton.type = 'button';
+	switchButton.setAttribute('role', 'switch');
+	const switchTrack = element('span', 'tw-switch');
+	switchTrack.append(element('span', 'tw-switch-knob'));
+	switchButton.append(switchTrack);
+	row.append(main, switchButton);
+	return { row, main, switch: switchButton };
 };
 
 const element = (tag, className, text) => {
@@ -227,23 +322,66 @@ export async function mountDemoPlayer(host, options) {
 	seekWrap.append(seekTrack, seek);
 	const duration = element('span', 'tw-time tw-dur', '00:00.00');
 	const muteButton = iconButton('volumeOff', '取消静音 / 静音', 'tw-mute tw-off');
-	const speedSelect = element('select', 'tw-select tw-speed');
-	for (const speed of SPEEDS) {
-		const option = element('option', null, `${speed}×`);
-		option.value = String(speed);
-		if (speed === 1) option.selected = true;
-		speedSelect.append(option);
-	}
-	speedSelect.setAttribute('aria-label', '播放速度');
-	const followSelect = element('select', 'tw-select tw-follow');
-	followSelect.title = '跟随谁';
+
+	// 播放速度:按钮 + 上弹框(滑条 + 预设)。原生 select 各端样式不统一,
+	// 也没办法细调速度(慢动作看路线的时候很需要)。
+	const speedButton = iconButton('speed', '播放速度', 'tw-speed-btn');
+	speedButton.setAttribute('aria-haspopup', 'true');
+	speedButton.setAttribute('aria-expanded', 'false');
+	const speedValue = element('span', 'tw-speed-value', formatSpeed(1));
+	speedButton.append(speedValue);
+	const speedMenu = element('div', 'tw-menu tw-speed-menu');
+	speedMenu.hidden = true;
+	speedMenu.setAttribute('role', 'group');
+	speedMenu.setAttribute('aria-label', '播放速度');
+	const speedHead = element('div', 'tw-speed-head');
+	const speedReadout = element('span', 'tw-speed-readout', formatSpeed(1));
+	speedHead.append(element('span', null, '播放速度'), speedReadout);
+	const speedRange = element('input', 'tw-speed-range');
+	speedRange.type = 'range';
+	speedRange.min = String(SPEED_MIN);
+	speedRange.max = String(SPEED_MAX);
+	speedRange.step = '0.05';
+	speedRange.value = '1';
+	speedRange.setAttribute('aria-label', '播放速度');
+	const speedPresets = element('div', 'tw-speed-presets');
+	const speedChips = SPEEDS.map((value) => {
+		const chip = element('button', 'tw-speed-preset', formatSpeed(value));
+		chip.type = 'button';
+		chip.dataset.speed = String(value);
+		speedPresets.append(chip);
+		return chip;
+	});
+	speedMenu.append(speedHead, speedRange, speedPresets);
+	const speedAnchor = element('div', 'tw-anchor');
+	speedAnchor.append(speedButton, speedMenu);
+
+	// 跟随谁:自己画的 dropdown。原生 select 的选项样式改不动,而且我们要把「死亡」
+	// 弄成次级颜色、还能跟主题对齐(频道/移动端上的 select 长得全不一样)。
+	const followButton = element('button', 'tw-btn tw-follow-btn');
+	followButton.type = 'button';
+	followButton.title = '跟随谁';
+	followButton.setAttribute('aria-haspopup', 'listbox');
+	followButton.setAttribute('aria-expanded', 'false');
+	const followValue = element('span', 'tw-follow-value', '自由视角');
+	const caret = element('span', 'tw-caret');
+	caret.innerHTML = icon('caret');
+	followButton.append(followValue, caret);
+	const followMenu = element('div', 'tw-menu tw-follow-menu');
+	followMenu.hidden = true;
+	followMenu.setAttribute('role', 'listbox');
+	followMenu.setAttribute('aria-label', '跟随谁');
+	const followList = element('div', 'tw-follow-list');
+	followMenu.append(followList);
+	const followAnchor = element('div', 'tw-anchor');
+	followAnchor.append(followButton, followMenu);
+
 	const teamButton = iconButton(
 		'team',
 		'队伍视角:同队伍的玩家自动框进一个画面(DDNet 的 multiview)',
 		'tw-team'
 	);
 	teamButton.append(element('span', null, '团队视角'));
-	const cursorButton = iconButton('cursor', '准星:显示被跟随玩家的瞄准点', 'tw-cursor tw-on');
 	const zoomOut = iconButton('zoomOut', '缩小', 'tw-zoom');
 	const zoomIn = iconButton('zoomIn', '放大', 'tw-zoom');
 	const download = element('a', 'tw-btn', '');
@@ -251,24 +389,66 @@ export async function mountDemoPlayer(host, options) {
 	download.setAttribute('aria-label', '下载 demo');
 	download.innerHTML = icon('download');
 	download.download = `${(title || name || 'demo').replace(/[\\/:*?"<>|]/g, '_')}.demo`;
-	const namesButton = iconButton('names', '显示 / 隐藏玩家名字', 'tw-names-toggle tw-on');
 	const fullscreenButton = iconButton('fullscreen', '全屏');
 
+	// 显示选项(动态镜头 / 实体层 / 名字 / 准星):一个按钮 + 一个上拉的浮层。
+	// 以前名字和准星是两个常驻按钮,按钮数量随功能增长会卷到底,所以收进菜单。
+	const settingsButton = iconButton(
+		'sliders',
+		'显示选项:动态镜头 / 实体层 / 名字 / 准星',
+		'tw-settings'
+	);
+	settingsButton.setAttribute('aria-haspopup', 'true');
+	settingsButton.setAttribute('aria-expanded', 'false');
+	const menu = element('div', 'tw-menu');
+	menu.hidden = true;
+	menu.setAttribute('role', 'menu');
+	menu.setAttribute('aria-label', '显示选项');
+	// 两页:主列表 + 「实体层样式」二级菜单。
+	// 窄屏上并排浮层放不下,所以做成整块替换(带返回键)。
+	const menuMain = element('div', 'tw-menu-page');
+	const menuStyle = element('div', 'tw-menu-page');
+	menuStyle.hidden = true;
+
+	const dyncamRow = menuRow('camera', '动态镜头', '镜头跟着瞄准点轻微偏移(DDNet 旁观动态镜头)');
+	const namesRow = menuRow('names', '玩家名字', '显示 / 隐藏玩家名字');
+	const cursorRow = menuRow('cursor', '准星', '显示被跟随玩家的瞄准点');
+	// 实体层这行左边带箭头:点名字 = 进二级菜单挑样式(顺手打开实体层),点右边开关 = 单纯开关
+	const entitiesRow = menuRow('layers', '实体层', '实体层:点名字选图集风格', { submenu: true });
+
+	const styleBack = element('button', 'tw-menu-back');
+	styleBack.type = 'button';
+	styleBack.innerHTML = `${icon('back')}<span>实体层样式</span>`;
+	const styleRows = ENTITIES.map(({ id, label }) => {
+		const row = element('button', 'tw-menu-item tw-menu-style');
+		row.type = 'button';
+		row.dataset.style = id;
+		row.setAttribute('role', 'menuitemradio');
+		row.title = `实体层图集:${label}`;
+		row.append(element('span', 'tw-menu-label', label), element('span', 'tw-menu-check'));
+		return row;
+	});
+	menuStyle.append(styleBack, ...styleRows);
+	menuMain.append(dyncamRow.row, entitiesRow.row, namesRow.row, cursorRow.row);
+	menu.append(menuMain, menuStyle);
+
 	const whoLabel = element('span', 'tw-who-label', '跟随');
-	whoRow.append(whoLabel, followSelect, teamButton);
+	// 团队视角放在名字选择框**左侧**:它宽度固定,右边的 dropdown 换名字时
+	// 变宽变窄都不会把它顶得跑来跑去。
+	whoRow.append(whoLabel, teamButton, followAnchor);
 	const spacer = element('span', 'tw-spacer');
 	seekRow.append(timeLabel, seekWrap, duration);
 	mainRow.append(
 		playButton,
 		muteButton,
-		speedSelect,
+		speedAnchor,
 		spacer,
-		namesButton,
-		cursorButton,
+		settingsButton,
 		zoomOut,
 		zoomIn,
 		download,
-		fullscreenButton
+		fullscreenButton,
+		menu
 	);
 	// QQ / 微信的内置浏览器(X5):`download` 属性不生效、`requestFullscreen` 也没有,
 	// 留着也只是点了没反应 —— 干脆不显示这两个按钮(要在 append 之后删,不然白删)。
@@ -419,7 +599,21 @@ export async function mountDemoPlayer(host, options) {
 		let snapCamera = true;
 		const skins = new Set();
 		const recentSounds = [];
-		let followOptionsAt = -1;
+		/** 上次重建跟随列表时的玩家签名(数量 + 生死 + 名字),变了才重建 */
+		let followOptionsAt = '';
+
+		/** 跟随按钮上的文字 + 列表里选中的那一行(名字/生死会变,要跟着刷) */
+		const syncFollowButton = () => {
+			const current = follow === null ? null : playersCache.find((p) => p.id === follow);
+			followValue.textContent =
+				follow === null ? '自由视角' : current ? current.name : `#${follow}`;
+			followButton.classList.toggle('tw-off', current != null && !current.alive);
+			for (const rowElement of followList.children) {
+				const selected = rowElement.dataset.id === (follow === null ? 'free' : String(follow));
+				rowElement.classList.toggle('tw-on', selected);
+				rowElement.setAttribute('aria-selected', String(selected));
+			}
+		};
 
 		camera.zoom = 1;
 		const initial = follow !== null ? demo.player_position(follow) : null;
@@ -440,22 +634,30 @@ export async function mountDemoPlayer(host, options) {
 
 		const updateFollowOptions = () => {
 			const players = playerNames();
-			if (players.length === followOptionsAt) return;
-			followOptionsAt = players.length;
-			const previous = followSelect.value;
-			followSelect.replaceChildren();
-			const free = element('option', null, '自由视角');
-			free.value = 'free';
-			followSelect.append(free);
-			for (const player of players) {
-				const option = element('option', null, `${player.name}${player.alive ? '' : '(死亡)'}`);
-				option.value = String(player.id);
-				followSelect.append(option);
+			// 数量/生死/名字都没变就不用重建(每 10 帧调一次,不能每次都换 DOM)
+			const signature = players.map((p) => `${p.id}:${p.alive ? 1 : 0}:${p.name}`).join('|');
+			if (signature === followOptionsAt) {
+				syncFollowButton();
+				return;
 			}
-			const wanted = follow === null ? 'free' : String(follow);
-			followSelect.value = [...followSelect.options].some((o) => o.value === wanted)
-				? wanted
-				: previous || 'free';
+			followOptionsAt = signature;
+			followList.replaceChildren();
+			const row = (id, label, alive) => {
+				const option = element('button', 'tw-follow-option');
+				option.type = 'button';
+				option.setAttribute('role', 'option');
+				option.dataset.id = id;
+				option.append(element('span', 'tw-follow-name', label));
+				if (!alive) option.append(element('span', 'tw-follow-tag', '死亡'));
+				option.addEventListener('click', () => {
+					setFollow(id === 'free' ? null : Number(id));
+					setFollowOpen(false);
+				});
+				followList.append(option);
+			};
+			row('free', '自由视角', true);
+			for (const player of players) row(String(player.id), player.name, player.alive);
+			syncFollowButton();
 		};
 		refreshPlayers();
 		updateFollowOptions();
@@ -498,12 +700,103 @@ export async function mountDemoPlayer(host, options) {
 			else camera.zoom += (zoom - camera.zoom) * (1 - Math.exp(-dt / MV.zoomTau));
 		};
 
-		let showNames = true;
+		// ---- 显示偏好(动态镜头 / 实体层 / 名字 / 准星),存 localStorage ----
+		const prefs = readPrefs();
+		/** 三个上拉浮层是否展开(显示选项 / 播放速度 / 跟随谁) */
+		let menuOpen = false;
+		let speedOpen = false;
+		let followOpen = false;
+		// 四个开关的当前值先按偏好初始化,各自的 setter 才会去动 DOM
+		let showDyncam = prefs.dyncam;
+		let showEntities = prefs.entities;
+		let showNames = prefs.names;
+		let showCursor = prefs.cursor;
+		/** 实体层用哪套图集(偏好存在 engine.js 那个共享 key 里,和地图预览页共用) */
+		let entitiesStyle = readEntitiesStyle();
+
+		/** 把菜单每一行的开关状态对齐到实际状态(所有改状态的地方最后都调它) */
+		const syncMenu = () => {
+			for (const [item, value] of [
+				[dyncamRow, showDyncam],
+				[entitiesRow, showEntities],
+				[namesRow, showNames],
+				[cursorRow, showCursor]
+			]) {
+				item.switch.setAttribute('aria-checked', String(value));
+				item.switch.classList.toggle('tw-on', value);
+				item.row.classList.toggle('tw-on', value);
+			}
+			for (const row of styleRows) {
+				const selected = row.dataset.style === entitiesStyle;
+				row.classList.toggle('tw-on', selected);
+				row.setAttribute('aria-checked', String(selected));
+			}
+			settingsButton.classList.toggle('tw-on', menuOpen);
+		};
+		/** 用户改了哪个开关就落盘一次(四个字段一起写,不用管先后) */
+		const savePrefs = () =>
+			writePrefs({
+				dyncam: showDyncam,
+				entities: showEntities,
+				names: showNames,
+				cursor: showCursor
+			});
+
+		/**
+		 * 实体层:和地图预览页一个做法 —— 让 wasm 把地图转成「只有实体层」的那一份
+		 * (`map_to_entities`,传送点/刷子/贴图实体),渲染时用它替掉普通地图。
+		 * 第一次打开才转,之后缓存着一直用。
+		 */
+		let entitiesView = null;
+		const renderMap = () => {
+			if (!showEntities) return map;
+			if (!entitiesView) {
+				try {
+					entitiesView = gpu.map_to_entities_with_style(map, entitiesStyle);
+				} catch (error) {
+					// 贴图没装 / wasm 报错:退回普通地图,别每帧都抛
+					console.warn('[entities]', error);
+					showEntities = false;
+					syncMenu();
+					savePrefs();
+				}
+			}
+			return entitiesView ?? map;
+		};
+		const setEntitiesVisible = (value) => {
+			showEntities = value;
+			syncMenu();
+			savePrefs();
+		};
+		/** 换实体层风格:要换一张图集,已经转好的那份得丢掉重建(下次渲染时懒加载) */
+		const setEntitiesStyle = (style) => {
+			if (!ENTITIES.some((entry) => entry.id === style) || style === entitiesStyle) return;
+			entitiesStyle = style;
+			try {
+				entitiesView?.free();
+			} catch {
+				// 已经释放过了
+			}
+			entitiesView = null;
+			writeEntitiesStyle(style);
+			syncMenu();
+		};
+
+		/**
+		 * 动态镜头开关(cl_dyncam 的旁观版)。关掉就是纯粹的平滑跟随,不带瞄准点偏移。
+		 */
+		const setDyncamEnabled = (value) => {
+			showDyncam = value;
+			if (!value) resetDyncam();
+			syncMenu();
+			savePrefs();
+		};
+
 		const setNameplatesVisible = (value) => {
 			showNames = value;
 			nameLayer.hidden = !value;
-			namesButton.classList.toggle('tw-on', value);
-			namesButton.title = value ? '隐藏玩家名字' : '显示玩家名字';
+			syncMenu();
+			savePrefs();
 			if (value) {
 				// 打开就立刻摆好位置,别等下一帧(低帧率机器上会明显晚一拍)
 				updateNameplates();
@@ -515,15 +808,18 @@ export async function mountDemoPlayer(host, options) {
 		};
 
 		/** 准星开关(客户端 cl_spec_cursor 默认开着) */
-		let showCursor = true;
 		const setCursorVisible = (value) => {
 			showCursor = value;
-			cursorButton.classList.toggle('tw-on', value);
-			cursorButton.title = value ? '准星:显示被跟随玩家的瞄准点(点击关闭)' : '准星已关闭(点击显示)';
+			syncMenu();
+			savePrefs();
 		};
 		/** 准星只跟随时才可用(自由视角下没有"跟谁"可跟) */
 		const syncCursorButton = () => {
-			cursorButton.disabled = follow === null;
+			const disabled = follow === null;
+			for (const button of [cursorRow.main, cursorRow.switch]) {
+				button.disabled = disabled;
+				button.classList.toggle('tw-disabled', disabled);
+			}
 		};
 
 		const setMuted = (value) => {
@@ -858,10 +1154,11 @@ export async function mountDemoPlayer(host, options) {
 				if (target) {
 					const aim = playerAim(follow);
 					if (aim) {
-						// 动态镜头(不跟随团队视角时永远开着):镜头 = 玩家位置 + 偏移。
+						// 动态镜头(不跟随团队视角且开关打开时):镜头 = 玩家位置 + 偏移。
 						// 位置本身不再额外平滑(客户端也是这样,只有偏移是平滑的),
-						// snap 时两边一起贴上去。
-						const offset = updateDyncam(aim, dt, snapCamera);
+						// snap 时两边一起贴上去。关掉开关就只做普通跟随。
+						if (!showDyncam) resetDyncam();
+						const offset = showDyncam ? updateDyncam(aim, dt, snapCamera) : { x: 0, y: 0 };
 						const wantX = target.x + offset.x / 32;
 						const wantY = target.y + offset.y / 32;
 						// 刚退出团队视角:先平滑地从当前镜头位置滑过去,别直接蹦到玩家身上
@@ -1134,7 +1431,7 @@ export async function mountDemoPlayer(host, options) {
 			}
 
 			try {
-				gpu.render_demo(surface, camera, map, demo);
+				gpu.render_demo(surface, camera, renderMap(), demo);
 			} catch (error) {
 				console.error(error);
 				setStatus(`渲染失败:${error.message ?? error}`);
@@ -1161,7 +1458,10 @@ export async function mountDemoPlayer(host, options) {
 			root.classList.remove('idle');
 			clearTimeout(idleTimer);
 			idleTimer = setTimeout(() => {
-				if (playing && !hoveringControls) root.classList.add('idle');
+				// 菜单/浮层开着的时候不能把控制条隐起来(否则连浮层一起消失了)
+				if (playing && !hoveringControls && !menuOpen && !speedOpen && !followOpen) {
+					root.classList.add('idle');
+				}
 			}, 2500);
 		};
 		root.addEventListener('pointermove', wakeControls);
@@ -1212,14 +1512,14 @@ export async function mountDemoPlayer(host, options) {
 			}
 		});
 		seek.addEventListener('change', () => seekTo(Number(seek.value) / 1000));
-		speedSelect.addEventListener('change', () => {
-			speed = Number(speedSelect.value) || 1;
-		});
-		followSelect.addEventListener('change', () => {
-			follow = followSelect.value === 'free' ? null : Number(followSelect.value);
+
+		// ---- 跟随谁(自己画的 dropdown) ----
+		const setFollow = (id) => {
+			follow = id;
 			// 自由视角 = 没有可跟随的人,队伍视角自然失效(按钮置灰)
 			syncTeamButton();
 			syncCursorButton();
+			syncFollowButton();
 			// 换人也是平滑过去(客户端 cl_smooth_spectating_time),不是瞬移;
 			// 但进/出自由视角要瞬移,那里本来就该直接落位
 			if (follow !== null) camBlendLeft = MV.modeBlendTime;
@@ -1228,7 +1528,28 @@ export async function mountDemoPlayer(host, options) {
 			updateCursor();
 			mv.oldPos = null;
 			lastSeen.clear();
-		});
+		};
+
+		// ---- 播放速度(滑条 + 预设) ----
+		const setSpeed = (value) => {
+			const next = clamp(Number(value) || 1, SPEED_MIN, SPEED_MAX);
+			speed = next;
+			speedValue.textContent = formatSpeed(next);
+			speedReadout.textContent = formatSpeed(next);
+			speedRange.value = String(next);
+			// 原生 range 没有「已播放部分」这个概念,用 CSS 变量把进度传给轨道渐变
+			const percent = ((next - SPEED_MIN) / (SPEED_MAX - SPEED_MIN)) * 100;
+			speedRange.style.setProperty('--fill', `${percent}%`);
+			for (const chip of speedChips) {
+				chip.classList.toggle('tw-on', Math.abs(Number(chip.dataset.speed) - next) < 1e-9);
+			}
+		};
+		speedRange.addEventListener('input', () => setSpeed(Number(speedRange.value)));
+		for (const chip of speedChips) {
+			chip.addEventListener('click', () => setSpeed(Number(chip.dataset.speed)));
+		}
+		setSpeed(1);
+
 		teamButton.addEventListener('click', () => {
 			if (follow === null) return; // 自由视角下按钮是禁用的
 			teamWanted = !teamWanted;
@@ -1239,10 +1560,92 @@ export async function mountDemoPlayer(host, options) {
 		});
 		syncTeamButton();
 		syncCursorButton();
-		setCursorVisible(true);
+
+		// ---- 上拉浮层:显示选项 / 播放速度 / 跟随谁 ----
+		// 同一时间只开一个;开着的时候控制条不自动淡出(否则浮层跟着一起消失)。
+		/** 显示选项菜单当前停在哪一页(关了菜单就回到主列表) */
+		let menuPage = 'main';
+		const showMenuPage = (page) => {
+			menuPage = page;
+			menuMain.hidden = page !== 'main';
+			menuStyle.hidden = page !== 'style';
+		};
+		const setMenuOpen = (open) => {
+			if (menuOpen === open) return;
+			menuOpen = open;
+			showMenuPage('main');
+			if (open) {
+				setSpeedOpen(false);
+				setFollowOpen(false);
+			}
+			menu.hidden = !open;
+			settingsButton.setAttribute('aria-expanded', String(open));
+			syncMenu();
+			if (open) wakeControls();
+		};
+		const setSpeedOpen = (open) => {
+			if (speedOpen === open) return;
+			speedOpen = open;
+			if (open) {
+				setMenuOpen(false);
+				setFollowOpen(false);
+			}
+			speedMenu.hidden = !open;
+			speedButton.setAttribute('aria-expanded', String(open));
+			speedButton.classList.toggle('tw-on', open);
+			if (open) wakeControls();
+		};
+		const setFollowOpen = (open) => {
+			if (followOpen === open) return;
+			followOpen = open;
+			if (open) {
+				setMenuOpen(false);
+				setSpeedOpen(false);
+				syncFollowButton();
+			}
+			followMenu.hidden = !open;
+			followButton.setAttribute('aria-expanded', String(open));
+			followButton.classList.toggle('tw-on', open);
+			if (open) wakeControls();
+		};
+		settingsButton.addEventListener('click', () => setMenuOpen(!menuOpen));
+		speedButton.addEventListener('click', () => setSpeedOpen(!speedOpen));
+		followButton.addEventListener('click', () => setFollowOpen(!followOpen));
+		for (const [item, value] of [
+			[dyncamRow, () => setDyncamEnabled(!showDyncam)],
+			[namesRow, () => setNameplatesVisible(!showNames)]
+		]) {
+			// 普通行:点名字和点开关都是开关
+			item.main.addEventListener('click', value);
+			item.switch.addEventListener('click', value);
+		}
+		entitiesRow.main.addEventListener('click', () => {
+			// 点名字 = 「点进去」:先把实体层打开,再切到样式列表
+			if (!showEntities) setEntitiesVisible(true);
+			showMenuPage('style');
+		});
+		entitiesRow.switch.addEventListener('click', () => setEntitiesVisible(!showEntities));
+		for (const row of styleRows) {
+			row.addEventListener('click', () => setEntitiesStyle(row.dataset.style));
+		}
+		styleBack.addEventListener('click', () => showMenuPage('main'));
+		const toggleCursorRow = () => {
+			if (follow === null) return; // 自由视角下没有可跟的人,和以前的置灰按钮一致
+			setCursorVisible(!showCursor);
+		};
+		cursorRow.main.addEventListener('click', toggleCursorRow);
+		cursorRow.switch.addEventListener('click', toggleCursorRow);
+		// 点别处关浮层。用 capture 阶段:先把浮层关了,点击本身的语义(开始播放/拖进度条)照旧
+		const onDocumentPointerDown = (event) => {
+			const outside = (button, panel) =>
+				!panel.contains(event.target) && !button.contains(event.target);
+			if (menuOpen && outside(settingsButton, menu)) setMenuOpen(false);
+			if (speedOpen && outside(speedButton, speedMenu)) setSpeedOpen(false);
+			if (followOpen && outside(followButton, followMenu)) setFollowOpen(false);
+		};
+		document.addEventListener('pointerdown', onDocumentPointerDown, true);
+
 		muteButton.addEventListener('click', () => setMuted(!muted));
-		namesButton.addEventListener('click', () => setNameplatesVisible(!showNames));
-		cursorButton.addEventListener('click', () => setCursorVisible(!showCursor));
 		mixer.setVolume(DEFAULT_VOLUME);
 		fullscreenButton.addEventListener('click', () => {
 			if (document.fullscreenElement) void document.exitFullscreen();
@@ -1384,6 +1787,14 @@ export async function mountDemoPlayer(host, options) {
 		const onKey = (event) => {
 			if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement)
 				return;
+			if (event.code === 'Escape' && (menuOpen || speedOpen || followOpen)) {
+				// 浮层开着时 Esc 只关浮层(不要顺手把播放也暂停了)
+				event.preventDefault();
+				setMenuOpen(false);
+				setSpeedOpen(false);
+				setFollowOpen(false);
+				return;
+			}
 			if (event.code === 'Space') {
 				event.preventDefault();
 				setPlaying(!playing);
@@ -1394,6 +1805,13 @@ export async function mountDemoPlayer(host, options) {
 			}
 		};
 		window.addEventListener('keydown', onKey);
+
+		// 恢复上次的显示偏好。放在这里而不是控件初始化那里:名字牌 / 相机 / 地图这些
+		// 依赖的状态都是后面才建好的(`updateNameplates` 里要用 `visibleTiles`)。
+		setDyncamEnabled(prefs.dyncam);
+		setEntitiesVisible(prefs.entities);
+		setNameplatesVisible(prefs.names);
+		setCursorVisible(prefs.cursor);
 
 		seekTo(time);
 		timeLabel.textContent = formatTime(time);
@@ -1428,6 +1846,19 @@ export async function mountDemoPlayer(host, options) {
 						...nameStats,
 						avgMs: nameStats.frames ? nameStats.ms / nameStats.frames : 0
 					},
+					/** 四个显示开关(名字/准星/动态镜头/实体层)的当前值 */
+					prefs: {
+						dyncam: showDyncam,
+						entities: showEntities,
+						entitiesStyle,
+						names: showNames,
+						cursor: showCursor,
+						menuOpen,
+						menuPage,
+						speedOpen,
+						followOpen,
+						speed
+					},
 					recentSounds: [...recentSounds],
 					suppressed: mixer.suppressed,
 					muted,
@@ -1449,10 +1880,18 @@ export async function mountDemoPlayer(host, options) {
 				cancelAnimationFrame(frame);
 				observer.disconnect();
 				window.removeEventListener('keydown', onKey);
+				document.removeEventListener('pointerdown', onDocumentPointerDown, true);
 				document.removeEventListener('visibilitychange', onVisibilityChange);
 				dprQuery?.removeEventListener?.('change', onDprChange);
 				void releaseWakeLock();
 				mixer.close();
+				// 实体层那份地图是额外上传的一份 wasm 资源,不释放就跟着页面泄露
+				try {
+					entitiesView?.free();
+				} catch {
+					// 已经释放过了
+				}
+				entitiesView = null;
 				root.remove();
 				style.remove();
 			}
@@ -1576,12 +2015,10 @@ const CSS = `
 .tw-row-who {
 	padding: 0 0.3rem;
 }
-.tw-row-who .tw-select,
 .tw-row-who .tw-btn {
 	background: rgba(12, 18, 26, 0.62);
 	backdrop-filter: blur(8px);
 }
-.tw-row-who .tw-select:hover,
 .tw-row-who .tw-btn:not(:disabled):not(.tw-on):hover {
 	background: rgba(30, 41, 55, 0.85);
 }
@@ -1610,6 +2047,8 @@ const CSS = `
 	border: 1px solid rgba(255, 255, 255, 0.07);
 	backdrop-filter: blur(10px) saturate(1.1);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+	/* 显示选项菜单是它的绝对定位子元素,从这一行往上弹 */
+	position: relative;
 }
 .tw-player.idle .tw-bar,
 .tw-player.idle .tw-top {
@@ -1739,21 +2178,339 @@ const CSS = `
 	box-shadow: 0 0 0 2px var(--accent);
 }
 
-/* ---- 下拉框 ---- */
-.tw-select {
-	height: 2rem;
-	max-width: 8.5rem;
-	padding: 0 0.35rem;
+/* ---- 浮层锚点 / 跟随 dropdown / 播放速度 ---- */
+/* 浮层是锚点的绝对定位子元素,这样能贴着各自的按钮往上弹 */
+.tw-anchor {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+}
+.tw-follow-btn {
+	max-width: 9rem;
+	gap: 0.3rem;
+}
+.tw-follow-value {
+	font-size: 12.5px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+/* 跟的人死了:按钮文字变灰(和列表里的「死亡」标记一个意思) */
+.tw-follow-btn.tw-off .tw-follow-value { color: #93a3b5; }
+.tw-caret {
+	display: inline-flex;
+	opacity: 0.65;
+}
+.tw-caret svg { width: 14px; height: 14px; }
+.tw-follow-menu {
+	left: 0;
+	right: auto;
+	width: 12.5rem;
+	padding: 0.3rem;
+}
+.tw-follow-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.05rem;
+	max-height: min(45vh, 17rem);
+	overflow-y: auto;
+}
+.tw-follow-option {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	width: 100%;
+	padding: 0.35rem 0.5rem;
 	border: 0;
-	border-radius: 8px;
-	background: rgba(255, 255, 255, 0.06);
-	color: #e8edf3;
+	border-radius: 7px;
+	background: transparent;
+	color: #dfe7f0;
 	font: inherit;
+	text-align: left;
 	cursor: pointer;
 }
-.tw-select:hover { background: rgba(255, 255, 255, 0.12); }
-.tw-select option { background: #101820; color: #e8edf3; }
-.tw-speed { max-width: 4.5rem; }
+.tw-follow-option:hover { background: rgba(255, 255, 255, 0.1); }
+.tw-follow-option.tw-on { background: var(--accent); color: #fff; }
+.tw-follow-name {
+	flex: 1 1 auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.tw-follow-tag {
+	flex: 0 0 auto;
+	font-size: 11px;
+	opacity: 0.6;
+}
+.tw-speed-btn {
+	/* 固定宽度:拖动滑条时标签在「1×」和「0.35×」之间变长变短,
+	   不定宽的话旁边的按钮会跟着左右抖 */
+	width: 4.7rem;
+	min-width: 4.7rem;
+	padding: 0 0.3rem;
+	justify-content: center;
+	gap: 0.25rem;
+}
+.tw-speed-value {
+	/* 数值本身也定宽,里面那 18px 的图标就不会随数字长度左右微调 */
+	flex: 0 0 auto;
+	width: 2.4rem;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+}
+.tw-speed-menu {
+	left: 0;
+	right: auto;
+	width: 13.5rem;
+	gap: 0.45rem;
+	padding: 0.55rem 0.6rem 0.5rem;
+}
+.tw-speed-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	font-size: 12px;
+	color: #9fb0c4;
+}
+.tw-speed-readout {
+	color: #e8edf3;
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+}
+.tw-speed-range {
+	/* 和进度条同一套长相:4px 半透明轨道 + accent 进度 + 白色小圆点 */
+	--fill: 33%;
+	width: 100%;
+	height: 1.35rem;
+	margin: 0;
+	background: transparent;
+	cursor: pointer;
+	-webkit-appearance: none;
+	appearance: none;
+}
+/* WebKit/Blink 没有 range-progress,用横向渐变把进度画在轨道上 */
+.tw-speed-range::-webkit-slider-runnable-track {
+	height: 4px;
+	border-radius: 999px;
+	background: linear-gradient(
+		to right,
+		var(--accent) var(--fill),
+		rgba(255, 255, 255, 0.22) var(--fill)
+	);
+}
+.tw-speed-range::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 13px;
+	height: 13px;
+	/* (轨道 4px - 拇指 13px) / 2,让圆点落在轨道中线上 */
+	margin-top: -4.5px;
+	border: 0;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+	transition: transform 0.12s ease;
+}
+.tw-speed-range:hover::-webkit-slider-thumb { transform: scale(1.2); }
+.tw-speed-range:active::-webkit-slider-thumb { transform: scale(1.3); }
+.tw-speed-range:focus-visible { outline: none; }
+.tw-speed-range:focus-visible::-webkit-slider-thumb {
+	box-shadow:
+		0 0 0 3px rgba(59, 130, 246, 0.45),
+		0 1px 4px rgba(0, 0, 0, 0.55);
+}
+/* Firefox */
+.tw-speed-range::-moz-range-track {
+	height: 4px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.22);
+}
+.tw-speed-range::-moz-range-progress {
+	height: 4px;
+	border-radius: 999px;
+	background: var(--accent);
+}
+.tw-speed-range::-moz-range-thumb {
+	width: 13px;
+	height: 13px;
+	border: 0;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+}
+.tw-speed-range:focus-visible::-moz-range-thumb {
+	box-shadow:
+		0 0 0 3px rgba(59, 130, 246, 0.45),
+		0 1px 4px rgba(0, 0, 0, 0.55);
+}
+.tw-speed-presets {
+	display: flex;
+	gap: 0.3rem;
+}
+.tw-speed-preset {
+	flex: 1 1 0;
+	padding: 0.3rem 0;
+	border: 0;
+	border-radius: 7px;
+	background: rgba(255, 255, 255, 0.08);
+	color: #dfe7f0;
+	font: inherit;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+}
+.tw-speed-preset:hover { background: rgba(255, 255, 255, 0.16); }
+.tw-speed-preset.tw-on { background: var(--accent); color: #fff; }
+
+/* ---- 显示选项上拉菜单 ---- */
+.tw-menu {
+	position: absolute;
+	right: 0;
+	bottom: calc(100% + 0.4rem);
+	width: min(16rem, calc(100vw - 1.4rem));
+	display: flex;
+	flex-direction: column;
+	gap: 0.1rem;
+	padding: 0.35rem;
+	border-radius: 12px;
+	background: rgba(12, 18, 26, 0.94);
+	border: 1px solid rgba(255, 255, 255, 0.09);
+	box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
+	backdrop-filter: blur(10px) saturate(1.1);
+	z-index: 5;
+}
+.tw-menu[hidden] { display: none; }
+.tw-menu-item {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	width: 100%;
+	padding: 0.4rem 0.5rem;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: #dfe7f0;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.tw-menu-item:hover { background: rgba(255, 255, 255, 0.1); }
+.tw-menu-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tw-menu-item.tw-disabled { opacity: 0.45; cursor: not-allowed; }
+.tw-menu-glyph { display: inline-flex; color: #93a3b5; }
+.tw-menu-item.tw-on .tw-menu-glyph { color: #93c5fd; }
+.tw-menu-label { flex: 1 1 auto; white-space: nowrap; }
+/* 开关:轨道 + 滑块 */
+.tw-switch {
+	position: relative;
+	flex: 0 0 auto;
+	width: 30px;
+	height: 17px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.18);
+	transition: background 0.15s ease;
+}
+.tw-switch-knob {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 13px;
+	height: 13px;
+	border-radius: 50%;
+	background: #e8edf3;
+	transition: transform 0.15s ease;
+}
+.tw-menu-item.tw-on .tw-switch { background: var(--accent); }
+.tw-menu-item.tw-on .tw-switch-knob { transform: translateX(13px); }
+/* 二级菜单:整页替换(窄屏并排放不下),带一行返回 */
+.tw-menu-page {
+	display: flex;
+	flex-direction: column;
+	gap: 0.1rem;
+}
+.tw-menu-page[hidden] { display: none; }
+/* 带子菜单的那一行:开关本体 + 右侧箭头,两个独立的点击区域 */
+/* 一行 = 左侧「图标 + 文字(+ 箭头)」 + 右侧开关。两边各自是按钮,
+   但视觉上要像一整行:背景高亮放在行上,子按钮全透明。 */
+.tw-menu-row {
+	display: flex;
+	align-items: center;
+	border-radius: 8px;
+}
+.tw-menu-row:hover { background: rgba(255, 255, 255, 0.1); }
+.tw-menu-main {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 0.4rem 0.2rem 0.4rem 0.5rem;
+	border: 0;
+	border-radius: 8px 0 0 8px;
+	background: transparent;
+	color: #dfe7f0;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.tw-menu-switch {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+	/* 右内边距和下面各行的文字区对齐(0.5rem),这样开关在所有行里位置一致 */
+	padding: 0.4rem 0.5rem;
+	border: 0;
+	border-radius: 0 8px 8px 0;
+	background: transparent;
+	cursor: pointer;
+}
+.tw-menu-main:focus-visible,
+.tw-menu-switch:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+.tw-menu-row.tw-on .tw-menu-glyph { color: #93c5fd; }
+/* 行尾的小箭头:表示点进去还有一层 */
+.tw-menu-chevron {
+	display: inline-flex;
+	margin-left: auto;
+	color: #93a3b5;
+	opacity: 0.85;
+}
+.tw-menu-chevron svg { width: 14px; height: 14px; }
+.tw-menu-switch.tw-on .tw-switch { background: var(--accent); }
+.tw-menu-switch.tw-on .tw-switch-knob { transform: translateX(13px); }
+/* 禁用(自由视角下的准星行) */
+.tw-menu-main:disabled,
+.tw-menu-switch:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.tw-menu-back {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	width: 100%;
+	padding: 0.35rem 0.4rem;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: #9fb0c4;
+	font: inherit;
+	font-size: 12px;
+	text-align: left;
+	cursor: pointer;
+}
+.tw-menu-back:hover { background: rgba(255, 255, 255, 0.1); color: #dfe7f0; }
+.tw-menu-check {
+	width: 1rem;
+	text-align: center;
+	color: var(--accent);
+	opacity: 0;
+}
+.tw-menu-style.tw-on .tw-menu-check { opacity: 1; }
+.tw-menu-style.tw-on .tw-menu-check::after { content: '✓'; }
 
 /* ---- 窄屏 ---- */
 /* 按钮现在各占一行(跟随/队伍、进度条、其余控件),窄屏不需要靠隐藏按钮来腾地方,
@@ -1765,13 +2522,15 @@ const CSS = `
 	.tw-row-who { padding: 0 0.25rem; }
 	.tw-row-seek { padding: 0 0.3rem; }
 	.tw-time { font-size: 11.5px; }
+	/* 窄屏里团队视角只留图标:去掉文字后的内边距/间隙,图标才是真正居中的 */
+	.tw-team { padding: 0; gap: 0; }
 	.tw-team span { display: none; }
-	.tw-select { max-width: 6.5rem; }
+	.tw-speed-btn { width: 4.1rem; min-width: 4.1rem; }
+	.tw-speed-value { width: 2.1rem; }
 	.tw-seekwrap { min-width: 3rem; }
 }
 @media (max-width: 420px) {
 	.tw-btn { min-width: 1.75rem; height: 1.75rem; padding: 0 0.2rem; }
-	.tw-select { height: 1.75rem; max-width: 5.2rem; }
 	.tw-time { font-size: 11px; padding: 0 0.15rem; }
 	.tw-seekwrap { min-width: 2rem; margin: 0 0.1rem; }
 	.tw-row { gap: 0.12rem; }
