@@ -30,6 +30,27 @@ export const mapType = (type: string) => {
 	return MAP_TYPES[type?.toLowerCase?.()] || type;
 };
 
+/**
+ * /ddnet/watch 的回放链接。
+ *
+ * 同一次完赛在 watchable.jsonl 里有多条:team 一条 + 每个完成者各一条 solo,
+ * 所以带上 kind 让播放器挑对视角;solo 再带上玩家名,不然会随机跟到另一个完成者。
+ */
+export const watchLink = (demo: {
+	uuid: string;
+	/** 完赛时间,秒 */
+	time: number;
+	/** 'team' | 'solo' */
+	kind?: string;
+	/** 完成者(团队就是整队) */
+	names?: string[];
+}) => {
+	const params = new URLSearchParams({ uuid: demo.uuid, time: String(demo.time) });
+	if (demo.kind) params.set('kind', demo.kind);
+	if (demo.kind == 'solo' && demo.names?.length == 1) params.set('player', demo.names[0]);
+	return `/ddnet/watch?${params.toString()}`;
+};
+
 const FLAG_DEFAULT: string = '/assets/flags/default.png';
 const FLAG_MAP: { [key: string]: typeof FLAG_DEFAULT } = {
 	CHN: '/assets/flags/CN.png',
@@ -81,6 +102,27 @@ export const KNOWN_REGIONS: Record<string, string> = {
 	IND: '印度服',
 	AUS: '澳大利亚服',
 	OLD: '历史遗留服'
+};
+
+/**
+ * 地图类型排行（ddnet.org/ranks/<类型>/）
+ * key 为 ?server= 参数的大写形式（地区服也是大写），顺序与 DDNet 官网一致
+ */
+export const MAP_TYPE_SERVERS: Record<string, string> = {
+	NOVICE: '新手图',
+	MODERATE: '中阶图',
+	BRUTAL: '高阶图',
+	INSANE: '疯狂图',
+	DUMMY: '分身图',
+	'DDMAX.EASY': '古典.Easy图',
+	'DDMAX.NEXT': '古典.Next图',
+	'DDMAX.PRO': '古典.Pro图',
+	'DDMAX.NUT': '古典.Nut图',
+	OLDSCHOOL: '传统图',
+	SOLO: '单人图',
+	RACE: '竞速图',
+	FUN: '娱乐图',
+	EVENT: '活动图'
 };
 
 export const flagAsset = (flag: string) => {

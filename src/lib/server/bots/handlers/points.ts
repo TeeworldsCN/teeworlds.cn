@@ -1,5 +1,6 @@
 import { encodeAsciiURIComponent } from '$lib/link';
 import { regionalRanks } from '$lib/server/fetches/ranks';
+import { findPlayerLatestDemo, type LatestPlayerDemo } from '$lib/server/fetches/watchable';
 import { allowedText } from '$lib/server/filter';
 import { getPlayer } from '$lib/server/players';
 import type { Handler } from '../protocol/types';
@@ -57,6 +58,12 @@ export const handlePoints: Handler = async ({ platform, user, reply, args }) => 
 		} catch {}
 	}
 
+	// watchable 清单里该玩家最新的一条回放(拉不到就只是少了这一行)
+	let latestDemo: LatestPlayerDemo | null = null;
+	try {
+		latestDemo = await findPlayerLatestDemo(player.name);
+	} catch {}
+
 	const ranks: PointsRank[] = [
 		{ label: '🌎 里程', points: player.points?.points, rank: player.points?.rank },
 		{ label: '📅 近年里程', points: player.yearly?.points, rank: player.yearly?.rank },
@@ -72,7 +79,8 @@ export const handlePoints: Handler = async ({ platform, user, reply, args }) => 
 		pointsMarkdown(
 			player.name,
 			ranks,
-			`https://teeworlds.cn/goto#p${encodeAsciiURIComponent(player.name)}`
+			`https://teeworlds.cn/goto#p${encodeAsciiURIComponent(player.name)}`,
+			latestDemo
 		)
 	);
 };

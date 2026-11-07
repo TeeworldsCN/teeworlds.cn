@@ -15,7 +15,7 @@ export type RankRecord = {
 	personal: number | null;
 	team: number | null;
 	time: number | null;
-	demo: { uuid: string; time: number; kind: string } | null;
+	demo: { uuid: string; time: number; kind: string; names?: string[] } | null;
 };
 
 export function transformPlayerData(data: { player: any; skin: any; top_ranks?: RankRecord[] }) {

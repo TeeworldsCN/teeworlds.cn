@@ -10,7 +10,7 @@
 	import PointCalculation from '$lib/components/PointCalculation.svelte';
 	import TeeRender from '$lib/components/TeeRender.svelte';
 	import { secondsToDate } from '$lib/date';
-	import { KNOWN_REGIONS, mapType } from '$lib/ddnet/helpers';
+	import { KNOWN_REGIONS, mapType, watchLink } from '$lib/ddnet/helpers';
 	import { checkMapName } from '$lib/ddnet/searches.js';
 	import { secondsToTime } from '$lib/helpers';
 	import { decodeAsciiURIComponent, encodeAsciiURIComponent } from '$lib/link.js';
@@ -643,7 +643,7 @@
 							</span>
 							{#if record.demo}
 								<a
-									href={`/ddnet/watch?uuid=${record.demo.uuid}&time=${record.demo.time}`}
+									href={watchLink(record.demo)}
 									class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-700/70 text-slate-300 transition-colors hover:bg-orange-500 hover:text-white"
 									use:tippy={{ content: `观看回放（${secondsToTime(record.demo.time)}）` }}
 									aria-label={`观看 ${record.map} 的回放`}

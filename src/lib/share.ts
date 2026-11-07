@@ -5,8 +5,14 @@ let nativeShare: NativeShare | null = null;
 
 if (browser) {
 	(async () => {
-		const NativeShare = (await import('nativeshare')).default;
-		nativeShare = new NativeShare({});
+		// nativeshare is a CJS (UMD) package: depending on the bundler interop the
+		// constructor is either the module default or the default of the default
+		const mod = (await import('nativeshare')).default as unknown as
+			typeof NativeShare | { default: typeof NativeShare };
+		const NativeShareClass = typeof mod === 'function' ? mod : mod?.default;
+		if (typeof NativeShareClass === 'function') {
+			nativeShare = new NativeShareClass({});
+		}
 	})();
 }
 

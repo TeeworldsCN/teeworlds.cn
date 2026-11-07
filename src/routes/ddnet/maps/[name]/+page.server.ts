@@ -10,6 +10,8 @@ export type WatchableDemo = {
 	uuid: string;
 	/** 完赛时间,秒(用来在播放页里区分同一场回放的多个名次) */
 	time: number;
+	/** 'team' | 'solo' —— 这一档名次对应的视角 */
+	kind: string;
 };
 
 export const load = (async ({ url, parent, params }) => {
@@ -112,7 +114,11 @@ export const load = (async ({ url, parent, params }) => {
 				{ time: item.time, players, kind, rank: item.rank }
 			]);
 			if (match) {
-				item.demo = { uuid: match.entry.uuid, time: parseFloat(match.entry.time) };
+				item.demo = {
+					uuid: match.entry.uuid,
+					time: parseFloat(match.entry.time),
+					kind: match.entry.kind
+				};
 			}
 		};
 

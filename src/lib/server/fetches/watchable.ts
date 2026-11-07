@@ -190,8 +190,12 @@ export const matchRankedRecord = (
 		);
 		if (!sameRun.length) continue;
 
-		// team 视角带着完整的完成者列表,播放器靠它把队友也画出来,优先用
-		const entry = sameRun.find((item) => item.kind === 'team') ?? sameRun[0];
+		// 优先和名次同视角(个人榜给 solo,团队榜给 team);team 视角带着完整的
+		// 完成者列表,播放器靠它把队友也画出来,同视角找不到时优先它
+		const entry =
+			sameRun.find((item) => item.kind === candidate.kind) ??
+			sameRun.find((item) => item.kind === 'team') ??
+			sameRun[0];
 		return { entry, candidate };
 	}
 	return null;
@@ -217,7 +221,9 @@ export type PlayerDemo = {
 export const findPlayerDemo = async (
 	mapName: string,
 	player: string,
-	times: (number | null | undefined)[]
+	times: (number | null | undefined)[],
+	/** 优先取这一种视角('team' | 'solo'):个人记录用 solo,团队记录用 team */
+	kind?: string
 ): Promise<PlayerDemo | null> => {
 	const entries = await getWatchableEntriesByMap(mapName);
 	if (!entries.length) return null;
@@ -226,14 +232,25 @@ export const findPlayerDemo = async (
 	const mine = entries.filter((entry) => entry.names.some((name) => name.toLowerCase() === lower));
 	if (!mine.length) return null;
 
+	// 和这条记录同视角的优先;没有(比如 solo 视角还没生成)再退回该玩家的任意记录
+	const preferred = kind ? mine.filter((entry) => entry.kind === kind) : [];
 	const seconds = (entry: WatchableEntry) => parseFloat(entry.time);
+	const byTime = (list: WatchableEntry[], time: number) =>
+		list.find((entry) => Math.abs(seconds(entry) - time) < 0.02);
+
 	for (const time of times) {
 		if (typeof time !== 'number' || !Number.isFinite(time)) continue;
-		const hit = mine.find((entry) => Math.abs(seconds(entry) - time) < 0.02);
+		const hit = byTime(preferred, time) ?? byTime(mine, time);
 		if (hit) return { uuid: hit.uuid, time: seconds(hit), kind: hit.kind, names: hit.names };
 	}
 
-	const fastest = mine.reduce((best, entry) => (seconds(entry) < seconds(best) ? entry : best));
+	const fastestOf = (list: WatchableEntry[]) =>
+		list.reduce<WatchableEntry | null>(
+			(best, entry) => (!best || seconds(entry) < seconds(best) ? entry : best),
+			null
+		);
+	const fastest = fastestOf(preferred) ?? fastestOf(mine);
+	if (!fastest) return null;
 	return { uuid: fastest.uuid, time: seconds(fastest), kind: fastest.kind, names: fastest.names };
 };
 
@@ -256,4 +273,49 @@ export const findMapDemo = async (mapName: string): Promise<PlayerDemo | null> =
 	const pick = fastest('team') ?? fastest('solo');
 	if (!pick) return null;
 	return { uuid: pick.uuid, time: parseFloat(pick.time), kind: pick.kind, names: pick.names };
+};
+
+/** 玩家最新的一条回放(带地图名,给豆豆的「最新回放」链接用) */
+export type LatestPlayerDemo = PlayerDemo & {
+	/** 地图名 */
+	map: string;
+};
+
+/**
+ * 某个玩家在 watchable 清单里最新的一条回放(按完赛时间戳)。
+ *
+ * 同一场完赛会有 team 一条 + 每个完成者各一条 solo,时间戳完全一样;
+ * 这里优先取本人那条 solo(镜头跟着自己,默认也不开团队视角),
+ * 没有 solo 视角(比如只转了团队)才用 team。
+ */
+export const findPlayerLatestDemo = async (player: string): Promise<LatestPlayerDemo | null> => {
+	const lower = player.toLowerCase();
+	const { index } = await load();
+
+	const ownSolo = (entry: WatchableEntry) =>
+		entry.kind === 'solo' && entry.names.length === 1 && entry.names[0].toLowerCase() === lower;
+
+	let latest: WatchableEntry | null = null;
+	for (const entries of Object.values(index)) {
+		for (const entry of entries) {
+			if (!entry.names.some((name) => name.toLowerCase() === lower)) continue;
+			if (
+				!latest ||
+				entry.ts > latest.ts ||
+				// 同一场完赛的多条记录:本人 solo 优先,其余保持先到的那条
+				(entry.ts === latest.ts && ownSolo(entry) && !ownSolo(latest))
+			) {
+				latest = entry;
+			}
+		}
+	}
+
+	if (!latest) return null;
+	return {
+		map: latest.map,
+		uuid: latest.uuid,
+		time: parseFloat(latest.time),
+		kind: latest.kind,
+		names: latest.names
+	};
 };

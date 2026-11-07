@@ -26,6 +26,8 @@ export interface RankInfo {
 		monthly: PointInfo[];
 		weekly: PointInfo[];
 	};
+	/** 该页面实际存在的排行（有些地图类型服没有团队排行等） */
+	ladders: (keyof RankInfo['ranks'])[];
 	last_finishes: FinishInfo[];
 	total_points: number;
 	update_time: number;
@@ -75,21 +77,24 @@ class LadderHandler implements HTMLRewriterTypes.HTMLRewriterElementContentHandl
 			this.context.rank = { rank: 0, points: 0, region: '', name: '' };
 
 			const ladderName = text.text.trim();
+			let ladder: keyof RankInfo['ranks'] | null = null;
 			if (ladderName.match(/Points \([0-9]+ total\)/)) {
-				this.context.ladder = 'points';
+				ladder = 'points';
 				this.data.total_points = parseInt(ladderName.slice(8, -1));
 			} else if (ladderName === 'Points (past 365 days)') {
-				this.context.ladder = 'yearly';
+				ladder = 'yearly';
 			} else if (ladderName === 'Points (past 30 days)') {
-				this.context.ladder = 'monthly';
+				ladder = 'monthly';
 			} else if (ladderName === 'Points (past 7 days)') {
-				this.context.ladder = 'weekly';
+				ladder = 'weekly';
 			} else if (ladderName === 'Team Rank') {
-				this.context.ladder = 'team';
+				ladder = 'team';
 			} else if (ladderName === 'Rank') {
-				this.context.ladder = 'rank';
-			} else {
-				this.context.ladder = null;
+				ladder = 'rank';
+			}
+			this.context.ladder = ladder;
+			if (ladder && !this.data.ladders.includes(ladder)) {
+				this.data.ladders.push(ladder);
 			}
 		} else if (this.context.type === 'rank') {
 			this.context.rank.rank = parseInt(text.text);
@@ -140,6 +145,7 @@ export const ranks = new FetchCache<RankInfo>(
 				monthly: [],
 				weekly: []
 			},
+			ladders: [],
 			last_finishes: [],
 			total_points: 0,
 			update_time: 0
@@ -166,7 +172,7 @@ export const ranks = new FetchCache<RankInfo>(
 		return ranks;
 	},
 	{
-		version: 4,
+		version: 5,
 		minQueryInterval: 1800
 	}
 );
@@ -199,6 +205,7 @@ export const regionalRanks = async (region: string) => {
 					monthly: [],
 					weekly: []
 				},
+				ladders: [],
 				last_finishes: [],
 				total_points: 0,
 				update_time: 0
@@ -226,7 +233,7 @@ export const regionalRanks = async (region: string) => {
 			return ranks;
 		},
 		{
-			version: 4,
+			version: 5,
 			minQueryInterval: 1800
 		}
 	);
