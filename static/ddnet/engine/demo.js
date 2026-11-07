@@ -319,6 +319,13 @@ export async function mountDemoPlayer(host, options) {
 	seek.step = '1';
 	seek.setAttribute('aria-label', '进度');
 	seekWrap.append(seekTrack, seek);
+	/** 进度条百分比(`seek.value` 是毫秒) */
+	const seekPercent = (ms) => clamp((ms / (Number(seek.max) || 1)) * 100, 0, 100);
+	/** 只画自绘的填充条和滑块 */
+	const paintSeek = (percent) => {
+		seekFill.style.width = `${percent}%`;
+		seekKnob.style.left = `${percent}%`;
+	};
 	const duration = element('span', 'tw-time tw-dur', '00:00.00');
 	const muteButton = iconButton('volumeOff', '取消静音 / 静音', 'tw-mute tw-off');
 
@@ -1598,7 +1605,7 @@ export async function mountDemoPlayer(host, options) {
 			lastFrameTime = now;
 			if (document.hidden) return;
 
-			if (playing) {
+			if (playing && !dragging) {
 				time += dt * speed;
 				if (time >= length) {
 					time = length;
@@ -1703,14 +1710,14 @@ export async function mountDemoPlayer(host, options) {
 			// 控制栏 10 Hz 更新就够了:每帧改 textContent / width 会让浏览器每帧重新
 			// style + layout + paint(手机上一帧就是几毫秒),而画面本身并不需要这个。
 			// 时间文字 0.01 秒才变一位,10 Hz 已经比肉眼能分辨的快。
-			if (now - uiUpdatedAt >= 100) {
+			// 拖动进度条时整块跳过:否则每 100ms 会把 value / 填充条 / 时间文字按播放位置
+			// 写回去,和手上的拖动位置互相打架(看起来就是数字和滑块乱跳)
+			if (now - uiUpdatedAt >= 100 && !dragging) {
 				uiUpdatedAt = now;
 				if (now - seekbarHold > 120 && document.activeElement !== seek) {
 					seek.value = String(Math.round(time * 1000));
 				}
-				const percent = length > 0 ? clamp((time / length) * 100, 0, 100) : 0;
-				seekFill.style.width = `${percent}%`;
-				seekKnob.style.left = `${percent}%`;
+				paintSeek(seekPercent(time * 1000));
 				const label = formatTime(time);
 				if (timeLabel.textContent !== label) timeLabel.textContent = label;
 			}
@@ -1774,17 +1781,26 @@ export async function mountDemoPlayer(host, options) {
 			suppressSound();
 		});
 		seek.addEventListener('input', () => {
-			if (dragging) {
-				suppressSound();
-				seekbarHold = performance.now();
-				time = Number(seek.value) / 1000;
-				timeLabel.textContent = formatTime(time);
-				const percent = Number(seek.value) / 10;
-				seekFill.style.width = `${percent}%`;
-				seekKnob.style.left = `${percent}%`;
-			}
+			if (!dragging) return;
+			suppressSound();
+			seekbarHold = performance.now();
+			const ms = Number(seek.value);
+			// 拖动期间只更新预览:真的 seek 留到松手(否则每个 pointermove 都要读一遍 demo)
+			time = clamp(ms / 1000, 0, Math.max(0, length - 0.02));
+			timeLabel.textContent = formatTime(time);
+			paintSeek(seekPercent(ms));
 		});
-		seek.addEventListener('change', () => seekTo(Number(seek.value) / 1000));
+		// 松手 / 失焦都要收掉拖动状态,不然播放时间会一直冻着
+		const endSeekDrag = () => {
+			dragging = false;
+			seekbarHold = 0;
+		};
+		seek.addEventListener('change', () => {
+			endSeekDrag();
+			seekTo(Number(seek.value) / 1000);
+		});
+		seek.addEventListener('blur', endSeekDrag);
+		seek.addEventListener('lostpointercapture', endSeekDrag);
 
 		// ---- 跟随谁(自己画的 dropdown) ----
 		const setFollow = (id) => {
@@ -2248,7 +2264,7 @@ const CSS = `
 	color: #e8edf3;
 	font: 13px/1.4 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
 	--accent: #3b82f6;
-	--bar: rgba(10, 15, 22, 0.72);
+	--bar: rgba(10, 15, 22, 0.88);
 }
 .tw-canvas {
 	position: absolute;
@@ -2268,12 +2284,11 @@ const CSS = `
 	pointer-events: none;
 }
 .tw-status {
-	background: rgba(8, 12, 18, 0.78);
+	background: rgba(8, 12, 18, 0.9);
 	border: 1px solid rgba(255, 255, 255, 0.08);
 	padding: 0.55rem 1rem;
 	border-radius: 999px;
 	font-size: 12.5px;
-	backdrop-filter: blur(8px);
 }
 .tw-status[hidden] { display: none; }
 
@@ -2325,8 +2340,7 @@ const CSS = `
 	padding: 0 0.3rem;
 }
 .tw-row-who .tw-btn {
-	background: rgba(12, 18, 26, 0.62);
-	backdrop-filter: blur(8px);
+	background: rgba(12, 18, 26, 0.84);
 }
 .tw-row-who .tw-btn:not(:disabled):not(.tw-on):hover {
 	background: rgba(30, 41, 55, 0.85);
@@ -2354,7 +2368,6 @@ const CSS = `
 	border-radius: 12px;
 	background: var(--bar);
 	border: 1px solid rgba(255, 255, 255, 0.07);
-	backdrop-filter: blur(10px) saturate(1.1);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 	/* 显示选项菜单是它的绝对定位子元素,从这一行往上弹 */
 	position: relative;
@@ -2683,10 +2696,9 @@ const CSS = `
 	gap: 0.1rem;
 	padding: 0.35rem;
 	border-radius: 12px;
-	background: rgba(12, 18, 26, 0.94);
+	background: rgba(12, 18, 26, 0.97);
 	border: 1px solid rgba(255, 255, 255, 0.09);
 	box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
-	backdrop-filter: blur(10px) saturate(1.1);
 	z-index: 5;
 }
 .tw-menu[hidden] { display: none; }
