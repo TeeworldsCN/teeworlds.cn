@@ -14,6 +14,7 @@
 	import Fa from 'svelte-fa';
 	import {
 		faArrowsRotate,
+		faCaretDown,
 		faExpand,
 		faLayerGroup,
 		faTriangleExclamation
@@ -23,7 +24,14 @@
 
 	// 渲染器启动、产物版本号、wasm 实例、贴图加载全部复用 /ddnet/engine/engine.js,
 	// 和 demo 播放器只有一份实现(QQ/X5 那些坑只在那边修一次)
-	import { assetUrl, bootRenderer, fetchBytes } from '../../../../static/ddnet/engine/engine.js';
+	import {
+		ENTITIES,
+		assetUrl,
+		bootRenderer,
+		fetchBytes,
+		readEntitiesStyle,
+		writeEntitiesStyle
+	} from '../../../../static/ddnet/engine/engine.js';
 	import { uaIsStrict } from '$lib/helpers';
 
 	// 地图文件仍然走 mappreview 代理(和引擎产物无关,是服务端转发 ddnet.org/mappreview)
@@ -34,6 +42,8 @@
 	const MAX_ZOOM = 20;
 
 	const BTN = 'flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors';
+	/** 分段按钮里的两块:圆角交给外层容器,自己不要圆角 */
+	const BTN_FLAT = 'flex cursor-pointer items-center gap-1 px-2 py-1 transition-colors';
 	const BTN_IDLE = 'text-slate-300 hover:bg-slate-700/70 hover:text-white';
 	const BTN_ACTIVE = 'bg-blue-500 text-white';
 
@@ -71,6 +81,7 @@
 		add_external_07(name: string, bytes: Uint8Array): void;
 		upload_map(intermediate: MpIntermediate): MpMap;
 		map_to_entities(map: MpMap): MpMap;
+		map_to_entities_with_style(map: MpMap, style: string): MpMap;
 		render_map(surface: MpSurface, camera: MpCamera, map: MpMap): void;
 		free(): void;
 	}
@@ -94,6 +105,9 @@
 	let errorText = $state('');
 
 	let entitiesLayer = $state(false);
+	/** 实体层图集风格,demo 播放器那边共用同一个偏好(localStorage 里同一个 key) */
+	let entitiesStyle = $state<string>(ENTITIES[0].id);
+	let styleMenuOpen = $state(false);
 	let fullscreen = $state(false);
 	/** QQ / 微信内置浏览器(X5)里没有 requestFullscreen,按钮直接禁用 */
 	let inApp = $state(false);
@@ -468,7 +482,7 @@
 		entitiesLayer = value;
 		if (value && !entitiesView && mapView && gpu) {
 			try {
-				entitiesView = gpu.map_to_entities(mapView);
+				entitiesView = gpu.map_to_entities_with_style(mapView, entitiesStyle);
 			} catch (e) {
 				console.error(e);
 				entitiesNow = false;
@@ -476,6 +490,41 @@
 			}
 		}
 	};
+
+	/** 换实体层风格:把已经转好的那份丢掉,开着的话立刻用新图集重建 */
+	const setEntitiesStyle = (style: string) => {
+		styleMenuOpen = false;
+		if (style === entitiesStyle) return;
+		entitiesStyle = style;
+		writeEntitiesStyle(style);
+		entitiesView?.free();
+		entitiesView = null;
+		if (!entitiesNow || !mapView || !gpu) return;
+		try {
+			entitiesView = gpu.map_to_entities_with_style(mapView, style);
+		} catch (e) {
+			console.error(e);
+			entitiesNow = false;
+			entitiesLayer = false;
+		}
+	};
+
+	/** 风格按钮上显示的名字 */
+	const styleLabel = $derived(
+		ENTITIES.find((entry) => entry.id === entitiesStyle)?.label ?? ENTITIES[0].label
+	);
+
+	/** 点菜单外面关掉 */
+	$effect(() => {
+		if (!styleMenuOpen) return;
+		const close = (event: PointerEvent) => {
+			if (!(event.target instanceof Element)) return;
+			if (event.target.closest('[data-mp-style-menu]')) return;
+			styleMenuOpen = false;
+		};
+		document.addEventListener('pointerdown', close, true);
+		return () => document.removeEventListener('pointerdown', close, true);
+	});
 
 	const resetView = () => {
 		if (!camera || !mapView) return;
@@ -497,6 +546,7 @@
 
 	onMount(() => {
 		inApp = uaIsStrict(navigator.userAgent);
+		entitiesStyle = readEntitiesStyle();
 		if (!host) return;
 		observer = new ResizeObserver(() => resize());
 		observer.observe(host);
@@ -530,16 +580,54 @@
 			<div
 				class="pointer-events-auto flex flex-wrap items-center gap-1 rounded-lg bg-slate-900/80 p-1 text-xs font-semibold backdrop-blur"
 			>
-				<button
-					type="button"
-					class="{BTN} {entitiesLayer ? BTN_ACTIVE : BTN_IDLE}"
-					aria-pressed={entitiesLayer}
-					title="显示实体层(出生点、传送门、加速带、开关等)"
-					onclick={() => setEntitiesLayer(!entitiesLayer)}
-				>
-					<Fa icon={faLayerGroup} />
-					实体层
-				</button>
+				<!-- 实体层开关 + 紧跟一个下箭头选图集风格(分段按钮,箭头单独可点) -->
+				<div class="relative flex items-stretch" data-mp-style-menu>
+					<button
+						type="button"
+						class="{BTN_FLAT} rounded-l {entitiesLayer ? BTN_ACTIVE : BTN_IDLE}"
+						aria-pressed={entitiesLayer}
+						title="显示实体层(出生点、传送门、加速带、开关等)"
+						onclick={() => setEntitiesLayer(!entitiesLayer)}
+					>
+						<Fa icon={faLayerGroup} />
+						实体层
+					</button>
+					<button
+						type="button"
+						class="{BTN_FLAT} rounded-r {entitiesLayer
+							? BTN_ACTIVE
+							: BTN_IDLE} border-l px-1 {entitiesLayer ? 'border-white/25' : 'border-white/15'}"
+						aria-haspopup="listbox"
+						aria-expanded={styleMenuOpen}
+						title="实体层图集风格(当前:{styleLabel},和 demo 播放器共用)"
+						onclick={() => (styleMenuOpen = !styleMenuOpen)}
+					>
+						<Fa icon={faCaretDown} />
+					</button>
+					{#if styleMenuOpen}
+						<div
+							class="absolute top-full left-0 z-20 mt-1 min-w-28 rounded-lg bg-slate-900/95 p-1 text-xs font-semibold text-slate-300 shadow-lg ring-1 ring-white/10 backdrop-blur"
+							role="listbox"
+							tabindex="-1"
+						>
+							{#each ENTITIES as entry (entry.id)}
+								<button
+									type="button"
+									class="flex w-full cursor-pointer items-center justify-between gap-2 rounded px-2 py-1 text-left {entry.id ===
+									entitiesStyle
+										? 'bg-blue-500 text-white'
+										: 'hover:bg-slate-700/70 hover:text-white'}"
+									role="option"
+									aria-selected={entry.id === entitiesStyle}
+									onclick={() => setEntitiesStyle(entry.id)}
+								>
+									{entry.label}
+									{#if entry.id === entitiesStyle}<span aria-hidden="true">✓</span>{/if}
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
 				<button
 					type="button"
 					class="{BTN} {BTN_IDLE}"

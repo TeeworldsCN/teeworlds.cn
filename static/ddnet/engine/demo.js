@@ -21,8 +21,18 @@ const VERSION = new URL(import.meta.url).searchParams.get('v') ?? '';
 const withVersion = (file) => (VERSION ? `${file}?v=${VERSION}` : file);
 
 const { SoundMixer } = await import(/* @vite-ignore */ withVersion('./sound.js'));
-const { BASE, bootRenderer, fetchBytes, fetchMapByName, getVersion, gunzip, loadMap } =
-	await import(/* @vite-ignore */ withVersion('./engine.js'));
+const {
+	BASE,
+	bootRenderer,
+	ENTITIES,
+	fetchBytes,
+	fetchMapByName,
+	getVersion,
+	gunzip,
+	loadMap,
+	readEntitiesStyle,
+	writeEntitiesStyle
+} = await import(/* @vite-ignore */ withVersion('./engine.js'));
 
 /** 自由视角的缩放范围,和地图预览页(mappreview)保持一致 */
 const ZOOM_MIN = 0.05;
@@ -116,8 +126,14 @@ const readPrefs = () => {
 	try {
 		const stored = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null');
 		if (stored && typeof stored === 'object') {
-			for (const key of Object.keys(DEFAULT_PREFS)) {
-				if (typeof stored[key] === 'boolean') prefs[key] = stored[key];
+			for (const [key, fallback] of Object.entries(DEFAULT_PREFS)) {
+				const value = stored[key];
+				// 布尔开关和字符串(实体层风格)分开校验,脏值一律忽略
+				if (typeof fallback === 'boolean' && typeof value === 'boolean') {
+					prefs[key] = value;
+				} else if (typeof fallback === 'string' && typeof value === 'string' && value.length < 32) {
+					prefs[key] = value;
+				}
 			}
 		}
 	} catch {
@@ -175,7 +191,10 @@ const ICONS = {
 		'<path d="M4.6 17.4a8.4 8.4 0 1 1 14.8 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 13.6l3.6-3.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="14.6" r="1.5"/>',
 	/* 下拉箭頭 */
 	caret:
-		'<path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+		'<path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+	/* 二级菜单:进入 / 返回 */
+	next: '<path d="M10 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+	back: '<path d="M14 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
 };
 
 const icon = (name) =>
@@ -192,17 +211,27 @@ const iconButton = (name, title, className = '') => {
 };
 
 /** 上拉菜单里的一行:图标 + 文字 + 开关,整行就是个 role=menuitemcheckbox 按钮 */
-const menuItem = (iconName, label, hint) => {
-	const row = element('button', 'tw-menu-item');
-	row.type = 'button';
-	row.setAttribute('role', 'menuitemcheckbox');
-	row.title = hint;
+const menuRow = (iconName, label, hint, { submenu = false } = {}) => {
+	const row = element('div', 'tw-menu-row');
+	const main = element('button', 'tw-menu-main');
+	main.type = 'button';
+	main.title = hint;
 	const glyph = element('span', 'tw-menu-glyph');
 	glyph.innerHTML = icon(iconName);
+	main.append(glyph, element('span', 'tw-menu-label', label));
+	if (submenu) {
+		const chevron = element('span', 'tw-menu-chevron');
+		chevron.innerHTML = icon('next');
+		main.append(chevron);
+	}
+	const switchButton = element('button', 'tw-menu-switch');
+	switchButton.type = 'button';
+	switchButton.setAttribute('role', 'switch');
 	const switchTrack = element('span', 'tw-switch');
 	switchTrack.append(element('span', 'tw-switch-knob'));
-	row.append(glyph, element('span', 'tw-menu-label', label), switchTrack);
-	return row;
+	switchButton.append(switchTrack);
+	row.append(main, switchButton);
+	return { row, main, switch: switchButton };
 };
 
 const element = (tag, className, text) => {
@@ -375,11 +404,33 @@ export async function mountDemoPlayer(host, options) {
 	menu.hidden = true;
 	menu.setAttribute('role', 'menu');
 	menu.setAttribute('aria-label', '显示选项');
-	const dyncamRow = menuItem('camera', '动态镜头', '镜头跟着瞄准点轻微偏移(DDNet 旁观动态镜头)');
-	const entitiesRow = menuItem('layers', '实体层', '只画地图的实体层(传送点、刷子、贴图实体)');
-	const namesRow = menuItem('names', '玩家名字', '显示 / 隐藏玩家名字');
-	const cursorRow = menuItem('cursor', '准星', '显示被跟随玩家的瞄准点');
-	menu.append(dyncamRow, entitiesRow, namesRow, cursorRow);
+	// 两页:主列表 + 「实体层样式」二级菜单。
+	// 窄屏上并排浮层放不下,所以做成整块替换(带返回键)。
+	const menuMain = element('div', 'tw-menu-page');
+	const menuStyle = element('div', 'tw-menu-page');
+	menuStyle.hidden = true;
+
+	const dyncamRow = menuRow('camera', '动态镜头', '镜头跟着瞄准点轻微偏移(DDNet 旁观动态镜头)');
+	const namesRow = menuRow('names', '玩家名字', '显示 / 隐藏玩家名字');
+	const cursorRow = menuRow('cursor', '准星', '显示被跟随玩家的瞄准点');
+	// 实体层这行左边带箭头:点名字 = 进二级菜单挑样式(顺手打开实体层),点右边开关 = 单纯开关
+	const entitiesRow = menuRow('layers', '实体层', '实体层:点名字选图集风格', { submenu: true });
+
+	const styleBack = element('button', 'tw-menu-back');
+	styleBack.type = 'button';
+	styleBack.innerHTML = `${icon('back')}<span>实体层样式</span>`;
+	const styleRows = ENTITIES.map(({ id, label }) => {
+		const row = element('button', 'tw-menu-item tw-menu-style');
+		row.type = 'button';
+		row.dataset.style = id;
+		row.setAttribute('role', 'menuitemradio');
+		row.title = `实体层图集:${label}`;
+		row.append(element('span', 'tw-menu-label', label), element('span', 'tw-menu-check'));
+		return row;
+	});
+	menuStyle.append(styleBack, ...styleRows);
+	menuMain.append(dyncamRow.row, entitiesRow.row, namesRow.row, cursorRow.row);
+	menu.append(menuMain, menuStyle);
 
 	const whoLabel = element('span', 'tw-who-label', '跟随');
 	// 团队视角放在名字选择框**左侧**:它宽度固定,右边的 dropdown 换名字时
@@ -660,17 +711,25 @@ export async function mountDemoPlayer(host, options) {
 		let showEntities = prefs.entities;
 		let showNames = prefs.names;
 		let showCursor = prefs.cursor;
+		/** 实体层用哪套图集(偏好存在 engine.js 那个共享 key 里,和地图预览页共用) */
+		let entitiesStyle = readEntitiesStyle();
 
 		/** 把菜单每一行的开关状态对齐到实际状态(所有改状态的地方最后都调它) */
 		const syncMenu = () => {
-			for (const [row, value] of [
+			for (const [item, value] of [
 				[dyncamRow, showDyncam],
 				[entitiesRow, showEntities],
 				[namesRow, showNames],
 				[cursorRow, showCursor]
 			]) {
-				row.setAttribute('aria-checked', String(value));
-				row.classList.toggle('tw-on', value);
+				item.switch.setAttribute('aria-checked', String(value));
+				item.switch.classList.toggle('tw-on', value);
+				item.row.classList.toggle('tw-on', value);
+			}
+			for (const row of styleRows) {
+				const selected = row.dataset.style === entitiesStyle;
+				row.classList.toggle('tw-on', selected);
+				row.setAttribute('aria-checked', String(selected));
 			}
 			settingsButton.classList.toggle('tw-on', menuOpen);
 		};
@@ -693,7 +752,7 @@ export async function mountDemoPlayer(host, options) {
 			if (!showEntities) return map;
 			if (!entitiesView) {
 				try {
-					entitiesView = gpu.map_to_entities(map);
+					entitiesView = gpu.map_to_entities_with_style(map, entitiesStyle);
 				} catch (error) {
 					// 贴图没装 / wasm 报错:退回普通地图,别每帧都抛
 					console.warn('[entities]', error);
@@ -708,6 +767,19 @@ export async function mountDemoPlayer(host, options) {
 			showEntities = value;
 			syncMenu();
 			savePrefs();
+		};
+		/** 换实体层风格:要换一张图集,已经转好的那份得丢掉重建(下次渲染时懒加载) */
+		const setEntitiesStyle = (style) => {
+			if (!ENTITIES.some((entry) => entry.id === style) || style === entitiesStyle) return;
+			entitiesStyle = style;
+			try {
+				entitiesView?.free();
+			} catch {
+				// 已经释放过了
+			}
+			entitiesView = null;
+			writeEntitiesStyle(style);
+			syncMenu();
 		};
 
 		/**
@@ -744,8 +816,10 @@ export async function mountDemoPlayer(host, options) {
 		/** 准星只跟随时才可用(自由视角下没有"跟谁"可跟) */
 		const syncCursorButton = () => {
 			const disabled = follow === null;
-			cursorRow.disabled = disabled;
-			cursorRow.classList.toggle('tw-disabled', disabled);
+			for (const button of [cursorRow.main, cursorRow.switch]) {
+				button.disabled = disabled;
+				button.classList.toggle('tw-disabled', disabled);
+			}
 		};
 
 		const setMuted = (value) => {
@@ -1489,9 +1563,17 @@ export async function mountDemoPlayer(host, options) {
 
 		// ---- 上拉浮层:显示选项 / 播放速度 / 跟随谁 ----
 		// 同一时间只开一个;开着的时候控制条不自动淡出(否则浮层跟着一起消失)。
+		/** 显示选项菜单当前停在哪一页(关了菜单就回到主列表) */
+		let menuPage = 'main';
+		const showMenuPage = (page) => {
+			menuPage = page;
+			menuMain.hidden = page !== 'main';
+			menuStyle.hidden = page !== 'style';
+		};
 		const setMenuOpen = (open) => {
 			if (menuOpen === open) return;
 			menuOpen = open;
+			showMenuPage('main');
 			if (open) {
 				setSpeedOpen(false);
 				setFollowOpen(false);
@@ -1529,13 +1611,30 @@ export async function mountDemoPlayer(host, options) {
 		settingsButton.addEventListener('click', () => setMenuOpen(!menuOpen));
 		speedButton.addEventListener('click', () => setSpeedOpen(!speedOpen));
 		followButton.addEventListener('click', () => setFollowOpen(!followOpen));
-		dyncamRow.addEventListener('click', () => setDyncamEnabled(!showDyncam));
-		entitiesRow.addEventListener('click', () => setEntitiesVisible(!showEntities));
-		namesRow.addEventListener('click', () => setNameplatesVisible(!showNames));
-		cursorRow.addEventListener('click', () => {
+		for (const [item, value] of [
+			[dyncamRow, () => setDyncamEnabled(!showDyncam)],
+			[namesRow, () => setNameplatesVisible(!showNames)]
+		]) {
+			// 普通行:点名字和点开关都是开关
+			item.main.addEventListener('click', value);
+			item.switch.addEventListener('click', value);
+		}
+		entitiesRow.main.addEventListener('click', () => {
+			// 点名字 = 「点进去」:先把实体层打开,再切到样式列表
+			if (!showEntities) setEntitiesVisible(true);
+			showMenuPage('style');
+		});
+		entitiesRow.switch.addEventListener('click', () => setEntitiesVisible(!showEntities));
+		for (const row of styleRows) {
+			row.addEventListener('click', () => setEntitiesStyle(row.dataset.style));
+		}
+		styleBack.addEventListener('click', () => showMenuPage('main'));
+		const toggleCursorRow = () => {
 			if (follow === null) return; // 自由视角下没有可跟的人,和以前的置灰按钮一致
 			setCursorVisible(!showCursor);
-		});
+		};
+		cursorRow.main.addEventListener('click', toggleCursorRow);
+		cursorRow.switch.addEventListener('click', toggleCursorRow);
 		// 点别处关浮层。用 capture 阶段:先把浮层关了,点击本身的语义(开始播放/拖进度条)照旧
 		const onDocumentPointerDown = (event) => {
 			const outside = (button, panel) =>
@@ -1751,9 +1850,11 @@ export async function mountDemoPlayer(host, options) {
 					prefs: {
 						dyncam: showDyncam,
 						entities: showEntities,
+						entitiesStyle,
 						names: showNames,
 						cursor: showCursor,
 						menuOpen,
+						menuPage,
 						speedOpen,
 						followOpen,
 						speed
@@ -2322,6 +2423,94 @@ const CSS = `
 }
 .tw-menu-item.tw-on .tw-switch { background: var(--accent); }
 .tw-menu-item.tw-on .tw-switch-knob { transform: translateX(13px); }
+/* 二级菜单:整页替换(窄屏并排放不下),带一行返回 */
+.tw-menu-page {
+	display: flex;
+	flex-direction: column;
+	gap: 0.1rem;
+}
+.tw-menu-page[hidden] { display: none; }
+/* 带子菜单的那一行:开关本体 + 右侧箭头,两个独立的点击区域 */
+/* 一行 = 左侧「图标 + 文字(+ 箭头)」 + 右侧开关。两边各自是按钮,
+   但视觉上要像一整行:背景高亮放在行上,子按钮全透明。 */
+.tw-menu-row {
+	display: flex;
+	align-items: center;
+	border-radius: 8px;
+}
+.tw-menu-row:hover { background: rgba(255, 255, 255, 0.1); }
+.tw-menu-main {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 0.4rem 0.2rem 0.4rem 0.5rem;
+	border: 0;
+	border-radius: 8px 0 0 8px;
+	background: transparent;
+	color: #dfe7f0;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.tw-menu-switch {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+	/* 右内边距和下面各行的文字区对齐(0.5rem),这样开关在所有行里位置一致 */
+	padding: 0.4rem 0.5rem;
+	border: 0;
+	border-radius: 0 8px 8px 0;
+	background: transparent;
+	cursor: pointer;
+}
+.tw-menu-main:focus-visible,
+.tw-menu-switch:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+.tw-menu-row.tw-on .tw-menu-glyph { color: #93c5fd; }
+/* 行尾的小箭头:表示点进去还有一层 */
+.tw-menu-chevron {
+	display: inline-flex;
+	margin-left: auto;
+	color: #93a3b5;
+	opacity: 0.85;
+}
+.tw-menu-chevron svg { width: 14px; height: 14px; }
+.tw-menu-switch.tw-on .tw-switch { background: var(--accent); }
+.tw-menu-switch.tw-on .tw-switch-knob { transform: translateX(13px); }
+/* 禁用(自由视角下的准星行) */
+.tw-menu-main:disabled,
+.tw-menu-switch:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.tw-menu-back {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	width: 100%;
+	padding: 0.35rem 0.4rem;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: #9fb0c4;
+	font: inherit;
+	font-size: 12px;
+	text-align: left;
+	cursor: pointer;
+}
+.tw-menu-back:hover { background: rgba(255, 255, 255, 0.1); color: #dfe7f0; }
+.tw-menu-check {
+	width: 1rem;
+	text-align: center;
+	color: var(--accent);
+	opacity: 0;
+}
+.tw-menu-style.tw-on .tw-menu-check { opacity: 1; }
+.tw-menu-style.tw-on .tw-menu-check::after { content: '✓'; }
 
 /* ---- 窄屏 ---- */
 /* 按钮现在各占一行(跟随/队伍、进度条、其余控件),窄屏不需要靠隐藏按钮来腾地方,

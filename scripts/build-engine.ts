@@ -51,14 +51,30 @@ const TEXTURES: { name: string; file: string; url: string }[] = [
 	{ name: 'particles', file: 'particles.png', url: `${DDNET_DATA}/particles.png` },
 	{ name: 'emoticons', file: 'emoticons.png', url: `${DDNET_DATA}/emoticons.png` },
 	{ name: 'extras', file: 'extras.png', url: `${DDNET_DATA}/extras.png` },
-	{
-		name: 'entities',
-		file: 'entities.png',
-		url: `${DDNET_DATA}/assets/entities/comfort/ddnet.png`
-	},
 	{ name: 'default', file: 'default.png', url: `${DDNET_DATA}/skins/default.png` },
 	{ name: 'x_ninja', file: 'x_ninja.png', url: `${DDNET_DATA}/skins/x_ninja.png` },
 	{ name: 'DejaVuSans.ttf', file: 'DejaVuSans.ttf', url: `${DDNET_DATA}/fonts/DejaVuSans.ttf` }
+];
+
+/**
+ * 实体层图集,和 wasm 里 `add_entities` 认的 id 一一对应。
+ *
+ * 客户端用 `cl_assets_entities` 选风格:comfort 是 `assets/entities/comfort/ddnet.png`,
+ * 默认那套(default)是 `editor/entities_clear/<gametype>.png`。我们只取**官方 DDNet 那两张**
+ * (`ddnet.png`),不按 gametype 拆 —— 两张都是 1024x1024、16x16 个 64px tile,转换逻辑完全一样,
+ * 所以 wasm 里只需要「传哪张图」,不用放任何 gametype 判断。
+ */
+const ENTITIES: { id: string; file: string; url: string }[] = [
+	{
+		id: 'comfort',
+		file: 'entities-comfort.png',
+		url: `${DDNET_DATA}/assets/entities/comfort/ddnet.png`
+	},
+	{
+		id: 'classic',
+		file: 'entities-classic.png',
+		url: `${DDNET_DATA}/editor/entities_clear/ddnet.png`
+	}
 ];
 
 /**
@@ -370,6 +386,7 @@ const assetsFingerprint = (sounds: string) =>
 		.update(
 			JSON.stringify({
 				textures: TEXTURES.map((t) => `${t.name}:${t.file}:${t.url}`),
+				entities: ENTITIES.map((e) => `${e.id}:${e.file}:${e.url}`),
 				mapres: MAPRES,
 				patches: PATCHES.map((file) => (existsSync(file) ? readFileSync(file, 'utf-8') : '')),
 				sounds
@@ -502,6 +519,10 @@ mkdirSync(path.join(OUT, 'assets'), { recursive: true });
 for (const texture of TEXTURES) {
 	const cached = await downloadCached(texture.url, path.join(CACHE, 'assets', texture.file));
 	copyFileSync(cached, path.join(OUT, 'assets', texture.file));
+}
+for (const entities of ENTITIES) {
+	const cached = await downloadCached(entities.url, path.join(CACHE, 'assets', entities.file));
+	copyFileSync(cached, path.join(OUT, 'assets', entities.file));
 }
 
 // 4. 外部 mapres
