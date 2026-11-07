@@ -1,8 +1,8 @@
-use twgpu::image::RgbaImage;
 use std::collections::HashMap;
 use std::sync::Arc;
+use twgpu::image::RgbaImage;
 use twgpu::map::GpuMapRender;
-use twgpu::{twgame, twmap, twsnap, vek, TwRenderPass};
+use twgpu::{twgame, twmap, TwRenderPass};
 use wasm_bindgen::prelude::*;
 
 use crate::sprites_helper::SimpleCtx;
@@ -22,6 +22,8 @@ pub struct TwMap {
     map_data_static: twgpu::map::GpuMapDataStatic,
     map_render: twgpu::map::GpuMapRender,
     sprites: sprites_helper::SimpleCtx,
+    /// 「空服务器」世界:实体层里的 pickup / 炮台 / 子弹 / 门 / 灯,渲染时接在精灵那一段
+    world: crate::world::ServerWorld,
     clock: twgpu::shared::Clock,
     gpu_camera: twgpu::GpuCamera,
     camera_bind_group: wgpu::BindGroup,
@@ -134,13 +136,8 @@ impl TwMap {
             &samplers,
             &device,
         );
-        let mut sprites = SimpleCtx::new(twgame_map.clone());
-        let mut from_snap = twsnap::Snap::default();
-        let mut to_snap = twsnap::Snap::default();
-        from_snap.pickups = get_pickups_from_map(&twmap_map);
-        to_snap.pickups = from_snap.pickups.clone();
-        sprites.from_snap = from_snap;
-        sprites.to_snap = to_snap;
+        let sprites = SimpleCtx::new(twgame_map.clone());
+        let world = crate::world::ServerWorld::new(&twmap_map);
         Ok(Self {
             twmap_map,
             twgame_map,
@@ -148,6 +145,7 @@ impl TwMap {
             map_data_static,
             map_render,
             sprites,
+            world,
             clock,
             gpu_camera,
             camera_bind_group,
@@ -165,6 +163,7 @@ impl TwMap {
         &'a GpuMapRender,
         twgpu::sprites::SpriteRenderContext<'a>,
         &'a wgpu::BindGroup,
+        Vec<crate::world::SpriteRequest>,
     ) {
         let render_size = tw_render_pass.size;
         let camera = &tw_render_pass.camera;
@@ -172,6 +171,10 @@ impl TwMap {
             None => self.clock.current_time(),
             Some(time) => time,
         };
+        // 地图预览才画世界(demo 用的是 demo 自己的 snap),也就没必要推进它
+        if demo.is_none() {
+            self.world.update(self.clock.current_tick() as i64);
+        }
         self.gpu_camera.update(camera, &self.queue);
         self.map_data_dyn.update(
             &self.twmap_map.envelopes,
@@ -181,10 +184,17 @@ impl TwMap {
             (time * 1_000_000.) as i64,
             &self.queue,
         );
+        let world_sprites = match demo {
+            // demo 播放用 demo 自己的 snap,不走这份世界
+            Some(_) => Vec::new(),
+            None => self.world.extra_sprites(time as f32),
+        };
         (
             &self.map_render,
-            self.sprites.to_ctx(textures, &self.clock),
+            self.sprites
+                .to_ctx(textures, &self.clock, self.world.snap()),
             &self.camera_bind_group,
+            world_sprites,
         )
     }
 
@@ -231,48 +241,4 @@ impl TwMap {
     pub(crate) fn twgame_map(&self) -> &Arc<twgame::Map> {
         &self.twgame_map
     }
-}
-
-fn get_pickups_from_map(map: &twmap::TwMap) -> twsnap::OrderedMap<twsnap::items::Pickup> {
-    let mut pickups = twsnap::OrderedMap::default();
-    for layer in map
-        .find_physics_layer::<twmap::GameLayer>()
-        .map(|l| l.tiles.unwrap_ref())
-        .into_iter()
-        .chain(
-            map.find_physics_layer::<twmap::FrontLayer>()
-                .map(|l| l.tiles.unwrap_ref()),
-        )
-    {
-        for ((y, x), t) in layer.indexed_iter() {
-            let kind = match t.id {
-                197 => twsnap::enums::Powerup::Armor,
-                198 => twsnap::enums::Powerup::Health,
-                199 => twsnap::enums::Powerup::Weapon(twsnap::enums::CollectableWeapon::Shotgun),
-                200 => twsnap::enums::Powerup::Weapon(twsnap::enums::CollectableWeapon::Grenade),
-                201 => twsnap::enums::Powerup::Weapon(twsnap::enums::CollectableWeapon::Ninja),
-                202 => twsnap::enums::Powerup::Weapon(twsnap::enums::CollectableWeapon::Rifle),
-                _ => continue,
-            };
-            let pos = vek::Vec2::new(
-                fixed::types::I27F5::from_bits(x as i32 * 32 + 16),
-                fixed::types::I27F5::from_bits(y as i32 * 32 + 16),
-            );
-            let mut flags = twsnap::flags::PickupFlags::empty();
-            if t.flags.contains(twmap::TileFlags::FLIP_X) {
-                flags.insert(twsnap::flags::PickupFlags::XFLIP);
-            }
-            if t.flags.contains(twmap::TileFlags::FLIP_Y) {
-                flags.insert(twsnap::flags::PickupFlags::YFLIP);
-            }
-            let pickup = twsnap::items::Pickup {
-                pos,
-                kind,
-                switch_number: 0,
-                flags,
-            };
-            pickups.insert(twsnap::SnapId(pickups.len() as u32), pickup);
-        }
-    }
-    pickups
 }

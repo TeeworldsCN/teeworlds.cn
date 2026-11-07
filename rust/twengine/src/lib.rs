@@ -20,9 +20,13 @@ mod gpu;
 #[cfg(target_arch = "wasm32")]
 mod map;
 #[cfg(target_arch = "wasm32")]
+mod nameplate;
+#[cfg(target_arch = "wasm32")]
 mod sprites_helper;
 #[cfg(target_arch = "wasm32")]
 mod surface;
+#[cfg(target_arch = "wasm32")]
+mod world;
 
 use wasm_bindgen::JsError;
 

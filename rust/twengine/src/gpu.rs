@@ -11,6 +11,19 @@ use twgpu::image::{self, ImageDecoder as _};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
+thread_local! {
+    /// `performance.now()`,一帧调十来次也就几微秒,但比 `window().performance()` 每次
+    /// 跨一遍 JS 边界便宜。
+    static PERF: web_sys::Performance = web_sys::window()
+        .expect("no window")
+        .performance()
+        .expect("no performance");
+}
+
+fn now_ms() -> f64 {
+    PERF.with(|perf| perf.now())
+}
+
 /// 一个 wgpu device + 一份贴图/字体资源,地图和 demo 共用。
 ///
 /// 注意:同一个 wasm 实例上 `TwGpu::init` 只能成功一次(twgpu 的全局日志/panic hook
@@ -34,6 +47,15 @@ pub struct TwGpu {
     scribble: twgpu::text::Scribble,
     /// DDNet 的 6 个武器准星,从 game.png 里裁出来的(索引 = 武器 id,见 `CURSOR_ROWS`)
     cursor_textures: [twgpu::sprites::TextureToken; 6],
+    /// 上一帧各阶段的毫秒耗时,顺序见 `last_frame_timings()` 的注释
+    last_timings: [f32; 7],
+    /// 名字牌:Canvas2D 光栅化的字形 atlas + SDF/彩色两条管线
+    nameplates: crate::nameplate::NameplateRenderer,
+    /// 地图里自己拼的贴图:血包(game.png)和 dragger 滑轮 / 灯光头(extras.png)
+    freeze_pickup_texture: twgpu::sprites::TextureToken,
+    pulley_texture: twgpu::sprites::TextureToken,
+    hectagon_texture: twgpu::sprites::TextureToken,
+    snowflake_texture: twgpu::sprites::TextureToken,
 }
 
 /// game.png 里 6 个武器准星所在的格行(每格 32px,各占 2x2 格)。
@@ -123,6 +145,8 @@ impl TwGpu {
         let sprite_textures =
             twgpu::sprites::SpriteTextures::new(samplers.clone(), device.clone(), queue.clone());
         let ctx_renderer = sprites_helper::CtxRenderer::new(FORMAT, device.clone(), queue.clone());
+        let nameplates =
+            crate::nameplate::NameplateRenderer::new(device.clone(), queue.clone(), FORMAT);
         let scribble =
             twgpu::text::Scribble::new(samplers.clone(), FORMAT, device.clone(), queue.clone());
         Ok(Self {
@@ -140,6 +164,12 @@ impl TwGpu {
             render_nameplates: false,
             scribble,
             cursor_textures: [twgpu::sprites::TextureToken::INVALID; 6],
+            nameplates,
+            last_timings: [0.; 7],
+            freeze_pickup_texture: twgpu::sprites::TextureToken::INVALID,
+            pulley_texture: twgpu::sprites::TextureToken::INVALID,
+            hectagon_texture: twgpu::sprites::TextureToken::INVALID,
+            snowflake_texture: twgpu::sprites::TextureToken::INVALID,
         })
     }
 
@@ -212,6 +242,28 @@ impl TwGpu {
         )
     }
 
+    /// 上传一个字形的位图。`color == false` 时 `pixels` 是 alpha(1 字节/像素),
+    /// 在 GPU 上生成 SDF;否则是 RGBA(emoji),直接进彩色 atlas。
+    #[wasm_bindgen]
+    pub fn nameplate_glyph_upload(
+        &mut self,
+        id: u32,
+        width: u32,
+        height: u32,
+        color: bool,
+        pixels: &[u8],
+    ) -> Result<(), JsError> {
+        self.nameplates
+            .upload_glyph(id, width, height, color, pixels)
+            .map_err(|err| JsError::new(&err))
+    }
+
+    /// 每帧的名字牌字形:`[id, center_x, center_y, width, height, outline_em]` × n
+    #[wasm_bindgen]
+    pub fn set_nameplate_glyphs(&mut self, data: &[f32]) {
+        self.nameplates.set_quads(data);
+    }
+
     #[wasm_bindgen]
     pub fn render_map(
         &mut self,
@@ -233,6 +285,15 @@ impl TwGpu {
         self.render(surface, camera, map, Some(demo))
     }
 
+    /// 上一帧各阶段的毫秒耗时:
+    /// `[acquire, prepare, entities, record, submit, present, total]`
+    /// (`prepare` = 地图/瓦片更新 + 开 render pass,`entities` = demo 精灵与准星上传,
+    /// `record` = 把所有 draw call 录进 command buffer,`submit`/`present` = 交 GPU 与上屏)。
+    #[wasm_bindgen]
+    pub fn last_frame_timings(&self) -> Vec<f32> {
+        self.last_timings.to_vec()
+    }
+
     fn render(
         &mut self,
         surface: &TwSurface,
@@ -242,14 +303,18 @@ impl TwGpu {
     ) -> Result<(), JsError> {
         let render_size = surface.get_size();
         let camera = camera.inner();
+        self.nameplates.prepare(camera);
         let demo_time = demo.as_ref().map(|d| d.current_time());
+        let t0 = now_ms();
         let frame = surface.frame()?;
+        let t1 = now_ms();
         let frame_view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
         let mut command_encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: LABEL });
+        let (t2, t3);
         {
             let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: LABEL,
@@ -274,8 +339,33 @@ impl TwGpu {
             });
             let mut tw_render_pass =
                 twgpu::TwRenderPass::new(&mut render_pass, render_size.into(), camera);
-            let (map, mut ctx, camera_bind_group) =
+            let (map, mut ctx, camera_bind_group, sprite_requests) =
                 map.prepare_render(&tw_render_pass, &self.sprite_textures, demo_time);
+            t2 = now_ms();
+            let world_sprites = sprite_requests
+                .iter()
+                .map(|request| {
+                    let texture = match request.kind {
+                        crate::world::SpriteKind::Blank => self.sprite_textures.blank_texture(),
+                        crate::world::SpriteKind::PickupFreeze => self.freeze_pickup_texture,
+                        crate::world::SpriteKind::Pulley => self.pulley_texture,
+                        crate::world::SpriteKind::Hectagon => self.hectagon_texture,
+                        crate::world::SpriteKind::Snowflake => self.snowflake_texture,
+                    };
+                    sprites_helper::WorldSprite {
+                        center: request.center,
+                        size: request.size,
+                        rotation: request.rotation,
+                        color: twgpu::vek::Rgba::new(
+                            request.color[0],
+                            request.color[1],
+                            request.color[2],
+                            request.color[3],
+                        ),
+                        texture,
+                    }
+                })
+                .collect::<Vec<_>>();
             // 准星状态要在 render_ctx 之前取:它返回的 ctx 会把 demo 可变借走到渲染结束
             let cursor_state = demo.as_ref().and_then(|demo| demo.cursor());
             let mut new_snap = false;
@@ -283,7 +373,9 @@ impl TwGpu {
                 (ctx, new_snap) = demo.render_ctx(&self.sprite_textures);
             }
             let cursor = self.cursor_sprite(cursor_state, camera, render_size.into());
-            self.ctx_renderer.prepare_render(&mut ctx, new_snap, cursor);
+            self.ctx_renderer
+                .prepare_render(&mut ctx, new_snap, cursor, &world_sprites);
+            t3 = now_ms();
             map.render_background(&mut tw_render_pass);
             self.ctx_renderer.render_bg(
                 &mut tw_render_pass.render_pass,
@@ -291,7 +383,13 @@ impl TwGpu {
                 &self.sprite_textures,
             );
             map.render_foreground(&mut tw_render_pass);
-            self.ctx_renderer.render_fg(
+            self.ctx_renderer.render_particles_fg(
+                &mut tw_render_pass.render_pass,
+                camera_bind_group,
+                &self.sprite_textures,
+            );
+            self.nameplates.render(&mut tw_render_pass.render_pass);
+            self.ctx_renderer.render_cursor(
                 &mut tw_render_pass.render_pass,
                 camera_bind_group,
                 &self.sprite_textures,
@@ -302,9 +400,21 @@ impl TwGpu {
                 self.scribble.render(&mut tw_render_pass.render_pass);
             }
         }
+        let t4 = now_ms();
         self.queue.submit([command_encoder.finish()]);
+        let t5 = now_ms();
         self.scribble.clear();
         self.queue.present(frame);
+        let t6 = now_ms();
+        self.last_timings = [
+            (t1 - t0) as f32,
+            (t2 - t1) as f32,
+            (t3 - t2) as f32,
+            (t4 - t3) as f32,
+            (t5 - t4) as f32,
+            (t6 - t5) as f32,
+            (t6 - t0) as f32,
+        ];
         Ok(())
     }
 
@@ -406,6 +516,9 @@ impl TwGpu {
                     let cursor = image::imageops::crop_imm(&image, 0, row * 32, 64, 64).to_image();
                     *slot = self.sprite_textures.register_image(&cursor);
                 }
+                // 地图里的「血包」= `pickup_freeze`(game.png 第 2 行第 6 格,2x2 格 = 64px)
+                let freeze = image::imageops::crop_imm(&image, 6 * 32, 2 * 32, 64, 64).to_image();
+                self.freeze_pickup_texture = self.sprite_textures.register_image(&freeze);
             }
             "particles" => {
                 self.sprite_textures.particles = self.sprite_textures.register_atlas_image(&image)
@@ -414,7 +527,15 @@ impl TwGpu {
                 self.sprite_textures.emoticons = self.sprite_textures.register_atlas_image(&image)
             }
             "extras" => {
-                self.sprite_textures.extras = self.sprite_textures.register_atlas_image(&image)
+                self.sprite_textures.extras = self.sprite_textures.register_atlas_image(&image);
+                // extras.png 也是 16x16 个 32px 格:`part_pulley`(4,0,1,1)、
+                // `part_hectagon`(6,0,2,2)、`part_snowflake`(0,0,2,2)
+                let pulley = image::imageops::crop_imm(&image, 4 * 32, 0, 32, 32).to_image();
+                self.pulley_texture = self.sprite_textures.register_image(&pulley);
+                let hectagon = image::imageops::crop_imm(&image, 6 * 32, 0, 64, 64).to_image();
+                self.hectagon_texture = self.sprite_textures.register_image(&hectagon);
+                let snowflake = image::imageops::crop_imm(&image, 0, 0, 64, 64).to_image();
+                self.snowflake_texture = self.sprite_textures.register_image(&snowflake);
             }
             "default" => {
                 self.sprite_textures.default_skin =
@@ -424,11 +545,9 @@ impl TwGpu {
                 let skin = self.sprite_textures.register_skin_image(&image, name);
                 self.sprite_textures.ninja_skin = skin.normal;
             }
-            _ => {
-                return Err(JsError::new(
-                    "Unknown texture, known are: game, particles, emoticons, extras, default, x_ninja",
-                ))
-            }
+            _ => return Err(JsError::new(
+                "Unknown texture, known are: game, particles, emoticons, extras, default, x_ninja",
+            )),
         }
         Ok(())
     }

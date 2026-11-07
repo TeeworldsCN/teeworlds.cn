@@ -50,7 +50,7 @@ export interface MapCard {
 	points: number;
 	/** 官方截图(已换成我们自己的图片代理) */
 	thumbnail: string;
-	/** 图块名,对应 /assets/tiles/<name>.png */
+	/** 图块名,对应 /ddnet/tiles/<name>.png(服务端反代 ddnet.org) */
 	tiles: string[];
 	/** 当前页面(地区/类型)下的完成人数 */
 	finishes: number;

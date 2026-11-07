@@ -20,6 +20,7 @@
 import {
 	existsSync,
 	mkdirSync,
+	readdirSync,
 	readFileSync,
 	rmSync,
 	statSync,
@@ -405,15 +406,16 @@ if (!existsSync(path.join(CRATE, 'Cargo.toml'))) {
 }
 
 const commit = (await sh(['git', 'rev-parse', 'HEAD'], { cwd: SUBMODULE })).out;
-// crate 自己也参与指纹:改了 rust 代码就得重编
+// crate 自己也参与指纹:改了 rust 代码就得重编。
+// 列目录而不是写死模块名,新加的 src/*.rs 才不会漏掉。
 const crateHash = createHash('sha256');
-for (const file of [
-	'Cargo.toml',
-	'Cargo.lock',
-	...['lib', 'camera', 'demo', 'gpu', 'map', 'sound', 'sprites_helper', 'surface'].map(
-		(m) => `src/${m}.rs`
-	)
-]) {
+const crateSources = readdirSync(path.join(CRATE, 'src'))
+	.filter((file) => file.endsWith('.rs'))
+	.sort()
+	.map((file) => `src/${file}`);
+// 名字牌的 WGSL 也是编译产物的一部分
+const shaderSources = ['src/nameplate.wgsl', 'src/nameplate_sdf.wgsl'];
+for (const file of ['Cargo.toml', 'Cargo.lock', ...crateSources, ...shaderSources]) {
 	crateHash.update(file).update(readFileSync(path.join(CRATE, file)));
 }
 const crateFingerprint = crateHash.digest('hex').slice(0, 16);
@@ -433,12 +435,39 @@ const hashSounds = () =>
 /** 贴图 + mapres + 补丁 + 读音效的总指纹:变了就得重下资源,version 也得跟着变 */
 const assets = assetsFingerprint(hashSounds());
 
+/**
+ * 手写的三个前端文件(`demo.js` / `engine.js` / `sound.js`)。它们也带 `?v=<version>`,
+ * 而且前面的 CDN 按 URL 缓存、不认 Cache-Control —— 只改 demo.js 时版本号如果不变,
+ * 用户会一直跑到旧代码。所以这份指纹也必须进 version。
+ */
+const scriptsFingerprint = (() => {
+	const hash = createHash('sha256');
+	for (const file of ['demo.js', 'engine.js', 'sound.js']) {
+		hash.update(file).update(readFileSync(path.join(OUT, file)));
+	}
+	return hash.digest('hex').slice(0, 16);
+})();
+
+/** 把所有会被缓存的东西(子模块 / crate / 资源 / 前端脚本 / wasm)混成版本号 */
+const versionOf = (wasm: Uint8Array, assets: string, scripts: string) =>
+	`${commit.slice(0, 8)}-${crateFingerprint.slice(0, 8)}-${assets.slice(0, 8)}-${createHash(
+		'sha256'
+	)
+		.update(wasm)
+		.update(scripts)
+		.digest('hex')
+		.slice(0, 8)}`;
+
 const readStamp = () => {
 	try {
 		return JSON.parse(readFileSync(STAMP, 'utf-8')) as {
+			version?: string;
 			commit?: string;
 			crate?: string;
 			assets?: string;
+			sounds?: string;
+			scripts?: string;
+			built?: string;
 		};
 	} catch {
 		return null;
@@ -458,7 +487,25 @@ const upToDate =
 	existsSync(path.join(OUT, 'sounds/sounds.zip'));
 
 if (upToDate) {
-	log(`已有产物且源码未变(${commit.slice(0, 8)} / ${crateFingerprint}),跳过`);
+	if (stamp?.scripts !== scriptsFingerprint) {
+		// wasm / 资源都没变,只是手写的前端脚本改了:不用重编,换版本号就够了
+		const version = versionOf(
+			readFileSync(path.join(OUT, 'pkg/twengine_bg.wasm')),
+			assets,
+			scriptsFingerprint
+		);
+		writeFileSync(
+			STAMP,
+			JSON.stringify(
+				{ ...stamp, version, scripts: scriptsFingerprint, built: new Date().toISOString() },
+				null,
+				2
+			)
+		);
+		log(`前端脚本变了,版本号已更新 → ${version}`);
+	} else {
+		log(`已有产物且源码未变(${commit.slice(0, 8)} / ${crateFingerprint}),跳过`);
+	}
 	process.exit(0);
 }
 
@@ -548,14 +595,10 @@ const assetsFinal = assetsFingerprint(soundFingerprint);
 //   commit      子模块(twgpu)的提交
 //   crate       我们自己的 crate 源码指纹
 //   assets      贴图 + mapres + 补丁 + 声音包的指纹
+//   scripts     手写前端脚本的指纹(demo.js / engine.js / sound.js)
 //   wasm        wasm 二进制的哈希(兜底:源码指纹漏了什么也不会漏它)
 // 少算任何一项,对应文件的 URL 就不会变,浏览器那边就会一直吃旧缓存。
-const version = `${commit.slice(0, 8)}-${crateFingerprint.slice(0, 8)}-${assetsFinal.slice(0, 8)}-${createHash(
-	'sha256'
-)
-	.update(wasmBytes)
-	.digest('hex')
-	.slice(0, 8)}`;
+const version = versionOf(wasmBytes, assetsFinal, scriptsFingerprint);
 
 // 产物好了就把 submodule 还原成上游原样
 await sh(['git', 'checkout', '--', '.'], { cwd: SUBMODULE });
@@ -569,6 +612,7 @@ writeFileSync(
 			crate: crateFingerprint,
 			assets: assetsFinal,
 			sounds: soundFingerprint,
+			scripts: scriptsFingerprint,
 			built: new Date().toISOString()
 		},
 		null,
