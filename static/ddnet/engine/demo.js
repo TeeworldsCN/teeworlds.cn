@@ -54,12 +54,7 @@ const MV = {
 	 * 单人跟随 ↔ 团队视角 切换时,镜头位置的过渡时间常数(秒)。
 	 * 换模式时目标会从"玩家身上"跳到"包围盒中点"(或反过来),直接 move_to 就是啪一下。
 	 */
-	modeBlendTau: 0.12,
-	/**
-	 * 过渡的上限时长。正常情况下靠"离目标足够近"提前收尾,这里只是兜底:
-	 * 距离再远(比如两个人在图的两头)也不至于过渡不完就硬切。
-	 */
-	modeBlendTime: 1.2
+	modeBlendTau: 0.12
 };
 /**
  * 动态镜头,参数锁死成 DDNet 客户端**旁观**用的那一套。
@@ -701,27 +696,48 @@ export async function mountDemoPlayer(host, options) {
 		let followZoom = 1;
 		/** 镜头模式:'free' | 'single' | 'team',用来发现切换 */
 		let camMode = 'free';
-		/** 切换模式后还剩多少秒的位置过渡 */
-		let camBlendLeft = 0;
+		/** 镜头过渡里的「镜头 - 目标」差值(tile);`null` 表示没在过渡 */
+		let camBlendOffset = null;
+		/** 刚切换,下一帧按当时的目标把差值记下来 */
+		let camBlendPending = false;
+
+		/** 切换模式 / 换跟随对象时调一次,让镜头从当前位置平滑滑过去 */
+		const startCamBlend = () => {
+			camBlendPending = true;
+			camBlendOffset = null;
+		};
+		const clearCamBlend = () => {
+			camBlendPending = false;
+			camBlendOffset = null;
+		};
 
 		/**
-		 * 平滑地把镜头位置挪到目标。用在两处:进出团队视角、换观察对象。
+		 * 平滑地把镜头挪到目标。用在两处:进出团队视角、换观察对象。
 		 *
-		 * 结束条件不能只看时间 —— 距离远的时候到点还没走到位,交还给各模式自己的逻辑
-		 * (单人跟上直接用 move_to)就会补上一脚,jump 一下。所以"离目标足够近"才收尾,
-		 * 时间只作为兜底。
+		 * 这里衰减的是**「镜头 - 目标」的差值**,不是"朝一个固定点做指数插值"。区别在于
+		 * 目标自己会动(玩家跑起来 ~10 tile/s):固定点插值会留下 `速度 × tau` 的稳态滞后
+		 * (tau=0.12s 时约 1.2 tile),过渡"到点"时其实还差着 1 点几个 tile,交还给
+		 * 精确跟随就只能硬跳一下 —— 也就是肉眼看到的"最后一刻跳一下"。差值衰减没有稳态
+		 * 误差,目标怎么跑都会收敛到 0,收尾时是连续的。
 		 */
 		const blendCamera = (x, y, dt, snap) => {
 			if (snap) {
-				camBlendLeft = 0;
+				clearCamBlend();
 				return false;
 			}
-			if (camBlendLeft <= 0) return false;
-			const alpha = dt > 0 ? 1 - Math.exp(-dt / MV.modeBlendTau) : 1;
-			camera.move_to(camera.x + (x - camera.x) * alpha, camera.y + (y - camera.y) * alpha);
-			camBlendLeft = Math.max(0, camBlendLeft - dt);
-			// 到位了(或兜底超时)就收尾
-			if (Math.hypot(x - camera.x, y - camera.y) < 0.05) camBlendLeft = 0;
+			if (camBlendPending) {
+				camBlendOffset = { x: camera.x - x, y: camera.y - y };
+				camBlendPending = false;
+			}
+			if (!camBlendOffset) return false;
+			const decay = dt > 0 ? Math.exp(-dt / MV.modeBlendTau) : 1;
+			camBlendOffset.x *= decay;
+			camBlendOffset.y *= decay;
+			if (Math.hypot(camBlendOffset.x, camBlendOffset.y) < 0.002) {
+				camBlendOffset = null;
+				return false;
+			}
+			camera.move_to(x + camBlendOffset.x, y + camBlendOffset.y);
 			return true;
 		};
 
@@ -1151,7 +1167,7 @@ export async function mountDemoPlayer(host, options) {
 			if (mode === camMode) return;
 			const switching =
 				(mode === 'team' && camMode === 'single') || (mode === 'single' && camMode === 'team');
-			if (switching) camBlendLeft = MV.modeBlendTime;
+			if (switching) startCamBlend();
 			camMode = mode;
 		};
 
@@ -1161,7 +1177,7 @@ export async function mountDemoPlayer(host, options) {
 				snapCamera = false;
 				// 自由视角:用户自己控制 zoom,回来跟随时接着用这个值
 				followZoom = camera.zoom;
-				camBlendLeft = 0;
+				clearCamBlend();
 				trackCamMode('free');
 				// 自由视角没有跟随目标,动态镜头归零(下次跟随从干净的状态开始)
 				resetDyncam();
@@ -1208,8 +1224,6 @@ export async function mountDemoPlayer(host, options) {
 						}
 						snapCamera = false;
 					}
-				} else {
-					camBlendLeft = 0;
 				}
 				return;
 			}
@@ -1252,7 +1266,7 @@ export async function mountDemoPlayer(host, options) {
 				mv.oldPos = { ...target };
 				mv.oldDist = 0;
 				mv.teleported = false;
-				camBlendLeft = 0;
+				clearCamBlend();
 				camera.move_to(target.x, target.y);
 				snapCamera = false;
 				return;
@@ -1846,7 +1860,7 @@ export async function mountDemoPlayer(host, options) {
 			syncFollowButton();
 			// 换人也是平滑过去(客户端 cl_smooth_spectating_time),不是瞬移;
 			// 但进/出自由视角要瞬移,那里本来就该直接落位
-			if (follow !== null) camBlendLeft = MV.modeBlendTime;
+			if (follow !== null) startCamBlend();
 			else snapCamera = true;
 			pointers.clear();
 			updateCursor();
@@ -2226,7 +2240,7 @@ export async function mountDemoPlayer(host, options) {
 					zoom: camera.zoom,
 					followZoom,
 					camMode,
-					camBlendLeft,
+					camBlending: !!camBlendOffset || camBlendPending,
 					camera: { x: camera.x, y: camera.y },
 					personalZoom: mv.personal,
 					members: teamActive() ? teamMembers().map((m) => m.id) : [],
