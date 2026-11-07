@@ -462,7 +462,11 @@ export async function mountDemoPlayer(host, options) {
 	root.append(bar);
 	host.append(style, root);
 
+	/** 上一次写到状态条上的文字:每帧 `setStatus('')` 回来时不用再碰 DOM */
+	let statusText = '加载引擎…';
 	const setStatus = (text) => {
+		if (text === statusText) return;
+		statusText = text;
 		status.textContent = text;
 		status.hidden = !text;
 	};
@@ -596,6 +600,8 @@ export async function mountDemoPlayer(host, options) {
 		let frame = 0;
 		let lastFrameTime = 0;
 		let seekbarHold = 0;
+		/** 上次刷新控制栏的时间(performance.now 量级,10 Hz) */
+		let uiUpdatedAt = 0;
 		let snapCamera = true;
 		const skins = new Set();
 		const recentSounds = [];
@@ -605,13 +611,21 @@ export async function mountDemoPlayer(host, options) {
 		/** 跟随按钮上的文字 + 列表里选中的那一行(名字/生死会变,要跟着刷) */
 		const syncFollowButton = () => {
 			const current = follow === null ? null : playersCache.find((p) => p.id === follow);
-			followValue.textContent =
-				follow === null ? '自由视角' : current ? current.name : `#${follow}`;
-			followButton.classList.toggle('tw-off', current != null && !current.alive);
+			const text = follow === null ? '自由视角' : current ? current.name : `#${follow}`;
+			if (followValue.textContent !== text) followValue.textContent = text;
+			const off = current != null && !current.alive;
+			if (followButton.classList.contains('tw-off') !== off) {
+				followButton.classList.toggle('tw-off', off);
+			}
 			for (const rowElement of followList.children) {
 				const selected = rowElement.dataset.id === (follow === null ? 'free' : String(follow));
-				rowElement.classList.toggle('tw-on', selected);
-				rowElement.setAttribute('aria-selected', String(selected));
+				if (rowElement.classList.contains('tw-on') !== selected) {
+					rowElement.classList.toggle('tw-on', selected);
+				}
+				const aria = String(selected);
+				if (rowElement.getAttribute('aria-selected') !== aria) {
+					rowElement.setAttribute('aria-selected', aria);
+				}
 			}
 		};
 
@@ -633,7 +647,9 @@ export async function mountDemoPlayer(host, options) {
 		};
 
 		const updateFollowOptions = () => {
-			const players = playerNames();
+			// tick 里先 `refreshPlayers()` 再调这里,直接用刚拿到的列表:
+			// 每次 playerNames() 都是 wasm 序列化一份 JSON + JS 解析,能省一半
+			const players = playersCache;
 			// 数量/生死/名字都没变就不用重建(每 10 帧调一次,不能每次都换 DOM)
 			const signature = players.map((p) => `${p.id}:${p.alive ? 1 : 0}:${p.name}`).join('|');
 			if (signature === followOptionsAt) {
@@ -1265,7 +1281,9 @@ export async function mountDemoPlayer(host, options) {
 		 * 中文/日文/emoji 全都按用户自己的字体渲染,还省掉 757 KB 的字体文件。
 		 */
 		// 调试用:每帧 nameplates 花多少毫秒、字号改写过几次(改字号最贵,别每帧都改)
-		const nameStats = { ms: 0, frames: 0, sizeWrites: 0, labels: 0 };
+		const nameStats = { ms: 0, frames: 0, sizeWrites: 0, labels: 0, size: 0 };
+		/** 上一次真正写进 DOM 的字号(见 updateNameplates 里的滞回) */
+		let nameplateSize = 0;
 		const updateNameplates = () => {
 			if (!showNames) return;
 			const startedAt = performance.now();
@@ -1280,8 +1298,18 @@ export async function mountDemoPlayer(host, options) {
 			// 字号量化到**设备像素**的整数倍:18px 在 dpr=2 上是 36 个设备像素,
 			// 字形刚好整数对齐;量化到 CSS 整像素则在 1.5x 屏上会落到 27.5 这种半格上。
 			// 用真实 dpr 而不是封顶 2,不然 3x 屏上字号会落在 1/3 像素上被重采样。
-			const size = Math.max(1, Math.round(pascal * pixelDpr)) / pixelDpr;
+			const quantized = Math.max(1, Math.round(pascal * pixelDpr)) / pixelDpr;
+			// 再加一层滞回:zoom 连续变化时字号会一直在相邻两个设备像素之间来回跳,
+			// 而每改一次 font-size,浏览器都要把中文 + 描边重新光栅化一遍(几毫秒,
+			// 手机上是十几毫秒)。字号差 10% 以内就沿用旧的,肉眼看不出来,但一场回放
+			// 的重光栅化次数能从几百次降到十几次。
+			const size =
+				nameplateSize > 0 && Math.abs(quantized - nameplateSize) / nameplateSize < 0.1
+					? nameplateSize
+					: quantized;
+			nameplateSize = size;
 			const sizeText = `${size}px`;
+			nameStats.size = size;
 			// 描边宽度抄客户端的 AdjustOutlineThicknessToFontSize():
 			// <18px 一像素,18~48px 两像素,>48px 四像素。
 			// -webkit-text-stroke 是沿字形轮廓**居中**画的,配合 paint-order: stroke fill
@@ -1316,7 +1344,13 @@ export async function mountDemoPlayer(host, options) {
 					screenY > cssHeight * 1.2;
 				if (label.hidden !== outside) label.hidden = outside;
 				if (outside) continue;
-				label.style.transform = `translate(${screenX.toFixed(3)}px, ${screenY.toFixed(3)}px) translate(-50%, -50%)`;
+				// 位置量化到设备像素后同一个格子就不要再写 transform:暂停/静止时
+				// 能少掉大半的 span style 重算(每改一次都要重新 resolve style)
+				const positionKey = `${screenX},${screenY}`;
+				if (label.dataset.pos !== positionKey) {
+					label.dataset.pos = positionKey;
+					label.style.transform = `translate(${screenX.toFixed(3)}px, ${screenY.toFixed(3)}px) translate(-50%, -50%)`;
+				}
 				if (label.dataset.size !== sizeText) {
 					label.style.fontSize = sizeText;
 					label.style.webkitTextStrokeWidth = strokeText;
@@ -1333,6 +1367,21 @@ export async function mountDemoPlayer(host, options) {
 			nameStats.frames++;
 			nameStats.labels = nameLabels.size;
 		};
+
+		/**
+		 * 调试用:每帧分阶段耗时(毫秒)。默认不采集,`?perf=1`(或 localStorage
+		 * `twPerf=1`)才打开;`__twPlayer.perf()` 返回各阶段分位数和最慢的 20 帧,
+		 * `__twPlayer.perfReset()` 清空重来。用来定位卡顿是 wasm、渲染还是 DOM 花的。
+		 */
+		const perf = (() => {
+			try {
+				const params = new URLSearchParams(location.search);
+				const on = params.has('perf') || localStorage.getItem('twPerf') === '1';
+				return on ? { frames: [] } : null;
+			} catch {
+				return null;
+			}
+		})();
 
 		/**
 		 * 加载一个玩家皮肤。
@@ -1375,6 +1424,15 @@ export async function mountDemoPlayer(host, options) {
 				}
 			}
 
+			const prof = perf ? { v: time, start: performance.now() } : null;
+			let profAt = prof?.start ?? 0;
+			const mark = (key) => {
+				if (!prof) return;
+				const at = performance.now();
+				prof[key] = at - profAt;
+				profAt = at;
+			};
+
 			const tickNow = time * TICKS_PER_SECOND;
 			let alive = true;
 			try {
@@ -1386,6 +1444,7 @@ export async function mountDemoPlayer(host, options) {
 				return;
 			}
 			if (!alive && playing) setPlaying(false);
+			mark('demo');
 
 			// 声音:wasm 攒的事件在这一帧取走,交给 Web Audio
 			const sounds = demo.drain_sounds();
@@ -1403,6 +1462,7 @@ export async function mountDemoPlayer(host, options) {
 					console.warn('[sound]', error);
 				}
 			}
+			mark('sound');
 
 			// 位置采集和跟随/队伍视角都无关:自由视角下名字牌也要跟着 tee 跑
 			trackPositions(performance.now());
@@ -1411,7 +1471,14 @@ export async function mountDemoPlayer(host, options) {
 			const snapNow = snapCamera;
 			updateCamera(dt);
 			updateSpecCursor(dt, snapNow);
+			mark('camera');
 			updateNameplates();
+			mark('names');
+			if (prof) {
+				// 累计值,相邻两帧相减就知道这帧有没有改字号(改字号会让浏览器重新光栅化文字)
+				prof.nWrites = nameStats.sizeWrites;
+				prof.nSize = nameStats.size;
+			}
 
 			// 新皮肤 / 玩家列表:每 10 帧刷一次(低帧率的机器上也能及时跟上队伍变化)
 			if (frame % 10 === 0) {
@@ -1429,6 +1496,7 @@ export async function mountDemoPlayer(host, options) {
 				}
 				updateFollowOptions();
 			}
+			mark('refresh');
 
 			try {
 				gpu.render_demo(surface, camera, renderMap(), demo);
@@ -1438,16 +1506,39 @@ export async function mountDemoPlayer(host, options) {
 				setPlaying(false);
 				return;
 			}
-
-			setStatus('');
-			if (now - seekbarHold > 120 && document.activeElement !== seek) {
-				seek.value = String(Math.round(time * 1000));
+			mark('render');
+			if (prof) {
+				const timing = gpu.last_frame_timings();
+				prof.gAcquire = timing[0];
+				prof.gPrepare = timing[1];
+				prof.gEntities = timing[2];
+				prof.gRecord = timing[3];
+				prof.gSubmit = timing[4];
+				prof.gPresent = timing[5];
+				prof.gTotal = timing[6];
 			}
-			const percent = length > 0 ? clamp((time / length) * 100, 0, 100) : 0;
-			seekFill.style.width = `${percent}%`;
-			seekKnob.style.left = `${percent}%`;
-			timeLabel.textContent = formatTime(time);
-			duration.textContent = formatTime(length);
+
+			// 控制栏 10 Hz 更新就够了:每帧改 textContent / width 会让浏览器每帧重新
+			// style + layout + paint(手机上一帧就是几毫秒),而画面本身并不需要这个。
+			// 时间文字 0.01 秒才变一位,10 Hz 已经比肉眼能分辨的快。
+			if (now - uiUpdatedAt >= 100) {
+				uiUpdatedAt = now;
+				if (now - seekbarHold > 120 && document.activeElement !== seek) {
+					seek.value = String(Math.round(time * 1000));
+				}
+				const percent = length > 0 ? clamp((time / length) * 100, 0, 100) : 0;
+				seekFill.style.width = `${percent}%`;
+				seekKnob.style.left = `${percent}%`;
+				const label = formatTime(time);
+				if (timeLabel.textContent !== label) timeLabel.textContent = label;
+			}
+			mark('ui');
+
+			if (prof) {
+				prof.total = performance.now() - prof.start;
+				perf.frames.push(prof);
+				if (perf.frames.length > 20000) perf.frames.shift();
+			}
 		};
 
 		// ---- 交互 ----
@@ -1829,6 +1920,55 @@ export async function mountDemoPlayer(host, options) {
 			play: () => setPlaying(true),
 			pause: () => setPlaying(false),
 			seek: seekTo,
+			/** 调试用:分阶段帧耗时(需要 `?perf=1`),见上面 `perf` 的注释 */
+			perf() {
+				if (!perf) return null;
+				const keys = [
+					'demo',
+					'sound',
+					'camera',
+					'names',
+					'refresh',
+					'render',
+					'ui',
+					'gAcquire',
+					'gPrepare',
+					'gEntities',
+					'gRecord',
+					'gSubmit',
+					'gPresent',
+					'gTotal',
+					'total'
+				];
+				const stats = {};
+				for (const key of keys) {
+					const values = perf.frames
+						.map((f) => f[key])
+						.filter((v) => typeof v === 'number')
+						.sort((a, b) => a - b);
+					if (!values.length) continue;
+					const q = (p) => values[Math.min(values.length - 1, Math.floor(values.length * p))];
+					stats[key] = {
+						n: values.length,
+						p50: +q(0.5).toFixed(2),
+						p95: +q(0.95).toFixed(2),
+						p99: +q(0.99).toFixed(2),
+						max: +values.at(-1).toFixed(2)
+					};
+				}
+				const worst = [...perf.frames]
+					.sort((a, b) => b.total - a.total)
+					.slice(0, 20)
+					.map((f) =>
+						Object.fromEntries(
+							Object.entries(f).map(([k, v]) => [k, typeof v === 'number' ? +v.toFixed(2) : v])
+						)
+					);
+				return { frames: perf.frames.length, stats, worst };
+			},
+			perfReset() {
+				if (perf) perf.frames.length = 0;
+			},
 			/** 调试用:当前相机/队伍状态(测试和手点控制台看) */
 			get state() {
 				return {

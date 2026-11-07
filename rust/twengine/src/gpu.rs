@@ -11,6 +11,19 @@ use twgpu::image::{self, ImageDecoder as _};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
+thread_local! {
+    /// `performance.now()`,一帧调十来次也就几微秒,但比 `window().performance()` 每次
+    /// 跨一遍 JS 边界便宜。
+    static PERF: web_sys::Performance = web_sys::window()
+        .expect("no window")
+        .performance()
+        .expect("no performance");
+}
+
+fn now_ms() -> f64 {
+    PERF.with(|perf| perf.now())
+}
+
 /// 一个 wgpu device + 一份贴图/字体资源,地图和 demo 共用。
 ///
 /// 注意:同一个 wasm 实例上 `TwGpu::init` 只能成功一次(twgpu 的全局日志/panic hook
@@ -34,6 +47,8 @@ pub struct TwGpu {
     scribble: twgpu::text::Scribble,
     /// DDNet 的 6 个武器准星,从 game.png 里裁出来的(索引 = 武器 id,见 `CURSOR_ROWS`)
     cursor_textures: [twgpu::sprites::TextureToken; 6],
+    /// 上一帧各阶段的毫秒耗时,顺序见 `last_frame_timings()` 的注释
+    last_timings: [f32; 7],
 }
 
 /// game.png 里 6 个武器准星所在的格行(每格 32px,各占 2x2 格)。
@@ -140,6 +155,7 @@ impl TwGpu {
             render_nameplates: false,
             scribble,
             cursor_textures: [twgpu::sprites::TextureToken::INVALID; 6],
+            last_timings: [0.; 7],
         })
     }
 
@@ -233,6 +249,15 @@ impl TwGpu {
         self.render(surface, camera, map, Some(demo))
     }
 
+    /// 上一帧各阶段的毫秒耗时:
+    /// `[acquire, prepare, entities, record, submit, present, total]`
+    /// (`prepare` = 地图/瓦片更新 + 开 render pass,`entities` = demo 精灵与准星上传,
+    /// `record` = 把所有 draw call 录进 command buffer,`submit`/`present` = 交 GPU 与上屏)。
+    #[wasm_bindgen]
+    pub fn last_frame_timings(&self) -> Vec<f32> {
+        self.last_timings.to_vec()
+    }
+
     fn render(
         &mut self,
         surface: &TwSurface,
@@ -243,13 +268,16 @@ impl TwGpu {
         let render_size = surface.get_size();
         let camera = camera.inner();
         let demo_time = demo.as_ref().map(|d| d.current_time());
+        let t0 = now_ms();
         let frame = surface.frame()?;
+        let t1 = now_ms();
         let frame_view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
         let mut command_encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: LABEL });
+        let (t2, t3);
         {
             let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: LABEL,
@@ -276,6 +304,7 @@ impl TwGpu {
                 twgpu::TwRenderPass::new(&mut render_pass, render_size.into(), camera);
             let (map, mut ctx, camera_bind_group) =
                 map.prepare_render(&tw_render_pass, &self.sprite_textures, demo_time);
+            t2 = now_ms();
             // 准星状态要在 render_ctx 之前取:它返回的 ctx 会把 demo 可变借走到渲染结束
             let cursor_state = demo.as_ref().and_then(|demo| demo.cursor());
             let mut new_snap = false;
@@ -284,6 +313,7 @@ impl TwGpu {
             }
             let cursor = self.cursor_sprite(cursor_state, camera, render_size.into());
             self.ctx_renderer.prepare_render(&mut ctx, new_snap, cursor);
+            t3 = now_ms();
             map.render_background(&mut tw_render_pass);
             self.ctx_renderer.render_bg(
                 &mut tw_render_pass.render_pass,
@@ -302,9 +332,21 @@ impl TwGpu {
                 self.scribble.render(&mut tw_render_pass.render_pass);
             }
         }
+        let t4 = now_ms();
         self.queue.submit([command_encoder.finish()]);
+        let t5 = now_ms();
         self.scribble.clear();
         self.queue.present(frame);
+        let t6 = now_ms();
+        self.last_timings = [
+            (t1 - t0) as f32,
+            (t2 - t1) as f32,
+            (t3 - t2) as f32,
+            (t4 - t3) as f32,
+            (t5 - t4) as f32,
+            (t6 - t5) as f32,
+            (t6 - t0) as f32,
+        ];
         Ok(())
     }
 
