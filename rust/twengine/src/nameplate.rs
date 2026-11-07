@@ -13,12 +13,12 @@ use twgpu::vek::Vec2;
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, BlendComponent, BlendState, Buffer,
-    BufferUsages, ColorTargetState, ColorWrites, Device, FragmentState, LoadOp, MultisampleState,
-    Operations, PipelineCompilationOptions, PipelineLayoutDescriptor,
+    BufferUsages, ColorTargetState, ColorWrites, Device, FragmentState, LoadOp, MipmapFilterMode,
+    MultisampleState, Operations, PipelineCompilationOptions, PipelineLayoutDescriptor,
     PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor,
     RenderPipeline, RenderPipelineDescriptor, Sampler, SamplerBindingType, SamplerDescriptor,
     ShaderStages, StoreOp, Texture, TextureDescriptor, TextureDimension, TextureFormat,
-    TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension,
+    TextureSampleType, TextureUsages, TextureView, TextureViewDescriptor, TextureViewDimension,
     VertexState,
 };
 
@@ -30,6 +30,8 @@ const ATLAS_SIZE: u32 = 1024;
 const ATLAS_PAD: u32 = 2;
 /// UV 在字形区域内部再收一点,双线性采样不会碰到 atlas 的边
 const UV_INSET: f32 = 1.5;
+/// atlas 的 mip 层数。1024 -> 64:再往下采样范围就超过字形的留白,会串到邻居
+const ATLAS_MIPS: u32 = 5;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -48,7 +50,11 @@ struct Shelf {
 
 struct Page {
     texture: Texture,
+    /// 显示用(整张,采样时按 LOD 选 mip)
     bind_group: BindGroup,
+    /// mip 降采样用:`mip_views[i]` 是第 i 级的 view,`mip_binds[i]` 采样第 i 级
+    mip_views: Vec<TextureView>,
+    mip_binds: Vec<BindGroup>,
     shelves: Vec<Shelf>,
 }
 
@@ -77,6 +83,8 @@ pub struct NameplateRenderer {
     queue: Queue,
     gen_layout: BindGroupLayout,
     gen_pipeline: RenderPipeline,
+    /// 逐级 2x2 降采样 atlas(给 SDF / emoji 生 mip 链)
+    mip_pipeline: RenderPipeline,
     display_layout: BindGroupLayout,
     mono_pipeline: RenderPipeline,
     color_pipeline: RenderPipeline,
@@ -130,6 +138,40 @@ impl NameplateRenderer {
             multisample: MultisampleState::default(),
             fragment: Some(FragmentState {
                 module: &gen_shader,
+                entry_point: Some("fs_main"),
+                compilation_options: PipelineCompilationOptions::default(),
+                targets: &[Some(ColorTargetState {
+                    format: TextureFormat::Rgba8Unorm,
+                    blend: None,
+                    write_mask: ColorWrites::ALL,
+                })],
+            }),
+            multiview_mask: None,
+            cache: None,
+        });
+        let mip_shader = device.create_shader_module(wgpu::include_wgsl!("nameplate_mip.wgsl"));
+        let mip_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: LABEL,
+            bind_group_layouts: &[Some(&gen_layout)],
+            immediate_size: 0,
+        });
+        let mip_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+            label: LABEL,
+            layout: Some(&mip_pipeline_layout),
+            vertex: VertexState {
+                module: &mip_shader,
+                entry_point: Some("vs_main"),
+                compilation_options: PipelineCompilationOptions::default(),
+                buffers: &[],
+            },
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
+                ..PrimitiveState::default()
+            },
+            depth_stencil: None,
+            multisample: MultisampleState::default(),
+            fragment: Some(FragmentState {
+                module: &mip_shader,
                 entry_point: Some("fs_main"),
                 compilation_options: PipelineCompilationOptions::default(),
                 targets: &[Some(ColorTargetState {
@@ -240,6 +282,8 @@ impl NameplateRenderer {
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
+            // 小字号是缩得很厉害的 mip 采样,关掉 mipmap 就会有点状杂边
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..SamplerDescriptor::default()
         });
         let vertex_capacity = 4 * 256;
@@ -255,6 +299,7 @@ impl NameplateRenderer {
             queue,
             gen_layout,
             gen_pipeline,
+            mip_pipeline,
             display_layout,
             mono_pipeline,
             color_pipeline,
@@ -404,11 +449,8 @@ impl NameplateRenderer {
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        self.queue.write_buffer(
-            &dummy_buffer,
-            0,
-            bytemuck::cast_slice(&dummy_vertices),
-        );
+        self.queue
+            .write_buffer(&dummy_buffer, 0, bytemuck::cast_slice(&dummy_vertices));
         let display_target = self.device.create_texture(&TextureDescriptor {
             label: LABEL,
             size: wgpu::Extent3d {
@@ -648,6 +690,7 @@ impl NameplateRenderer {
             );
             self.queue.submit([encoder.finish()]);
         }
+        self.regenerate_mips(color, page_index);
         let rect_x = x as f32;
         let rect_y = y as f32;
         self.glyphs.insert(
@@ -702,7 +745,7 @@ impl NameplateRenderer {
                 height: ATLAS_SIZE,
                 depth_or_array_layers: 1,
             },
-            mip_level_count: 1,
+            mip_level_count: ATLAS_MIPS,
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: TextureFormat::Rgba8Unorm,
@@ -712,6 +755,28 @@ impl NameplateRenderer {
             view_formats: &[],
         });
         let view = texture.create_view(&TextureViewDescriptor::default());
+        // 每一级的 view + 采样上一级的 bind group
+        let mut mip_views = Vec::new();
+        let mut mip_binds = Vec::new();
+        for level in 0..ATLAS_MIPS {
+            let level_view = texture.create_view(&TextureViewDescriptor {
+                label: LABEL,
+                base_mip_level: level,
+                mip_level_count: Some(1),
+                ..TextureViewDescriptor::default()
+            });
+            if level + 1 < ATLAS_MIPS {
+                mip_binds.push(self.device.create_bind_group(&BindGroupDescriptor {
+                    label: LABEL,
+                    layout: &self.gen_layout,
+                    entries: &[BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::TextureView(&level_view),
+                    }],
+                }));
+            }
+            mip_views.push(level_view);
+        }
         let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
             label: LABEL,
             layout: &self.display_layout,
@@ -729,6 +794,8 @@ impl NameplateRenderer {
         let page = Page {
             texture,
             bind_group,
+            mip_views,
+            mip_binds,
             shelves: vec![Shelf {
                 y: 0,
                 height: need_h,
@@ -743,6 +810,46 @@ impl NameplateRenderer {
         let index = pages.len();
         pages.push(page);
         Some((index, ATLAS_PAD, ATLAS_PAD))
+    }
+
+    /// 上传完一个字形之后重建这一页的 mip 链(逐级 2x2 降采样)
+    fn regenerate_mips(&self, color: bool, page_index: usize) {
+        let pages = if color {
+            &self.color_pages
+        } else {
+            &self.mono_pages
+        };
+        let Some(page) = pages.get(page_index) else {
+            return;
+        };
+        if page.mip_views.len() <= 1 {
+            return;
+        }
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: LABEL });
+        for level in 1..page.mip_views.len() {
+            let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                label: LABEL,
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: &page.mip_views[level],
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: StoreOp::Store,
+                    },
+                    depth_slice: None,
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            pass.set_pipeline(&self.mip_pipeline);
+            pass.set_bind_group(0, &page.mip_binds[level - 1], &[]);
+            pass.draw(0..3, 0..1);
+        }
+        self.queue.submit([encoder.finish()]);
     }
 
     /// 每帧的名字牌字形:`[id, cx, cy, w, h, outline_em]` × n

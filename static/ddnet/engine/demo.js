@@ -1272,12 +1272,12 @@ export async function mountDemoPlayer(host, options) {
 			queue: 0
 		};
 		/** 字形参考字号:位图按这个字号画,SDF 的 em 换算和 Rust 侧一致 */
-		const NAME_REF_FONT = 64;
+		const NAME_REF_FONT = 128;
 		/** 和原来 `.tw-name` 用的字体栈一致(系统字体,中文/emoji 都有) */
 		const NAME_FONT =
 			'ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans", sans-serif';
 		/** 单色字形四周留的像素(SDF 半径 12 + 4) */
-		const GLYPH_PAD = 16;
+		const GLYPH_PAD = 20;
 		/** 复杂脚本整段当一个字形,保住连写;其余按 grapheme 切 */
 		const COMPLEX_SCRIPT = /[\u0590-\u08FF\u0900-\u0DFF\u0E00-\u0E7F]/;
 		const graphemeSegmenter = (() => {
@@ -1305,22 +1305,6 @@ export async function mountDemoPlayer(host, options) {
 		let nameplateData = new Float32Array(6 * 256);
 		let nameplateCount = 0;
 
-		/** 在参考字号下量一个 grapheme 的墨迹框 */
-		const measureGlyph = (cluster) => {
-			glyphCtx.font = `${NAME_REF_FONT}px ${NAME_FONT}`;
-			const metrics = glyphCtx.measureText(cluster);
-			const inkLeft = -(metrics.actualBoundingBoxLeft ?? 0);
-			const inkRight = metrics.actualBoundingBoxRight ?? metrics.width;
-			const ascent = Math.max(0, metrics.actualBoundingBoxAscent ?? NAME_REF_FONT * 0.8);
-			const descent = Math.max(0, metrics.actualBoundingBoxDescent ?? NAME_REF_FONT * 0.2);
-			return {
-				inkLeft,
-				width: Math.max(1, Math.ceil(inkRight - inkLeft)),
-				height: Math.max(1, Math.ceil(ascent + descent)),
-				ascent
-			};
-		};
-
 		/** 名字在参考字号下的排版(前进宽度用 prefix measureText,保留 kerning) */
 		const buildLayout = (text) => {
 			const clusters = COMPLEX_SCRIPT.test(text) ? [text] : splitGraphemes(text);
@@ -1343,22 +1327,82 @@ export async function mountDemoPlayer(host, options) {
 			return { items, width: previous, ascent, descent };
 		};
 
-		/** 光栅化一个 grapheme 并上传;彩色字形走 RGBA,其余走 alpha + SDF */
+		/**
+		 * 光栅化一个 grapheme 并上传;彩色字形走 RGBA,其余走 alpha + SDF。
+		 *
+		 * 墨迹框不能直接信 `actualBoundingBoxRight`:Firefox 在含双向文本(名字里混了希伯来 /
+		 * 阿拉伯字母之类)时右边界会明显偏小,而 advance 两个浏览器是一致的 —— 按它开画布就会
+		 * 把最后一个字切掉。所以先按 advance 宽度开一块留足余量的画布画上去,再从 alpha 里量
+		 * 真正的墨迹包围盒,按「墨迹 + GLYPH_PAD」裁一块上传。
+		 */
 		const rasterizeGlyph = (cluster) => {
-			const info = measureGlyph(cluster);
-			const pad = GLYPH_PAD;
-			const width = info.width + pad * 2;
-			const height = info.height + pad * 2;
-			glyphCanvas.width = width;
-			glyphCanvas.height = height;
-			glyphCtx.clearRect(0, 0, width, height);
+			glyphCtx.font = `${NAME_REF_FONT}px ${NAME_FONT}`;
+			const metrics = glyphCtx.measureText(cluster);
+			const ascent = Math.max(
+				0,
+				metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? NAME_REF_FONT * 0.8
+			);
+			const descent = Math.max(
+				0,
+				metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? NAME_REF_FONT * 0.2
+			);
+			// 墨迹可能比 advance 宽(斜体溢出 / bidi 文本),四周留够余量再裁
+			const margin = Math.ceil(NAME_REF_FONT * 0.5);
+			const canvasW = Math.max(1, Math.ceil(metrics.width) + margin * 2);
+			const canvasH = Math.max(1, Math.ceil(ascent + descent) + margin * 2);
+			glyphCanvas.width = canvasW;
+			glyphCanvas.height = canvasH;
+			glyphCtx.clearRect(0, 0, canvasW, canvasH);
 			glyphCtx.font = `${NAME_REF_FONT}px ${NAME_FONT}`;
 			glyphCtx.textAlign = 'left';
 			glyphCtx.textBaseline = 'alphabetic';
 			glyphCtx.fillStyle = '#fff';
-			glyphCtx.fillText(cluster, pad - info.inkLeft, pad + info.ascent);
-			const image = glyphCtx.getImageData(0, 0, width, height);
-			const rgba = image.data;
+			const penX = margin;
+			const penY = margin + ascent;
+			glyphCtx.fillText(cluster, penX, penY);
+
+			// 从 alpha 量墨迹包围盒(两个浏览器一致)
+			const full = glyphCtx.getImageData(0, 0, canvasW, canvasH).data;
+			let inkMinX = canvasW;
+			let inkMinY = canvasH;
+			let inkMaxX = -1;
+			let inkMaxY = -1;
+			for (let y = 0; y < canvasH; y++) {
+				const row = y * canvasW;
+				for (let x = 0; x < canvasW; x++) {
+					if (full[(row + x) * 4 + 3] === 0) continue;
+					if (x < inkMinX) inkMinX = x;
+					if (x > inkMaxX) inkMaxX = x;
+					if (y < inkMinY) inkMinY = y;
+					if (y > inkMaxY) inkMaxY = y;
+				}
+			}
+
+			const pad = GLYPH_PAD;
+			let width;
+			let height;
+			let inkLeft;
+			let glyphAscent;
+			let rgba;
+			if (inkMaxX < 0) {
+				// 空白字形(正常排版里会被跳过,这里只是兜底)
+				width = 1;
+				height = 1;
+				inkLeft = 0;
+				glyphAscent = 0;
+				rgba = new Uint8ClampedArray(4);
+			} else {
+				const cropX = Math.max(0, inkMinX - pad);
+				const cropY = Math.max(0, inkMinY - pad);
+				width = Math.min(canvasW, inkMaxX + pad + 1) - cropX;
+				height = Math.min(canvasH, inkMaxY + pad + 1) - cropY;
+				// 排版时用的两个偏移:位图左边相对笔位、位图顶边相对基线(多出来的 pad 由
+				// 排版公式自己补,见 updateNameplates)
+				inkLeft = cropX - penX + pad;
+				glyphAscent = penY - cropY - pad;
+				rgba = glyphCtx.getImageData(cropX, cropY, width, height).data;
+			}
+
 			let color = false;
 			for (let i = 0; i < rgba.length; i += 4) {
 				if (
@@ -1390,8 +1434,8 @@ export async function mountDemoPlayer(host, options) {
 				width,
 				height,
 				pad,
-				ascent: info.ascent,
-				inkLeft: info.inkLeft,
+				ascent: glyphAscent,
+				inkLeft,
 				color
 			});
 		};

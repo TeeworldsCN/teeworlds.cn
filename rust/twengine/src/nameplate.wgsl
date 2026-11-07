@@ -32,7 +32,7 @@ var atlas: texture_2d<f32>;
 @binding(1)
 var atlas_sampler: sampler;
 
-const REF_FONT: f32 = 64.0;
+const REF_FONT: f32 = 128.0;
 const SDF_RADIUS: f32 = 12.0;
 // 和 twgpu 的 sprite shader 一致:世界坐标 Y 轴要翻一下
 const CORRECTION = vec2<f32>(2.0, -2.0);
