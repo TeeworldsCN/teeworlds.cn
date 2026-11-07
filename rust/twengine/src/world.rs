@@ -37,7 +37,10 @@ const TICK_SECONDS: f32 = 0.02;
 /// 服务端的灯每 `(int)(TickSpeed() * 0.15f)` = 7 个 tick 走一步,一步算 7.5 个 tick
 const LIGHT_STEP_TICKS: i64 = 7;
 const LIGHT_STEP_TIME: f32 = 7.5;
-/// 标签页切走再回来时最多补这么多 tick,不然要空转很久
+/// 一次 `update` 最多补这么多 tick(5 秒)。超过就当跳帧了:子弹必须一 tick 一 tick 走,
+/// 跳过中间的 tick 等于让它不受碰撞地直飞(会穿墙),只能整体重开
+const MAX_STEP_TICKS: i64 = 250;
+/// 补「灯步」时的上限(一个灯步 7 tick)
 const MAX_CATCH_UP: i64 = 50;
 
 /// 服务端 `CGameContext::OnMapLoad` 会把 tuning 重置成 DDNet 那一套
@@ -61,7 +64,7 @@ struct ShotgunTuning {
 const MOVER: u8 = 64;
 const MOVER_FAST: u8 = 65;
 
-/// 挡子弹的 tile(`CCollision::GetTile`:game 层 index 1~4,`TILE_SOLID`~`TILE_NOLASER`)
+/// 挡子弹的 tile(`CCollision::IsSolid`:`TILE_SOLID` / `TILE_NOHOOK`)
 const BLOCK_PROJECTILE: u8 = 1;
 /// 挡激光的 tile(`CCollision::IntersectNoLaser`:game 层 1/3/4、front 层的 4)
 const BLOCK_LASER: u8 = 2;
@@ -167,13 +170,17 @@ struct Tiles {
 }
 
 impl Tiles {
-    /// 这一格挡不挡(`CCollision` 查表前会先 round 到格子,越界按边界格子算)
+    /// 这一格挡不挡。`pos` 是 **tile** 坐标。
+    ///
+    /// 服务端是 `IsSolid(round_to_int(Pos.x), round_to_int(Pos.y))`,里面再 `/ 32` 整数截断,
+    /// 等价于 `floor(Pos.x / 32)` —— 一格覆盖 `[32k, 32k+32)`,格子中心正好落在 `k + 0.5`。
+    /// 之前写成 `round(pos)` 就整体偏了半格:迎面撞墙会提前 16 unit 停下,反方向则钻进墙里
     fn blocks(&self, pos: Vec2<f32>, mask: u8) -> bool {
         if self.size.x == 0 || self.size.y == 0 {
             return false;
         }
-        let x = (pos.x.round() as i64).clamp(0, self.size.x as i64 - 1) as usize;
-        let y = (pos.y.round() as i64).clamp(0, self.size.y as i64 - 1) as usize;
+        let x = (pos.x.floor() as i64).clamp(0, self.size.x as i64 - 1) as usize;
+        let y = (pos.y.floor() as i64).clamp(0, self.size.y as i64 - 1) as usize;
         self.flags[y * self.size.x + x] & mask != 0
     }
 
@@ -211,7 +218,8 @@ impl Tiles {
         for i in 0..distance.ceil() as usize {
             let step = i as f32 / distance;
             let pos = from + (to - from) * step;
-            if self.blocks(pos, BLOCK_LASER) {
+            // `from` / `to` 是 unit,查表要换成 tile
+            if self.blocks(pos / 32., BLOCK_LASER) {
                 return pos;
             }
         }
@@ -237,6 +245,10 @@ pub struct ServerWorld {
     /// 已经算到第几个灯步(`tick / LIGHT_STEP_TICKS`),变了才重建
     light_step: i64,
     bullets: Vec<Bullet>,
+    /// 待画的爆炸位置(tile)。服务端 `CProjectile::Tick` 撞墙(或者飞出地图)时会对 `EX`
+    /// 变体调 `CreateExplosion`,客户端 `CEffects::Explosion` 就是一团粒子;这里只攒事件,
+    /// 渲染层每帧取走一次
+    explosions: Vec<Vec2<f32>>,
     /// 每个 tune zone 的 shotgun tuning(zone 0 就是全局)
     tunings: [ShotgunTuning; 256],
     /// tune 图层:哪些格子在哪个 zone(只有地图真的 tune 了 shotgun 才建)
@@ -328,6 +340,7 @@ impl ServerWorld {
             lights: Vec::new(),
             light_step: -1,
             bullets: Vec::new(),
+            explosions: Vec::new(),
             tunings: [DDNET_SHOTGUN; 256],
             tune_zones: HashMap::new(),
             tick: 0,
@@ -344,18 +357,24 @@ impl ServerWorld {
         &self.snap
     }
 
+    /// 取走这一帧攒下的爆炸位置(tile),渲染层拿去喂粒子系统
+    pub fn take_explosions(&mut self) -> Vec<Vec2<f32>> {
+        std::mem::take(&mut self.explosions)
+    }
+
     /// 把世界推进到 `tick`(地图预览每帧喂一次时间过来)
     pub fn update(&mut self, tick: i64) {
         if tick <= self.tick {
             return;
         }
-        if tick - self.tick > MAX_CATCH_UP {
-            // 跳帧了(标签页在后台 / 切换过页面):直接跳到眼前,别一帧一帧补
-            let resume = tick - MAX_CATCH_UP;
+        if tick - self.tick > MAX_STEP_TICKS {
+            // 跳帧了(标签页在后台 / 长时间卡顿)。子弹必须一 tick 一 tick 走,跳过中间的
+            // tick 等于让它不受碰撞地直飞(会穿墙);所以直接当「服务器刚开服」:所有子弹
+            // 回到出生点重新跑。灯 / pickup 只是被移动块推着走,下面照旧补步
+            self.tick = tick;
             for bullet in &mut self.bullets {
-                bullet.resync(resume);
+                bullet.respawn(tick);
             }
-            self.tick = resume;
         }
         while self.tick < tick {
             self.tick += 1;
@@ -461,7 +480,8 @@ impl ServerWorld {
 
     fn load(&mut self, map: &twmap::TwMap) {
         // 先把碰撞表建出来:
-        // - `GetTile`(子弹)只看 game 层,index 1~=TILE_SOLID 到 4=TILE_NOLASER 都算;
+        // - 子弹走 `CCollision::IntersectLine` → `IsSolid`,只认 `TILE_SOLID`(1) 和
+        //   `TILE_NOHOOK`(3);DEATH(2) / NOLASER(4) 不挡子弹
         // - `IntersectNoLaser`(门 / 灯)看 game 层的 1/3/4 和 front 层的 4
         if let Some(layer) = map.find_physics_layer::<twmap::GameLayer>() {
             let tiles = layer.tiles.unwrap_ref();
@@ -471,7 +491,7 @@ impl ServerWorld {
             for ((y, x), tile) in tiles.indexed_iter() {
                 let id = tile.id();
                 let mut flags = 0;
-                if (1..=4).contains(&id) {
+                if matches!(id, 1 | 3) {
                     flags |= BLOCK_PROJECTILE;
                 }
                 if matches!(id, 1 | 3 | 4) {
@@ -789,19 +809,32 @@ impl ServerWorld {
     /// 推进子弹一个 tick
     fn step_bullets(&mut self, tick: i64) {
         let tiles = &self.tiles;
+        let explosions = &mut self.explosions;
         for bullet in &mut self.bullets {
             let current = bullet.pos_at(tick);
             if bullet.is_outside(current, tiles.size) {
-                // 服务端这时候会直接销毁子弹(`GameLayerClipped`);预览里销毁完就没得看了,
-                // 所以送回出生点重新跑一遍,看起来永远「刚开服」
+                // 服务端这时候 `GameLayerClipped` 只放一朵爆炸(`EX` 变体),子弹本身不销毁
+                // (`m_Freeze` 的会一直往外飞);预览里看不到那么远的东西,所以送回出生点重跑
+                if bullet.explosive() {
+                    explosions.push(current);
+                }
                 bullet.respawn(tick);
                 continue;
             }
             let previous = bullet.pos_at(tick - 1);
             // 服务端用 `IntersectLine` 同时拿到碰撞点和「撞之前最后一个空位」,反弹时用的是后者
-            if let Some((_, last)) = tiles.intersect_line(previous, current, BLOCK_PROJECTILE) {
-                bullet.bounce(last, tick, tiles);
+            if let Some((at, last)) = tiles.intersect_line(previous, current, BLOCK_PROJECTILE) {
+                bullet.bounce(last, tick);
+                // `CreateExplosion(ColPos, ...)`:位置就是撞上的那个采样点
+                if bullet.explosive() {
+                    explosions.push(at);
+                }
             }
+        }
+        // 卡在墙里的子弹每 tick 都会「撞」一次,别让队列无限长
+        if explosions.len() > 64 {
+            let extra = explosions.len() - 64;
+            explosions.drain(..extra);
         }
     }
 
@@ -890,8 +923,8 @@ impl Bullet {
         ) / 32.
     }
 
-    /// 撞墙了:照服务端 `CProjectile::Tick` 的反弹分支来
-    fn bounce(&mut self, last_air: Vec2<f32>, tick: i64, tiles: &Tiles) {
+    /// 撞墙了:照服务端 `CProjectile::Tick` 的反弹分支来(服务端没有别的兜底)
+    fn bounce(&mut self, last_air: Vec2<f32>, tick: i64) {
         let hit = last_air * 32.;
         let mut dir = self.dir;
         if self.bounce == 1 {
@@ -899,16 +932,15 @@ impl Bullet {
         } else {
             dir.y = -dir.y;
         }
-        // m_Pos = NewPos - dir * 4;翻转之后再 + dir
-        let mut start = hit - self.dir * 4. + dir;
-        if tiles.blocks(start / 32., BLOCK_PROJECTILE) {
-            // 卡在角落了(斜着撞两个面),整条反向
-            dir = -self.dir;
-            start = hit - self.dir * 4. + dir;
-        }
+        // `m_Pos = NewPos - m_Direction * 4`,翻转完再 `m_Pos += m_Direction`(新的方向)
+        self.start = hit - self.dir * 4. + dir;
         self.dir = dir;
-        self.start = start;
         self.start_tick = tick;
+    }
+
+    /// 服务端 `m_Explosive`:`ENTITY_CRAZY_SHOTGUN_EX` 才有,撞墙 / 出界会炸一朵
+    fn explosive(&self) -> bool {
+        self.flags.contains(ProjectileFlags::EXPLOSIVE)
     }
 
     /// 跑出地图了没(服务端的 `GameLayerClipped`)
@@ -920,12 +952,6 @@ impl Bullet {
     fn respawn(&mut self, tick: i64) {
         self.start = self.home;
         self.dir = self.home_dir;
-        self.start_tick = tick;
-    }
-
-    /// 跳帧之后把段起点挪到眼前(曲线会有一点点偏差,看不出来)
-    fn resync(&mut self, tick: i64) {
-        self.start = self.pos_at(tick) * 32.;
         self.start_tick = tick;
     }
 }

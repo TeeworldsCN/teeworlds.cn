@@ -16,6 +16,8 @@ pub struct CtxRenderer {
     world_range: std::ops::Range<usize>,
     sprites_static: twgpu::sprites::SpritesStatic,
     cache: twgpu::sprites::SpriteCache,
+    /// 这一帧要放的爆炸(地图预览里 crazy shotgun EX 撞墙),`prepare_render` 时喂给粒子系统
+    explosions: Vec<twgpu::vek::Vec2<f32>>,
 }
 
 impl CtxRenderer {
@@ -32,7 +34,13 @@ impl CtxRenderer {
             world_range: 0..0,
             sprites_static,
             cache: twgpu::sprites::SpriteCache::default(),
+            explosions: Vec::new(),
         }
+    }
+
+    /// 排几个爆炸(坐标是 tile,和 `CEffects::Explosion` 一样)
+    pub fn queue_explosions(&mut self, positions: impl IntoIterator<Item = twgpu::vek::Vec2<f32>>) {
+        self.explosions.extend(positions);
     }
 
     pub fn prepare_render(
@@ -54,6 +62,17 @@ impl CtxRenderer {
         ctx.particles.update(ctx.clock, ctx.map);
         if new_snap {
             ctx.process_events();
+        }
+        // 地图预览的爆炸不是 snap 事件,是这边自己攒的;`Particles::explosion` 就是客户端
+        // `CEffects::Explosion` 的那一坨(150 unit 的 expl01 + 24 团烟)
+        for position in std::mem::take(&mut self.explosions) {
+            let twgpu::sprites::SpriteRenderContext {
+                particles,
+                textures,
+                rng,
+                ..
+            } = &mut *ctx;
+            particles.explosion(position, textures, rng);
         }
         self.cache.clear();
         // 世界精灵先入队:服务端/客户端里道具都在玩家之前画

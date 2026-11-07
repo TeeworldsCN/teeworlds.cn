@@ -339,7 +339,7 @@ impl TwGpu {
             });
             let mut tw_render_pass =
                 twgpu::TwRenderPass::new(&mut render_pass, render_size.into(), camera);
-            let (map, mut ctx, camera_bind_group, sprite_requests) =
+            let (map, mut ctx, camera_bind_group, sprite_requests, explosions) =
                 map.prepare_render(&tw_render_pass, &self.sprite_textures, demo_time);
             t2 = now_ms();
             let world_sprites = sprite_requests
@@ -373,6 +373,7 @@ impl TwGpu {
                 (ctx, new_snap) = demo.render_ctx(&self.sprite_textures);
             }
             let cursor = self.cursor_sprite(cursor_state, camera, render_size.into());
+            self.ctx_renderer.queue_explosions(explosions);
             self.ctx_renderer
                 .prepare_render(&mut ctx, new_snap, cursor, &world_sprites);
             t3 = now_ms();

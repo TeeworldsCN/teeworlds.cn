@@ -164,6 +164,7 @@ impl TwMap {
         twgpu::sprites::SpriteRenderContext<'a>,
         &'a wgpu::BindGroup,
         Vec<crate::world::SpriteRequest>,
+        Vec<twgpu::vek::Vec2<f32>>,
     ) {
         let render_size = tw_render_pass.size;
         let camera = &tw_render_pass.camera;
@@ -184,10 +185,18 @@ impl TwMap {
             (time * 1_000_000.) as i64,
             &self.queue,
         );
-        let world_sprites = match demo {
+        // 地图预览里自己模拟出来的爆炸(坐标是 tile);demo 播放那边是 snap 事件里的
+        let (world_sprites, explosions) = match demo {
             // demo 播放用 demo 自己的 snap,不走这份世界
-            Some(_) => Vec::new(),
-            None => self.world.extra_sprites(time as f32),
+            Some(_) => (Vec::new(), Vec::new()),
+            None => (
+                self.world.extra_sprites(time as f32),
+                self.world
+                    .take_explosions()
+                    .into_iter()
+                    .map(|p| twgpu::vek::Vec2::new(p.x, p.y))
+                    .collect(),
+            ),
         };
         (
             &self.map_render,
@@ -195,6 +204,7 @@ impl TwMap {
                 .to_ctx(textures, &self.clock, self.world.snap()),
             &self.camera_bind_group,
             world_sprites,
+            explosions,
         )
     }
 
