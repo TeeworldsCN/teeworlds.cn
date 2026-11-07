@@ -1,16 +1,31 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+	import LatestRecordsDrawer from '$lib/components/ddnet/LatestRecordsDrawer.svelte';
+	import MapTiles from '$lib/components/ddnet/MapTiles.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import PointCalculation from '$lib/components/PointCalculation.svelte';
-	import { KNOWN_REGIONS, MAP_TYPES, MAP_TYPE_SERVERS } from '$lib/ddnet/helpers.js';
-	import { loadMapList, newestMapsOfType } from '$lib/ddnet/map-list';
+	import {
+		KNOWN_REGIONS,
+		MAP_TYPES,
+		MAP_TYPE_SERVERS,
+		numberToStars,
+		watchLink
+	} from '$lib/ddnet/helpers.js';
+	import { secondsToChineseTime, secondsToTime } from '$lib/helpers';
 	import { encodeAsciiURIComponent } from '$lib/link';
-	import type { MapList } from '$lib/server/fetches/maps.js';
-	import type { RankInfo } from '$lib/server/fetches/ranks.js';
-	import { faChevronDown, faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
+	import type { MapRecord, RankInfo } from '$lib/server/fetches/ranks.js';
+	import { tippy } from '$lib/tippy';
+	import {
+		faChevronDown,
+		faChevronLeft,
+		faChevronRight,
+		faHome,
+		faQuestionCircle,
+		faVideo
+	} from '@fortawesome/free-solid-svg-icons';
 	import Fa from 'svelte-fa';
 
 	let { data } = $props();
@@ -18,53 +33,47 @@
 	let searchName = $state('');
 	let showModal = $state(false);
 
-	// server (region / map type) dropdown
+	// 地区 / 地图类型 双选下拉
 	let serverDropdown = $state<HTMLDivElement>();
-	// the region whose menu is currently open, so navigating to another server closes it automatically
-	let openRegion = $state<string | null>(null);
-	const serverMenuOpen = $derived(openRegion == data.region);
+	let serverMenuOpen = $state(false);
 	const closeServerMenu = () => {
-		openRegion = null;
+		serverMenuOpen = false;
 	};
 
+	const regionSlug = $derived(data.region === 'GLOBAL' ? null : data.region.toLowerCase());
+	const typeSlug = $derived(data.type ? data.type.toLowerCase() : null);
+	const regionLabel = $derived(KNOWN_REGIONS[data.region] ?? '全球');
+	const typeLabel = $derived(data.type ? (MAP_TYPE_SERVERS[data.type] ?? data.type) : '全部类型');
+	// 触发按钮上显示当前组合:全球 / 中国服 / 新手图 / 中国服 · 新手图
 	const serverName = $derived(
-		KNOWN_REGIONS[data.region] ?? MAP_TYPE_SERVERS[data.region] ?? '全球'
+		typeSlug ? (regionSlug ? `${regionLabel} · ${typeLabel}` : typeLabel) : regionLabel
 	);
 	const serverFlag = $derived(KNOWN_REGIONS[data.region] ? data.region : null);
+	const mapPage = $derived(data.map_page ?? 1);
+	const mapPageCount = $derived(data.page_count ?? 1);
 
-	// 地图类型分类下的「新地图」:第一次选中类型时才懒加载全部地图数据
-	// (地图页和排位页共用 lib 里的同一份缓存,一次浏览只请求一遍)
-	const mapTypeSlug = $derived<string | null>(
-		MAP_TYPE_SERVERS[data.region] ? data.region.toLowerCase() : null
-	);
-	const NEWEST_MAP_COUNT = 12;
-	let mapList = $state.raw<MapList | null>(null);
-	let mapListLoading = $state(false);
-	let mapListFailed = $state(false);
-	const newestMaps = $derived(
-		mapList && mapTypeSlug ? newestMapsOfType(mapList, mapTypeSlug, NEWEST_MAP_COUNT) : []
-	);
+	const serverUrl = (region: string | null, type: string | null, page?: number) => {
+		const params = new URLSearchParams();
+		if (region && region != 'GLOBAL') params.set('server', region.toLowerCase());
+		if (type) params.set('type', type.toLowerCase());
+		if (page && page > 1) params.set('page', String(page));
+		const query = params.toString();
+		return `/ddnet/players${query ? `?${query}` : ''}`;
+	};
 
-	$effect(() => {
-		if (!mapTypeSlug || mapList) return;
-		mapListLoading = true;
-		mapListFailed = false;
-		loadMapList()
-			.then((list) => {
-				mapList = list;
-			})
-			.catch(() => {
-				mapListFailed = true;
-			})
-			.finally(() => {
-				mapListLoading = false;
-			});
-	});
+	// 两边都能选:选中一边时保留另一边
+	const selectRegion = (region: string) => {
+		goto(serverUrl(region, data.type ? data.type.toLowerCase() : null));
+	};
+	const selectType = (type: string | null) => {
+		goto(serverUrl(regionSlug, type));
+	};
 
-	const selectServer = (value: string) => {
-		closeServerMenu();
-		if (value == 'GLOBAL') goto(`/ddnet/players`);
-		else goto(`/ddnet/players?server=${value.toLowerCase()}`);
+	// 过图时间和地图详情页一样:mm:ss 显示,悬停看完整用时和日期
+	const recordTooltip = (record: MapRecord) => {
+		if (record.seconds == null) return '';
+		const when = record.date ? `于 ${record.date} ` : '';
+		return `${when}用时 ${secondsToChineseTime(record.seconds)} 完成`;
 	};
 
 	// the menu shows everything it can fit below the trigger, and only scrolls when needed
@@ -210,7 +219,7 @@
 	}
 
 	$effect(() => {
-		if (data.region == 'GLOBAL' && queryListName) {
+		if (data.region == 'GLOBAL' && !data.type && queryListName) {
 			ranks = queryRanks();
 		} else if (searchName) {
 			ranks = searchRanksTop500();
@@ -258,17 +267,16 @@
 	]}
 />
 
-{#snippet serverOption(value: string, label: string, flag?: string)}
+{#snippet serverOption(selected: boolean, label: string, flag: string | null, onclick: () => void)}
 	<button
 		type="button"
-		class="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1 text-left text-sm text-nowrap {data.region ==
-		value
+		class="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1 text-left text-sm text-nowrap {selected
 			? 'bg-blue-500/20 font-semibold text-blue-300'
 			: 'text-slate-300 hover:bg-white/10'}"
-		onclick={() => selectServer(value)}
+		{onclick}
 	>
 		{#if flag}<FlagSpan {flag} tooltip={null} />{/if}
-		{label}
+		<span>{label}</span>
 	</button>
 {/snippet}
 
@@ -302,17 +310,17 @@
 			type="button"
 			class="flex w-full cursor-pointer items-center justify-between gap-2 rounded bg-slate-700 px-4 py-2 font-semibold text-nowrap text-slate-300 hover:bg-slate-600 active:bg-slate-700 md:w-auto"
 			onclick={() => {
-				if (serverMenuOpen) {
-					closeServerMenu();
-				} else {
+				if (serverMenuOpen) closeServerMenu();
+				else {
 					updateMenuMaxHeight();
-					openRegion = data.region;
+					serverMenuOpen = true;
 				}
 			}}
 			aria-haspopup="true"
 			aria-expanded={serverMenuOpen}
 			aria-controls="server-menu"
 		>
+			{#if serverFlag}<FlagSpan flag={serverFlag} tooltip={null} />{/if}
 			{serverName}
 			<Fa
 				icon={faChevronDown}
@@ -328,17 +336,32 @@
 				<div class="flex min-h-0 min-w-0 flex-1 flex-col">
 					<div class="px-2 py-1 text-sm font-semibold text-slate-400">地区</div>
 					<ul class="min-h-0 flex-1 overflow-y-auto">
-						<li>{@render serverOption('GLOBAL', '🌎 全球')}</li>
+						<li>
+							{@render serverOption(data.region == 'GLOBAL', '🌎 全球', null, () =>
+								selectRegion('GLOBAL')
+							)}
+						</li>
 						{#each Object.keys(KNOWN_REGIONS) as key}
-							<li>{@render serverOption(key, KNOWN_REGIONS[key], key)}</li>
+							<li>
+								{@render serverOption(data.region == key, KNOWN_REGIONS[key], key, () =>
+									selectRegion(key)
+								)}
+							</li>
 						{/each}
 					</ul>
 				</div>
 				<div class="flex min-h-0 min-w-0 flex-1 flex-col border-l border-white/10 pl-3">
 					<div class="px-2 py-1 text-sm font-semibold text-slate-400">地图</div>
 					<ul class="min-h-0 flex-1 overflow-y-auto">
+						<li>
+							{@render serverOption(!data.type, '全部类型', null, () => selectType(null))}
+						</li>
 						{#each Object.keys(MAP_TYPE_SERVERS) as key}
-							<li>{@render serverOption(key, MAP_TYPE_SERVERS[key])}</li>
+							<li>
+								{@render serverOption(data.type == key, MAP_TYPE_SERVERS[key], null, () =>
+									selectType(key.toLowerCase())
+								)}
+							</li>
 						{/each}
 					</ul>
 				</div>
@@ -366,54 +389,57 @@
 	{/each}
 </div>
 
-<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-	{#each visibleLadders as ladder}
-		{@const ladderName = LADDER_NAMES[ladder]}
-		<div
-			class="mt-4 rounded-lg bg-slate-700 p-4 shadow-md {ranks[ladder].length == 0
-				? 'opacity-50'
-				: ''}"
-		>
-			{#if ladder == 'points'}
-				{#if data.region == 'GLOBAL'}
-					<h2 class="text-xl font-bold">
-						{ladderName[1]}{serverName}{ladderName[0]}（共 {data.total_points}pts）
-					</h2>
+<!-- 地图翻页后上半部分的排行榜都一样,只留地图排位 -->
+{#if mapPage <= 1}
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+		{#each visibleLadders as ladder}
+			{@const ladderName = LADDER_NAMES[ladder]}
+			<div
+				class="mt-4 rounded-lg bg-slate-700 p-4 shadow-md {ranks[ladder].length == 0
+					? 'opacity-50'
+					: ''}"
+			>
+				{#if ladder == 'points'}
+					{#if data.region == 'GLOBAL'}
+						<h2 class="text-xl font-bold">
+							{ladderName[1]}{serverName}{ladderName[0]}（共 {data.total_points}pts）
+						</h2>
+					{:else}
+						<h2 class="text-xl font-bold">
+							{#if serverFlag}<FlagSpan flag={serverFlag} />{/if}{serverName}{ladderName[0]}（共 {data.total_points}pts）
+						</h2>
+					{/if}
 				{:else}
 					<h2 class="text-xl font-bold">
-						{#if serverFlag}<FlagSpan flag={serverFlag} />{/if}{serverName}{ladderName[0]}（共 {data.total_points}pts）
+						{ladderName[1]}{serverName}{ladderName[0]}
 					</h2>
 				{/if}
-			{:else}
-				<h2 class="text-xl font-bold">
-					{ladderName[1]}{serverName}{ladderName[0]}
-				</h2>
-			{/if}
-			<ul class="mt-2">
-				{#if ranks[ladder].length == 0}
-					<li>
-						{#if data.region != 'GLOBAL' && !searchName && serverFlag}
-							<span class="text-center">无记录，可能已停服</span>
-						{:else if data.region != 'GLOBAL' && searchName}
-							<span class="text-center">未进区服前 500 名</span>
-						{:else}
-							<span class="text-center">未获得记录</span>
-						{/if}
-					</li>
-				{:else}
-					{#each ranks[ladder] as rank}
+				<ul class="mt-2">
+					{#if ranks[ladder].length == 0}
 						<li>
-							<span class="inline-block w-8 text-right">{rank.rank}.</span>
-							<span class="inline-block w-20 text-right">{rank.points}pts</span>
-							{#if rank.region}<FlagSpan flag={rank.region} />{/if}
-							<PlayerLink player={rank.name} className="font-semibold">{rank.name}</PlayerLink>
+							{#if data.region != 'GLOBAL' && !data.type && !searchName && serverFlag}
+								<span class="text-center">无记录，可能已停服</span>
+							{:else if (data.region != 'GLOBAL' || data.type) && searchName}
+								<span class="text-center">未进前 500 名</span>
+							{:else}
+								<span class="text-center">未获得记录</span>
+							{/if}
 						</li>
-					{/each}
-				{/if}
-			</ul>
-		</div>
-	{/each}
-</div>
+					{:else}
+						{#each ranks[ladder] as rank}
+							<li>
+								<span class="inline-block w-8 text-right">{rank.rank}.</span>
+								<span class="inline-block w-20 text-right">{rank.points}pts</span>
+								{#if rank.region}<FlagSpan flag={rank.region} />{/if}
+								<PlayerLink player={rank.name} className="font-semibold">{rank.name}</PlayerLink>
+							</li>
+						{/each}
+					{/if}
+				</ul>
+			</div>
+		{/each}
+	</div>
+{/if}
 
 <div class="mt-2">
 	{#if data.update_time}
@@ -424,42 +450,179 @@
 	{/if}
 </div>
 
-{#if mapTypeSlug}
-	<div class="mt-4">
+{#if typeSlug && data.maps.length}
+	<div class="mt-6">
 		<div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-			<h2 class="text-xl font-bold">🆕 新地图</h2>
+			<h2 class="text-xl font-bold">🗺️ 地图排位</h2>
 			<a
-				href={`/ddnet/maps#type=${mapTypeSlug}`}
+				href={`/ddnet/maps#type=${typeSlug}`}
 				class="text-sm text-blue-300 hover:text-blue-200"
 				onclick={(ev) => {
 					if (ev.button != 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
 					ev.preventDefault();
-					// goto 默认 noScroll: false,从排位页底部跳过去时会自动滚回顶部
-					goto(`/ddnet/maps#type=${mapTypeSlug}`);
-				}}>查看全部{MAP_TYPES[mapTypeSlug]}地图 →</a
+					// goto 默认 noScroll: false，从排位页底部跳过去时自动滚回顶部
+					goto(`/ddnet/maps#type=${typeSlug}`);
+				}}>查看全部{MAP_TYPES[typeSlug]}地图 →</a
 			>
 		</div>
-		{#if mapListFailed}
-			<p class="text-slate-400">地图列表加载失败</p>
-		{:else if !mapList || mapListLoading}
-			<p class="text-slate-400">加载地图列表中…</p>
-		{:else}
-			<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
-				{#each newestMaps as map}
+		<div class="flex flex-col gap-3">
+			{#each data.maps as map (map.name)}
+				<div class="rounded-lg bg-slate-700 p-3 shadow-md">
+					<div class="flex flex-col gap-3 sm:flex-row">
+						<a
+							href={`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`}
+							class="aspect-map block w-full shrink-0 overflow-hidden rounded bg-slate-800 sm:w-48 lg:w-64"
+						>
+							{#if map.thumbnail}
+								<img
+									src={map.thumbnail}
+									alt={map.name}
+									loading="lazy"
+									class="h-full w-full object-cover"
+								/>
+							{/if}
+						</a>
+						<div class="min-w-0 flex-1">
+							<h3 class="text-lg font-bold">
+								<a
+									href={`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`}
+									class="hover:text-blue-300">{map.name}</a
+								>
+							</h3>
+							{#if map.mapper}
+								<p class="text-sm text-slate-400">by {map.mapper}</p>
+							{/if}
+							<p class="text-sm">
+								{#if map.release}发布于 {map.release} ·
+								{/if}
+								{numberToStars(map.difficulty)} ({map.points} pts)
+							</p>
+							{#if map.finishes || map.teams}
+								<p class="text-sm text-slate-300">
+									{#if map.finishes}
+										完成 {map.finishes} 次{map.median_time ? `（中位 ${map.median_time}）` : ''}
+									{/if}
+									{#if map.finishes && map.teams}
+										·
+									{/if}
+									{#if map.teams}
+										{map.teams} 队{map.biggest_team ? `（最大 ${map.biggest_team} 人）` : ''}
+									{/if}
+								</p>
+							{/if}
+							{#if map.tiles.length}
+								<MapTiles tiles={map.tiles} class="mt-1" />
+							{/if}
+						</div>
+					</div>
+
+					<div class="mt-2 grid grid-cols-1 gap-3 border-t border-slate-600 pt-2 md:grid-cols-2">
+						<div>
+							<h4 class="mb-1 text-sm font-semibold text-slate-400">团队排行</h4>
+							<ul>
+								{#each map.team_records as record}
+									<li class="flex items-center gap-1 text-sm">
+										<span class="inline-block w-6 shrink-0 text-right">{record.rank}.</span>
+										<span
+											class="inline-block w-16 shrink-0 text-right tabular-nums"
+											use:tippy={{ content: recordTooltip(record) }}
+										>
+											{record.seconds != null ? secondsToTime(record.seconds) : record.time}
+										</span>
+										{#if record.region}<FlagSpan flag={record.region} />{/if}
+										<span class="min-w-0 truncate">
+											{#each record.names as name, i}
+												<PlayerLink player={name} className="font-semibold">{name}</PlayerLink
+												>{#if i < record.names.length - 2}{', '}{:else if i == record.names.length - 2}{' & '}{/if}
+											{/each}
+										</span>
+										{#if record.replay}
+											<a
+												href={watchLink({
+													uuid: record.replay.uuid,
+													time: record.seconds,
+													kind: 'team'
+												})}
+												class="ml-auto shrink-0 text-slate-400 transition-colors hover:text-orange-400"
+												aria-label="观看回放"
+											>
+												<Fa icon={faVideo} size="xs" />
+											</a>
+										{/if}
+									</li>
+								{/each}
+							</ul>
+						</div>
+						<div>
+							<h4 class="mb-1 text-sm font-semibold text-slate-400">个人排行</h4>
+							<ul>
+								{#each map.records as record}
+									<li class="flex items-center gap-1 text-sm">
+										<span class="inline-block w-6 shrink-0 text-right">{record.rank}.</span>
+										<span
+											class="inline-block w-16 shrink-0 text-right tabular-nums"
+											use:tippy={{ content: recordTooltip(record) }}
+										>
+											{record.seconds != null ? secondsToTime(record.seconds) : record.time}
+										</span>
+										{#if record.region}<FlagSpan flag={record.region} />{/if}
+										<PlayerLink player={record.names[0]} className="min-w-0 truncate font-semibold">
+											{record.names[0]}
+										</PlayerLink>
+										{#if record.replay}
+											<a
+												href={watchLink({
+													uuid: record.replay.uuid,
+													time: record.seconds,
+													kind: 'solo',
+													names: [record.names[0]]
+												})}
+												class="ml-auto shrink-0 text-slate-400 transition-colors hover:text-orange-400"
+												aria-label="观看回放"
+											>
+												<Fa icon={faVideo} size="xs" />
+											</a>
+										{/if}
+									</li>
+								{/each}
+							</ul>
+						</div>
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		{#if mapPageCount > 1}
+			<div class="mt-3 flex items-center justify-center gap-3">
+				{#if mapPage > 1}
 					<a
-						href={`/ddnet/maps/${encodeAsciiURIComponent(map.name)}`}
-						class="rounded-lg bg-slate-700 p-1.5 shadow-md hover:bg-slate-600"
-						title={map.name}
+						href={serverUrl(regionSlug, typeSlug)}
+						class="inline-flex h-8 w-8 items-center justify-center rounded bg-slate-700 text-slate-300 hover:bg-slate-600 active:bg-slate-700"
+						title="返回第一页（排行榜）"
+						aria-label="返回第一页（排行榜）"
 					>
-						<img
-							src={map.thumbnail}
-							alt={map.name}
-							loading="lazy"
-							class="aspect-map w-full rounded object-cover"
-						/>
-						<p class="mt-1 truncate text-sm font-semibold">{map.name}</p>
+						<Fa icon={faHome} />
 					</a>
-				{/each}
+				{/if}
+				<button
+					class="inline-flex h-8 w-8 items-center justify-center rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+					disabled={mapPage <= 1}
+					onclick={() => goto(serverUrl(regionSlug, typeSlug, mapPage - 1))}
+					title="上一页"
+					aria-label="上一页"
+				>
+					<Fa icon={faChevronLeft} />
+				</button>
+				<span class="text-sm text-slate-400">地图 {mapPage} / {mapPageCount}</span>
+				<button
+					class="inline-flex h-8 w-8 items-center justify-center rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+					disabled={mapPage >= mapPageCount}
+					onclick={() => goto(serverUrl(regionSlug, typeSlug, mapPage + 1))}
+					title="下一页"
+					aria-label="下一页"
+				>
+					<Fa icon={faChevronRight} />
+				</button>
 			</div>
 		{/if}
 	</div>
@@ -468,3 +631,8 @@
 <Modal bind:show={showModal}>
 	<PointCalculation></PointCalculation>
 </Modal>
+
+<LatestRecordsDrawer
+	region={data.region === 'GLOBAL' ? null : data.region}
+	type={data.type ? data.type.toLowerCase() : null}
+/>
