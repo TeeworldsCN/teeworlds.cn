@@ -5,7 +5,7 @@
 @binding(0)
 var src: texture_2d<f32>;
 
-const RADIUS: i32 = 12;
+const RADIUS: i32 = 16;
 
 @vertex
 fn vs_main(@builtin(vertex_index) index: u32) -> @builtin(position) vec4<f32> {
@@ -32,6 +32,9 @@ fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
         }
     }
     let signed = select(best, -best, inside);
-    let norm = clamp(0.5 + signed / (2.0 * f32(RADIUS)), 0.0, 1.0);
+    // 编码成 **0 = 远在外面、0.5 = 轮廓、1 = 内部**:atlas 里没写过的像素永远是 0
+    // (wgpu 新建纹理清零),于是「没初始化」和 mip 降采样混进来的空白都落在「远在外面」,
+    // 画出来是透明的。反过来编码的话,没写过的 0 会被当成字体内部 —— 整个 quad 变实心。
+    let norm = clamp(0.5 - signed / (2.0 * f32(RADIUS)), 0.0, 1.0);
     return vec4<f32>(norm, 0.0, 0.0, 1.0);
 }

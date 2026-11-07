@@ -1283,7 +1283,7 @@ export async function mountDemoPlayer(host, options) {
 		/** 和原来 `.tw-name` 用的字体栈一致(系统字体,中文/emoji 都有) */
 		const NAME_FONT =
 			'ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans", sans-serif';
-		/** 单色字形四周留的像素(SDF 半径 12 + 4) */
+		/** 单色字形四周留的像素(SDF 半径 16 + 4) */
 		const GLYPH_PAD = 20;
 		/** 复杂脚本整段当一个字形,保住连写;其余按 grapheme 切 */
 		const COMPLEX_SCRIPT = /[\u0590-\u08FF\u0900-\u0DFF\u0E00-\u0E7F]/;
@@ -1499,9 +1499,11 @@ export async function mountDemoPlayer(host, options) {
 					const scale = size / NAME_REF_FONT;
 					const pxPerTile = cssWidth / viewWidth;
 					// 描边宽度抄客户端的 AdjustOutlineThicknessToFontSize();
-					// SDF 的范围只有 RADIUS / REF_FONT = 8/64,太细的字号按上限截一下
+					// **描边必须明显窄于 SDF 的范围**(spread = SDF_RADIUS / REF_FONT),否则
+					// 留白处 8bit 归一化饱和到 spread 之后正好落在描边阈值上,整块 quad 会被
+					// 刷成 50% 的描边色(看起来就是一个深色方块)。留 3 个像素给 AA 和量化。
 					const outlinePx = size > 48 ? 4 : size >= 18 ? 2 : 1;
-					const outlineEm = Math.min(outlinePx / size, 12 / NAME_REF_FONT);
+					const outlineEm = Math.min(outlinePx / size, (16 - 3) / NAME_REF_FONT);
 					for (const player of playersCache) {
 						const position = framePositions.get(player.id);
 						if (!position) continue;

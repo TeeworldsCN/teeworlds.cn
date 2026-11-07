@@ -33,7 +33,7 @@ var atlas: texture_2d<f32>;
 var atlas_sampler: sampler;
 
 const REF_FONT: f32 = 128.0;
-const SDF_RADIUS: f32 = 12.0;
+const SDF_RADIUS: f32 = 16.0;
 // 和 twgpu 的 sprite shader 一致:世界坐标 Y 轴要翻一下
 const CORRECTION = vec2<f32>(2.0, -2.0);
 
@@ -50,13 +50,17 @@ fn vs_main(vertex: Vertex) -> Frag {
 
 @fragment
 fn fs_mono(frag: Frag) -> @location(0) vec4<f32> {
+    // atlas 里 0 = 远在外面、0.5 = 轮廓、1 = 内部(见 nameplate_sdf.wgsl)
     let r = textureSample(atlas, atlas_sampler, frag.uv).r;
-    // 距离场按参考字号的像素归一化,换算成 em(和显示字号无关)
-    let distance_em = (r - 0.5) * 2.0 * SDF_RADIUS / REF_FONT;
+    // 距离场按参考字号的像素归一化,换算成 em(和显示字号无关;正值 = 在外面)
+    let distance_em = (0.5 - r) * 2.0 * SDF_RADIUS / REF_FONT;
     // 半宽:整个过渡只有 1 个屏幕像素,小字号下描边不会被糊成一大片
     let aa = 0.5 * max(fwidth(distance_em), 0.0001);
     let fill = 1.0 - smoothstep(-aa, aa, distance_em);
-    let outline = 1.0 - smoothstep(-aa, aa, distance_em - frag.outline);
+    // 描边必须窄于 SDF 的范围:距离在 spread 之外是饱和的(= SDF_RADIUS/REF_FONT),
+    // 描边一旦顶到那里,留白处也会被判成描边,整块 quad 变成一层灰。这里再兜一次底。
+    let outline_em = clamp(frag.outline, 0.0, (SDF_RADIUS - 2.0) / REF_FONT);
+    let outline = 1.0 - smoothstep(-aa, aa, distance_em - outline_em);
     // 预乘 alpha:白色填充 + 50% 黑描边
     let alpha = fill + (1.0 - fill) * outline * 0.5;
     return vec4<f32>(fill, fill, fill, alpha);
