@@ -28,6 +28,7 @@ pre-rfc3243-libtw2-gamenet-common = "0.2.0"
 pre-rfc3243-libtw2-packer = "0.2.0"
 fixed = "1.29"
 log = "0.4"
+bytemuck = { version = "1", features = ["derive"] }
 # twsnap/libtw2 的依赖链会用到 getrandom,uuid;wasm 上需要显式打开 js 随机源
 # (twgpu-web 的 Cargo.toml 里也是这么做的)
 getrandom = { version = "0.2", features = ["js"] }

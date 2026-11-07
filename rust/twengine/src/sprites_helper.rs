@@ -89,7 +89,7 @@ impl CtxRenderer {
             render_pass,
         );
     }
-    pub fn render_fg<'a>(
+    pub fn render_particles_fg<'a>(
         &'a self,
         render_pass: &mut wgpu::RenderPass<'a>,
         camera_bind_group: &'a wgpu::BindGroup,
@@ -109,6 +109,14 @@ impl CtxRenderer {
                 render_pass,
             );
         }
+    }
+
+    pub fn render_cursor<'a>(
+        &'a self,
+        render_pass: &mut wgpu::RenderPass<'a>,
+        camera_bind_group: &'a wgpu::BindGroup,
+        textures: &'a twgpu::sprites::SpriteTextures,
+    ) {
         // 准星盖在最上面(它在精灵之后、在地形之后,和客户端里 HUD 最后画一致)
         self.sprites_static.render_range(
             self.cursor_range.clone(),

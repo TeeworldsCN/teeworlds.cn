@@ -287,8 +287,7 @@ export async function mountDemoPlayer(host, options) {
 	style.textContent = CSS;
 	const root = element('div', 'tw-player');
 	let canvas = element('canvas', 'tw-canvas');
-	// 名字牌用 DOM 渲染(浏览器自带字体,不用为 CJK 单独塞一份 Source Han Sans)
-	const nameLayer = element('div', 'tw-names');
+	// 名字牌由 JS 用 Canvas2D 画成贴图(浏览器自带字体,不用为 CJK 单独塞一份字体)
 	const overlay = element('div', 'tw-overlay');
 	const status = element('div', 'tw-status', '加载引擎…');
 	overlay.append(status);
@@ -457,7 +456,7 @@ export async function mountDemoPlayer(host, options) {
 		fullscreenButton.remove();
 	}
 	bar.append(whoRow, seekRow, mainRow);
-	root.append(canvas, nameLayer, overlay);
+	root.append(canvas, overlay);
 	if (title) root.append(top);
 	root.append(bar);
 	host.append(style, root);
@@ -479,7 +478,8 @@ export async function mountDemoPlayer(host, options) {
 	try {
 		// 后端探测 / X5 的 WebGPU 回退 / wasm 实例 / 贴图加载都在 bootRenderer 里,
 		// 和地图预览页共用同一份实现(那些坑只在 engine.js 修一次)。
-		// 名字牌走 DOM(系统字体),wasm 里的 SDF 字体用不上,别白下 757 KB 的 ttf。
+		// 名字牌是 JS 用 Canvas2D + 系统字体画的贴图,wasm 里的 SDF 字体用不上,
+		// 别白下 757 KB 的 ttf。
 		const {
 			module,
 			gpu,
@@ -528,15 +528,6 @@ export async function mountDemoPlayer(host, options) {
 		const surface = gpu.create_surface(canvas);
 
 		let aspect = 1;
-		/** 渲染用的设备像素比(封顶 2,性能取舍):决定 canvas 后备缓冲的大小 */
-		let renderDpr = 1;
-		/**
-		 * 屏幕真实的设备像素比。DOM 里的东西(名字牌)由浏览器按**真实** dpr 光栅化,
-		 * 不受 canvas 那个 2x 上限影响,所以对齐网格要用这个值。
-		 */
-		let pixelDpr = 1;
-		/** 名字牌的 DOM 节点(id -> span),`resize` 里要清字号缓存,所以得先声明 */
-		const nameLabels = new Map();
 		const resize = () => {
 			const rect = root.getBoundingClientRect();
 			const realDpr = window.devicePixelRatio || 1;
@@ -546,12 +537,6 @@ export async function mountDemoPlayer(host, options) {
 			surface.resize(width, height);
 			aspect = width / height;
 			camera.aspect_ratio = aspect;
-			// 换了 dpr,名字牌的字号和定位网格都要按新的重排
-			if (nextRender !== renderDpr || realDpr !== pixelDpr) {
-				renderDpr = nextRender;
-				pixelDpr = realDpr;
-				for (const label of nameLabels.values()) label.dataset.size = '';
-			}
 		};
 		resize();
 		const observer = new ResizeObserver(resize);
@@ -810,17 +795,10 @@ export async function mountDemoPlayer(host, options) {
 
 		const setNameplatesVisible = (value) => {
 			showNames = value;
-			nameLayer.hidden = !value;
 			syncMenu();
 			savePrefs();
-			if (value) {
-				// 打开就立刻摆好位置,别等下一帧(低帧率机器上会明显晚一拍)
-				updateNameplates();
-				return;
-			}
-			// 关掉就把节点收掉,别留一堆看不见的 span 在 DOM 里
-			for (const label of nameLabels.values()) label.remove();
-			nameLabels.clear();
+			// 立刻刷新:关掉时给 wasm 一个空列表,打开时也不用等下一帧
+			updateNameplates();
 		};
 
 		/** 准星开关(客户端 cl_spec_cursor 默认开着) */
@@ -1273,99 +1251,259 @@ export async function mountDemoPlayer(host, options) {
 		};
 
 		/**
-		 * 名字牌:每个 tee 头顶一个 `<span>`,世界坐标投影到屏幕。
+		 * 名字牌:JS 用 Canvas2D 光栅化 grapheme,再交给 twengine 的字形 atlas。
 		 *
-		 * 之前是 wasm 里的 SDF 字体(twgpu 的 Scribble)画的,它只有 DejaVuSans ——
-		 * 那份 TTF 里没有一个汉字,所以「坤坤」直接画不出来(不是数据没解出来:
-		 * `players_json()` 里名字是完整的)。改用 DOM 就白拿系统字体:
-		 * 中文/日文/emoji 全都按用户自己的字体渲染,还省掉 757 KB 的字体文件。
+		 * - 单色字形:上传 alpha 位图,wasm 里用 wgpu 生成 SDF;描边是 SDF 的第二个
+		 *   阈值,和字号无关,任意 zoom 都清晰
+		 * - 彩色字形(emoji):RGBA 直接进彩色 atlas,不走 SDF
+		 * - 只有新字符 / 换名字才需要光栅化和上传,zoom 完全不触发上传
+		 * - 还没上传完的名字先不显示;已经上传过的不会因为 zoom 消失
 		 */
-		// 调试用:每帧 nameplates 花多少毫秒、字号改写过几次(改字号最贵,别每帧都改)
-		const nameStats = { ms: 0, frames: 0, sizeWrites: 0, labels: 0, size: 0 };
-		/** 上一次真正写进 DOM 的字号(见 updateNameplates 里的滞回) */
-		let nameplateSize = 0;
-		const updateNameplates = () => {
-			if (!showNames) return;
+		const nameStats = {
+			ms: 0,
+			frames: 0,
+			labels: 0,
+			size: 0,
+			glyphs: 0,
+			uploads: 0,
+			uploadMs: 0,
+			uploadMaxMs: 0,
+			layouts: 0,
+			queue: 0
+		};
+		/** 字形参考字号:位图按这个字号画,SDF 的 em 换算和 Rust 侧一致 */
+		const NAME_REF_FONT = 64;
+		/** 和原来 `.tw-name` 用的字体栈一致(系统字体,中文/emoji 都有) */
+		const NAME_FONT =
+			'ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans", sans-serif';
+		/** 单色字形四周留的像素(SDF 半径 12 + 4) */
+		const GLYPH_PAD = 16;
+		/** 复杂脚本整段当一个字形,保住连写;其余按 grapheme 切 */
+		const COMPLEX_SCRIPT = /[\u0590-\u08FF\u0900-\u0DFF\u0E00-\u0E7F]/;
+		const graphemeSegmenter = (() => {
+			try {
+				return new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+			} catch {
+				return null;
+			}
+		})();
+		const splitGraphemes = (text) =>
+			graphemeSegmenter
+				? [...graphemeSegmenter.segment(text)].map((part) => part.segment)
+				: Array.from(text);
+		/** grapheme -> 已上传的字形 */
+		const glyphs = new Map();
+		/** 名字 -> 参考字号下的排版 */
+		const nameLayouts = new Map();
+		/** 等光栅化的 grapheme(每帧限量、按时间预算处理) */
+		const glyphQueue = [];
+		const queuedGlyphs = new Set();
+		let nextGlyphId = 1;
+		const glyphCanvas = document.createElement('canvas');
+		const glyphCtx = glyphCanvas.getContext('2d', { willReadFrequently: true });
+		/** 传给 wasm 的 [glyphId, cx, cy, w, h, outline_em] */
+		let nameplateData = new Float32Array(6 * 256);
+		let nameplateCount = 0;
+
+		/** 在参考字号下量一个 grapheme 的墨迹框 */
+		const measureGlyph = (cluster) => {
+			glyphCtx.font = `${NAME_REF_FONT}px ${NAME_FONT}`;
+			const metrics = glyphCtx.measureText(cluster);
+			const inkLeft = -(metrics.actualBoundingBoxLeft ?? 0);
+			const inkRight = metrics.actualBoundingBoxRight ?? metrics.width;
+			const ascent = Math.max(0, metrics.actualBoundingBoxAscent ?? NAME_REF_FONT * 0.8);
+			const descent = Math.max(0, metrics.actualBoundingBoxDescent ?? NAME_REF_FONT * 0.2);
+			return {
+				inkLeft,
+				width: Math.max(1, Math.ceil(inkRight - inkLeft)),
+				height: Math.max(1, Math.ceil(ascent + descent)),
+				ascent
+			};
+		};
+
+		/** 名字在参考字号下的排版(前进宽度用 prefix measureText,保留 kerning) */
+		const buildLayout = (text) => {
+			const clusters = COMPLEX_SCRIPT.test(text) ? [text] : splitGraphemes(text);
+			const items = [];
+			let prefix = '';
+			let previous = 0;
+			for (const cluster of clusters) {
+				prefix += cluster;
+				glyphCtx.font = `${NAME_REF_FONT}px ${NAME_FONT}`;
+				const width = glyphCtx.measureText(prefix).width;
+				if (cluster.trim()) items.push({ cluster, pen: previous });
+				previous = width;
+			}
+			glyphCtx.font = `${NAME_REF_FONT}px ${NAME_FONT}`;
+			const metrics = glyphCtx.measureText(text);
+			const ascent =
+				metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? NAME_REF_FONT * 0.8;
+			const descent =
+				metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? NAME_REF_FONT * 0.2;
+			return { items, width: previous, ascent, descent };
+		};
+
+		/** 光栅化一个 grapheme 并上传;彩色字形走 RGBA,其余走 alpha + SDF */
+		const rasterizeGlyph = (cluster) => {
+			const info = measureGlyph(cluster);
+			const pad = GLYPH_PAD;
+			const width = info.width + pad * 2;
+			const height = info.height + pad * 2;
+			glyphCanvas.width = width;
+			glyphCanvas.height = height;
+			glyphCtx.clearRect(0, 0, width, height);
+			glyphCtx.font = `${NAME_REF_FONT}px ${NAME_FONT}`;
+			glyphCtx.textAlign = 'left';
+			glyphCtx.textBaseline = 'alphabetic';
+			glyphCtx.fillStyle = '#fff';
+			glyphCtx.fillText(cluster, pad - info.inkLeft, pad + info.ascent);
+			const image = glyphCtx.getImageData(0, 0, width, height);
+			const rgba = image.data;
+			let color = false;
+			for (let i = 0; i < rgba.length; i += 4) {
+				if (
+					rgba[i + 3] > 8 &&
+					(Math.abs(rgba[i] - rgba[i + 1]) > 8 ||
+						Math.abs(rgba[i + 1] - rgba[i + 2]) > 8 ||
+						Math.abs(rgba[i] - rgba[i + 2]) > 8)
+				) {
+					color = true;
+					break;
+				}
+			}
+			let pixels;
+			if (color) {
+				pixels = new Uint8Array(rgba.buffer, rgba.byteOffset, rgba.byteLength);
+			} else {
+				pixels = new Uint8Array(width * height);
+				for (let i = 0; i < pixels.length; i++) pixels[i] = rgba[i * 4 + 3];
+			}
+			const id = nextGlyphId++;
 			const startedAt = performance.now();
-			const cssWidth = canvas.clientWidth;
-			const cssHeight = canvas.clientHeight;
-			if (!cssWidth || !cssHeight) return;
-			const [viewWidth, viewHeight] = visibleTiles();
-			// DDNet nameplates.cpp 用 tile_scaled(0.85) —— 字号跟着 zoom 一起缩放。
-			// 量化到整像素:缩放平滑时字号每帧都在变,不量化的话浏览器每帧都要重新
-			// 光栅化一遍文字(那才是 DOM 方案真正贵的地方)。整像素变化一秒也就几次。
-			const pascal = clamp((0.85 * cssHeight) / viewHeight, 7, 160);
-			// 字号量化到**设备像素**的整数倍:18px 在 dpr=2 上是 36 个设备像素,
-			// 字形刚好整数对齐;量化到 CSS 整像素则在 1.5x 屏上会落到 27.5 这种半格上。
-			// 用真实 dpr 而不是封顶 2,不然 3x 屏上字号会落在 1/3 像素上被重采样。
-			const quantized = Math.max(1, Math.round(pascal * pixelDpr)) / pixelDpr;
-			// 再加一层滞回:zoom 连续变化时字号会一直在相邻两个设备像素之间来回跳,
-			// 而每改一次 font-size,浏览器都要把中文 + 描边重新光栅化一遍(几毫秒,
-			// 手机上是十几毫秒)。字号差 10% 以内就沿用旧的,肉眼看不出来,但一场回放
-			// 的重光栅化次数能从几百次降到十几次。
-			const size =
-				nameplateSize > 0 && Math.abs(quantized - nameplateSize) / nameplateSize < 0.1
-					? nameplateSize
-					: quantized;
-			nameplateSize = size;
-			const sizeText = `${size}px`;
-			nameStats.size = size;
-			// 描边宽度抄客户端的 AdjustOutlineThicknessToFontSize():
-			// <18px 一像素,18~48px 两像素,>48px 四像素。
-			// -webkit-text-stroke 是沿字形轮廓**居中**画的,配合 paint-order: stroke fill
-			// 之后内半边会被填充盖住,所以这里写两倍才是“往外扩 thickness 像素”。
-			const outline = size > 48 ? 4 : size >= 18 ? 2 : 1;
-			const strokeText = `${outline * 2}px`;
-			const alive = new Set();
-			for (const player of playersCache) {
-				const position = framePositions.get(player.id);
-				if (!position) continue;
-				alive.add(player.id);
-				let label = nameLabels.get(player.id);
-				if (!label) {
-					label = element('span', 'tw-name');
-					label.dataset.name = '';
-					nameLayer.append(label);
-					nameLabels.set(player.id, label);
-				}
-				const text = player.name || `#${player.id}`;
-				if (label.dataset.name !== text) {
-					label.textContent = text;
-					label.dataset.name = text;
-				}
-				// 定位对齐到设备像素网格,不然文字会落在半像素上被合成器重采样,糊
-				const snap = (value) => Math.round(value * pixelDpr) / pixelDpr;
-				const screenX = snap(((position[0] - camera.x) / viewWidth + 0.5) * cssWidth);
-				const screenY = snap(((position[1] - 1.1 - camera.y) / viewHeight + 0.5) * cssHeight);
-				const outside =
-					screenX < -cssWidth * 0.2 ||
-					screenX > cssWidth * 1.2 ||
-					screenY < -cssHeight * 0.2 ||
-					screenY > cssHeight * 1.2;
-				if (label.hidden !== outside) label.hidden = outside;
-				if (outside) continue;
-				// 位置量化到设备像素后同一个格子就不要再写 transform:暂停/静止时
-				// 能少掉大半的 span style 重算(每改一次都要重新 resolve style)
-				const positionKey = `${screenX},${screenY}`;
-				if (label.dataset.pos !== positionKey) {
-					label.dataset.pos = positionKey;
-					label.style.transform = `translate(${screenX.toFixed(3)}px, ${screenY.toFixed(3)}px) translate(-50%, -50%)`;
-				}
-				if (label.dataset.size !== sizeText) {
-					label.style.fontSize = sizeText;
-					label.style.webkitTextStrokeWidth = strokeText;
-					label.dataset.size = sizeText;
-					nameStats.sizeWrites++;
+			gpu.nameplate_glyph_upload(id, width, height, color, pixels);
+			const uploadMs = performance.now() - startedAt;
+			nameStats.uploadMs += uploadMs;
+			nameStats.uploadMaxMs = Math.max(nameStats.uploadMaxMs, uploadMs);
+			nameStats.uploads++;
+			glyphs.set(cluster, {
+				id,
+				width,
+				height,
+				pad,
+				ascent: info.ascent,
+				inkLeft: info.inkLeft,
+				color
+			});
+		};
+
+		/** 取字形;没有就排队,这一帧先返回 null */
+		const ensureGlyph = (cluster) => {
+			const glyph = glyphs.get(cluster);
+			if (glyph) return glyph;
+			if (!queuedGlyphs.has(cluster)) {
+				queuedGlyphs.add(cluster);
+				glyphQueue.push(cluster);
+			}
+			return null;
+		};
+
+		/** 每帧最多光栅化几个,按 2ms 预算;新字符不进关键路径 */
+		const processGlyphQueue = (deadline) => {
+			let count = 0;
+			while (glyphQueue.length && count < 4 && performance.now() < deadline) {
+				const cluster = glyphQueue.shift();
+				queuedGlyphs.delete(cluster);
+				if (glyphs.has(cluster)) continue;
+				rasterizeGlyph(cluster);
+				count++;
+			}
+			nameStats.queue = glyphQueue.length;
+		};
+
+		const pushGlyph = (id, x, y, width, height, outline) => {
+			if (nameplateCount + 6 > nameplateData.length) {
+				const grown = new Float32Array(nameplateData.length * 2);
+				grown.set(nameplateData);
+				nameplateData = grown;
+			}
+			nameplateData[nameplateCount++] = id;
+			nameplateData[nameplateCount++] = x;
+			nameplateData[nameplateCount++] = y;
+			nameplateData[nameplateCount++] = width;
+			nameplateData[nameplateCount++] = height;
+			nameplateData[nameplateCount++] = outline;
+		};
+
+		const updateNameplates = () => {
+			const startedAt = performance.now();
+			nameplateCount = 0;
+			if (showNames) {
+				const cssWidth = canvas.clientWidth;
+				const cssHeight = canvas.clientHeight;
+				if (cssWidth && cssHeight) {
+					const [viewWidth, viewHeight] = visibleTiles();
+					// DDNet nameplates.cpp 用 tile_scaled(0.85) —— 字号跟着 zoom 一起缩放
+					const size = clamp((0.85 * cssHeight) / viewHeight, 7, 160);
+					nameStats.size = size;
+					const scale = size / NAME_REF_FONT;
+					const pxPerTile = cssWidth / viewWidth;
+					// 描边宽度抄客户端的 AdjustOutlineThicknessToFontSize();
+					// SDF 的范围只有 RADIUS / REF_FONT = 8/64,太细的字号按上限截一下
+					const outlinePx = size > 48 ? 4 : size >= 18 ? 2 : 1;
+					const outlineEm = Math.min(outlinePx / size, 12 / NAME_REF_FONT);
+					for (const player of playersCache) {
+						const position = framePositions.get(player.id);
+						if (!position) continue;
+						const screenX = ((position[0] - camera.x) / viewWidth + 0.5) * cssWidth;
+						const screenY = ((position[1] - 1.1 - camera.y) / viewHeight + 0.5) * cssHeight;
+						if (
+							screenX < -cssWidth * 0.2 ||
+							screenX > cssWidth * 1.2 ||
+							screenY < -cssHeight * 0.2 ||
+							screenY > cssHeight * 1.2
+						) {
+							continue;
+						}
+						const name = player.name || `#${player.id}`;
+						let layout = nameLayouts.get(name);
+						if (!layout) {
+							layout = buildLayout(name);
+							nameLayouts.set(name, layout);
+							nameStats.layouts++;
+						}
+						// 所有字形都好了才画,避免出现半截名字
+						let ready = true;
+						for (const item of layout.items) {
+							if (!ensureGlyph(item.cluster)) ready = false;
+						}
+						if (!ready) continue;
+						const baseline = -(layout.ascent + layout.descent) / 2 + layout.ascent;
+						const left = -layout.width / 2;
+						for (const item of layout.items) {
+							const glyph = glyphs.get(item.cluster);
+							if (!glyph) continue;
+							pushGlyph(
+								glyph.id,
+								position[0] +
+									((left + item.pen + glyph.inkLeft - glyph.pad + glyph.width / 2) * scale) /
+										pxPerTile,
+								position[1] -
+									1.1 +
+									((baseline - glyph.ascent - glyph.pad + glyph.height / 2) * scale) / pxPerTile,
+								(glyph.width * scale) / pxPerTile,
+								(glyph.height * scale) / pxPerTile,
+								outlineEm
+							);
+						}
+					}
+					processGlyphQueue(performance.now() + 2);
 				}
 			}
-			for (const [id, label] of nameLabels) {
-				if (alive.has(id)) continue;
-				label.remove();
-				nameLabels.delete(id);
-			}
+			gpu.set_nameplate_glyphs(nameplateData.subarray(0, nameplateCount));
 			nameStats.ms += performance.now() - startedAt;
 			nameStats.frames++;
-			nameStats.labels = nameLabels.size;
+			nameStats.labels = nameplateCount / 6;
+			nameStats.glyphs = glyphs.size;
 		};
 
 		/**
@@ -1476,7 +1614,7 @@ export async function mountDemoPlayer(host, options) {
 			mark('names');
 			if (prof) {
 				// 累计值,相邻两帧相减就知道这帧有没有改字号(改字号会让浏览器重新光栅化文字)
-				prof.nWrites = nameStats.sizeWrites;
+				prof.nGlyphs = nameStats.uploads;
 				prof.nSize = nameStats.size;
 			}
 
@@ -1904,6 +2042,9 @@ export async function mountDemoPlayer(host, options) {
 		setNameplatesVisible(prefs.names);
 		setCursorVisible(prefs.cursor);
 
+		// 控制栏不再每帧清状态条(那样每帧都要碰 DOM),加载完在这里清一次;
+		// 播放失败/渲染失败的消息会一直留着,方便看到
+		setStatus('');
 		seekTo(time);
 		timeLabel.textContent = formatTime(time);
 		duration.textContent = formatTime(length);
@@ -1968,6 +2109,15 @@ export async function mountDemoPlayer(host, options) {
 			},
 			perfReset() {
 				if (perf) perf.frames.length = 0;
+			},
+			/** 调试用:字形/排版状态 */
+			get debug() {
+				return {
+					data: Array.from(nameplateData.subarray(0, nameplateCount)),
+					glyphs: [...glyphs.entries()],
+					layouts: [...nameLayouts.entries()],
+					queue: [...glyphQueue]
+				};
 			},
 			/** 调试用:当前相机/队伍状态(测试和手点控制台看) */
 			get state() {
@@ -2065,31 +2215,6 @@ const CSS = `
 	touch-action: none;
 	cursor: grab;
 }
-/* 名字牌:一层不挡鼠标的透明 div,里面每个名字一个 span */
-.tw-names {
-	position: absolute;
-	inset: 0;
-	overflow: hidden;
-	pointer-events: none;
-}
-.tw-name {
-	position: absolute;
-	left: 0;
-	top: 0;
-	white-space: nowrap;
-	line-height: 1;
-	/* 系统 UI 字体 + 明确的无衬线兜底:中文走用户自己的字体,不用额外下载 */
-	font-family:
-		ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans", "Noto Sans SC",
-		"PingFang SC", "Microsoft YaHei", "Hiragino Sans", sans-serif;
-	font-weight: 400;
-	color: #fff;
-	/* 和客户端 nameplates.cpp 一样:轮廓 alpha 0.5 的黑描边、没有阴影、没有发光 */
-	-webkit-text-stroke: 2px rgba(0, 0, 0, 0.5);
-	paint-order: stroke fill;
-}
-.tw-name[hidden] { display: none; }
-
 .tw-overlay {
 	position: absolute;
 	inset: 0;

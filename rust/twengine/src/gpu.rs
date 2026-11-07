@@ -49,6 +49,8 @@ pub struct TwGpu {
     cursor_textures: [twgpu::sprites::TextureToken; 6],
     /// 上一帧各阶段的毫秒耗时,顺序见 `last_frame_timings()` 的注释
     last_timings: [f32; 7],
+    /// 名字牌:Canvas2D 光栅化的字形 atlas + SDF/彩色两条管线
+    nameplates: crate::nameplate::NameplateRenderer,
 }
 
 /// game.png 里 6 个武器准星所在的格行(每格 32px,各占 2x2 格)。
@@ -138,6 +140,8 @@ impl TwGpu {
         let sprite_textures =
             twgpu::sprites::SpriteTextures::new(samplers.clone(), device.clone(), queue.clone());
         let ctx_renderer = sprites_helper::CtxRenderer::new(FORMAT, device.clone(), queue.clone());
+        let nameplates =
+            crate::nameplate::NameplateRenderer::new(device.clone(), queue.clone(), FORMAT);
         let scribble =
             twgpu::text::Scribble::new(samplers.clone(), FORMAT, device.clone(), queue.clone());
         Ok(Self {
@@ -155,6 +159,7 @@ impl TwGpu {
             render_nameplates: false,
             scribble,
             cursor_textures: [twgpu::sprites::TextureToken::INVALID; 6],
+            nameplates,
             last_timings: [0.; 7],
         })
     }
@@ -228,6 +233,28 @@ impl TwGpu {
         )
     }
 
+    /// 上传一个字形的位图。`color == false` 时 `pixels` 是 alpha(1 字节/像素),
+    /// 在 GPU 上生成 SDF;否则是 RGBA(emoji),直接进彩色 atlas。
+    #[wasm_bindgen]
+    pub fn nameplate_glyph_upload(
+        &mut self,
+        id: u32,
+        width: u32,
+        height: u32,
+        color: bool,
+        pixels: &[u8],
+    ) -> Result<(), JsError> {
+        self.nameplates
+            .upload_glyph(id, width, height, color, pixels)
+            .map_err(|err| JsError::new(&err))
+    }
+
+    /// 每帧的名字牌字形:`[id, center_x, center_y, width, height, outline_em]` × n
+    #[wasm_bindgen]
+    pub fn set_nameplate_glyphs(&mut self, data: &[f32]) {
+        self.nameplates.set_quads(data);
+    }
+
     #[wasm_bindgen]
     pub fn render_map(
         &mut self,
@@ -267,6 +294,7 @@ impl TwGpu {
     ) -> Result<(), JsError> {
         let render_size = surface.get_size();
         let camera = camera.inner();
+        self.nameplates.prepare(camera);
         let demo_time = demo.as_ref().map(|d| d.current_time());
         let t0 = now_ms();
         let frame = surface.frame()?;
@@ -321,7 +349,13 @@ impl TwGpu {
                 &self.sprite_textures,
             );
             map.render_foreground(&mut tw_render_pass);
-            self.ctx_renderer.render_fg(
+            self.ctx_renderer.render_particles_fg(
+                &mut tw_render_pass.render_pass,
+                camera_bind_group,
+                &self.sprite_textures,
+            );
+            self.nameplates.render(&mut tw_render_pass.render_pass);
+            self.ctx_renderer.render_cursor(
                 &mut tw_render_pass.render_pass,
                 camera_bind_group,
                 &self.sprite_textures,

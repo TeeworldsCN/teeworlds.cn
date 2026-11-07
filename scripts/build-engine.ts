@@ -410,9 +410,12 @@ const crateHash = createHash('sha256');
 for (const file of [
 	'Cargo.toml',
 	'Cargo.lock',
-	...['lib', 'camera', 'demo', 'gpu', 'map', 'sound', 'sprites_helper', 'surface'].map(
+	...['lib', 'camera', 'demo', 'gpu', 'map', 'nameplate', 'sound', 'sprites_helper', 'surface'].map(
 		(m) => `src/${m}.rs`
-	)
+	),
+	// 名字牌的 WGSL 也是编译产物的一部分
+	'src/nameplate.wgsl',
+	'src/nameplate_sdf.wgsl'
 ]) {
 	crateHash.update(file).update(readFileSync(path.join(CRATE, file)));
 }
