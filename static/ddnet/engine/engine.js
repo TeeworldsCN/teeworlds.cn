@@ -18,7 +18,7 @@
  * @typedef {{ backend: 'webgpu' | 'webgl', mipmaps: boolean, tilemapMips: boolean }} GraphicsPlan
  * @typedef {{ canvas?: HTMLCanvasElement, createCanvas?: () => HTMLCanvasElement,
  *   rememberKey?: string, backend?: 'webgpu' | 'webgl' | null, font?: boolean,
- *   onStatus?: (text: string) => void }} BootOptions
+ *   nameplateCpuSdf?: boolean, onStatus?: (text: string) => void }} BootOptions
  * @typedef {{ module: WasmModule, gpu: any, canvas: HTMLCanvasElement, backend: 'webgpu' | 'webgl' }} Booted
  */
 
@@ -253,7 +253,7 @@ export const loadTextures = async (gpu, { font = true } = {}) => {
  * @param {WasmModule} module
  * @param {HTMLCanvasElement | null} [canvas]
  * @param {{ plan?: GraphicsPlan | null, backend?: 'webgpu' | 'webgl', mipmaps?: boolean,
- *   tilemapMips?: boolean, font?: boolean }} [options]
+ *   tilemapMips?: boolean, nameplateCpuSdf?: boolean, font?: boolean }} [options]
  */
 export const createGpu = async (module, canvas = null, options = {}) => {
 	const plan = options.plan ?? (await planGraphics());
@@ -267,7 +267,9 @@ export const createGpu = async (module, canvas = null, options = {}) => {
 		options.backend ?? plan.backend,
 		canvas,
 		options.mipmaps ?? plan.mipmaps,
-		options.tilemapMips ?? plan.tilemapMips
+		options.tilemapMips ?? plan.tilemapMips,
+		// 名字牌的 SDF 改在 wasm 里用 CPU 算(只有 X5 需要)
+		options.nameplateCpuSdf ?? false
 	);
 	await loadTextures(gpu, { font: options.font !== false });
 	return gpu;
@@ -301,12 +303,22 @@ const withTimeout = (promise, ms, message) =>
  * @param {() => HTMLCanvasElement} [opts.createCanvas] 每次新建 canvas(地图预览页)
  * @param {string|null} [opts.rememberKey] 记录/读取后端选择的 localStorage key
  * @param {boolean} [opts.font] 是否下载 TTF 字体(demo 播放器用 DOM 名字牌,不需要)
+ * @param {boolean} [opts.nameplateCpuSdf] 名字牌的 SDF 在 wasm 里用 CPU 算(X5 专用,
+ *   绕开 GPU 的「渲染到纹理 + copy 进 atlas」)
  * @param {(text: string) => void} [opts.onStatus] 进度文本
  * @returns {Promise<Booted>}
  */
 export const bootRenderer = async (
 	/** @type {BootOptions} */
-	{ canvas, createCanvas, rememberKey, backend = null, font = true, onStatus = () => {} } = {}
+	{
+		canvas,
+		createCanvas,
+		rememberKey,
+		backend = null,
+		font = true,
+		nameplateCpuSdf = false,
+		onStatus = () => {}
+	} = {}
 ) => {
 	/** @type {GraphicsPlan} */
 	let plan = /** @type {GraphicsPlan} */ (
@@ -356,7 +368,7 @@ export const bootRenderer = async (
 		if (!target) throw new Error('没有可用的 canvas');
 		const gpu = await withTimeout(
 			// TwGpu::init 是 async constructor:wasm-bindgen 导出的类要用 new,返回 Promise
-			new module.TwGpu(backend, target, mipmaps, plan.tilemapMips),
+			new module.TwGpu(backend, target, mipmaps, plan.tilemapMips, nameplateCpuSdf),
 			backend === 'webgpu' ? 6000 : 12000,
 			'创建图形设备失败(这个浏览器可能不支持 WebGL2 / WebGPU,试试用系统浏览器打开)'
 		);
