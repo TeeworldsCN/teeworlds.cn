@@ -8,8 +8,13 @@ export const fetchDDNetAsync = async (url: string) => {
 	return response.json();
 };
 
+/**
+ * 路径/片段里可以直接留的字符。括号不放进来：这些地址会被拼进 markdown 的
+ * `[文字](地址)`，而玩家名/地图名里的 `)` 会让链接目标提前结束，剩下的字符
+ * 就漏到正文里当语法解析了（名字 `foo) *bar*` 会变成斜体）。
+ */
 const URL_ALLOWED_CHARS = new Set(
-	`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.~*()`
+	`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.~*`
 );
 const isURLAllowed = (char: string) => URL_ALLOWED_CHARS.has(char);
 

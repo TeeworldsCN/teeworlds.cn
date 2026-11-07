@@ -2,6 +2,12 @@ import { numberToSub, secondsToTime } from '$lib/helpers';
 import { mapType, numberToStars, watchLink } from '../../ddnet/helpers';
 import { escapeMarkdown } from './utils/markdown';
 
+/**
+ * 约定：纯文本槽位（名字、地图名、类型、服务器名、链接文字、标题……）在模板里
+ * 一律过 escapeMarkdown（用户/第三方数据不可信）；`intro` / `body` / `usage` 是
+ * 调用方拼好的 markdown 片段，`url` 是拼好的地址，这三类原样插入。
+ */
+
 export type MarkdownLink = {
 	label: string;
 	url: string;
@@ -93,8 +99,8 @@ export const pointsMarkdown = (
 ${ranks
 	.map((rank) =>
 		rank.rank
-			? `- **${rank.label}**：${rank.points ?? 0}pts\t₍ₙ.${numberToSub(rank.rank)}₎`
-			: `- **${rank.label}**：无记录`
+			? `- **${escapeMarkdown(rank.label)}**：${rank.points ?? 0}pts\t₍ₙ.${numberToSub(rank.rank)}₎`
+			: `- **${escapeMarkdown(rank.label)}**：无记录`
 	)
 	.join('\n')}
 
@@ -132,11 +138,15 @@ export const mapMarkdown = (
 	} = {}
 ) => {
 	const title = options.title || '🗺️ 地图详情';
+	// intro 是 markdown 片段（调用方拼进去的名字/描述自己转义），这里不再套一层。
 	const intro = options.intro ? `> ${options.intro}\n\n` : '';
 	// QQ markdown 图片必须带尺寸提示，否则客户端会退化成 [说明] 文本。
 	// DDNet 的 ranks/maps 缩略图统一为 360x225。
 	const image = map.thumbnail ? `![地图缩略图 #360px #225px](${map.thumbnail})\n\n` : '';
-	const link = (options.links ?? []).map((item) => `[🔗 ${item.label}](${item.url})`).join(' · ');
+	// 链接文字一律按纯文本转义：url 可以是拼好的地址，label 不能带语法。
+	const link = (options.links ?? [])
+		.map((item) => `[🔗 ${escapeMarkdown(item.label)}](${item.url})`)
+		.join(' · ');
 	// 「观看回放」这四个字本身就是链接,点开直接进播放器;
 	// 后面写谁过的图(团队就是整队),不写"团队/个人"
 	const demoWho = options.demo
@@ -149,12 +159,12 @@ export const mapMarkdown = (
 		? `- [观看回放](https://teeworlds.cn${watchLink(options.demo)})：${demoWho} ${secondsToTime(options.demo.time)}`
 		: '';
 
-	return `# ${title}
+	return `# ${escapeMarkdown(title)}
 
 ${intro}${image}## ${escapeMarkdown(map.name)}
 
 - **作者**：${map.mapper ? escapeMarkdown(map.mapper) : '未知'}
-- **类型**：${mapType(map.type)} ${numberToStars(map.difficulty)}
+- **类型**：${escapeMarkdown(mapType(map.type) ?? '未知')} ${numberToStars(map.difficulty)}
 - **分数**：${map.points} pts
 ${demo}
 
@@ -176,7 +186,7 @@ export const mapNotFoundMarkdown = (name: string) => `## 🔍 未找到地图
 
 export const mapEmptyMarkdown = (descriptor: string) => `## 😵 没有找到地图
 
-${descriptor ? `不存在 ${descriptor} 图。` : '没有找到符合条件的地图。'}`;
+${descriptor ? `不存在 ${escapeMarkdown(descriptor)} 图。` : '没有找到符合条件的地图。'}`;
 
 export const findMarkdown = (result: FindResult) => `## 🔎 ${escapeMarkdown(result.name)} 正在游戏
 
@@ -208,12 +218,14 @@ export const statsMarkdown = (servers: StatsServer[], other: StatsOther) => {
 		}
 		const icon = server.attacked ? '⚔️' : server.highLoad ? '🔥' : '✅';
 		const state = server.attacked ? '疑似被攻击' : server.highLoad ? '高负载' : '在线';
-		return `- ${icon} **${name}** — 负载 ${server.load ?? 0}% · ↑${server.upload ?? '0'} / ↓${server.download ?? '0'} · ${server.packet ?? '0'}（${state}）`;
+		return `- ${icon} **${name}** — 负载 ${server.load ?? 0}% · ↑${escapeMarkdown(server.upload ?? '0')} / ↓${escapeMarkdown(server.download ?? '0')} · ${escapeMarkdown(server.packet ?? '0')}（${state}）`;
 	});
 
 	const attacked = other.attacked.length
 		? `\n\n**正在被攻击：**\n${other.attacked
-				.map((server) => `- ⚔️ **${escapeMarkdown(server.name)}** — ${server.packet}`)
+				.map(
+					(server) => `- ⚔️ **${escapeMarkdown(server.name)}** — ${escapeMarkdown(server.packet)}`
+				)
 				.join('\n')}`
 		: '';
 
@@ -285,7 +297,7 @@ export const toolboxMarkdown = (url: string) => `## 🧰 DDNet 工具箱
 
 [🔗 打开 DDNet 工具箱](${url})`;
 
-export const identityMarkdown = (label: string, id: string) => `## 🪪 ${label}
+export const identityMarkdown = (label: string, id: string) => `## 🪪 ${escapeMarkdown(label)}
 
 **${escapeMarkdown(id)}**`;
 
@@ -295,7 +307,7 @@ export const rateLimitMarkdown = (url: string) => `## ⏳ 操作太频繁
 
 [🔗 或者直接使用 DDNet 工具箱](${url})`;
 
-export const noticeMarkdown = (title: string, body: string) => `## ${title}
+export const noticeMarkdown = (title: string, body: string) => `## ${escapeMarkdown(title)}
 
 ${body}`;
 

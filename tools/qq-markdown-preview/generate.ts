@@ -2,6 +2,9 @@
  * 本地生成 QQ 机器人指令 markdown 预览。
  * 用法: bun run tools/qq-markdown-preview/generate.ts
  * 输出 preview.html 与脚本同目录，该文件已加入 .gitignore，不随站点发布。
+ *
+ * 注意：真正的渲染在 QQ 客户端（CherryMarkdown + KaTeX），这里只是近似预览，
+ * 但会把 QQ 会当成公式的片段用红框标出来，免得又漏掉「转义反被公式吃掉」这类问题。
  */
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -40,6 +43,34 @@ import {
 import { escapeMarkdown, markdownToText } from '../../src/lib/server/bots/utils/markdown';
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: false });
+
+/**
+ * QQ 客户端的公式预解析（CherryMarkdown + KaTeX，正则抄自 QQNT 的 major.node）。
+ * 它在 markdown 解析之前就从原文里抠公式，所以 `\[D\]` 这种「转义」会先被当成独立公式；
+ * markdown-it 看不懂这一步，单看它的渲染结果会误以为一切正常。
+ */
+const QQ_MATH_PATTERNS: RegExp[] = [
+	/\$\$([\s\S]*?)\$\$/g,
+	/\\\[([\s\S]*?)\\\]/g,
+	/\\\(([\s\S]*?)\\\)/g,
+	/(?<!\$)\$([^$\n]+?)\$(?!\$)/g
+];
+
+/** 把 QQ 会当成公式的片段换成占位符，渲染完再塞回去，用来暴露这类 bug。 */
+const splitQqMath = (markdown: string) => {
+	const formulas: string[] = [];
+	let text = markdown;
+	for (const pattern of QQ_MATH_PATTERNS) {
+		text = text.replace(pattern, (_, formula: string) => {
+			formulas.push(formula);
+			return `\uE000QQMATH${formulas.length - 1}\uE000`;
+		});
+	}
+	return { text, formulas };
+};
+
+// markdown-it 会把 NUL 换成 U+FFFD，占位符得用私用区字符
+const QQ_MATH_PLACEHOLDER = /\uE000QQMATH(\d+)\uE000/g;
 
 // 预览页直接用 ddnet.org 源图；机器人实际发送的是 convert() 后的 teeworlds.cn/api/img 代理地址。
 const MAP_IMAGE = 'https://ddnet.org/ranks/maps/Midsummer_Night.png';
@@ -84,12 +115,28 @@ const samples: Sample[] = [
 		)
 	},
 	{
+		id: 'points-clan-tag',
+		group: 'query',
+		command: '/分数',
+		title: '名字带战队前缀 [D]',
+		// 回归样例：反斜杠转义 `\[D\]` 会被 QQ 的公式预解析吃成 KaTeX 独立公式，
+		// 名字里的方括号因此必须走字符实体。
+		markdown: pointsMarkdown(
+			'[D] TsFreddie',
+			[
+				{ label: '🌎 里程', points: 38, rank: 292912 },
+				{ label: '📅 近年里程', points: 0, rank: 0 }
+			],
+			'https://teeworlds.cn/goto#p%5BD%5D-TsFreddie'
+		)
+	},
+	{
 		id: 'points-escaped',
 		group: 'query',
 		command: '/分数',
 		title: '名字里的 markdown 特殊字符',
 		markdown: pointsMarkdown(
-			'a*b_c`d[e]f(g)h#i+j-k.l!m|n~o<p>q&r',
+			'a*b_c`d[e]f(g)h#i+j-k.l!m|n~o<p>q&r $x$ www.teeworlds.cn',
 			[
 				{ label: '🌎 里程', points: 1234, rank: 12 },
 				{ label: '👤 个人排位', points: 0, rank: 0 }
@@ -478,8 +525,20 @@ const renderGroup = (group: (typeof groups)[number]) => {
 
 	const cards = items
 		.map((sample) => {
-			const rendered = md.render(sample.markdown);
+			const { text, formulas } = splitQqMath(sample.markdown);
+			const rendered = md
+				.render(text)
+				.replace(
+					QQ_MATH_PLACEHOLDER,
+					(_, index) =>
+						`<span class="qq-math" title="QQ 会把它渲染成 LaTeX 公式">${escapeHtml(formulas[Number(index)] ?? '')}</span>`
+				);
 			const plain = markdownToText(sample.markdown);
+			const mathWarn = formulas.length
+				? `<p class="qq-warn">⚠ QQ 会先把它当公式抠出来：${formulas
+						.map((formula) => `\`${escapeHtml(formula)}\``)
+						.join('、')}</p>`
+				: '';
 			return `<article class="card" id="${sample.id}">
 	<header class="card-head">
 		<div class="card-title">
@@ -488,9 +547,10 @@ const renderGroup = (group: (typeof groups)[number]) => {
 		</div>
 		<button class="copy" type="button" data-copy="${sample.id}-src">复制 Markdown</button>
 	</header>
+	${mathWarn}
 	<div class="panes">
 		<section class="pane preview">
-			<div class="pane-label">QQ 内效果</div>
+			<div class="pane-label">近似预览（markdown-it + QQ 公式预解析）</div>
 			<div class="bubble markdown-body">${rendered}</div>
 		</section>
 		<section class="pane source">
@@ -657,6 +717,26 @@ main { max-width: 1380px; margin: 0 auto; padding: 8px 28px 80px; }
 	white-space: nowrap;
 }
 .copy:hover { background: rgba(76, 194, 255, .16); }
+.qq-warn {
+	margin: 0;
+	padding: 10px 18px;
+	background: rgba(255, 92, 92, .1);
+	border-bottom: 1px solid rgba(255, 92, 92, .25);
+	color: #ffb4b4;
+	font-size: 12px;
+}
+.qq-math {
+	display: block;
+	margin: 8px 0;
+	padding: 8px 10px;
+	border: 1px dashed rgba(255, 92, 92, .5);
+	border-radius: 8px;
+	background: rgba(255, 92, 92, .08);
+	color: #ffc9c9;
+	font-family: "Latin Modern Math", "Cambria Math", serif;
+	font-style: italic;
+	text-align: center;
+}
 .panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .pane { min-width: 0; padding: 16px; }
 .preview { background: rgba(8, 12, 20, .35); }
@@ -738,7 +818,7 @@ footer { max-width: 1380px; margin: 0 auto; padding: 0 28px 48px; color: var(--m
 		<span class="badge">msg_type = 2</span>
 	</div>
 	<h1>指令回复 Markdown 预览</h1>
-	<p class="lede">这里列出机器人所有指令回复的 markdown 排版。左侧模拟 QQ 内的渲染效果，右侧是实际发送的 markdown 源文本，并附上微信/频道的纯文本回退。</p>
+	<p class="lede">这里列出机器人所有指令回复的 markdown 排版。左侧是 markdown-it 的近似预览（额外模拟了 QQ 在解析前抠 LaTeX 公式那一步，公式会以红框标出），右侧是实际发送的 markdown 源文本，并附上微信/频道的纯文本回退。</p>
 	<div class="meta">
 		<span>生成时间：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</span>
 		<span>本地预览 · 不随站点发布</span>
