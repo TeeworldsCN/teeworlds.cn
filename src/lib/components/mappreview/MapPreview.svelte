@@ -40,6 +40,8 @@
 	/** 相机 zoom:值越小放大越多,越大视野越广,给个上下限防止缩放到底后找不着北 */
 	const MIN_ZOOM = 0.05;
 	const MAX_ZOOM = 20;
+	/** 单帧最多推进多少秒(切标签页回来时当暂停,别让按 tick 步进的世界跳帧) */
+	const MAX_FRAME_STEP = 0.1;
 
 	const BTN = 'flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors';
 	/** 分段按钮里的两块:圆角交给外层容器,自己不要圆角 */
@@ -163,7 +165,11 @@
 		if (!rendering) return;
 		raf = requestAnimationFrame(draw);
 
-		if (lastTimestamp !== null) time += (timestamp - lastTimestamp) / 1000;
+		// 切走标签页再回来时 rAF 的间隔能有几十秒。世界是按 50 tick/s 一步一步模拟的,
+		// 一次性加进去等于跳帧(子弹会不受碰撞地直飞),所以按「暂停」处理
+		if (lastTimestamp !== null) {
+			time += Math.min((timestamp - lastTimestamp) / 1000, MAX_FRAME_STEP);
+		}
 		lastTimestamp = timestamp;
 
 		const target = entitiesNow ? (entitiesView ?? mapView) : mapView;

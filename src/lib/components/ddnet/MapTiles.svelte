@@ -3,7 +3,7 @@
 	 * 地图图块图标行:横向滚动,鼠标可以拖拽滚动(和地图列表卡片里的一样)。
 	 * 地图详情页那种换行排列的没走这个组件。
 	 */
-	import { tippy } from '$lib/tippy';
+	import TileIcon from './TileIcon.svelte';
 
 	let { tiles, class: className = '' }: { tiles: string[]; class?: string } = $props();
 
@@ -47,12 +47,6 @@
 	onpointercancel={pointerUp}
 >
 	{#each tiles as tile}
-		<img
-			class="m-0 mr-1 inline-block h-8 w-8 rounded bg-gray-600 p-0"
-			use:tippy={{ content: tile }}
-			src={`/assets/tiles/${tile}.png`}
-			alt={tile}
-			loading="lazy"
-		/>
+		<TileIcon {tile} class="m-0 mr-1 inline-block h-8 w-8 rounded bg-gray-600 p-0" />
 	{/each}
 </div>

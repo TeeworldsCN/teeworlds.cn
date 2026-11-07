@@ -510,8 +510,8 @@
 									{/if}
 								</p>
 							{/if}
-							{#if map.tiles.length}
-								<MapTiles tiles={map.tiles} class="mt-1" />
+							{#if map.tiles?.length}
+								<MapTiles tiles={map.tiles ?? []} class="mt-1" />
 							{/if}
 						</div>
 					</div>

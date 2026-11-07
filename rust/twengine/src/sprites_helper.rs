@@ -12,8 +12,12 @@ pub struct CtxRenderer {
     particle_ranges: [std::ops::Range<usize>; 4],
     /// 准星那一格(总是画在最上层,所以单独一段)
     cursor_range: std::ops::Range<usize>,
+    /// 自己拼的世界精灵(地图激光的光束/光头、血包),和玩家同一批画
+    world_range: std::ops::Range<usize>,
     sprites_static: twgpu::sprites::SpritesStatic,
     cache: twgpu::sprites::SpriteCache,
+    /// 这一帧要放的爆炸(地图预览里 crazy shotgun EX 撞墙),`prepare_render` 时喂给粒子系统
+    explosions: Vec<twgpu::vek::Vec2<f32>>,
 }
 
 impl CtxRenderer {
@@ -27,9 +31,16 @@ impl CtxRenderer {
             sprite_range: 0..0,
             particle_ranges: [(); 4].map(|_| 0..0),
             cursor_range: 0..0,
+            world_range: 0..0,
             sprites_static,
             cache: twgpu::sprites::SpriteCache::default(),
+            explosions: Vec::new(),
         }
+    }
+
+    /// 排几个爆炸(坐标是 tile,和 `CEffects::Explosion` 一样)
+    pub fn queue_explosions(&mut self, positions: impl IntoIterator<Item = twgpu::vek::Vec2<f32>>) {
+        self.explosions.extend(positions);
     }
 
     pub fn prepare_render(
@@ -37,6 +48,7 @@ impl CtxRenderer {
         ctx: &mut twgpu::sprites::SpriteRenderContext,
         new_snap: bool,
         cursor: Option<CursorSprite>,
+        world: &[WorldSprite],
     ) {
         fn drain_sprites<T: twgpu::sprites::SpriteGenerator>(
             cache: &mut twgpu::sprites::SpriteCache,
@@ -51,7 +63,24 @@ impl CtxRenderer {
         if new_snap {
             ctx.process_events();
         }
+        // 地图预览的爆炸不是 snap 事件,是这边自己攒的;`Particles::explosion` 就是客户端
+        // `CEffects::Explosion` 的那一坨(150 unit 的 expl01 + 24 团烟)
+        for position in std::mem::take(&mut self.explosions) {
+            let twgpu::sprites::SpriteRenderContext {
+                particles,
+                textures,
+                rng,
+                ..
+            } = &mut *ctx;
+            particles.explosion(position, textures, rng);
+        }
         self.cache.clear();
+        // 世界精灵先入队:服务端/客户端里道具都在玩家之前画
+        let start = self.cache.len();
+        for sprite in world {
+            self.cache.add_sprite(&sprite.quad(), sprite.texture);
+        }
+        self.world_range = start..self.cache.len();
         self.sprite_range = drain_sprites(&mut self.cache, &mut ctx.snap_sprite_generator());
         self.particle_ranges = twgpu::sprites::ParticleGroup::ALL
             .map(|group| drain_sprites(&mut self.cache, &mut ctx.particles.get_group(group)));
@@ -81,6 +110,14 @@ impl CtxRenderer {
             render_pass,
         );
         self.sprites_static.render_range(
+            self.world_range.clone(),
+            camera_bind_group,
+            &self.buffer,
+            self.cache.textures(),
+            textures,
+            render_pass,
+        );
+        self.sprites_static.render_range(
             self.sprite_range.clone(),
             camera_bind_group,
             &self.buffer,
@@ -89,7 +126,7 @@ impl CtxRenderer {
             render_pass,
         );
     }
-    pub fn render_fg<'a>(
+    pub fn render_particles_fg<'a>(
         &'a self,
         render_pass: &mut wgpu::RenderPass<'a>,
         camera_bind_group: &'a wgpu::BindGroup,
@@ -109,6 +146,14 @@ impl CtxRenderer {
                 render_pass,
             );
         }
+    }
+
+    pub fn render_cursor<'a>(
+        &'a self,
+        render_pass: &mut wgpu::RenderPass<'a>,
+        camera_bind_group: &'a wgpu::BindGroup,
+        textures: &'a twgpu::sprites::SpriteTextures,
+    ) {
         // 准星盖在最上面(它在精灵之后、在地形之后,和客户端里 HUD 最后画一致)
         self.sprites_static.render_range(
             self.cursor_range.clone(),
@@ -118,6 +163,42 @@ impl CtxRenderer {
             textures,
             render_pass,
         );
+    }
+}
+
+/// 一份「自己拼」的精灵:世界中点(tile)+ 尺寸(tile)+ 旋转 + 颜色 + 贴图。
+/// `size.x` 是沿旋转方向的长度,`size.y` 是宽度(光束就是靠这个拼的)。
+pub struct WorldSprite {
+    pub center: twgpu::vek::Vec2<f32>,
+    pub size: twgpu::vek::Vec2<f32>,
+    pub rotation: f32,
+    pub color: twgpu::vek::Rgba<u8>,
+    pub texture: twgpu::sprites::TextureToken,
+}
+
+impl WorldSprite {
+    fn quad(&self) -> [twgpu::sprites::SpriteVertex; 4] {
+        use twgpu::shared::{Vertex, QUAD};
+        let (sin, cos) = self.rotation.sin_cos();
+        let half = self.size / 2.;
+        QUAD.map(|corner| {
+            let direction = corner.direction();
+            // 先把「沿旋转方向的长度 / 垂直方向的宽度」摊到角点上,再整体旋转。
+            // 反过来的话只有正方形精灵是对的(雪花、珠子都看不出问题),光束这种长方形会被
+            // 挤成一根斜的细条——看起来就像激光方向不对
+            let offset = direction * half;
+            let rotated = twgpu::vek::Vec2::new(
+                offset.x * cos - offset.y * sin,
+                offset.x * sin + offset.y * cos,
+            );
+            twgpu::sprites::SpriteVertex {
+                vertex: Vertex {
+                    position: self.center + rotated,
+                    uv: corner.uv(),
+                },
+                color: self.color,
+            }
+        })
     }
 }
 
@@ -145,9 +226,9 @@ impl CursorSprite {
     }
 }
 
+/// 没有 demo 时的渲染上下文:地图预览用,精灵来自「空服务器」那份 snap(`ServerWorld`)。
+/// 那份额外的 `twsnap::Snap` 不在这里持有,由调用方传进来,省掉每帧一次 clone。
 pub struct SimpleCtx {
-    pub from_snap: twsnap::Snap,
-    pub to_snap: twsnap::Snap,
     map: Arc<twgame::Map>,
     particles: twgpu::sprites::Particles,
     rng: twgpu::shared::Rng,
@@ -156,8 +237,6 @@ pub struct SimpleCtx {
 impl SimpleCtx {
     pub(crate) fn new(map: Arc<twgame::Map>) -> Self {
         Self {
-            from_snap: twsnap::Snap::default(),
-            to_snap: twsnap::Snap::default(),
             map,
             particles: twgpu::sprites::Particles::new(0.),
             rng: twgpu::shared::Rng::new(21),
@@ -168,11 +247,12 @@ impl SimpleCtx {
         &'a mut self,
         textures: &'a twgpu::sprites::SpriteTextures,
         clock: &'a twgpu::shared::Clock,
+        snap: &'a twsnap::Snap,
     ) -> twgpu::sprites::SpriteRenderContext<'a> {
         twgpu::sprites::SpriteRenderContext {
             clock,
-            from_snap: &self.from_snap,
-            to_snap: &self.to_snap,
+            from_snap: snap,
+            to_snap: snap,
             map: &self.map,
             particles: &mut self.particles,
             textures,

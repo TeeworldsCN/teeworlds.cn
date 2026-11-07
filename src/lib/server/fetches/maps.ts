@@ -14,7 +14,7 @@ export type MapList = {
 	release?: number;
 	width: number;
 	height: number;
-	tiles: string[];
+	tiles: string[] | null;
 }[];
 
 const fetchDDStats = async () => {

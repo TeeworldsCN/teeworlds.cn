@@ -414,6 +414,21 @@ index 06d6072..89f163b 100644
 +    }
 +}
 \ No newline at end of file
+diff --git a/twgpu/src/sprites/game_rendering.rs b/twgpu/src/sprites/game_rendering.rs
+index 9595bbc..8322cc2 100644
+--- a/twgpu/src/sprites/game_rendering.rs
++++ b/twgpu/src/sprites/game_rendering.rs
+@@ -287,7 +287,9 @@ impl<'a> GenerateSprites<twsnap::items::MapProjectile> for SpriteRenderContext<'
+                 0.
+             }
+         };
+-        GameSprite::from(from.kind)
++        // 地图上的子弹(crazy shotgun)客户端用的是 `m_aSpriteWeaponProjectiles`,
++        // 也就是小的 projectile 贴图,不是武器本体(这里原来用的是 `from(kind)`)
++        GameSprite::projectile_of(from.kind)
+             .sprite(position, self.textures.game_skin)
+             .rotate(angle)
+             .pass_to(sprite_fn);
 diff --git a/twgpu/src/sprites/particles.rs b/twgpu/src/sprites/particles.rs
 index 071f359..ebb41f2 100644
 --- a/twgpu/src/sprites/particles.rs
