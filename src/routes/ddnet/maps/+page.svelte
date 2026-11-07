@@ -4,11 +4,11 @@
 	import { goto, preloadData } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import MapTiles from '$lib/components/ddnet/MapTiles.svelte';
+	import TileIcon from '$lib/components/ddnet/TileIcon.svelte';
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 	import { encodeAsciiURIComponent } from '$lib/link';
 	import type { MapList } from '$lib/server/fetches/maps';
 	import { ddnetDate, MAP_TYPES, mapType, numberToStars, TILES } from '$lib/ddnet/helpers';
-	import { tippy } from '$lib/tippy';
 	import { checkMapName, checkMapper } from '$lib/ddnet/searches';
 	import { loadMapList } from '$lib/ddnet/map-list';
 	import RangeSlider from '$lib/components/RangeSlider.svelte';
@@ -385,16 +385,16 @@
 	</button>
 	{#each allTiles as tile}
 		<button
-			use:tippy={{ content: tile }}
 			class="h-8 w-8 overflow-hidden rounded bg-gray-600 bg-cover bg-center"
 			class:pointer-events-none={!filterTiles}
 			class:opacity-0={!filterTiles}
 			class:opacity-30={filterTiles && !hasTiles.has(tile)}
 			class:bg-gray-700={filterTiles && !hasTiles.has(tile)}
-			style="background-image: url(/assets/tiles/{tile}.png)"
 			aria-label={tile}
 			onclick={() => (hasTiles.has(tile) ? hasTiles.delete(tile) : hasTiles.add(tile))}
-		></button>
+		>
+			<TileIcon {tile} class="h-full w-full object-cover" />
+		</button>
 	{/each}
 </div>
 

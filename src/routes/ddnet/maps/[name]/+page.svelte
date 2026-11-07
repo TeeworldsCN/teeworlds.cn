@@ -2,6 +2,7 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
+	import TileIcon from '$lib/components/ddnet/TileIcon.svelte';
 	import PlayerLink from '$lib/components/ddnet/PlayerLink.svelte';
 	import FlagSpan from '$lib/components/FlagSpan.svelte';
 	import { secondsToDate, secondsToDateHM } from '$lib/date';
@@ -225,12 +226,7 @@
 			<p class="mb-1">图块特性：</p>
 			<div class="justify-left flex flex-row flex-wrap items-center gap-1">
 				{#each data.map.tiles as tile}
-					<img
-						class="m-0 mr-1 inline-block h-8 w-8 rounded bg-gray-600 p-0"
-						use:tippy={{ content: tile }}
-						src={`/assets/tiles/${tile}.png`}
-						alt={tile}
-					/>
+					<TileIcon {tile} class="m-0 mr-1 inline-block h-8 w-8 rounded bg-gray-600 p-0" />
 				{/each}
 			</div>
 		{/if}
