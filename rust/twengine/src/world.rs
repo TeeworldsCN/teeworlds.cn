@@ -57,9 +57,6 @@ struct ShotgunTuning {
     curvature: f32,
 }
 
-/// 一开始就让光束是满宽(服务端的门 `Ticks` 恒为 1,这里用「很久以前」的 start_tick 表示)
-const BEAM_START_TICK: i32 = -1000;
-
 /// 「移动块」(`TILE_CP` / `TILE_CP_F`),会推着 pickup / 灯 / dragger 走
 const MOVER: u8 = 64;
 const MOVER_FAST: u8 = 65;
@@ -378,12 +375,15 @@ impl ServerWorld {
                 (light_step - self.light_step).clamp(0, MAX_CATCH_UP)
             };
             for _ in 0..advance {
+                // 顺序照服务端来:先把「移动块」的速度加上去,再算光束方向(`CLight::Tick`
+                // 里就是 `MoverSpeed` → `m_Pos += m_Core` → `Step()`)。反过来的话灯的位置
+                // 会先挪、端点还是按旧的算,光束就整根歪在光头旁边(半个 tile 都够明显)
+                self.step_movers();
                 let tiles = &self.tiles;
                 for light in &mut self.lights {
                     light.step();
                     light.update_end(tiles);
                 }
-                self.step_movers();
             }
             self.light_step = light_step;
         }
@@ -1000,11 +1000,14 @@ impl Light {
     }
 }
 
-/// 客户端 `CItems::RenderLaser` 里三种地图激光的配色(和 twgpu 那套一致)
+/// 客户端 `CItems::RenderLaser` 里三种地图激光的配色(DDNet 的 `cl_laser_*` 默认值,
+/// 配置里是 HSLA 打包的整数,这里已经换成 RGB)
 fn laser_colors(kind: BeamKind) -> ([u8; 4], [u8; 4]) {
     match kind {
-        BeamKind::Door | BeamKind::Dragger => ([0, 34, 25, 255], [68, 194, 163, 255]),
-        BeamKind::Light => ([33, 30, 46, 255], [123, 114, 144, 255]),
+        BeamKind::Door => ([0, 34, 25, 255], [67, 195, 163, 255]),
+        // `cl_laser_dragger_*` 默认是红的(twgpu 那边借用了门的青色)
+        BeamKind::Dragger => ([34, 2, 2, 255], [221, 95, 95, 255]),
+        BeamKind::Light => ([34, 31, 47, 255], [123, 114, 144, 255]),
     }
 }
 
@@ -1046,11 +1049,13 @@ fn mover_speed(movers: &HashMap<(i32, i32), (u8, u8)>, pos: Vec2<f32>, core: &mu
     let Some(&(id, flags)) = movers.get(&coords) else {
         return;
     };
-    let target = match flags & 0b1011 {
+    // 只有 `ROTATION_0/90/180/270` 四种会动,别的组合(带 OPAQUE 之类)服务端给 (0, 0)
+    let target = match flags {
         0 => Vec2::new(0., -4.),
         8 => Vec2::new(4., 0.),
         3 => Vec2::new(0., 4.),
-        _ => Vec2::new(-4., 0.),
+        11 => Vec2::new(-4., 0.),
+        _ => Vec2::new(0., 0.),
     };
     *core = if id == MOVER_FAST {
         target * 4.
@@ -1061,15 +1066,18 @@ fn mover_speed(movers: &HashMap<(i32, i32), (u8, u8)>, pos: Vec2<f32>, core: &mu
 
 /// `CItems::RenderLaser`:一道光束 + 对应的光头
 fn beam_sprites(out: &mut Vec<SpriteRequest>, beam: &Beam, tick: f32) {
-    // 客户端给每种地图激光算的 `StartTick`(服务端对新客户端发的是 -1)
-    let start_tick = match beam.kind {
-        BeamKind::Door => tick,
+    // 客户端给每种地图激光算的 `TicksBody`:门固定 1(不闪),灯 / dragger 用
+    // `DraggerStartTick = max((tick/7)*7, tick-4)`,7 tick 一个节拍
+    let ticks_body = match beam.kind {
+        BeamKind::Door => 1.,
         BeamKind::Light | BeamKind::Dragger => {
-            ((tick / LIGHT_STEP_TICKS as f32).floor() * LIGHT_STEP_TICKS as f32).max(tick - 4.)
+            let start_tick =
+                ((tick / LIGHT_STEP_TICKS as f32).floor() * LIGHT_STEP_TICKS as f32).max(tick - 4.);
+            tick - start_tick
         }
     };
-    // `RenderLaser`:光束随「年龄」变细,7 tick 一个节拍
-    let age = ((tick - start_tick) * 20. / 150.).clamp(0., 1.);
+    // `RenderLaser`:光束随「年龄」变细(`Ms = TicksBody * 20`,`a = Ms / 150`)
+    let age = (ticks_body * 20. / 150.).clamp(0., 1.);
     let thin = 1. - age;
     let (outer, inner) = laser_colors(beam.kind);
 

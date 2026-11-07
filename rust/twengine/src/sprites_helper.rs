@@ -164,13 +164,17 @@ impl WorldSprite {
         let half = self.size / 2.;
         QUAD.map(|corner| {
             let direction = corner.direction();
+            // 先把「沿旋转方向的长度 / 垂直方向的宽度」摊到角点上,再整体旋转。
+            // 反过来的话只有正方形精灵是对的(雪花、珠子都看不出问题),光束这种长方形会被
+            // 挤成一根斜的细条——看起来就像激光方向不对
+            let offset = direction * half;
             let rotated = twgpu::vek::Vec2::new(
-                direction.x * cos - direction.y * sin,
-                direction.x * sin + direction.y * cos,
+                offset.x * cos - offset.y * sin,
+                offset.x * sin + offset.y * cos,
             );
             twgpu::sprites::SpriteVertex {
                 vertex: Vertex {
-                    position: self.center + rotated * half,
+                    position: self.center + rotated,
                     uv: corner.uv(),
                 },
                 color: self.color,
