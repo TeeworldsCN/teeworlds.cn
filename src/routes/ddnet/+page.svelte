@@ -2,7 +2,7 @@
 	import { encodeBase64Url } from '$lib/base64url';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import ToolboxButton from '$lib/components/ToolboxButton.svelte';
-	import LatestRecordsSidebar from '$lib/components/LatestRecordsSidebar.svelte';
+	import LatestRecordsDrawer from '$lib/components/ddnet/LatestRecordsDrawer.svelte';
 	import {
 		faFaceSmile,
 		faGamepad,
@@ -102,8 +102,6 @@
 			<div class="text-semibold">前往 DDraceNetwork 官方网站</div>
 		</div>
 	</div>
-
-	<div class="shrink-0 sm:w-72">
-		<LatestRecordsSidebar />
-	</div>
 </div>
+
+<LatestRecordsDrawer />

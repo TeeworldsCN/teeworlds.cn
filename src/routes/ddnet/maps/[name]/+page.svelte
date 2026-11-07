@@ -13,12 +13,54 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import MapPreview from '$lib/components/mappreview/MapPreview.svelte';
 	import Fa from 'svelte-fa';
-	import { faMapLocation, faVideo } from '@fortawesome/free-solid-svg-icons';
+	import { faChevronDown, faMapLocation, faVideo } from '@fortawesome/free-solid-svg-icons';
 
 	const { data } = $props();
 
 	// State for map preview modal
 	let showMapPreviewModal = $state(false);
+
+	// 地区筛选:自绘悬浮菜单(和排位页一致,移动端比原生 select 好点)
+	let regionDropdown = $state<HTMLDivElement>();
+	let regionMenuOpen = $state(false);
+	let menuMaxHeight = $state(0);
+	const regionName = $derived(KNOWN_REGIONS[data.region] ?? '全球');
+	const regionFlag = $derived(KNOWN_REGIONS[data.region] ? data.region : null);
+
+	const selectRegion = (value: string) => {
+		regionMenuOpen = false;
+		if (value == 'GLOBAL') goto(`/ddnet/maps/${encodeAsciiURIComponent(data.map.name)}`);
+		else
+			goto(`/ddnet/maps/${encodeAsciiURIComponent(data.map.name)}?server=${value.toLowerCase()}`);
+	};
+
+	const updateMenuMaxHeight = () => {
+		if (!regionDropdown) return;
+		const rect = regionDropdown.getBoundingClientRect();
+		const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+		menuMaxHeight = Math.max(200, Math.round(viewportHeight - rect.bottom - 16));
+	};
+
+	// 点外面 / Esc 关闭;菜单放得下就全显示,放不下才滚动
+	$effect(() => {
+		if (!regionMenuOpen) return;
+		updateMenuMaxHeight();
+		const onPointerDown = (ev: PointerEvent) => {
+			if (regionDropdown && !regionDropdown.contains(ev.target as Node)) regionMenuOpen = false;
+		};
+		const onKeyDown = (ev: KeyboardEvent) => {
+			if (ev.key == 'Escape') regionMenuOpen = false;
+		};
+		const onResize = () => updateMenuMaxHeight();
+		document.addEventListener('pointerdown', onPointerDown);
+		document.addEventListener('keydown', onKeyDown);
+		window.addEventListener('resize', onResize);
+		return () => {
+			document.removeEventListener('pointerdown', onPointerDown);
+			document.removeEventListener('keydown', onKeyDown);
+			window.removeEventListener('resize', onResize);
+		};
+	});
 
 	const mapperTransformed = $derived(() =>
 		data.map.mapper == 'Unknown Mapper' || !data.map.mapper ? '不详' : data.map.mapper
@@ -68,23 +110,66 @@
 		</div>
 	</div>
 	<div class="flex items-center justify-center">
-		<select
-			class="rounded bg-slate-700 px-4 py-2 text-slate-300"
-			value={data.region}
-			onchange={(ev: Event) => {
-				const value = (ev.currentTarget as HTMLSelectElement).value;
-				if (value == 'GLOBAL') goto(`/ddnet/maps/${encodeAsciiURIComponent(data.map.name)}`);
-				else
-					goto(
-						`/ddnet/maps/${encodeAsciiURIComponent(data.map.name)}?server=${value.toLowerCase()}`
-					);
-			}}
-		>
-			<option value="GLOBAL">全球</option>
-			{#each Object.keys(KNOWN_REGIONS) as key}
-				<option value={key}>{KNOWN_REGIONS[key]}</option>
-			{/each}
-		</select>
+		<div class="relative" bind:this={regionDropdown}>
+			<button
+				type="button"
+				class="flex w-full cursor-pointer items-center justify-between gap-2 rounded bg-slate-700 px-4 py-2 font-semibold text-nowrap text-slate-300 hover:bg-slate-600 active:bg-slate-700 md:w-auto"
+				onclick={() => {
+					if (regionMenuOpen) regionMenuOpen = false;
+					else {
+						updateMenuMaxHeight();
+						regionMenuOpen = true;
+					}
+				}}
+				aria-haspopup="true"
+				aria-expanded={regionMenuOpen}
+				aria-controls="region-menu"
+			>
+				{#if regionFlag}<FlagSpan flag={regionFlag} tooltip={null} />{/if}
+				{regionName}
+				<Fa
+					icon={faChevronDown}
+					class="text-xs transition-transform {regionMenuOpen ? 'rotate-180' : ''}"
+				/>
+			</button>
+			{#if regionMenuOpen}
+				<div
+					id="region-menu"
+					class="absolute right-0 z-30 mt-2 flex w-[min(90vw,16rem)] flex-col overflow-hidden rounded-xl border border-white/10 bg-slate-950/80 p-2 shadow-2xl ring-1 shadow-black/60 ring-white/5 backdrop-blur-xl"
+					style:max-height={menuMaxHeight ? `${menuMaxHeight}px` : null}
+				>
+					<ul class="min-h-0 flex-1 overflow-y-auto">
+						<li>
+							<button
+								type="button"
+								class="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1 text-left text-sm text-nowrap {data.region ==
+								'GLOBAL'
+									? 'bg-blue-500/20 font-semibold text-blue-300'
+									: 'text-slate-300 hover:bg-white/10'}"
+								onclick={() => selectRegion('GLOBAL')}
+							>
+								<span>🌎 全球</span>
+							</button>
+						</li>
+						{#each Object.keys(KNOWN_REGIONS) as key}
+							<li>
+								<button
+									type="button"
+									class="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1 text-left text-sm text-nowrap {data.region ==
+									key
+										? 'bg-blue-500/20 font-semibold text-blue-300'
+										: 'text-slate-300 hover:bg-white/10'}"
+									onclick={() => selectRegion(key)}
+								>
+									<FlagSpan flag={key} tooltip={null} />
+									<span>{KNOWN_REGIONS[key]}</span>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+		</div>
 	</div>
 </div>
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">

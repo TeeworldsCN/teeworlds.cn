@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { onDestroy, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { goto, preloadData } from '$app/navigation';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+	import MapTiles from '$lib/components/ddnet/MapTiles.svelte';
 	import Mappers from '$lib/components/ddnet/Mappers.svelte';
 	import { encodeAsciiURIComponent } from '$lib/link';
 	import type { MapList } from '$lib/server/fetches/maps';
 	import { ddnetDate, MAP_TYPES, mapType, numberToStars, TILES } from '$lib/ddnet/helpers';
-	import { browser } from '$app/environment';
 	import { tippy } from '$lib/tippy';
 	import { checkMapName, checkMapper } from '$lib/ddnet/searches';
 	import { loadMapList } from '$lib/ddnet/map-list';
@@ -17,7 +17,12 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import MapPreview from '$lib/components/mappreview/MapPreview.svelte';
 	import Fa from 'svelte-fa';
-	import { faMapLocation } from '@fortawesome/free-solid-svg-icons';
+	import {
+		faChevronDown,
+		faChevronLeft,
+		faChevronRight,
+		faMapLocation
+	} from '@fortawesome/free-solid-svg-icons';
 
 	let maps: MapList = $state([]);
 	let error = $state();
@@ -34,6 +39,40 @@
 	let filterTiles = $state(false);
 	let allTiles = $state(TILES) as string[];
 	let hasTiles = $state(new SvelteSet<string>());
+
+	// 类型筛选:自绘悬浮菜单(和排位页/地图页一致,移动端比原生 select 好点)
+	let typeDropdown = $state<HTMLDivElement>();
+	let typeMenuOpen = $state(false);
+	let typeMenuMaxHeight = $state(0);
+	const typeName = $derived(type == 'all' ? '全部' : (MAP_TYPES[type] ?? type));
+
+	const updateTypeMenuMaxHeight = () => {
+		if (!typeDropdown) return;
+		const rect = typeDropdown.getBoundingClientRect();
+		const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+		typeMenuMaxHeight = Math.max(200, Math.round(viewportHeight - rect.bottom - 16));
+	};
+
+	// 点外面 / Esc 关闭;放得下就全显示,放不下才滚动
+	$effect(() => {
+		if (!typeMenuOpen) return;
+		updateTypeMenuMaxHeight();
+		const onPointerDown = (ev: PointerEvent) => {
+			if (typeDropdown && !typeDropdown.contains(ev.target as Node)) typeMenuOpen = false;
+		};
+		const onKeyDown = (ev: KeyboardEvent) => {
+			if (ev.key == 'Escape') typeMenuOpen = false;
+		};
+		const onResize = () => updateTypeMenuMaxHeight();
+		document.addEventListener('pointerdown', onPointerDown);
+		document.addEventListener('keydown', onKeyDown);
+		window.addEventListener('resize', onResize);
+		return () => {
+			document.removeEventListener('pointerdown', onPointerDown);
+			document.removeEventListener('keydown', onKeyDown);
+			window.removeEventListener('resize', onResize);
+		};
+	});
 
 	const needReset = $derived(
 		!!searchName ||
@@ -175,51 +214,6 @@
 
 	onMount(loadMaps);
 
-	let sliderMap = new Map<number, HTMLDivElement>();
-	let startX = 0;
-	let scrollLeft = 0;
-
-	const startDragging = (ev: PointerEvent) => {
-		if (ev.pointerType == 'mouse' && ev.button != 0) return;
-		ev.preventDefault();
-		const slider = ev.currentTarget as HTMLDivElement;
-		sliderMap.set(ev.pointerId, slider);
-		startX = ev.pageX;
-		scrollLeft = slider.scrollLeft;
-	};
-
-	const moveDragging = (ev: PointerEvent) => {
-		ev.preventDefault();
-		const slider = sliderMap.get(ev.pointerId);
-		if (!slider) return;
-
-		const x = ev.pageX - startX;
-		slider.scrollLeft = scrollLeft - x;
-	};
-
-	const stopDragging = (ev: PointerEvent) => {
-		const slider = sliderMap.get(ev.pointerId);
-		if (slider) {
-			sliderMap.delete(ev.pointerId);
-		}
-	};
-
-	onMount(() => {
-		if (browser) {
-			document.addEventListener('pointerup', stopDragging);
-			document.addEventListener('pointercancel', stopDragging);
-			document.addEventListener('pointermove', moveDragging);
-		}
-	});
-
-	onDestroy(() => {
-		if (browser) {
-			document.addEventListener('pointerup', stopDragging);
-			document.addEventListener('pointercancel', stopDragging);
-			document.removeEventListener('pointermove', moveDragging);
-		}
-	});
-
 	const abortOnDestroy = (element: HTMLImageElement) => {
 		return {
 			destroy() {
@@ -277,12 +271,70 @@
 	<div class="flex flex-row flex-wrap items-center justify-center gap-2">
 		<div class="flex flex-row items-center space-x-2">
 			<span class="hidden sm:inline-block">类型</span>
-			<select class="rounded bg-slate-700 px-4 py-2 text-slate-300" bind:value={type}>
-				<option value="all">全部</option>
-				{#each Object.entries(MAP_TYPES) as [k, v]}
-					<option value={k}>{v}</option>
-				{/each}
-			</select>
+			<div class="relative" bind:this={typeDropdown}>
+				<button
+					type="button"
+					class="flex w-32 cursor-pointer items-center justify-between gap-2 rounded bg-slate-700 px-4 py-2 font-semibold text-nowrap text-slate-300 hover:bg-slate-600 active:bg-slate-700"
+					onclick={() => {
+						if (typeMenuOpen) typeMenuOpen = false;
+						else {
+							updateTypeMenuMaxHeight();
+							typeMenuOpen = true;
+						}
+					}}
+					aria-haspopup="true"
+					aria-expanded={typeMenuOpen}
+					aria-controls="type-menu"
+				>
+					<span class="truncate">{typeName}</span>
+					<Fa
+						icon={faChevronDown}
+						class="shrink-0 text-xs transition-transform {typeMenuOpen ? 'rotate-180' : ''}"
+					/>
+				</button>
+				{#if typeMenuOpen}
+					<div
+						id="type-menu"
+						class="absolute left-0 z-30 mt-2 flex w-[min(90vw,14rem)] flex-col overflow-hidden rounded-xl border border-white/10 bg-slate-950/80 p-2 shadow-2xl ring-1 shadow-black/60 ring-white/5 backdrop-blur-xl"
+						style:max-height={typeMenuMaxHeight ? `${typeMenuMaxHeight}px` : null}
+					>
+						<ul class="min-h-0 flex-1 overflow-y-auto">
+							<li>
+								<button
+									type="button"
+									class="flex w-full cursor-pointer items-center rounded px-2 py-1 text-left text-sm text-nowrap {type ==
+									'all'
+										? 'bg-blue-500/20 font-semibold text-blue-300'
+										: 'text-slate-300 hover:bg-white/10'}"
+									onclick={() => {
+										type = 'all';
+										typeMenuOpen = false;
+									}}
+								>
+									全部
+								</button>
+							</li>
+							{#each Object.entries(MAP_TYPES) as [k, v]}
+								<li>
+									<button
+										type="button"
+										class="flex w-full cursor-pointer items-center rounded px-2 py-1 text-left text-sm text-nowrap {type ==
+										k
+											? 'bg-blue-500/20 font-semibold text-blue-300'
+											: 'text-slate-300 hover:bg-white/10'}"
+										onclick={() => {
+											type = k;
+											typeMenuOpen = false;
+										}}
+									>
+										{v}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+			</div>
 		</div>
 		<div class="flex flex-row items-center space-x-2">
 			<span class="hidden sm:inline-block">★难度</span>
@@ -408,21 +460,7 @@
 						</button>
 					</p>
 				</div>
-				<div
-					class="scrollbar-hide mt-1 h-8 cursor-grab overflow-x-auto whitespace-nowrap"
-					onpointerdown={startDragging}
-					role="button"
-					tabindex="0"
-				>
-					{#each map.tiles as tile}
-						<img
-							class="m-0 mr-1 inline-block h-8 w-8 rounded bg-gray-600 p-0"
-							use:tippy={{ content: tile }}
-							src={`/assets/tiles/${tile}.png`}
-							alt={tile}
-						/>
-					{/each}
-				</div>
+				<MapTiles tiles={map.tiles} class="mt-1" />
 			</div>
 		{/each}
 		{#each Array(Math.max(12 - paginatedMaps.length, 0)) as _}
@@ -458,10 +496,14 @@
 
 	<div class="mt-6 flex items-center justify-center space-x-4">
 		<button
-			class="rounded bg-blue-500 px-4 py-2 text-nowrap text-white hover:bg-blue-600 disabled:opacity-50"
+			class="inline-flex h-8 w-8 items-center justify-center rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
 			onclick={() => loadPage(currentPage - 1)}
-			disabled={currentPage <= 1}>上一页</button
+			disabled={currentPage <= 1}
+			title="上一页"
+			aria-label="上一页"
 		>
+			<Fa icon={faChevronLeft} />
+		</button>
 
 		<div class="flex flex-col items-center justify-center">
 			<p class="inline-block text-center text-slate-400">共 {totalPages} 页</p>
@@ -476,10 +518,14 @@
 		</div>
 
 		<button
-			class="rounded bg-blue-500 px-4 py-2 text-nowrap text-white hover:bg-blue-600 disabled:opacity-50"
+			class="inline-flex h-8 w-8 items-center justify-center rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
 			onclick={() => loadPage(currentPage + 1)}
-			disabled={currentPage >= totalPages}>下一页</button
+			disabled={currentPage >= totalPages}
+			title="下一页"
+			aria-label="下一页"
 		>
+			<Fa icon={faChevronRight} />
+		</button>
 	</div>
 {/if}
 

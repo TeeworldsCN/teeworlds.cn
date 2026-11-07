@@ -38,14 +38,15 @@ export const mapType = (type: string) => {
  */
 export const watchLink = (demo: {
 	uuid: string;
-	/** 完赛时间,秒 */
-	time: number;
+	/** 完赛时间,秒(没有就只按 uuid 找) */
+	time?: number | null;
 	/** 'team' | 'solo' */
 	kind?: string;
 	/** 完成者(团队就是整队) */
 	names?: string[];
 }) => {
-	const params = new URLSearchParams({ uuid: demo.uuid, time: String(demo.time) });
+	const params = new URLSearchParams({ uuid: demo.uuid });
+	if (demo.time != null) params.set('time', String(demo.time));
 	if (demo.kind) params.set('kind', demo.kind);
 	if (demo.kind == 'solo' && demo.names?.length == 1) params.set('player', demo.names[0]);
 	return `/ddnet/watch?${params.toString()}`;
