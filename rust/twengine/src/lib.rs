@@ -23,6 +23,8 @@ mod map;
 mod sprites_helper;
 #[cfg(target_arch = "wasm32")]
 mod surface;
+#[cfg(target_arch = "wasm32")]
+mod world;
 
 use wasm_bindgen::JsError;
 

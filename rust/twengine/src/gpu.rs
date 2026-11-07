@@ -34,6 +34,11 @@ pub struct TwGpu {
     scribble: twgpu::text::Scribble,
     /// DDNet 的 6 个武器准星,从 game.png 里裁出来的(索引 = 武器 id,见 `CURSOR_ROWS`)
     cursor_textures: [twgpu::sprites::TextureToken; 6],
+    /// 地图里自己拼的贴图:血包(game.png)和 dragger 滑轮 / 灯光头(extras.png)
+    freeze_pickup_texture: twgpu::sprites::TextureToken,
+    pulley_texture: twgpu::sprites::TextureToken,
+    hectagon_texture: twgpu::sprites::TextureToken,
+    snowflake_texture: twgpu::sprites::TextureToken,
 }
 
 /// game.png 里 6 个武器准星所在的格行(每格 32px,各占 2x2 格)。
@@ -140,6 +145,10 @@ impl TwGpu {
             render_nameplates: false,
             scribble,
             cursor_textures: [twgpu::sprites::TextureToken::INVALID; 6],
+            freeze_pickup_texture: twgpu::sprites::TextureToken::INVALID,
+            pulley_texture: twgpu::sprites::TextureToken::INVALID,
+            hectagon_texture: twgpu::sprites::TextureToken::INVALID,
+            snowflake_texture: twgpu::sprites::TextureToken::INVALID,
         })
     }
 
@@ -274,8 +283,32 @@ impl TwGpu {
             });
             let mut tw_render_pass =
                 twgpu::TwRenderPass::new(&mut render_pass, render_size.into(), camera);
-            let (map, mut ctx, camera_bind_group) =
+            let (map, mut ctx, camera_bind_group, sprite_requests) =
                 map.prepare_render(&tw_render_pass, &self.sprite_textures, demo_time);
+            let world_sprites = sprite_requests
+                .iter()
+                .map(|request| {
+                    let texture = match request.kind {
+                        crate::world::SpriteKind::Blank => self.sprite_textures.blank_texture(),
+                        crate::world::SpriteKind::PickupFreeze => self.freeze_pickup_texture,
+                        crate::world::SpriteKind::Pulley => self.pulley_texture,
+                        crate::world::SpriteKind::Hectagon => self.hectagon_texture,
+                        crate::world::SpriteKind::Snowflake => self.snowflake_texture,
+                    };
+                    sprites_helper::WorldSprite {
+                        center: request.center,
+                        size: request.size,
+                        rotation: request.rotation,
+                        color: twgpu::vek::Rgba::new(
+                            request.color[0],
+                            request.color[1],
+                            request.color[2],
+                            request.color[3],
+                        ),
+                        texture,
+                    }
+                })
+                .collect::<Vec<_>>();
             // 准星状态要在 render_ctx 之前取:它返回的 ctx 会把 demo 可变借走到渲染结束
             let cursor_state = demo.as_ref().and_then(|demo| demo.cursor());
             let mut new_snap = false;
@@ -283,7 +316,8 @@ impl TwGpu {
                 (ctx, new_snap) = demo.render_ctx(&self.sprite_textures);
             }
             let cursor = self.cursor_sprite(cursor_state, camera, render_size.into());
-            self.ctx_renderer.prepare_render(&mut ctx, new_snap, cursor);
+            self.ctx_renderer
+                .prepare_render(&mut ctx, new_snap, cursor, &world_sprites);
             map.render_background(&mut tw_render_pass);
             self.ctx_renderer.render_bg(
                 &mut tw_render_pass.render_pass,
@@ -406,6 +440,9 @@ impl TwGpu {
                     let cursor = image::imageops::crop_imm(&image, 0, row * 32, 64, 64).to_image();
                     *slot = self.sprite_textures.register_image(&cursor);
                 }
+                // 地图里的「血包」= `pickup_freeze`(game.png 第 2 行第 6 格,2x2 格 = 64px)
+                let freeze = image::imageops::crop_imm(&image, 6 * 32, 2 * 32, 64, 64).to_image();
+                self.freeze_pickup_texture = self.sprite_textures.register_image(&freeze);
             }
             "particles" => {
                 self.sprite_textures.particles = self.sprite_textures.register_atlas_image(&image)
@@ -414,7 +451,15 @@ impl TwGpu {
                 self.sprite_textures.emoticons = self.sprite_textures.register_atlas_image(&image)
             }
             "extras" => {
-                self.sprite_textures.extras = self.sprite_textures.register_atlas_image(&image)
+                self.sprite_textures.extras = self.sprite_textures.register_atlas_image(&image);
+                // extras.png 也是 16x16 个 32px 格:`part_pulley`(4,0,1,1)、
+                // `part_hectagon`(6,0,2,2)、`part_snowflake`(0,0,2,2)
+                let pulley = image::imageops::crop_imm(&image, 4 * 32, 0, 32, 32).to_image();
+                self.pulley_texture = self.sprite_textures.register_image(&pulley);
+                let hectagon = image::imageops::crop_imm(&image, 6 * 32, 0, 64, 64).to_image();
+                self.hectagon_texture = self.sprite_textures.register_image(&hectagon);
+                let snowflake = image::imageops::crop_imm(&image, 0, 0, 64, 64).to_image();
+                self.snowflake_texture = self.sprite_textures.register_image(&snowflake);
             }
             "default" => {
                 self.sprite_textures.default_skin =
@@ -424,11 +469,9 @@ impl TwGpu {
                 let skin = self.sprite_textures.register_skin_image(&image, name);
                 self.sprite_textures.ninja_skin = skin.normal;
             }
-            _ => {
-                return Err(JsError::new(
-                    "Unknown texture, known are: game, particles, emoticons, extras, default, x_ninja",
-                ))
-            }
+            _ => return Err(JsError::new(
+                "Unknown texture, known are: game, particles, emoticons, extras, default, x_ninja",
+            )),
         }
         Ok(())
     }
