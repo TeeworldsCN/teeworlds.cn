@@ -374,8 +374,10 @@ impl TwGpu {
             }
             let cursor = self.cursor_sprite(cursor_state, camera, render_size.into());
             self.ctx_renderer.queue_explosions(explosions);
+            // 相机看到的世界范围(tile),给精灵做视锥裁剪用;parallax 取 1 就是实体所在的那层
+            let view = camera.world_perspective(twgpu::vek::Vec2::broadcast(1.));
             self.ctx_renderer
-                .prepare_render(&mut ctx, new_snap, cursor, &world_sprites);
+                .prepare_render(&mut ctx, new_snap, cursor, &world_sprites, view);
             t3 = now_ms();
             map.render_background(&mut tw_render_pass);
             self.ctx_renderer.render_bg(
