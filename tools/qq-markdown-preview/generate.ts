@@ -84,6 +84,20 @@ const samples: Sample[] = [
 		)
 	},
 	{
+		id: 'points-escaped',
+		group: 'query',
+		command: '/分数',
+		title: '名字里的 markdown 特殊字符',
+		markdown: pointsMarkdown(
+			'a*b_c`d[e]f(g)h#i+j-k.l!m|n~o<p>q&r',
+			[
+				{ label: '🌎 里程', points: 1234, rank: 12 },
+				{ label: '👤 个人排位', points: 0, rank: 0 }
+			],
+			'https://teeworlds.cn/goto#p'
+		)
+	},
+	{
 		id: 'points-missing',
 		group: 'query',
 		command: '/分数',
