@@ -7,15 +7,18 @@
 //! 播放/跳转本身的时钟、关键帧、死推(dead reckoning)都交给 `twgpu_tools::DemoProcessor`,
 //! 我们只实现 `DemoLike`,免得自己重写一遍 tick 逻辑。
 
+use crate::error;
 #[cfg(target_arch = "wasm32")]
 use crate::map::TwMap;
 use crate::sound::{self, SoundEvent};
-use crate::error;
 use libtw2_demo::{ddnet, ChunkType};
-use libtw2_gamenet_ddnet::{msg, Protocol as DDNet};
-use libtw2_warn::Ignore;
+use libtw2_gamenet_common::traits as net;
+use libtw2_gamenet_ddnet::snap_obj::{self as so, TypeId};
+use libtw2_gamenet_ddnet::{enums, msg, Error, Protocol as DDNet};
+use libtw2_packer::{ExcessData, IntUnpacker};
+use libtw2_warn::{Ignore, Warn};
 use std::cell::RefCell;
-use std::error::Error;
+use std::error::Error as StdError;
 use std::io;
 use std::rc::Rc;
 use twgpu::fixed::traits::FromFixed;
@@ -23,6 +26,95 @@ use twgpu::sprites::Particles;
 use twgpu::vek;
 use twgpu_tools::{DemoChunk, DemoLike, DemoProcessor};
 use wasm_bindgen::prelude::*;
+
+/// `libtw2` 反序列化 snapshot 对象失败时会把整个对象丢掉,只留一条 warning。
+///
+/// 0.6 的 `Character.m_AmmoCount` 本来只有 -1..10,但玩家拿到 ninja 之后服务端会把
+/// 这个字段当成「ninja 结束 tick」写进去(0.7 的语义,teehistorian→demo 的转换也照搬),
+/// 数值上亿,超出范围 → `Character` 解不出来 → tee 从 snapshot 里消失(一直到下一个关键帧才回来)。
+/// 这里给 `SnapObj` 包一层:先照原样解,失败且是 `Character` 时用宽容版本重解。
+#[derive(Clone, Copy, Debug)]
+struct TolerantSnapObj(so::SnapObj);
+
+impl net::SnapObj for TolerantSnapObj {
+    fn decode_obj<W: Warn<ExcessData>>(
+        warn: &mut W,
+        obj_type_id: TypeId,
+        p: &mut IntUnpacker,
+    ) -> Result<Self, Error> {
+        // 解失败时 unpacker 已经读到底了,回不去,所以拿同一段数据另开一个再试
+        let data = p.as_slice();
+        match so::SnapObj::decode_obj(warn, obj_type_id, &mut IntUnpacker::new(data)) {
+            Ok(obj) => Ok(Self(obj)),
+            Err(err) => tolerant_character(obj_type_id, data).map(Self).ok_or(err),
+        }
+    }
+    fn obj_type_id(&self) -> TypeId {
+        self.0.obj_type_id()
+    }
+    fn encode(&self) -> &[i32] {
+        self.0.encode()
+    }
+}
+
+/// `Character` 的宽容版本:字段顺序和 `libtw2` 一致,越界的值夹到合法范围再解,
+/// 只有 `m_AmmoCount`(ninja 时是结束 tick)原样保留。
+fn tolerant_character(type_id: TypeId, data: &[i32]) -> Option<so::SnapObj> {
+    if type_id != TypeId::Ordinal(so::CHARACTER) {
+        return None;
+    }
+    let mut p = IntUnpacker::new(data);
+    let mut n = || p.read_int().unwrap_or(0);
+    let character_core = so::CharacterCore {
+        tick: n(),
+        x: n(),
+        y: n(),
+        vel_x: n(),
+        vel_y: n(),
+        angle: n(),
+        direction: n().clamp(-1, 1),
+        jumped: n().clamp(0, 3),
+        hooked_player: n().clamp(-1, 127),
+        hook_state: n().clamp(-1, 5),
+        hook_tick: n(),
+        hook_x: n(),
+        hook_y: n(),
+        hook_dx: n(),
+        hook_dy: n(),
+    };
+    let player_flags = n().clamp(0, 256);
+    let health = n().clamp(0, 10);
+    let armor = n().clamp(0, 10);
+    let ammo_count = n();
+    let weapon = n().clamp(-1, 5);
+    let emote = enums::Emote::from_i32(n().clamp(enums::EMOTE_NORMAL, enums::EMOTE_BLINK)).ok()?;
+    let attack_tick = n().max(0);
+    Some(so::SnapObj::Character(so::Character {
+        character_core,
+        player_flags,
+        health,
+        armor,
+        ammo_count,
+        weapon,
+        emote,
+        attack_tick,
+    }))
+}
+
+/// 只是把 `DDNet` 协议换成宽容版的 `SnapObj`,消息类型完全沿用。
+struct TolerantProtocol;
+
+impl net::ProtocolStatic for TolerantProtocol {
+    type SnapObj = TolerantSnapObj;
+    fn obj_size(type_id: u16) -> Option<u32> {
+        <DDNet as net::ProtocolStatic>::obj_size(type_id)
+    }
+}
+
+impl<'a> net::Protocol<'a> for TolerantProtocol {
+    type Game = <DDNet as net::Protocol<'a>>::Game;
+    type System = <DDNet as net::Protocol<'a>>::System;
+}
 
 /// demo 里攒下来的待播声音,reader 写、`TwDemo` 读。
 struct Sink {
@@ -135,20 +227,20 @@ enum RawChunk {
 }
 
 struct Reader {
-    inner: ddnet::DemoReader<'static, DDNet>,
+    inner: ddnet::DemoReader<'static, TolerantProtocol>,
 }
 
 impl Reader {
-    fn new(data: Vec<u8>) -> Result<Self, Box<dyn Error>> {
+    fn new(data: Vec<u8>) -> Result<Self, Box<dyn StdError>> {
         let cursor = io::Cursor::new(data);
         let inner = ddnet::DemoReader::new(cursor, &mut Ignore)?;
         Ok(Self { inner })
     }
 
-    fn stream_position(&mut self) -> Result<u64, Box<dyn Error>> {
+    fn stream_position(&mut self) -> Result<u64, Box<dyn StdError>> {
         Ok(self.inner.stream_position()?)
     }
-    fn seek(&mut self, position: u64) -> Result<(), Box<dyn Error>> {
+    fn seek(&mut self, position: u64) -> Result<(), Box<dyn StdError>> {
         Ok(self.inner.seek(position)?)
     }
 
@@ -156,7 +248,7 @@ impl Reader {
         &mut self,
         snap: &mut twsnap::Snap,
         sink: &SoundSink,
-    ) -> Result<RawChunk, Box<dyn Error>> {
+    ) -> Result<RawChunk, Box<dyn StdError>> {
         loop {
             match self.inner.next_chunk(&mut Ignore)? {
                 None => return Ok(RawChunk::End),
@@ -174,7 +266,11 @@ impl Reader {
                     else {
                         return Err("demo: snapshot flagged but not read".into());
                     };
-                    snap.process_next(items);
+                    // 等价于 twsnap 的 `Snap::process_next`,只是我们的 item 多包了一层 newtype
+                    snap.clear();
+                    for (obj, id) in items {
+                        snap.merge_libtw2_ddnet_snap_obj(*id, obj.0);
+                    }
                     // snapshot 里的 net event 就是把声音发下来的地方
                     let mut events = Vec::new();
                     sound::from_snap_events(&snap.events, &mut events);
@@ -225,7 +321,7 @@ impl BufferedSnap {
         reader: &mut Reader,
         sink: &SoundSink,
         prev: &twsnap::Snap,
-    ) -> Result<Option<bool>, Box<dyn Error>> {
+    ) -> Result<Option<bool>, Box<dyn StdError>> {
         loop {
             let position = reader.stream_position()?;
             match reader.next_chunk(&mut self.snap, sink)? {
@@ -258,7 +354,7 @@ impl DemoLike for DemoFile {
         &mut self,
         snap: &mut twsnap::Snap,
         prev: &twsnap::Snap,
-    ) -> Result<Option<DemoChunk>, Box<dyn Error>> {
+    ) -> Result<Option<DemoChunk>, Box<dyn StdError>> {
         match self.seeked {
             SeekSnap::Zero => loop {
                 let position = self.reader.stream_position()?;
@@ -293,7 +389,7 @@ impl DemoLike for DemoFile {
         &mut self,
         tick: i32,
         prev: &twsnap::Snap,
-    ) -> Result<Option<i32>, Box<dyn Error>> {
+    ) -> Result<Option<i32>, Box<dyn StdError>> {
         loop {
             match self.seeked {
                 SeekSnap::Zero => {}
@@ -342,7 +438,7 @@ impl DemoLike for DemoFile {
         }
     }
 
-    fn seek(&mut self, tick: i32) -> Result<Option<i32>, Box<dyn Error>> {
+    fn seek(&mut self, tick: i32) -> Result<Option<i32>, Box<dyn StdError>> {
         match self.keyframes.look_for_tick(tick) {
             Ok((keyframe_tick, keyframe_position)) => {
                 self.reader.seek(keyframe_position)?;
@@ -877,5 +973,26 @@ mod tests {
         for (id, (name, alive)) in &last {
             println!("  id={id} name={name:?} alive={alive}");
         }
+    }
+
+    /// 拿到 ninja 之后 0.6 的 `m_AmmoCount` 会变成「结束 tick」,远超出 -1..10;
+    /// 这种 `Character` 必须还能解出来,否则 tee 会从 snapshot 里消失。
+    #[test]
+    fn tolerant_character_accepts_ninja_ammo_count() {
+        let data = [
+            77022483, 21208, 9044, -1024, 1024, 40, 1, 2, -1, 5, 1, 21431, 9116, 237, 97, 17, 10,
+            0, 77023233, 5, 0, 77022472,
+        ];
+        let obj = tolerant_character(TypeId::Ordinal(so::CHARACTER), &data).unwrap();
+        let so::SnapObj::Character(character) = obj else {
+            panic!("不是 Character");
+        };
+        assert_eq!(character.weapon, 5); // WEAPON_NINJA
+        assert_eq!(character.ammo_count, 77023233);
+        assert_eq!(character.health, 10);
+        assert_eq!(character.character_core.direction, 1);
+
+        // 别的对象类型不归这条路径管
+        assert!(tolerant_character(TypeId::Ordinal(so::PLAYER_INFO), &data).is_none());
     }
 }

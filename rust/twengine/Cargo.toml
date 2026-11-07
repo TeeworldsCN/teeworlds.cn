@@ -23,6 +23,9 @@ twsnap-compat = "0.1.0"
 pre-rfc3243-libtw2-demo = "0.3.0"
 pre-rfc3243-libtw2-gamenet-ddnet = "0.2.1"
 pre-rfc3243-libtw2-warn = "0.2.0"
+# 宽容版 SnapObj 需要 traits / IntUnpacker
+pre-rfc3243-libtw2-gamenet-common = "0.2.0"
+pre-rfc3243-libtw2-packer = "0.2.0"
 fixed = "1.29"
 log = "0.4"
 # twsnap/libtw2 的依赖链会用到 getrandom,uuid;wasm 上需要显式打开 js 随机源
