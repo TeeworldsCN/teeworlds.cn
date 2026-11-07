@@ -53,7 +53,7 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "bun fmt",
 		"lint": "bun fmt --check",
-		"test": "bun test",
+		"test": "svelte-kit sync && bun test",
 		"prepare": "husky",
 		"mappreview": "bun scripts/build-engine.ts",
 		"engine": "bun scripts/build-engine.ts"
