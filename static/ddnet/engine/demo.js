@@ -509,6 +509,8 @@ export async function mountDemoPlayer(host, options) {
 			canvas,
 			font: false,
 			onStatus: setStatus,
+			// X5 上「渲染到纹理 + copy 进 atlas」不通,名字牌的 SDF 改在 wasm 里用 CPU 算
+			nameplateCpuSdf: inApp,
 			...options.gpu
 		});
 		// 后端回退时 bootRenderer 可能换了一块新 canvas(旧的那块已经绑过上下文),

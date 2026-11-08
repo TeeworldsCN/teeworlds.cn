@@ -73,6 +73,9 @@ impl TwGpu {
         canvas: Option<web_sys::HtmlCanvasElement>,
         mipmaps: Option<bool>,
         tilemap_mips: Option<bool>,
+        // X5(QQ/微信内置浏览器)的 GL 上「渲染到临时纹理再 copy 到 atlas」这条路不通,
+        // 名字牌的 SDF 改成 JS 里算好再上传(见 nameplate_glyph_upload_sdf)
+        nameplate_cpu_sdf: Option<bool>,
     ) -> Result<Self, JsError> {
         std::panic::set_hook(Box::new(console_error_panic_hook::hook));
         console_log::init().expect("Could not initialize logger");
@@ -145,8 +148,12 @@ impl TwGpu {
         let sprite_textures =
             twgpu::sprites::SpriteTextures::new(samplers.clone(), device.clone(), queue.clone());
         let ctx_renderer = sprites_helper::CtxRenderer::new(FORMAT, device.clone(), queue.clone());
-        let nameplates =
-            crate::nameplate::NameplateRenderer::new(device.clone(), queue.clone(), FORMAT);
+        let nameplates = crate::nameplate::NameplateRenderer::new(
+            device.clone(),
+            queue.clone(),
+            FORMAT,
+            nameplate_cpu_sdf.unwrap_or(false),
+        );
         let scribble =
             twgpu::text::Scribble::new(samplers.clone(), FORMAT, device.clone(), queue.clone());
         Ok(Self {

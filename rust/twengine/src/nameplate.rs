@@ -42,6 +42,111 @@ struct GlyphVertex {
     _pad: f32,
 }
 
+/// SDF 的半径(源像素),和 `nameplate.wgsl` 的 `SDF_RADIUS`、`nameplate_sdf.wgsl` 的
+/// `RADIUS` 保持一致
+const SDF_RADIUS: f64 = 16.0;
+
+/// 从 alpha 位图算 SDF(CPU 版,给 X5 用)。编码和 GPU 那条路完全一样:
+/// `0` = 远在外面、`128` ≈ 轮廓、`255` = 内部(`0.5 - d / (2 * RADIUS)`)。
+///
+/// 精确欧氏距离变换:一维平方距离递推(Felzenszwalb & Huttenlocher),先列后行。
+/// 和 mapbox/tiny-sdf 用的是同一个算法。
+fn sdf_from_alpha(alpha: &[u8], width: usize, height: usize) -> Vec<u8> {
+    const INF: f64 = 1e20;
+    let len = width * height;
+    let mut outer = vec![INF; len];
+    let mut inner = vec![0.0; len];
+    for (i, &value) in alpha.iter().enumerate() {
+        // 完全透明:只当 inner 的种子(初始 0),outer 保持 INF(这里没有墨迹)
+        if value == 0 {
+            continue;
+        }
+        // 覆盖率换算成「离边界的像素距离」:0.5 覆盖率正好是轮廓。
+        // 偏外的部分进 outer,偏内的部分进 inner(完全覆盖时 inner 是 INF)
+        let t = 0.5 - value as f64 / 255.0;
+        if t > 0.0 {
+            outer[i] = t;
+        } else {
+            // 墨迹:outer 的种子是 0(这里就是轮廓),inner 是往里的那一点点
+            outer[i] = 0.0;
+            inner[i] = if value == 255 { INF } else { -t };
+        }
+    }
+    edt2d(&mut outer, width, height);
+    edt2d(&mut inner, width, height);
+    let scale = 127.5 / SDF_RADIUS;
+    alpha
+        .iter()
+        .enumerate()
+        .map(|(i, _)| {
+            let d = outer[i].sqrt() - inner[i].sqrt();
+            (127.5 - d * scale).clamp(0.0, 255.0).round() as u8
+        })
+        .collect()
+}
+
+/// 二维 EDT:逐列 + 逐行各做一次一维变换
+fn edt2d(grid: &mut [f64], width: usize, height: usize) {
+    let longest = width.max(height);
+    let mut f = vec![0.0; longest];
+    let mut v = vec![0usize; longest];
+    let mut z = vec![0.0; longest + 1];
+    for x in 0..width {
+        edt1d(grid, x, width, height, &mut f, &mut v, &mut z);
+    }
+    for y in 0..height {
+        edt1d(grid, y * width, 1, width, &mut f, &mut v, &mut z);
+    }
+}
+
+/// 一维平方距离变换(和 tiny-sdf 的 `edt1d` 逐句对应,包括 `k` 会减到 -1 的那一步)
+fn edt1d(
+    grid: &mut [f64],
+    offset: usize,
+    stride: usize,
+    length: usize,
+    f: &mut [f64],
+    v: &mut [usize],
+    z: &mut [f64],
+) {
+    v[0] = 0;
+    z[0] = f64::NEG_INFINITY;
+    z[1] = f64::INFINITY;
+    f[0] = grid[offset];
+    let mut k: isize = 0;
+    for q in 1..length {
+        f[q] = grid[offset + q * stride];
+        let q2 = (q * q) as f64;
+        let mut s = 0.0;
+        loop {
+            let r = v[k as usize];
+            s = (f[q] - f[r] + q2 - (r * r) as f64) / (q - r) as f64 / 2.0;
+            if s <= z[k as usize] {
+                k -= 1;
+                if k < 0 {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+        k += 1;
+        v[k as usize] = q;
+        z[k as usize] = s;
+        z[k as usize + 1] = f64::INFINITY;
+    }
+    let mut k: usize = 0;
+    for q in 0..length {
+        while z[k + 1] < q as f64 {
+            k += 1;
+        }
+        let r = v[k];
+        // 注意用浮点减:`q - r` 在 usize 里会下溢(q < r 时),平方后是个天文数字
+        let qr = q as f64 - r as f64;
+        grid[offset + q * stride] = f[r] + qr * qr;
+    }
+}
+
 struct Shelf {
     y: u32,
     height: u32,
@@ -98,10 +203,17 @@ pub struct NameplateRenderer {
     glyphs: HashMap<u32, Glyph>,
     quads: Vec<Quad>,
     draw_items: Vec<DrawItem>,
+    /// SDF 用 CPU(wasm 里)算 —— X5(QQ / 微信内置浏览器)上「渲染到纹理 + copy 进 atlas」不通
+    cpu_sdf: bool,
+    /// atlas 的 mip 层数。CPU 那条路要完全避开「渲染到纹理 / copy」,只有 level 0
+    page_mips: u32,
 }
 
 impl NameplateRenderer {
-    pub fn new(device: Device, queue: Queue, format: TextureFormat) -> Self {
+    /// `cpu_sdf`: SDF 由 JS 算好上传(`upload_glyph_sdf`)。只有 X5(QQ / 微信内置浏览器)
+    /// 需要 —— 那边「渲染到临时纹理再 `copy_texture_to_texture` 进 atlas」这条路不通,
+    /// 连 mip 链也一起关掉(同样要渲染到别的 mip level)。
+    pub fn new(device: Device, queue: Queue, format: TextureFormat, cpu_sdf: bool) -> Self {
         let gen_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: LABEL,
             entries: &[BindGroupLayoutEntry {
@@ -313,6 +425,8 @@ impl NameplateRenderer {
             glyphs: HashMap::new(),
             quads: Vec::new(),
             draw_items: Vec::new(),
+            cpu_sdf,
+            page_mips: if cpu_sdf { 1 } else { ATLAS_MIPS },
         };
         let mut renderer = renderer;
         renderer.warmup();
@@ -469,7 +583,8 @@ impl NameplateRenderer {
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: LABEL });
-        {
+        // X5 那条路(SDF 由 JS 算)完全不碰「渲染到临时纹理 + copy」,这两步也就不用预热
+        if self.page_mips > 1 {
             let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: LABEL,
                 color_attachments: &[Some(RenderPassColorAttachment {
@@ -490,7 +605,7 @@ impl NameplateRenderer {
             pass.set_bind_group(0, &gen_bind, &[]);
             pass.draw(0..3, 0..1);
         }
-        if let Some((page, x, y)) = warm_page {
+        if let (Some((page, x, y)), true) = (warm_page, self.page_mips > 1) {
             encoder.copy_texture_to_texture(
                 sdf_target.as_image_copy(),
                 wgpu::TexelCopyTextureInfo {
@@ -572,6 +687,41 @@ impl NameplateRenderer {
             self.queue.write_texture(
                 wgpu::TexelCopyTextureInfo {
                     texture: &page.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d { x, y, z: 0 },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                &buffer,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(padded as u32),
+                    rows_per_image: Some(height),
+                },
+                wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+            );
+        } else if self.cpu_sdf {
+            // X5:距离场在 wasm 里用 CPU 算(精确 EDT),然后直接 write_texture 进 atlas。
+            // 全程没有渲染到纹理、也没有 copy_texture_to_texture。
+            let sdf = sdf_from_alpha(pixels, width as usize, height as usize);
+            let row_bytes = width as usize * 4;
+            let padded = (row_bytes + 255) & !255;
+            let mut buffer = vec![0u8; padded * height as usize];
+            for (row, values) in sdf.chunks_exact(width as usize).enumerate() {
+                for (col, value) in values.iter().enumerate() {
+                    let at = row * padded + col * 4;
+                    buffer[at] = *value;
+                    buffer[at + 1] = *value;
+                    buffer[at + 2] = *value;
+                    buffer[at + 3] = 255;
+                }
+            }
+            self.queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &self.mono_pages[page_index].texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d { x, y, z: 0 },
                     aspect: wgpu::TextureAspect::All,
@@ -745,7 +895,7 @@ impl NameplateRenderer {
                 height: ATLAS_SIZE,
                 depth_or_array_layers: 1,
             },
-            mip_level_count: ATLAS_MIPS,
+            mip_level_count: self.page_mips,
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: TextureFormat::Rgba8Unorm,
@@ -758,14 +908,14 @@ impl NameplateRenderer {
         // 每一级的 view + 采样上一级的 bind group
         let mut mip_views = Vec::new();
         let mut mip_binds = Vec::new();
-        for level in 0..ATLAS_MIPS {
+        for level in 0..self.page_mips {
             let level_view = texture.create_view(&TextureViewDescriptor {
                 label: LABEL,
                 base_mip_level: level,
                 mip_level_count: Some(1),
                 ..TextureViewDescriptor::default()
             });
-            if level + 1 < ATLAS_MIPS {
+            if level + 1 < self.page_mips {
                 mip_binds.push(self.device.create_bind_group(&BindGroupDescriptor {
                     label: LABEL,
                     layout: &self.gen_layout,
