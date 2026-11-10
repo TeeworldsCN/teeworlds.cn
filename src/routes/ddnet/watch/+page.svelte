@@ -107,11 +107,19 @@
 			// 链接上的 kind / player 用来挑对视角(个人记录默认不进团队视角)。
 			const wantedKind = params.get('kind');
 			const wantedPlayer = params.get('player')?.toLowerCase() ?? null;
-			const pickEntry = (entries: Entry[]) => {
-				let candidates = entries.filter((entry) => entry.demo);
-				// `runs/<uuid>.jsonl` 里正常记录和 kept 记录都有,按链接要找的那份清单优先
-				const samePartition = candidates.filter((entry) => (entry.kept === true) === invalid);
-				if (samePartition.length) candidates = samePartition;
+			const pickEntry = (entries: Entry[], wantedTime: string | null) => {
+				// `runs/<uuid>.jsonl` 里正常记录和 kept 记录都有,链接上的 invalid 决定读哪份:
+				// 这里必须严格过滤,不能因为本地文件里没有对应分区就退回另一份 ——
+				// 否则 invalid 链接会播到正常记录,正常链接也可能播到已删除记录。
+				let candidates = entries.filter((entry) => entry.demo && (entry.kept === true) === invalid);
+				// lookup 退路拿到的是整场 uuid 的所有记录(同一 uuid 可能有多档成绩),
+				// 按链接上的 time 再对一次,免得上一条成绩串到这一条
+				if (wantedTime !== null && Number.isFinite(parseFloat(wantedTime))) {
+					const byTime = candidates.filter(
+						(entry) => Math.abs(parseFloat(entry.time) - parseFloat(wantedTime)) < 0.005
+					);
+					if (byTime.length) candidates = byTime;
+				}
 				if (wantedKind) {
 					const byKind = candidates.filter((entry) => entry.kind === wantedKind);
 					if (byKind.length) candidates = byKind;
@@ -128,25 +136,29 @@
 			const findEntry = async (uuid: string, wanted: string | null) => {
 				// 先看这一场的 runs/<uuid>.jsonl(上游为每场单独生成的,很小、最新)。
 				const candidates: Entry[] = [];
-				const response = await fetch(`${API}/runs/${uuid}.jsonl`);
-				if (response.ok) {
-					for (const line of (await response.text()).split('\n')) {
-						if (!line.includes(uuid)) continue;
-						try {
-							const entry = JSON.parse(line) as Entry;
-							if (entry.uuid !== uuid || entry.status !== 'ok' || !entry.demo) continue;
-							if (
-								wanted === null ||
-								Math.abs(parseFloat(entry.time) - parseFloat(wanted)) < 0.005
-							) {
-								candidates.push(entry);
+				try {
+					const response = await fetch(`${API}/runs/${uuid}.jsonl`);
+					if (response.ok) {
+						for (const line of (await response.text()).split('\n')) {
+							if (!line.includes(uuid)) continue;
+							try {
+								const entry = JSON.parse(line) as Entry;
+								if (entry.uuid !== uuid || entry.status !== 'ok' || !entry.demo) continue;
+								if (
+									wanted === null ||
+									Math.abs(parseFloat(entry.time) - parseFloat(wanted)) < 0.005
+								) {
+									candidates.push(entry);
+								}
+							} catch {
+								// 半行/坏行跳过
 							}
-						} catch {
-							// 半行/坏行跳过
 						}
 					}
+				} catch {
+					// 直连失败(断网/被墙)时继续走服务端 lookup
 				}
-				const local = pickEntry(candidates);
+				const local = pickEntry(candidates, wanted);
 				if (local) return local;
 
 				// 退路:服务端已经索引好的 watchable.jsonl,按 uuid 查一条。
@@ -155,10 +167,14 @@
 				lookupUrl.searchParams.set('uuid', uuid);
 				if (wanted !== null) lookupUrl.searchParams.set('time', wanted);
 				if (invalid) lookupUrl.searchParams.set('invalid', '1');
-				const lookup = await fetch(lookupUrl);
-				if (!lookup.ok) return null;
-				const { entries } = (await lookup.json()) as { entries?: Entry[] };
-				return pickEntry(entries ?? []);
+				try {
+					const lookup = await fetch(lookupUrl);
+					if (!lookup.ok) return null;
+					const { entries } = (await lookup.json()) as { entries?: Entry[] };
+					return pickEntry(entries ?? [], wanted);
+				} catch {
+					return null;
+				}
 			};
 
 			if (params.get('demo')) {
@@ -217,7 +233,12 @@
 			else player = created;
 		};
 
-		void run();
+		void run().catch((error) => {
+			// 引擎/网络异常时至少给一行提示,别留一块空白
+			if (cancelled) return;
+			console.error(error);
+			message = '回放加载失败,请稍后再试';
+		});
 
 		return () => {
 			cancelled = true;
