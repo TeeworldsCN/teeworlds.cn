@@ -12,7 +12,7 @@
 	 * 和官方页面的区别:官方页面是整套 DDNet 客户端编译成 wasm(要 cross-origin isolated,
 	 * QQ/微信内置浏览器直接挂);这边是 twgpu 渲染 + Web Audio,单线程 wasm,不需要 SAB。
 	 */
-	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { uaIsStrict } from '$lib/helpers';
 	// 全站共用的皮肤缓存(单例,只拉一次 /api/skins);播放器只按名字查 URL,不自己拼
 	import { getSkinUrl } from '$lib/stores/skins';
@@ -55,6 +55,8 @@
 		demo?: string;
 		rev?: string;
 		cid?: number;
+		/** 名次已经不存在、被上游保留下来的历史回放(只出现在 watchables.invalid) */
+		kept?: boolean;
 	};
 
 	/** 引擎产物的版本号(SSR 时从 version.json 读出来,见 +page.server.ts) */
@@ -77,12 +79,24 @@
 		return `${entry.map} [${formatTime(parseFloat(entry.time))}]${who ? ` - ${who}` : ''}`;
 	};
 
-	onMount(() => {
+	/**
+	 * 播放器跟着 URL 走,而不是 onMount 只跑一次。
+	 *
+	 * SvelteKit 里 `/ddnet/watch?uuid=a` → `?uuid=b` 是同一个路由,组件不会重新挂载;
+	 * DDNet TV 的卡片就是这种跳转,不跟 URL 的话换了 demo 画面还是旧的。
+	 * 切 demo 时旧播放器 destroy、新播放器复用缓存里的引擎/canvas。
+	 */
+	$effect(() => {
+		// 读一下 search 让 effect 跟踪 URL 变化
+		const search = page.url.search;
+		void host;
+
 		let player: { destroy(): void } | null = null;
 		let cancelled = false;
 
 		const run = async () => {
-			const params = new URLSearchParams(location.search);
+			const params = new URLSearchParams(search);
+			const invalid = params.get('invalid') === '1';
 			let demoUrl = '';
 			let title = '';
 			let focus;
@@ -93,8 +107,19 @@
 			// 链接上的 kind / player 用来挑对视角(个人记录默认不进团队视角)。
 			const wantedKind = params.get('kind');
 			const wantedPlayer = params.get('player')?.toLowerCase() ?? null;
-			const pickEntry = (entries: Entry[]) => {
-				let candidates = entries.filter((entry) => entry.demo);
+			const pickEntry = (entries: Entry[], wantedTime: string | null) => {
+				// `runs/<uuid>.jsonl` 里正常记录和 kept 记录都有,链接上的 invalid 决定读哪份:
+				// 这里必须严格过滤,不能因为本地文件里没有对应分区就退回另一份 ——
+				// 否则 invalid 链接会播到正常记录,正常链接也可能播到已删除记录。
+				let candidates = entries.filter((entry) => entry.demo && (entry.kept === true) === invalid);
+				// lookup 退路拿到的是整场 uuid 的所有记录(同一 uuid 可能有多档成绩),
+				// 按链接上的 time 再对一次,免得上一条成绩串到这一条
+				if (wantedTime !== null && Number.isFinite(parseFloat(wantedTime))) {
+					const byTime = candidates.filter(
+						(entry) => Math.abs(parseFloat(entry.time) - parseFloat(wantedTime)) < 0.005
+					);
+					if (byTime.length) candidates = byTime;
+				}
 				if (wantedKind) {
 					const byKind = candidates.filter((entry) => entry.kind === wantedKind);
 					if (byKind.length) candidates = byKind;
@@ -111,25 +136,29 @@
 			const findEntry = async (uuid: string, wanted: string | null) => {
 				// 先看这一场的 runs/<uuid>.jsonl(上游为每场单独生成的,很小、最新)。
 				const candidates: Entry[] = [];
-				const response = await fetch(`${API}/runs/${uuid}.jsonl`);
-				if (response.ok) {
-					for (const line of (await response.text()).split('\n')) {
-						if (!line.includes(uuid)) continue;
-						try {
-							const entry = JSON.parse(line) as Entry;
-							if (entry.uuid !== uuid || entry.status !== 'ok' || !entry.demo) continue;
-							if (
-								wanted === null ||
-								Math.abs(parseFloat(entry.time) - parseFloat(wanted)) < 0.005
-							) {
-								candidates.push(entry);
+				try {
+					const response = await fetch(`${API}/runs/${uuid}.jsonl`);
+					if (response.ok) {
+						for (const line of (await response.text()).split('\n')) {
+							if (!line.includes(uuid)) continue;
+							try {
+								const entry = JSON.parse(line) as Entry;
+								if (entry.uuid !== uuid || entry.status !== 'ok' || !entry.demo) continue;
+								if (
+									wanted === null ||
+									Math.abs(parseFloat(entry.time) - parseFloat(wanted)) < 0.005
+								) {
+									candidates.push(entry);
+								}
+							} catch {
+								// 半行/坏行跳过
 							}
-						} catch {
-							// 半行/坏行跳过
 						}
 					}
+				} catch {
+					// 直连失败(断网/被墙)时继续走服务端 lookup
 				}
-				const local = pickEntry(candidates);
+				const local = pickEntry(candidates, wanted);
 				if (local) return local;
 
 				// 退路:服务端已经索引好的 watchable.jsonl,按 uuid 查一条。
@@ -137,10 +166,15 @@
 				const lookupUrl = new URL(`${API}/lookup`, location.href);
 				lookupUrl.searchParams.set('uuid', uuid);
 				if (wanted !== null) lookupUrl.searchParams.set('time', wanted);
-				const lookup = await fetch(lookupUrl);
-				if (!lookup.ok) return null;
-				const { entries } = (await lookup.json()) as { entries?: Entry[] };
-				return pickEntry(entries ?? []);
+				if (invalid) lookupUrl.searchParams.set('invalid', '1');
+				try {
+					const lookup = await fetch(lookupUrl);
+					if (!lookup.ok) return null;
+					const { entries } = (await lookup.json()) as { entries?: Entry[] };
+					return pickEntry(entries ?? [], wanted);
+				} catch {
+					return null;
+				}
 			};
 
 			if (params.get('demo')) {
@@ -151,6 +185,7 @@
 				const uuid = params.get('uuid')!;
 				const found = await findEntry(uuid, params.get('time'));
 
+				if (cancelled) return;
 				if (!found) {
 					message = '过图回放还没有预生成的 demo';
 					return;
@@ -180,7 +215,7 @@
 			const engine = (await import(/* @vite-ignore */ demoModuleUrl)) as DemoModule;
 			if (cancelled || !host) return;
 			const inApp = uaIsStrict(navigator.userAgent);
-			player = await engine.mountDemoPlayer(host, {
+			const created = await engine.mountDemoPlayer(host, {
 				demoUrl,
 				title,
 				focus,
@@ -193,9 +228,17 @@
 				// 其它浏览器照旧自己探测、失败再回退
 				backend: inApp ? 'webgl' : undefined
 			});
+			// 加载过程中又换了 demo:这份播放器已经没人要了,立刻放掉
+			if (cancelled) created?.destroy();
+			else player = created;
 		};
 
-		void run();
+		void run().catch((error) => {
+			// 引擎/网络异常时至少给一行提示,别留一块空白
+			if (cancelled) return;
+			console.error(error);
+			message = '回放加载失败,请稍后再试';
+		});
 
 		return () => {
 			cancelled = true;

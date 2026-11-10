@@ -12,7 +12,8 @@
 		faInfoCircle,
 		faMap,
 		faRankingStar,
-		faServer
+		faServer,
+		faTv
 	} from '@fortawesome/free-solid-svg-icons';
 	import Fa from 'svelte-fa';
 </script>
@@ -54,6 +55,11 @@
 				><Fa icon={faMap} class="inline"></Fa> 查找地图</ToolboxButton
 			>
 			<div class="text-semibold">DDNet 官方地图列表</div>
+		</div>
+
+		<div class="mt-6">
+			<ToolboxButton href="/ddnet/tv"><Fa icon={faTv} class="inline"></Fa> DDNet TV</ToolboxButton>
+			<div class="text-semibold">查看最新公布回放</div>
 		</div>
 
 		<div class="mt-6">

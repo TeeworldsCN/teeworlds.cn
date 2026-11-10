@@ -11,10 +11,16 @@
  *   - 衰减:gain = (1500 - dist) / 1500,超出半径就听不到
  *   - 声像:离听者左边远就压左声道,右边远就压右声道,系数同样是 (1500 - |dx|) / 1500
  *   - 全局声音不衰减、不声像
- * 所以远处的声音也还挺响 —— 这是 DDNet 本来的手感(整张图都能听见交火)。
+ *
+ * 单位:DDNet 的 `m_Pos` / `m_Camera.m_Center` 是**世界单位**,1 tile = 32 单位;
+ * 而 wasm 给的 `SoundEvent.x/y` 和 TwCamera 都是 tile。所以半径要换成 tile:
+ *   1500 / 32 = 46.875 tile。直接拿 1500 当 tile 用的话普通地图都在半径内,
+ *   听起来就像完全没有衰减和 panning。
  */
 
-const RADIUS = 1500;
+const RADIUS = 1500 / 32;
+/** DDNet 的 CHN_WORLD 音量是 0.9 * snd_gamevolume;全局通道是 1.0 */
+const WORLD_VOLUME = 0.9;
 const DEFAULT_VOLUME = 0.7;
 
 export class SoundMixer {
@@ -30,6 +36,8 @@ export class SoundMixer {
 		this.enabled = false;
 		/** 拖动进度条/跳转时临时静音,免得糊一堆声音 */
 		this.suppressed = false;
+		/** suspend() 的 promise:resume() 要等它落地 */
+		this.suspendPromise = null;
 	}
 
 	/** 建音频上下文(不碰声音包),没有就建,有就复用 */
@@ -60,6 +68,10 @@ export class SoundMixer {
 	/** 必须在用户手势里调一次:浏览器不给自动播放 */
 	async resume() {
 		if (!this.#ensureContext()) return false;
+		// 可能刚好有一次 suspend 还在路上(切 demo 时 destroy → 立刻 mount)。
+		// 先等它落地,否则 resume 会被那次 suspend 反向覆盖,结果一直是挂起的。
+		await this.suspendPromise;
+		this.suspendPromise = null;
 		if (this.context.state === 'suspended') {
 			await this.context.resume();
 		}
@@ -94,6 +106,12 @@ export class SoundMixer {
 	/** 跳转/拖进度条期间调用,期间所有声音都丢掉 */
 	setSuppressed(suppressed) {
 		this.suppressed = suppressed;
+	}
+
+	/** 播放器隐藏/切 demo 时挂起音频上下文:不占音频线程,也不会有尾音继续播 */
+	suspend() {
+		if (this.context?.state !== 'running') return;
+		this.suspendPromise = this.context.suspend().catch(() => {});
 	}
 
 	/** 一个请求拿到 sounds.zip,解包后逐个解码 */
@@ -167,11 +185,15 @@ export class SoundMixer {
 			let panLeft = 1;
 			let panRight = 1;
 			if (!event.g) {
+				// 和 DDNet 的 `CSound::Play()` 一样:世界声音默认 CIRCLE,半径 1500、
+				// falloff 0,超出半径直接不拨声
 				const dx = event.x - listener.x;
 				const dy = event.y - listener.y;
 				const dist = Math.hypot(dx, dy);
 				gain = (RADIUS - dist) / RADIUS;
 				if (gain <= 0) continue;
+				gain *= WORLD_VOLUME;
+				// 声像:左/右声道只衰减离听者远的那一边(线性,不取常数功率)
 				if (dx > 0) panLeft = (RADIUS - Math.abs(dx)) / RADIUS;
 				else panRight = (RADIUS - Math.abs(dx)) / RADIUS;
 			}
@@ -203,6 +225,7 @@ export class SoundMixer {
 		this.master = null;
 		this.buffers.clear();
 		this.loaded = null;
+		this.suspendPromise = null;
 	}
 }
 

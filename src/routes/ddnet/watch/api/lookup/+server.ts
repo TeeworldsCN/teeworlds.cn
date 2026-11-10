@@ -1,5 +1,5 @@
 import { error, json } from '@sveltejs/kit';
-import { getWatchableEntriesByUuid } from '$lib/server/fetches/watchable';
+import { getWatchableEntriesByUuid, type WatchablePartition } from '$lib/server/fetches/watchable';
 import type { RequestHandler } from './$types';
 
 /**
@@ -7,14 +7,19 @@ import type { RequestHandler } from './$types';
  *
  * 服务端已经缓存并索引了 watchable.jsonl(3.2 MB),所以播放器不用再把这个整文件
  * 拉进浏览器 —— 那正是这里要避免的流量。
+ *
+ * `invalid=1` 时查 `watchables.invalid`(kept 的历史回放),给 DDNet TV 的隐藏模式用。
  */
 export const GET: RequestHandler = async ({ url, setHeaders }) => {
 	const uuid = url.searchParams.get('uuid');
 	if (!uuid) return error(400, 'Missing uuid');
 
+	const invalid = url.searchParams.get('invalid') === '1';
+	const partition: WatchablePartition = invalid ? 'invalid' : 'runs';
+
 	let entries;
 	try {
-		entries = await getWatchableEntriesByUuid(uuid);
+		entries = await getWatchableEntriesByUuid(uuid, partition);
 	} catch {
 		return error(502, 'Upstream watchable list unavailable');
 	}
@@ -28,5 +33,5 @@ export const GET: RequestHandler = async ({ url, setHeaders }) => {
 
 	// 上游清单只在索引重建时变,短时间内可以放心缓存
 	setHeaders({ 'cache-control': 'public, max-age=60' });
-	return json({ entries });
+	return json({ entries, invalid });
 };

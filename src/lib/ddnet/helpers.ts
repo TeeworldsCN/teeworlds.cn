@@ -44,11 +44,14 @@ export const watchLink = (demo: {
 	kind?: string;
 	/** 完成者(团队就是整队) */
 	names?: string[];
+	/** `kept` 的历史回放(DDNet TV 的 invalid 模式):播放器要去 watchables.invalid 里找 */
+	invalid?: boolean;
 }) => {
 	const params = new URLSearchParams({ uuid: demo.uuid });
 	if (demo.time != null) params.set('time', String(demo.time));
 	if (demo.kind) params.set('kind', demo.kind);
 	if (demo.kind == 'solo' && demo.names?.length == 1) params.set('player', demo.names[0]);
+	if (demo.invalid) params.set('invalid', '1');
 	return `/ddnet/watch?${params.toString()}`;
 };
 

@@ -1,6 +1,13 @@
 import { volatile } from './keyv';
 
 interface FetchCacheOptions {
+	/**
+	 * cache key override. default to the url.
+	 *
+	 * Useful when several caches share one upstream url but store different views of it
+	 * (for example watchables.runs / watchables.invalid, both parsed from watchable.jsonl).
+	 */
+	key?: string;
 	/** how often can the cache be checked for updates. default to 60 seconds */
 	minQueryInterval?: number;
 	/** always fetch without making a HEAD request first. default to false */
@@ -22,6 +29,7 @@ type CachedData = {
 
 export class FetchCache<T> {
 	private url: string;
+	private key: string;
 	private nextQueryTime = 0;
 	private minQueryInterval = 60;
 	private version = 1;
@@ -76,7 +84,12 @@ export class FetchCache<T> {
 		}
 
 		this.url = url;
+		this.key = options?.key ?? url;
 		this.transformer = transformer;
+	}
+
+	private cacheKey() {
+		return `dd:cache:${this.key}`;
 	}
 
 	/**
@@ -118,7 +131,7 @@ export class FetchCache<T> {
 				| { result: string; hit: boolean; string: true; timestamp: number }
 				| { data: T; hit: boolean; string: false; timestamp: number } = await (async () => {
 				const now = Date.now();
-				const key = `dd:cache:${this.url}`;
+				const key = this.cacheKey();
 				let cache: CachedData | undefined;
 				if (this.memory) {
 					cache = this.memoryCache.get(key);
@@ -321,7 +334,7 @@ export class FetchCache<T> {
 	 * @returns false if cache does not exist or is not the correct version, otherwise the cached data
 	 */
 	async getCacheAsString(): Promise<string | false> {
-		const key = `dd:cache:${this.url}`;
+		const key = this.cacheKey();
 		let cache: CachedData | undefined;
 		if (this.memory) {
 			cache = this.memoryCache.get(key);
