@@ -95,3 +95,23 @@ export const maps = new FetchCache<MapList>(
 		version: 15
 	}
 );
+
+let thumbnailMemo: { timestamp: number; byName: Map<string, string> } | null = null;
+
+/**
+ * 地图名(小写)→ 缩略图 URL。
+ *
+ * 和 maps 缓存共用一份 timestamp:上游地图列表更新一次才重建一次索引,
+ * DDNet TV 的卡片背景、bot 之类的都能直接用。
+ */
+export const getMapThumbnails = async (): Promise<Map<string, string>> => {
+	const { result, timestamp } = await maps.fetchCache();
+	if (thumbnailMemo && thumbnailMemo.timestamp === timestamp) return thumbnailMemo.byName;
+
+	const byName = new Map<string, string>();
+	for (const map of result) {
+		if (map.thumbnail) byName.set(map.name.toLowerCase(), map.thumbnail);
+	}
+	thumbnailMemo = { timestamp, byName };
+	return byName;
+};

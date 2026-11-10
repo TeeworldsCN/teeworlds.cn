@@ -12,7 +12,7 @@
 	 * 和官方页面的区别:官方页面是整套 DDNet 客户端编译成 wasm(要 cross-origin isolated,
 	 * QQ/微信内置浏览器直接挂);这边是 twgpu 渲染 + Web Audio,单线程 wasm,不需要 SAB。
 	 */
-	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { uaIsStrict } from '$lib/helpers';
 	// 全站共用的皮肤缓存(单例,只拉一次 /api/skins);播放器只按名字查 URL,不自己拼
 	import { getSkinUrl } from '$lib/stores/skins';
@@ -55,6 +55,8 @@
 		demo?: string;
 		rev?: string;
 		cid?: number;
+		/** 名次已经不存在、被上游保留下来的历史回放(只出现在 watchables.invalid) */
+		kept?: boolean;
 	};
 
 	/** 引擎产物的版本号(SSR 时从 version.json 读出来,见 +page.server.ts) */
@@ -77,12 +79,24 @@
 		return `${entry.map} [${formatTime(parseFloat(entry.time))}]${who ? ` - ${who}` : ''}`;
 	};
 
-	onMount(() => {
+	/**
+	 * 播放器跟着 URL 走,而不是 onMount 只跑一次。
+	 *
+	 * SvelteKit 里 `/ddnet/watch?uuid=a` → `?uuid=b` 是同一个路由,组件不会重新挂载;
+	 * DDNet TV 的卡片就是这种跳转,不跟 URL 的话换了 demo 画面还是旧的。
+	 * 切 demo 时旧播放器 destroy、新播放器复用缓存里的引擎/canvas。
+	 */
+	$effect(() => {
+		// 读一下 search 让 effect 跟踪 URL 变化
+		const search = page.url.search;
+		void host;
+
 		let player: { destroy(): void } | null = null;
 		let cancelled = false;
 
 		const run = async () => {
-			const params = new URLSearchParams(location.search);
+			const params = new URLSearchParams(search);
+			const invalid = params.get('invalid') === '1';
 			let demoUrl = '';
 			let title = '';
 			let focus;
@@ -95,6 +109,9 @@
 			const wantedPlayer = params.get('player')?.toLowerCase() ?? null;
 			const pickEntry = (entries: Entry[]) => {
 				let candidates = entries.filter((entry) => entry.demo);
+				// `runs/<uuid>.jsonl` 里正常记录和 kept 记录都有,按链接要找的那份清单优先
+				const samePartition = candidates.filter((entry) => (entry.kept === true) === invalid);
+				if (samePartition.length) candidates = samePartition;
 				if (wantedKind) {
 					const byKind = candidates.filter((entry) => entry.kind === wantedKind);
 					if (byKind.length) candidates = byKind;
@@ -137,6 +154,7 @@
 				const lookupUrl = new URL(`${API}/lookup`, location.href);
 				lookupUrl.searchParams.set('uuid', uuid);
 				if (wanted !== null) lookupUrl.searchParams.set('time', wanted);
+				if (invalid) lookupUrl.searchParams.set('invalid', '1');
 				const lookup = await fetch(lookupUrl);
 				if (!lookup.ok) return null;
 				const { entries } = (await lookup.json()) as { entries?: Entry[] };
@@ -151,6 +169,7 @@
 				const uuid = params.get('uuid')!;
 				const found = await findEntry(uuid, params.get('time'));
 
+				if (cancelled) return;
 				if (!found) {
 					message = '过图回放还没有预生成的 demo';
 					return;
@@ -180,7 +199,7 @@
 			const engine = (await import(/* @vite-ignore */ demoModuleUrl)) as DemoModule;
 			if (cancelled || !host) return;
 			const inApp = uaIsStrict(navigator.userAgent);
-			player = await engine.mountDemoPlayer(host, {
+			const created = await engine.mountDemoPlayer(host, {
 				demoUrl,
 				title,
 				focus,
@@ -193,6 +212,9 @@
 				// 其它浏览器照旧自己探测、失败再回退
 				backend: inApp ? 'webgl' : undefined
 			});
+			// 加载过程中又换了 demo:这份播放器已经没人要了,立刻放掉
+			if (cancelled) created?.destroy();
+			else player = created;
 		};
 
 		void run();
