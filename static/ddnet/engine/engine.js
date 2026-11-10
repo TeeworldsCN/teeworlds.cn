@@ -16,10 +16,9 @@
  *
  * @typedef {any} WasmModule
  * @typedef {{ backend: 'webgpu' | 'webgl', mipmaps: boolean, tilemapMips: boolean }} GraphicsPlan
- * @typedef {{ canvas?: HTMLCanvasElement, createCanvas?: () => HTMLCanvasElement,
- *   rememberKey?: string, backend?: 'webgpu' | 'webgl' | null, font?: boolean,
- *   nameplateCpuSdf?: boolean, onStatus?: (text: string) => void }} BootOptions
- * @typedef {{ module: WasmModule, gpu: any, canvas: HTMLCanvasElement, backend: 'webgpu' | 'webgl' }} Booted
+ * @typedef {{ host?: HTMLElement | null, canvasClass?: string, canvasFocus?: boolean,
+ *   rememberKey?: string | null, backend?: 'webgpu' | 'webgl' | null, font?: boolean,
+ *   nameplateCpuSdf?: boolean, onStatus?: (text: string) => void }} AcquireOptions
  */
 
 export const BASE = '/ddnet/engine';
@@ -248,7 +247,7 @@ export const loadTextures = async (gpu, { font = true } = {}) => {
 /**
  * 一份 TwGpu(device + 贴图 + 字体)。canvas 可以不传,之后用 create_surface。
  *
- * 多数场景直接用 `bootRenderer`,它把后端探测和回退也包了。
+ * 页面里一般用 `acquireRenderer`,它在这个基础上把后端探测、回退和**持久缓存**都包了。
  *
  * @param {WasmModule} module
  * @param {HTMLCanvasElement | null} [canvas]
@@ -290,36 +289,109 @@ const withTimeout = (promise, ms, message) =>
 	]);
 
 /**
- * 统一渲染器启动:选后端 → 载入 wasm → 建 TwGpu → 装贴图。
- * demo 播放器和地图预览页共用这一份,不再各写一遍。
+ * 一个已经建好的持久渲染器:
+ * wasm 实例 + GPU device + 贴图 + 一块长期 canvas + 绑定在这块 canvas 上的 surface。
+ *
+ * WebGL 后端的一个 device 只能往它初始化时绑定的那块 canvas 上呈现(见 wgpu-hal 的
+ * web.rs),所以 canvas 必须跟 device 一起缓存,不能每次挂载新建一块。
+ *
+ * @typedef {object} Renderer
+ * @property {WasmModule} module
+ * @property {any} gpu
+ * @property {HTMLCanvasElement} canvas
+ * @property {any} surface
+ * @property {'webgpu' | 'webgl'} backend
+ */
+
+/** @type {Map<string, Promise<Renderer>>} */
+const rendererBoots = new Map();
+/** @type {Map<string, Renderer>} */
+const renderers = new Map();
+
+/**
+ * 已经建好、可以直接用的渲染器(没建过就是 null)
+ * @param {string} slot
+ */
+export const loadedRenderer = (slot) => renderers.get(slot) ?? null;
+
+/**
+ * 取一个按 slot 持久化的渲染器。
+ *
+ * 第一次调用会很慢(描后端、载 wasm、建 device、传贴图),之后同一个 slot 只是把长期
+ * canvas 挂进新的容器 —— 显示/隐藏、切 demo、开关地图预览都不需要重建 GPU。
+ * 不用的时候调用方只要停掉自己的 rAF(或者整个组件卸掉),引擎本身什么都不做,
+ * 内存留着,没有后台循环。
+ *
+ * demo 播放器和地图预览用不同的 slot,各自一块长期 canvas;同一个 slot 内(反复切 demo、
+ * 反复开关预览)则一直复用同一份 device / 贴图 / canvas。
+ *
+ * @param {string} slot 缓存槽位(比如 'demo' / 'mappreview')
+ * @param {object} [options]
+ * @param {HTMLElement|null} [options.host] 把 canvas 挂到这里
+ * @param {string} [options.canvasClass] canvas 的 class(只在第一次创建时设置)
+ * @param {boolean} [options.canvasFocus] 是否让 canvas 可以接收键盘焦点(地图预览需要)
+ * @param {string|null} [options.rememberKey] 记录/读取后端选择的 localStorage key
+ * @param {'webgpu' | 'webgl' | null} [options.backend] 强制后端(内置浏览器传 'webgl')
+ * @param {boolean} [options.font] 是否下载 TTF 字体(demo 播放器用 DOM 名字牌,不需要)
+ * @param {boolean} [options.nameplateCpuSdf] 名字牌的 SDF 在 wasm 里用 CPU 算(X5 专用)
+ * @param {(text: string) => void} [options.onStatus] 进度文本
+ * @returns {Promise<Renderer>}
+ */
+export const acquireRenderer = async (slot, options = {}) => {
+	let boot = rendererBoots.get(slot);
+	if (!boot) {
+		boot = bootRenderer(options)
+			.then((renderer) => {
+				renderers.set(slot, renderer);
+				return renderer;
+			})
+			.catch((error) => {
+				// 失败的下一次还要能重试
+				rendererBoots.delete(slot);
+				renderers.delete(slot);
+				throw error;
+			});
+		rendererBoots.set(slot, boot);
+	}
+
+	const renderer = await boot;
+	// 显示的时候只是把同一个 canvas 挪进新容器,不重新建 surface/device
+	if (options.host && renderer.canvas.parentElement !== options.host) {
+		options.host.appendChild(renderer.canvas);
+	}
+	return renderer;
+};
+
+/**
+ * 真正建渲染器(只会在 slot 第一次使用时跑一次)。
  *
  * 处理了几个只有真实浏览器才会遇到的坑:
  * - QQ / X5 的 `navigator.gpu` 是桩,`requestAdapter()` 永不 resolve → 探测带 1.5s 超时
  * - 即使探测通过,真建 device 时也可能失败 → 自动退回 WebGL 并记住(换新 wasm 实例,
  *   因为同一个实例上不能再 init 一次,全局 logger 会 panic)
+ * - canvas 一旦绑过某种上下文,回退时再要另一种会拿到 null → 换一块新 canvas
  *
  * @param {object} opts
- * @param {HTMLCanvasElement|null} [opts.canvas] 已有 canvas(demo 播放器)
- * @param {() => HTMLCanvasElement} [opts.createCanvas] 每次新建 canvas(地图预览页)
- * @param {string|null} [opts.rememberKey] 记录/读取后端选择的 localStorage key
- * @param {boolean} [opts.font] 是否下载 TTF 字体(demo 播放器用 DOM 名字牌,不需要)
- * @param {boolean} [opts.nameplateCpuSdf] 名字牌的 SDF 在 wasm 里用 CPU 算(X5 专用,
- *   绕开 GPU 的「渲染到纹理 + copy 进 atlas」)
- * @param {(text: string) => void} [opts.onStatus] 进度文本
- * @returns {Promise<Booted>}
+ * @param {HTMLElement|null} [opts.host]
+ * @param {string} [opts.canvasClass]
+ * @param {boolean} [opts.canvasFocus]
+ * @param {string|null} [opts.rememberKey]
+ * @param {'webgpu' | 'webgl' | null} [opts.backend]
+ * @param {boolean} [opts.font]
+ * @param {boolean} [opts.nameplateCpuSdf]
+ * @param {(text: string) => void} [opts.onStatus]
+ * @returns {Promise<Renderer>}
  */
-export const bootRenderer = async (
-	/** @type {BootOptions} */
-	{
-		canvas,
-		createCanvas,
-		rememberKey,
-		backend = null,
-		font = true,
-		nameplateCpuSdf = false,
-		onStatus = () => {}
-	} = {}
-) => {
+const bootRenderer = async ({
+	host = null,
+	canvasClass = '',
+	canvasFocus = false,
+	rememberKey = null,
+	backend = null,
+	font = true,
+	nameplateCpuSdf = false,
+	onStatus = () => {}
+} = {}) => {
 	/** @type {GraphicsPlan} */
 	let plan = /** @type {GraphicsPlan} */ (
 		await planGraphics({ rememberKey: rememberKey ?? null, backend })
@@ -330,97 +402,123 @@ export const bootRenderer = async (
 		);
 	}
 
-	onStatus('加载渲染引擎…');
-	let module = await freshEngine();
-
-	/**
-	 * 拿一块**没被用过**的 canvas。
-	 *
-	 * 关键:一个 canvas 一旦绑过某种上下文,再要另一种会直接返回 null
-	 * (`getContext() returned null; webgl2 not available or canvas already in use`)。
-	 * WebGPU 探测成功、真建 surface 时才失败的内置浏览器(QQ/X5)就会踩到:
-	 * 第一次是 webgpu 把 canvas 占了,回退到 webgl 时同一个 canvas 再也拿不到 webgl2。
-	 * 所以回退必须换一块新的 —— 调用方给了 `createCanvas` 就用它的,
-	 * 没给就把原来那块(它在 DOM 里)换成克隆出来的新 canvas,位置不变。
-	 * @returns {HTMLCanvasElement | null}
-	 */
-	const nextCanvas = () => {
-		if (createCanvas) return createCanvas();
-		if (!canvas) return null;
-		if (!reused) {
-			reused = true;
-			return canvas;
-		}
-		const fresh = /** @type {HTMLCanvasElement} */ (canvas.cloneNode(false));
-		canvas.replaceWith(fresh);
-		canvas = fresh;
-		return fresh;
-	};
-	/** 第一次请求 canvas 不用克隆 */
-	let reused = false;
-
-	/**
-	 * @param {'webgpu' | 'webgl'} backend
-	 * @param {boolean} mipmaps
-	 */
-	const build = async (backend, mipmaps) => {
-		const target = nextCanvas();
-		if (!target) throw new Error('没有可用的 canvas');
-		const gpu = await withTimeout(
-			// TwGpu::init 是 async constructor:wasm-bindgen 导出的类要用 new,返回 Promise
-			new module.TwGpu(backend, target, mipmaps, plan.tilemapMips, nameplateCpuSdf),
-			backend === 'webgpu' ? 6000 : 12000,
-			'创建图形设备失败(这个浏览器可能不支持 WebGL2 / WebGPU,试试用系统浏览器打开)'
-		);
-		return { gpu, canvas: target };
+	/** 新建一块 canvas 并挂进 host;重试时旧的那块要拿掉 */
+	const makeCanvas = () => {
+		const canvas = document.createElement('canvas');
+		if (canvasClass) canvas.className = canvasClass;
+		if (canvasFocus) canvas.tabIndex = 0;
+		canvas.style.touchAction = 'none';
+		host?.appendChild(canvas);
+		return canvas;
 	};
 
-	onStatus('初始化图形设备…');
-	/** @type {{ gpu: any; canvas: HTMLCanvasElement } | null} */
-	let built = null;
-	/**
-	 * 每个后端最多试两次:第一次用现成的 canvas,失败就换一块新的再来一次。
-	 *
-	 * 内置浏览器(X5)有个很烦的行为:canvas 的 WebGL 上下文可能一次拿不到
-	 * (`canvas.getContext() returned null ... already in use`),同一块 canvas 再要
-	 * webgl2 永远是 null —— 但换一块新的就好了。WebGPU 失败再退 WebGL 也走同一条路。
-	 */
-	/** @type {('webgpu' | 'webgl')[]} */
-	const backends = plan.backend === 'webgpu' ? ['webgpu', 'webgl'] : ['webgl'];
-	let lastError = null;
-	for (const backend of backends) {
-		for (let attempt = 0; attempt < 2 && !built; attempt++) {
-			try {
-				built = await build(backend, plan.mipmaps);
-				plan = { ...plan, backend };
-				// 能从 webgpu 退到 webgl 说明这台机器别再试 WebGPU 了,记下来
-				if (backend === 'webgl' && backends.length > 1) rememberBackend(rememberKey, 'webgl');
-			} catch (error) {
-				lastError = error;
-				console.warn(`初始化 ${backend} 失败(第 ${attempt + 1} 次)`, error);
-				// 同一个 wasm 实例上不能再 init 一次(全局 logger 会 panic),换一份新实例
-				if (attempt === 0) module = await freshEngine();
+	/** @type {HTMLCanvasElement} */
+	let canvas = makeCanvas();
+
+	try {
+		onStatus('加载渲染引擎…');
+		let module = await freshEngine();
+
+		/** @param {'webgpu' | 'webgl'} nextBackend */
+		const build = async (nextBackend) =>
+			withTimeout(
+				// TwGpu::init 是 async constructor:wasm-bindgen 导出的类要用 new,返回 Promise
+				new module.TwGpu(nextBackend, canvas, plan.mipmaps, plan.tilemapMips, nameplateCpuSdf),
+				nextBackend === 'webgpu' ? 6000 : 12000,
+				'创建图形设备失败(这个浏览器可能不支持 WebGL2 / WebGPU,试试用系统浏览器打开)'
+			);
+
+		onStatus('初始化图形设备…');
+		/** @type {any} */
+		let gpu = null;
+		/**
+		 * 每个后端最多试两次:第一次用现成的 canvas,失败就换一块新的再来一次。
+		 *
+		 * 内置浏览器(X5)有个很烦的行为:canvas 的 WebGL 上下文可能一次拿不到
+		 * (`canvas.getContext() returned null ... already in use`),同一块 canvas 再要
+		 * webgl2 永远是 null —— 但换一块新的就好了。WebGPU 失败再退 WebGL 也走同一条路。
+		 */
+		/** @type {('webgpu' | 'webgl')[]} */
+		const backends = plan.backend === 'webgpu' ? ['webgpu', 'webgl'] : ['webgl'];
+		let lastError = null;
+		for (const nextBackend of backends) {
+			for (let attempt = 0; attempt < 2 && !gpu; attempt++) {
+				try {
+					gpu = await build(nextBackend);
+					plan = { ...plan, backend: nextBackend };
+					// 能从 webgpu 退到 webgl 说明这台机器别再试 WebGPU 了,记下来
+					if (nextBackend === 'webgl' && backends.length > 1) {
+						rememberBackend(rememberKey, 'webgl');
+					}
+				} catch (error) {
+					lastError = error;
+					console.warn(`初始化 ${nextBackend} 失败(第 ${attempt + 1} 次)`, error);
+					if (attempt === 0) {
+						// 同一个 wasm 实例上不能再 init 一次(全局 logger 会 panic),换一份新实例;
+						// 被失败后端占过的 canvas 也换掉
+						module = await freshEngine();
+						const next = makeCanvas();
+						canvas.remove();
+						canvas = next;
+					}
+				}
 			}
+			if (gpu) break;
 		}
-		if (built) break;
-	}
-	if (!built) throw lastError ?? new Error('创建图形设备失败');
+		if (!gpu) throw lastError ?? new Error('创建图形设备失败');
 
-	onStatus('加载贴图…');
-	await loadTextures(built.gpu, { font });
-	return { module, gpu: built.gpu, canvas: built.canvas, backend: plan.backend };
+		// TwGpu 初始化时带了一块 canvas,surface 已经建好了,这里取出来当长期 surface,
+		// 不要留在 gpu 里 —— 否则下一次 gpu.surface() 会拿到这块,切换画面时容易混
+		const surface = gpu.surface();
+		if (!surface) throw new Error('渲染器没有创建出 surface');
+
+		onStatus('加载贴图…');
+		await loadTextures(gpu, { font });
+		return { module, gpu, canvas, surface, backend: plan.backend };
+	} catch (error) {
+		canvas.remove();
+		throw error;
+	}
 };
+
+/**
+ * 地图缓存:按 gpu 分(一张地图的 GPU 资源是挂在某块 device 的 map_static 上的)。
+ * 一个 gpu 同时只有一个使用方(demo 或地图预览),所以淘汰最久没用的那份是安全的。
+ *
+ * @type {WeakMap<any, Map<string, { map: any, version: string, missing: string[], usedAt: number }>>}
+ */
+const mapCaches = new WeakMap();
+const MAP_CACHE_LIMIT = 12;
 
 /**
  * 把地图字节变成可渲染的 TwMap。
  * 地图里引用的外部 mapres 按名字去 assets/mapres_06|07 里取(和 ddnet 官网预览一致)。
- */
-/**
+ *
+ * `key` 是跨挂载复用的缓存键(同一块 device 上同一张图只上传一次):
+ * demo 用 header 里的 map sha256,地图预览用地图名。
+ * 地图对象可能同时被别处引用,淘汰时只丢最久没用的那份;上限 12 张,
+ * 正常翻 demo / 换预览图不会攒到爆。
+ *
  * @param {WasmModule} module
  * @param {any} gpu
  * @param {Uint8Array} bytes
+ * @param {string|null} [key]
  */
-export const loadMap = async (module, gpu, bytes) => {
+export const loadMap = async (module, gpu, bytes, key = null) => {
+	/** @type {Map<string, { map: any, version: string, missing: string[], usedAt: number }> | undefined} */
+	let cache = mapCaches.get(gpu);
+	if (!cache) {
+		cache = new Map();
+		mapCaches.set(gpu, cache);
+	}
+	if (key) {
+		const hit = cache.get(key);
+		if (hit) {
+			hit.usedAt = Date.now();
+			return hit;
+		}
+	}
+
 	const intermediate = new module.TwMapIntermediate(bytes);
 	const mapres = intermediate.external_mapres();
 	const version = intermediate.version() === 'Teeworlds07' ? '07' : '06';
@@ -438,8 +536,39 @@ export const loadMap = async (module, gpu, bytes) => {
 			}
 		})
 	);
+	if (missing.length) {
+		// 图片不全时 upload_map 会在 wasm 里报一个看不懂的 "Not all images in map are embedded",
+		// 这里先给一句人话(地图预览页会把错误直接显示出来)
+		throw new Error(`这张地图用到了我们没收录的外部贴图:${missing.join('、')}`);
+	}
 	const map = gpu.upload_map(intermediate);
-	return { map, version, missing };
+
+	/** @type {{ map: any, version: string, missing: string[], usedAt: number }} */
+	const entry = { map, version, missing, usedAt: Date.now() };
+	if (key) {
+		cache.set(key, entry);
+		if (cache.size > MAP_CACHE_LIMIT) {
+			let oldestKey = null;
+			let oldestAt = Infinity;
+			for (const [candidate, value] of cache) {
+				if (candidate !== key && value.usedAt < oldestAt) {
+					oldestAt = value.usedAt;
+					oldestKey = candidate;
+				}
+			}
+			if (oldestKey !== null) {
+				const evicted = cache.get(oldestKey);
+				cache.delete(oldestKey);
+				try {
+					// 只放在缓存里的旧图,没人在画了才能释放
+					evicted?.map?.free();
+				} catch {
+					// 已经释放过
+				}
+			}
+		}
+	}
+	return entry;
 };
 
 /**

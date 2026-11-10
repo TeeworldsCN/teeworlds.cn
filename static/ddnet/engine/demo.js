@@ -23,7 +23,7 @@ const withVersion = (file) => (VERSION ? `${file}?v=${VERSION}` : file);
 const { SoundMixer } = await import(/* @vite-ignore */ withVersion('./sound.js'));
 const {
 	BASE,
-	bootRenderer,
+	acquireRenderer,
 	ENTITIES,
 	fetchBytes,
 	fetchMapByName,
@@ -33,6 +33,12 @@ const {
 	readEntitiesStyle,
 	writeEntitiesStyle
 } = await import(/* @vite-ignore */ withVersion('./engine.js'));
+
+/**
+ * 声音混音器也跨挂载复用:AudioContext 建一次不便宜,切换 demo 时没必要重建。
+ * 播放器关掉时只 suspend(省 CPU/电),下次显示时继续用同一套已解码的音效。
+ */
+let sharedMixer = null;
 
 /** 自由视角的缩放范围,和地图预览页(mappreview)保持一致 */
 const ZOOM_MIN = 0.05;
@@ -283,7 +289,10 @@ export async function mountDemoPlayer(host, options) {
 	const style = element('style');
 	style.textContent = CSS;
 	const root = element('div', 'tw-player');
-	let canvas = element('canvas', 'tw-canvas');
+	// canvas 由 engine.js 的持久缓存提供(第一次挂载时创建,之后一直复用);
+	// 这里只保留一个占位变量,等 acquireRenderer 回来后再插到 overlay 前面
+	/** @type {HTMLCanvasElement | null} */
+	let canvas = null;
 	// 名字牌由 JS 用 Canvas2D 画成贴图(浏览器自带字体,不用为 CJK 单独塞一份字体)
 	const overlay = element('div', 'tw-overlay');
 	const status = element('div', 'tw-status', '加载引擎…');
@@ -477,7 +486,7 @@ export async function mountDemoPlayer(host, options) {
 		fullscreenButton.remove();
 	}
 	bar.append(whoRow, seekRow, mainRow);
-	root.append(canvas, overlay);
+	root.append(overlay);
 	if (title) root.append(top);
 	root.append(bar);
 	host.append(style, root);
@@ -492,37 +501,50 @@ export async function mountDemoPlayer(host, options) {
 	};
 
 	let destroyed = false;
-	const mixer = new SoundMixer({ base: BASE, version: await getVersion() });
+	/** 下载按钮的 blob URL,销毁时要 revoke,不然每看一场就攒一个 demo 大小的 blob */
+	let downloadUrl = '';
+	// AudioContext 只建一次;切 demo / 离开页面时 suspend,回来时继续用
+	const mixer = (sharedMixer ??= new SoundMixer({ base: BASE, version: await getVersion() }));
+	mixer.setSuppressed(false);
 	// 先按"不给出声"算,下面拿到权限再决定(见文件末尾的 initMuted)
 	let muted = true;
 
 	try {
-		// 后端探测 / X5 的 WebGPU 回退 / wasm 实例 / 贴图加载都在 bootRenderer 里,
-		// 和地图预览页共用同一份实现(那些坑只在 engine.js 修一次)。
+		// 后端探测 / X5 的 WebGPU 回退 / wasm 实例 / 贴图加载都在 acquireRenderer 里。
+		// 同一个 slot 第二次进来时这里几乎是瞬时的:device 和贴图都还在,canvas 只是被
+		// 挪进新的播放器容器(WebGL 的 device 和 canvas 是绑定的,不能换一块新 canvas)。
 		// 名字牌是 JS 用 Canvas2D + 系统字体画的贴图,wasm 里的 SDF 字体用不上,
 		// 别白下 757 KB 的 ttf。
-		const {
-			module,
-			gpu,
-			canvas: activeCanvas
-		} = await bootRenderer({
-			canvas,
+		const renderer = await acquireRenderer('demo', {
+			host: root,
+			canvasClass: 'tw-canvas',
 			font: false,
 			onStatus: setStatus,
 			// X5 上「渲染到纹理 + copy 进 atlas」不通,名字牌的 SDF 改在 wasm 里用 CPU 算
 			nameplateCpuSdf: inApp,
 			...options.gpu
 		});
-		// 后端回退时 bootRenderer 可能换了一块新 canvas(旧的那块已经绑过上下文),
-		// 后面的 surface / 事件 / 尺寸计算都得用它的
-		if (activeCanvas && activeCanvas !== canvas) canvas = activeCanvas;
 		if (destroyed) return null;
+
+		const { module, gpu, surface } = renderer;
+		canvas = renderer.canvas;
+		// canvas 必须压在 overlay / 控制条下面
+		root.insertBefore(canvas, overlay);
+
+		// canvas 是长期复用的,事件监听必须按挂载解绑;否则上一份 demo 的闭包还挂在上面
+		/** @type {[string, EventListener, AddEventListenerOptions | undefined][]} */
+		const canvasListeners = [];
+		const listen = (type, handler, opts) => {
+			canvas.addEventListener(type, handler, opts);
+			canvasListeners.push([type, handler, opts]);
+		};
 
 		setStatus('读取 demo…');
 		const raw = demoBytes ?? (await fetchBytes(demoUrl));
 		const bytes = await gunzip(raw);
 		if (!inApp) {
-			download.href = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+			downloadUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+			download.href = downloadUrl;
 		}
 
 		const intermediate = new module.TwDemoIntermediate(bytes);
@@ -530,12 +552,22 @@ export async function mountDemoPlayer(host, options) {
 		seek.max = String(Math.max(1, Math.round(length * 1000)));
 
 		setStatus(`加载地图 ${intermediate.map_name}…`);
-		// demo 里内嵌了地图就用内嵌的(自己录的 demo 都有),否则按名字去代理取
+		// demo 里内嵌了地图就用内嵌的(自己录的 demo 都有),否则按名字去代理取。
+		// 地图按 demo header 里的 sha256 缓存:同一张图连续看几场只上传一次 GPU 资源。
 		const embedded = intermediate.contained_map_data();
+		const mapKey = embedded
+			? `sha256:${intermediate.map_sha256}`
+			: `file:${intermediate.map_name.toLowerCase()}`;
 		let map;
 		try {
-			map = (await loadMap(module, gpu, embedded ?? (await fetchMapByName(intermediate.map_name))))
-				.map;
+			map = (
+				await loadMap(
+					module,
+					gpu,
+					embedded ?? (await fetchMapByName(intermediate.map_name)),
+					mapKey
+				)
+			).map;
 		} catch (error) {
 			if (!embedded) throw error;
 			// 内嵌的那份地图偶尔比 twmap 的校验更"脏":比如 Sunny Side Up 的 SoundSource
@@ -543,12 +575,19 @@ export async function mountDemoPlayer(host, options) {
 			// 退回用站内代理取的**当前版本**同一张图(可能和录像当时的版本略有出入,但能看)。
 			console.warn('[map] 内嵌地图加载失败,改用当前版本:', error);
 			setStatus(`内嵌地图有问题,改用当前版本…`);
-			map = (await loadMap(module, gpu, await fetchMapByName(intermediate.map_name))).map;
+			map = (
+				await loadMap(
+					module,
+					gpu,
+					await fetchMapByName(intermediate.map_name),
+					`file:${intermediate.map_name.toLowerCase()}`
+				)
+			).map;
 		}
 
 		const demo = intermediate.build(map);
 		const camera = new module.TwCamera(1);
-		const surface = gpu.create_surface(canvas);
+		// surface 由持久渲染器持有(绑定在长期 canvas 上),切 demo / 重进页面都复用它
 
 		// 显示偏好要在这里读:下面的 resize 一创建就会跑一次,得先知道性能模式开没开
 		const prefs = readPrefs();
@@ -626,6 +665,8 @@ export async function mountDemoPlayer(host, options) {
 		let dragging = false;
 		let frame = 0;
 		let lastFrameTime = 0;
+		/** rAF 循环是否在跑:切后台/销毁时停掉,回到前台再开 */
+		let loopRunning = false;
 		let seekbarHold = 0;
 		/** 上次刷新控制栏的时间(performance.now 量级,10 Hz) */
 		let uiUpdatedAt = 0;
@@ -961,7 +1002,19 @@ export async function mountDemoPlayer(host, options) {
 			}
 		};
 		const onVisibilityChange = () => {
-			if (document.visibilityState === 'visible') void acquireWakeLock();
+			if (document.visibilityState === 'visible') {
+				void acquireWakeLock();
+				// 切回来时别让暂停的循环一直躺着:重新起帧,第一帧 dt=0 不会跳时间
+				startLoop();
+				mixer.setSuppressed(false);
+				if (!muted) void mixer.resume();
+			} else {
+				// 标签页不可见就彻底停掉渲染循环,把 CPU/GPU 让出来;音频也挂起
+				stopLoop();
+				void releaseWakeLock();
+				mixer.setSuppressed(true);
+				mixer.suspend();
+			}
 		};
 		document.addEventListener('visibilitychange', onVisibilityChange);
 
@@ -1668,7 +1721,7 @@ export async function mountDemoPlayer(host, options) {
 		};
 
 		const tick = (now) => {
-			if (destroyed) return;
+			if (destroyed || !loopRunning) return;
 			frame = requestAnimationFrame(tick);
 			// 上限放宽一点:软件渲染(GPU 不给力)时帧率可能只有个位数,
 			// 掐太狠会让回放比真实时间慢
@@ -1800,6 +1853,19 @@ export async function mountDemoPlayer(host, options) {
 				perf.frames.push(prof);
 				if (perf.frames.length > 20000) perf.frames.shift();
 			}
+		};
+
+		/** 起/停 rAF 循环:不显示时不跑任何帧,引擎(device/贴图)留在缓存里 */
+		const startLoop = () => {
+			if (destroyed || loopRunning || document.hidden) return;
+			loopRunning = true;
+			// 暂停期间攒下的时间不能一次性喂给 demo(会跳帧),第一帧按 dt=0 处理
+			lastFrameTime = 0;
+			frame = requestAnimationFrame(tick);
+		};
+		const stopLoop = () => {
+			loopRunning = false;
+			cancelAnimationFrame(frame);
 		};
 
 		// ---- 交互 ----
@@ -2063,7 +2129,7 @@ export async function mountDemoPlayer(host, options) {
 		};
 		zoomIn.addEventListener('click', () => zoomStep(1 / 1.25));
 		zoomOut.addEventListener('click', () => zoomStep(1.25));
-		canvas.addEventListener(
+		listen(
 			'wheel',
 			(event) => {
 				event.preventDefault();
@@ -2093,7 +2159,7 @@ export async function mountDemoPlayer(host, options) {
 			canvas.style.cursor = follow === null ? 'grab' : 'default';
 		};
 
-		canvas.addEventListener('pointerdown', (event) => {
+		listen('pointerdown', (event) => {
 			pointers.set(event.pointerId, normalize(event));
 			try {
 				canvas.setPointerCapture(event.pointerId);
@@ -2103,8 +2169,7 @@ export async function mountDemoPlayer(host, options) {
 			if (pointers.size === 1 && follow === null) canvas.style.cursor = 'grabbing';
 			updateCursor();
 		});
-
-		canvas.addEventListener('pointermove', (event) => {
+		listen('pointermove', (event) => {
 			if (!pointers.has(event.pointerId)) return;
 			const previous = pointers.get(event.pointerId);
 			const current = normalize(event);
@@ -2143,8 +2208,8 @@ export async function mountDemoPlayer(host, options) {
 			}
 			updateCursor();
 		};
-		canvas.addEventListener('pointerup', endPointer);
-		canvas.addEventListener('pointercancel', endPointer);
+		listen('pointerup', endPointer);
+		listen('pointercancel', endPointer);
 		updateCursor();
 
 		// 任何点击都算用户手势,让声音能起来
@@ -2186,7 +2251,7 @@ export async function mountDemoPlayer(host, options) {
 		paintTime(formatTime(time));
 		duration.textContent = formatTime(length);
 		setPlaying(Number.isFinite(length) && length > 0);
-		frame = requestAnimationFrame(tick);
+		startLoop();
 
 		const api = {
 			get time() {
@@ -2305,14 +2370,38 @@ export async function mountDemoPlayer(host, options) {
 			},
 			destroy() {
 				destroyed = true;
-				cancelAnimationFrame(frame);
+				// 只停自己的循环和资源:wasm 实例 / GPU device / 贴图 / canvas 都留在
+				// engine.js 的缓存里,下次进来(或切到下一场 demo)直接接着用
+				stopLoop();
 				observer.disconnect();
 				window.removeEventListener('keydown', onKey);
 				document.removeEventListener('pointerdown', onDocumentPointerDown, true);
 				document.removeEventListener('visibilitychange', onVisibilityChange);
 				dprQuery?.removeEventListener?.('change', onDprChange);
+				for (const [type, handler, opts] of canvasListeners) {
+					canvas.removeEventListener(type, handler, opts);
+				}
 				void releaseWakeLock();
-				mixer.close();
+				// 音频上下文也留着(解码好的音效很贵),只挂起省资源
+				mixer.setEnabled(false);
+				mixer.setSuppressed(true);
+				mixer.suspend();
+				if (downloadUrl) {
+					URL.revokeObjectURL(downloadUrl);
+					downloadUrl = '';
+				}
+				// 每份 demo / 相机是独立的 wasm 资源,必须放掉;地图由 engine.js 的
+				// 上传缓存管理,下一场同一个图直接复用
+				try {
+					demo.free();
+				} catch {
+					// 已经释放过了
+				}
+				try {
+					camera.free();
+				} catch {
+					// 已经释放过了
+				}
 				// 实体层那份地图是额外上传的一份 wasm 资源,不释放就跟着页面泄露
 				try {
 					entitiesView?.free();
@@ -2320,6 +2409,8 @@ export async function mountDemoPlayer(host, options) {
 					// 已经释放过了
 				}
 				entitiesView = null;
+				// canvas 从 DOM 里摘下来(对象和 surface 留着);root 里剩下的控件全部丢掉
+				canvas.remove();
 				root.remove();
 				style.remove();
 			}

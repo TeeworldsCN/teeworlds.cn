@@ -26,9 +26,9 @@
 	// 和 demo 播放器只有一份实现(QQ/X5 那些坑只在那边修一次)
 	import {
 		ENTITIES,
-		assetUrl,
-		bootRenderer,
+		acquireRenderer,
 		fetchBytes,
+		loadMap as uploadMap,
 		readEntitiesStyle,
 		writeEntitiesStyle
 	} from '../../../../static/ddnet/engine/engine.js';
@@ -129,7 +129,7 @@
 		if (zoom !== camera.zoom) camera.zoom = zoom;
 	};
 
-	// ---- 一次预览 = 一份 wasm 实例 + canvas + wgpu device,关掉就全放掉 ----
+	// ---- 预览复用一份持久渲染器:关闭只停渲染,再次打开直接挂回同一块 canvas ----
 	let module: MpModule | null = null;
 	let gpu: MpGpu | null = null;
 	let surface: MpSurface | null = null;
@@ -137,6 +137,10 @@
 	let canvasEl: HTMLCanvasElement | null = null;
 	let bootPromise: Promise<void> | null = null;
 	let aspect = 1;
+	/** 组件被卸载后异步 boot 还在跑:回来时不要再往已经没了的 host 上挂东西 */
+	let disposed = false;
+	/** 当前绑了事件监听的那块 canvas(跨组件实例复用的 canvas,必须按挂载解绑) */
+	let boundCanvas: HTMLCanvasElement | null = null;
 
 	let mapView: MpMap | null = null;
 	let entitiesView: MpMap | null = null;
@@ -146,6 +150,10 @@
 	let time = 0;
 	let lastTimestamp: number | null = null;
 	let loadToken = 0;
+	/** 已经上传好的地图名;关掉预览再打开同一张图时不用重新上传 */
+	let loadedName: string | null = null;
+	/** 预览是否处于打开状态(关掉时只暂停渲染,引擎和地图都留着) */
+	let previewing = false;
 
 	const pointers = new Map<number, [number, number]>();
 
@@ -188,7 +196,7 @@
 	};
 
 	const startRendering = () => {
-		if (rendering) return;
+		if (rendering || document.hidden) return;
 		rendering = true;
 		lastTimestamp = null;
 		raf = requestAnimationFrame(draw);
@@ -313,25 +321,28 @@
 		return Math.min(window.devicePixelRatio || 1, 2);
 	};
 
-	/** 每次预览都换一块新 canvas:旧 context 跟着旧 device 一起还给浏览器 */
-	const createCanvas = () => {
-		const canvas = document.createElement('canvas');
-		canvas.tabIndex = 0;
-		canvas.className = 'block h-full w-full outline-none';
-		canvas.style.touchAction = 'none';
-		canvas.addEventListener('pointerdown', onPointerDown);
-		canvas.addEventListener('pointermove', onPointerMove);
-		canvas.addEventListener('pointerup', onPointerUp);
-		canvas.addEventListener('pointercancel', onPointerUp);
-		canvas.addEventListener('wheel', onWheel, { passive: false });
-		canvas.addEventListener('keydown', onKeyDown);
-		canvas.addEventListener('dblclick', resetView);
-		host?.appendChild(canvas);
-		canvas.focus({ preventScroll: true });
-		return canvas;
+	/**
+	 * canvas 是 engine.js 里持久缓存的那一块(WebGL 的 device 和 canvas 绑定),
+	 * 每次打开预览只是把它挂进当前 host、重新绑一遍交互事件。
+	 */
+	const bindCanvas = () => {
+		if (!canvasEl || boundCanvas === canvasEl) return;
+		unbindCanvas();
+		boundCanvas = canvasEl;
+		canvasEl.addEventListener('pointerdown', onPointerDown);
+		canvasEl.addEventListener('pointermove', onPointerMove);
+		canvasEl.addEventListener('pointerup', onPointerUp);
+		canvasEl.addEventListener('pointercancel', onPointerUp);
+		canvasEl.addEventListener('wheel', onWheel, { passive: false });
+		canvasEl.addEventListener('keydown', onKeyDown);
+		canvasEl.addEventListener('dblclick', resetView);
+		canvasEl.focus({ preventScroll: true });
 	};
 
-	const destroyCanvas = (canvas: HTMLCanvasElement) => {
+	const unbindCanvas = () => {
+		const canvas = boundCanvas;
+		if (!canvas) return;
+		boundCanvas = null;
 		canvas.removeEventListener('pointerdown', onPointerDown);
 		canvas.removeEventListener('pointermove', onPointerMove);
 		canvas.removeEventListener('pointerup', onPointerUp);
@@ -339,7 +350,6 @@
 		canvas.removeEventListener('wheel', onWheel);
 		canvas.removeEventListener('keydown', onKeyDown);
 		canvas.removeEventListener('dblclick', resetView);
-		canvas.remove();
 	};
 
 	/** 首帧时 <dialog> 可能还没真正显示出来,等容器有尺寸再建 surface */
@@ -358,20 +368,24 @@
 			const rect = await waitForSize();
 			aspect = rect.width / rect.height;
 
-			// 后端探测、X5 的 WebGPU 回退、新 wasm 实例、贴图加载全部在 bootRenderer 里,
-			// 和 demo 播放器共用同一份实现
-			const booted = await bootRenderer({
-				createCanvas,
+			// 后端探测、X5 的 WebGPU 回退、wasm 实例、贴图加载全部在 acquireRenderer 里,
+			// 和 demo 播放器共用同一份启动实现;第二次打开预览时这里只是把 canvas 挪回来
+			const renderer = await acquireRenderer('mappreview', {
+				host,
+				canvasClass: 'block h-full w-full outline-none',
+				canvasFocus: true,
 				rememberKey: 'ddnet:mappreview:backend',
 				onStatus: (text) => (statusText = text)
 			});
-			module = booted.module as unknown as MpModule;
-			gpu = booted.gpu as unknown as MpGpu;
-			canvasEl = booted.canvas;
+			if (disposed) return;
 
-			surface = gpu.surface() ?? gpu.create_surface(canvasEl!);
-			camera = new module.TwCamera(aspect);
-			canvasEl!.width = canvasEl!.clientWidth || 1;
+			module = renderer.module as unknown as MpModule;
+			gpu = renderer.gpu as unknown as MpGpu;
+			surface = renderer.surface as MpSurface;
+			canvasEl = renderer.canvas;
+			bindCanvas();
+			if (!camera) camera = new module.TwCamera(aspect);
+			canvasEl.width = canvasEl.clientWidth || 1;
 			resize();
 		})().catch((e) => {
 			bootPromise = null;
@@ -380,32 +394,41 @@
 		return bootPromise;
 	};
 
-	const freeMap = () => {
+	/**
+	 * 组件卸载 / 页面跳走:把这次挂载的东西收掉。
+	 * 渲染器(wasm/device/贴图/surface/canvas)和已经上传的地图留在 engine.js 的
+	 * 缓存里,下次打开地图预览几乎不用等。
+	 */
+	const disposeView = () => {
+		disposed = true;
+		loadToken++;
 		stopRendering();
-		entitiesView?.free();
+		unbindCanvas();
+		try {
+			entitiesView?.free();
+		} catch {
+			// 已经释放过了
+		}
 		entitiesView = null;
-		mapView?.free();
+		// mapView 归 engine.js 的地图缓存管,这里只把引用放下
 		mapView = null;
+		try {
+			camera?.free();
+		} catch {
+			// 已经释放过了
+		}
+		camera = null;
+		// canvas / surface 是长期资源,只从 DOM 里摘下来
+		canvasEl?.remove();
+		canvasEl = null;
+		surface = null;
+		gpu = null;
+		module = null;
 		entitiesNow = false;
 		entitiesLayer = false;
 		ready = false;
-	};
-
-	/** 关掉预览:地图、canvas、device、wasm 实例全部放掉 */
-	const disposeEngine = () => {
-		loadToken++;
-		freeMap();
-		surface?.free();
-		surface = null;
-		camera?.free();
-		camera = null;
-		gpu?.free();
-		gpu = null;
-		if (canvasEl) {
-			destroyCanvas(canvasEl);
-			canvasEl = null;
-		}
-		module = null;
+		loadedName = null;
+		previewing = false;
 		bootPromise = null;
 		time = 0;
 		pointers.clear();
@@ -418,61 +441,43 @@
 
 		try {
 			await boot();
-			if (token !== loadToken) return;
+			if (token !== loadToken || disposed) return;
 
 			statusText = '下载地图…';
 			const bytes = await fetchBytes(`${MAP_BASE}/${encodeURIComponent(name)}.map`);
 			if (token !== loadToken) return;
 
-			statusText = '解析地图…';
-			const intermediate = new module!.TwMapIntermediate(bytes);
-
-			const version = intermediate.version();
-			const source = version === 'Teeworlds07' ? 'mapres_07' : 'mapres_06';
-			const external = intermediate.external_mapres();
-			const missing: string[] = [];
-
-			statusText = external.length ? `加载外部贴图 (${external.length})…` : '上传地图…';
-			await Promise.all(
-				external.map(async (mapres) => {
-					try {
-						const data = await fetchBytes(
-							await assetUrl(`assets/${source}/${encodeURIComponent(mapres)}.png`)
-						);
-						if (token !== loadToken) return;
-						if (version === 'Teeworlds07') gpu!.add_external_07(mapres, data);
-						else gpu!.add_external_06(mapres, data);
-					} catch {
-						missing.push(mapres);
-					}
-				})
-			);
+			statusText = '上传地图…';
+			// engine.js 按 map key 缓存已经上传过的 TwMap:同一张图关了再开、或者
+			// demo 播放器刚看过同一张图(不同 slot,各自一份 device)不用重新解析/上传。
+			const loaded = await uploadMap(module!, gpu!, bytes, `preview:${name}`);
 			if (token !== loadToken) return;
 
-			if (missing.length) {
-				throw new Error(`这张地图用到了我们没收录的外部贴图:${missing.join('、')}`);
+			if (loaded.missing.length) {
+				throw new Error(`这张地图用到了我们没收录的外部贴图:${loaded.missing.join('、')}`);
 			}
 
-			statusText = '上传地图…';
-			const uploaded = gpu!.upload_map(intermediate);
-
-			// 新图已经上去了,再把旧图放掉
+			// 新图已经上去了,再把旧的实体层放掉(普通地图归缓存管,不 free)
 			entitiesView?.free();
 			entitiesView = null;
-			mapView?.free();
-			mapView = uploaded;
+			const view = loaded.map as MpMap;
+			mapView = view;
 			entitiesNow = false;
 			entitiesLayer = false;
 
-			const spawn = mapView.spawn_location();
+			const spawn = view.spawn_location();
 			camera!.x = spawn[0] ?? 0;
 			camera!.y = spawn[1] ?? 0;
 			camera!.zoom = 1;
 			time = 0;
 
+			loadedName = name;
 			ready = true;
 			statusText = '';
-			startRendering();
+			if (previewing) {
+				canvasEl?.focus({ preventScroll: true });
+				startRendering();
+			}
 		} catch (e) {
 			if (token !== loadToken) return;
 			console.error(e);
@@ -550,6 +555,15 @@
 
 	let observer: ResizeObserver | null = null;
 
+	/** 标签页不可见时彻底停掉 rAF,回来再开;引擎不重建 */
+	const onVisibilityChange = () => {
+		if (document.visibilityState === 'hidden') {
+			stopRendering();
+		} else if (previewing && mapView) {
+			startRendering();
+		}
+	};
+
 	onMount(() => {
 		inApp = uaIsStrict(navigator.userAgent);
 		entitiesStyle = readEntitiesStyle();
@@ -557,23 +571,40 @@
 		observer = new ResizeObserver(() => resize());
 		observer.observe(host);
 		document.addEventListener('fullscreenchange', onFullscreenChange);
+		document.addEventListener('visibilitychange', onVisibilityChange);
 
 		return () => {
 			observer?.disconnect();
 			document.removeEventListener('fullscreenchange', onFullscreenChange);
-			disposeEngine();
+			document.removeEventListener('visibilitychange', onVisibilityChange);
+			disposeView();
 		};
 	});
 
-	// 打开预览(拿到地图名)就加载;关掉(变回 null)就把整份引擎放掉
-	let showingName: string | null = null;
+	// 打开预览(拿到地图名)就加载;关掉(变回 null)时只暂停渲染。
+	// 同一张图重新打开时 mapView 还在缓存里,直接 resize + 恢复循环,
+	// 连"下载地图 / 上传 GPU"都省掉。
 	$effect(() => {
 		const name = map ?? null;
-		if (name === showingName) return;
-		showingName = name;
-
 		if (!name) {
-			disposeEngine();
+			previewing = false;
+			stopRendering();
+			// 关掉预览后 canvas 还在(挂在隐藏的 dialog 里),但别再抢键盘 / 处理拖拽
+			unbindCanvas();
+			return;
+		}
+
+		previewing = true;
+		// 已经加载过的 canvas 先绑回事件(第一次打开时 boot() 里会绑)
+		bindCanvas();
+		if (name === loadedName && mapView) {
+			void (async () => {
+				await waitForSize().catch(() => {});
+				if (!previewing) return;
+				resize();
+				canvasEl?.focus({ preventScroll: true });
+				startRendering();
+			})();
 			return;
 		}
 		void loadMap(name);
