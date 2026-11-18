@@ -1,5 +1,5 @@
-import { afterAll, describe, expect, mock, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { describe, expect, mock, test } from 'bun:test';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -24,9 +24,8 @@ const {
 	updateRecallKeywordByUuid
 } = await import('./recall');
 
-afterAll(() => {
-	rmSync(dir, { recursive: true, force: true });
-});
+// 注意: bun test 的所有测试文件共用一个进程, $env 的 mock 和 sqlite 模块
+// 只会初始化一次。另一个测试文件也用到这张表, 所以断言前先清空, 也不删临时目录。
 
 describe('recall keywords', () => {
 	test('增删改查与去重', () => {
@@ -73,6 +72,8 @@ describe('recall switch', () => {
 
 describe('recall logs', () => {
 	test('记录成功与失败, 并按时间倒序返回', () => {
+		clearRecallLogs();
+
 		addRecallLog({
 			messageId: 'm1',
 			groupOpenid: 'g1',

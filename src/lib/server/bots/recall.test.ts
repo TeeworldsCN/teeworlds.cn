@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -58,7 +58,6 @@ beforeEach(() => {
 
 afterAll(() => {
 	globalThis.fetch = originalFetch;
-	rmSync(dir, { recursive: true, force: true });
 });
 
 describe('maybeRecallGroupMessage', () => {
