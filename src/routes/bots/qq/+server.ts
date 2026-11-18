@@ -58,6 +58,8 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 			member_openid?: string;
 			union_openid?: string;
 			username?: string;
+			/** 群名片：群里显示的名字，常常直接就是游戏名 */
+			member_nickname?: string;
 			bot?: boolean;
 		};
 		const uid = author.union_openid || author.member_openid || author.user_openid || author.id;
@@ -225,7 +227,8 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 				message,
 				payload.d,
 				mode,
-				isAt
+				isAt,
+				author.member_nickname?.trim()
 			);
 		}
 

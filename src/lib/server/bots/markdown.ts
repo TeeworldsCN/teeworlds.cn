@@ -122,9 +122,19 @@ export const pointsErrorMarkdown = () => `## ⚠️ 查询失败
 
 啊，豆豆的数据代码出问题了，快叫人来修复豆豆。`;
 
-export const pointsNotFoundMarkdown = () => `## 🔍 未找到玩家
+export const pointsNotFoundMarkdown = (name?: string, fromNickname?: boolean) => {
+	if (!name || !fromNickname) {
+		return `## 🔍 未找到玩家
 
 未找到相关的玩家信息。`;
+	}
+
+	return `## 🔍 未找到玩家
+
+没有找到 **${escapeMarkdown(name)}** 的玩家信息。
+
+这个名字来自你的群名片，如果写错了，可以用 **/绑定 玩家名** 绑定游戏名。`;
+};
 
 export const mapMarkdown = (
 	map: MarkdownMap,

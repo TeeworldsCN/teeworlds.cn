@@ -42,5 +42,7 @@ export type Handler = (data: {
 	command: string;
 	args: string;
 	mode: 'GROUP' | 'DIRECT';
+	/** 平台昵称（QQ 群名片）；用户没写玩家名时可以作为默认值 */
+	nickname?: string;
 	fetch: typeof global.fetch;
 }) => Promise<SendResult> | SendResult;
