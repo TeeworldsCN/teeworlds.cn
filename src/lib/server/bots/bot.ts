@@ -72,6 +72,8 @@ type rootHandlerArgs = {
 	raw: any;
 	mode: 'GROUP' | 'DIRECT';
 	isAt: boolean;
+	/** 平台昵称（QQ 群名片） */
+	nickname?: string;
 };
 
 type HandleOptions = {
@@ -80,7 +82,7 @@ type HandleOptions = {
 };
 
 const handle = async (
-	{ platform, user, msg, raw, mode, reply, group, isAt }: rootHandlerArgs,
+	{ platform, user, msg, raw, mode, reply, group, isAt, nickname }: rootHandlerArgs,
 	{ allowFallback = true }: HandleOptions = {}
 ) => {
 	const uid = `${platform}:${user}`;
@@ -181,7 +183,8 @@ const handle = async (
 		fetch,
 		group,
 		permissions,
-		isAt
+		isAt,
+		nickname
 	};
 
 	const result = await commands.run(cmd, handlerArgs);
@@ -212,7 +215,9 @@ export const handlePing = async (
 	msg: string,
 	raw: any,
 	mode: 'GROUP' | 'DIRECT',
-	isAt: boolean
+	isAt: boolean,
+	/** 平台昵称（QQ 群名片） */
+	nickname?: string
 ) => {
 	const args = {
 		fetch,
@@ -223,7 +228,8 @@ export const handlePing = async (
 		mode,
 		reply,
 		group,
-		isAt
+		isAt,
+		nickname
 	} satisfies rootHandlerArgs;
 
 	if (mode == 'GROUP' && !isAt) {

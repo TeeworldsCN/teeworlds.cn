@@ -457,7 +457,16 @@ export type QQGroupAtMessageCreatePayload = CallbackPayload<
 		id: string;
 		content: string;
 		timestamp: string;
-		author: { id: string; user_openid: string; union_openid: string };
+		author: {
+			id: string;
+			user_openid?: string;
+			member_openid?: string;
+			union_openid?: string;
+			username?: string;
+			/** 群名片：群里显示的名字，常常直接就是游戏名 */
+			member_nickname?: string;
+			bot?: boolean;
+		};
 		group_id: string;
 		group_openid: string;
 		message_scene: { source: string };
@@ -477,6 +486,8 @@ export type QQGroupMessageCreatePayload = CallbackPayload<
 			member_openid?: string;
 			union_openid?: string;
 			username?: string;
+			/** 群名片：群里显示的名字，常常直接就是游戏名 */
+			member_nickname?: string;
 			bot?: boolean;
 		};
 		group_id?: string;

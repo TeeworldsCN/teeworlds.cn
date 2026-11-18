@@ -12,13 +12,19 @@ import {
 	type PointsRank
 } from '../markdown';
 
-export const handlePoints: Handler = async ({ platform, user, reply, args }) => {
+export const handlePoints: Handler = async ({ platform, user, reply, args, nickname }) => {
 	let playerName = args.trim();
 	const prefix = platform == 'wechat' ? '' : '/';
+	let fromNickname = false;
 
-	// check binds
+	// 没写名字时先用绑定名；没绑定就退回平台昵称（QQ 群名片）。
+	// 群里很多人直接把游戏名当群名片，这样可以省掉先 /绑定 一步。
 	if (!playerName) {
 		playerName = user?.bind_name || '';
+		if (!playerName) {
+			playerName = nickname?.trim() || '';
+			fromNickname = !!playerName;
+		}
 	}
 
 	if (!playerName) {
@@ -43,7 +49,7 @@ export const handlePoints: Handler = async ({ platform, user, reply, args }) => 
 	};
 
 	if (!player.name || !allowedText(player.name)) {
-		return await reply.markdown(pointsNotFoundMarkdown());
+		return await reply.markdown(pointsNotFoundMarkdown(playerName, fromNickname));
 	}
 
 	const chnFetch = await regionalRanks('chn');
