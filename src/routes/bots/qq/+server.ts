@@ -1,4 +1,5 @@
 import { handlePing } from '$lib/server/bots/bot';
+import { maybeRecallGroupMessage } from '$lib/server/bots/recall';
 import { QQBot, type QQMessage, type QQPayload } from '$lib/server/bots/protocol/qq';
 import { markdownToText } from '$lib/server/bots/utils/markdown';
 import { error } from '@sveltejs/kit';
@@ -56,6 +57,7 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 			user_openid?: string;
 			member_openid?: string;
 			union_openid?: string;
+			username?: string;
 			bot?: boolean;
 		};
 		const uid = author.union_openid || author.member_openid || author.user_openid || author.id;
@@ -69,6 +71,17 @@ export const POST: RequestHandler = async ({ fetch, request }) => {
 			return new Response(JSON.stringify({ op: 12, d: 0 }), {
 				headers: { 'content-type': 'application/json' }
 			});
+		}
+
+		// 关键词自动撤回。不 await: 回调要尽快返回, 撤回是另一条独立的 QQ API 调用
+		if (payload.t == 'GROUP_AT_MESSAGE_CREATE' || payload.t == 'GROUP_MESSAGE_CREATE') {
+			void maybeRecallGroupMessage({
+				groupOpenid: payload.d.group_openid,
+				messageId: payload.d.id,
+				content: payload.d.content,
+				userOpenid: uid,
+				userName: author.username
+			}).catch((err) => console.error('[qq-recall] 处理群消息时出错', err));
 		}
 
 		let group = 'DIRECT';

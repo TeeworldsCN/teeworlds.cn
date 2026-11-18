@@ -279,6 +279,21 @@ export class QQBotProtocol {
 		return this.sendMessage(url, message, options);
 	};
 
+	/**
+	 * 撤回群聊消息 (DELETE /v2/groups/{group_openid}/messages/{message_id})。
+	 *
+	 * - 机器人是群管理员时, 可以撤回自己以及普通群成员的消息; 普通成员时只能撤回自己发送的消息。
+	 * - 消息发出超过 2 分钟后不可撤回 (40064004)。
+	 * - 成功返回 HTTP 200, 无响应体。
+	 */
+	async recallGroupMessage(groupOpenid: string, messageId: string): Promise<QQRequestResult<void>> {
+		const url = new URL(
+			`/v2/groups/${encodeURIComponent(groupOpenid)}/messages/${encodeURIComponent(messageId)}`,
+			END_POINT
+		);
+		return this.request<void>(url, 'DELETE');
+	}
+
 	private async request<T>(
 		url: URL,
 		method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
@@ -304,17 +319,34 @@ export class QQBotProtocol {
 			body: body ? JSON.stringify(body) : undefined
 		});
 
-		if (res.status != 200) {
-			return {
-				code: res.status,
-				message: 'Request failed',
-				body: await res.text(),
-				error: true,
-				internal: true
-			};
+		const text = await res.text();
+
+		if (!res.ok) {
+			// QQ 的错误响应体里带业务错误码, 比 HTTP 状态码更能说明问题
+			// (例如 40062003 无操作权限 / 40064004 超出撤回时限)。
+			// code 保持 HTTP 状态码, 因为现有调用方直接把它当 HTTP status 用。
+			let bizCode: number | undefined;
+			let message = res.statusText || 'Request failed';
+			try {
+				const json = JSON.parse(text);
+				if (typeof json?.code == 'number') bizCode = json.code;
+				if (typeof json?.message == 'string' && json.message) message = json.message;
+			} catch {
+				// not JSON, keep the HTTP status
+			}
+			return { code: res.status, bizCode, message, body: text, error: true, internal: true };
 		}
 
-		return { error: false, data: (await res.json()) as T };
+		if (!text) {
+			// 撤回等接口成功时没有响应体
+			return { error: false, data: undefined as T };
+		}
+
+		try {
+			return { error: false, data: JSON.parse(text) as T };
+		} catch {
+			return { error: false, data: undefined as T };
+		}
 	}
 
 	/** Get all available guilds, currently maxed out at 100 without pagination, but we won't need more than 100 anyway */
@@ -548,7 +580,10 @@ export interface QQRequestSuccess<T> {
 	data: T;
 }
 export interface QQRequestError {
+	/** HTTP status code */
 	code: number;
+	/** QQ business error code from the response body, if any (e.g. 40062003) */
+	bizCode?: number;
 	message: string;
 	body?: string;
 	error: true;

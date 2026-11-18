@@ -38,6 +38,11 @@
 		<ToolboxButton href="/admin/bot-replies">机器人关键词回复</ToolboxButton>
 		<div class="text-semibold">管理机器人关键词自动回复功能</div>
 	</div>
+
+	<div class="mt-6">
+		<ToolboxButton href="/admin/bot-recall">QQ 群自动撤回</ToolboxButton>
+		<div class="text-semibold">群友发言命中关键词时由机器人自动撤回</div>
+	</div>
 {/if}
 
 {#if hasPermission('POSTING')}
